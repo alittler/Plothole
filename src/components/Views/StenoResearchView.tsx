@@ -7,6 +7,7 @@ import {
 import { stenoResearch, chatWithAssistant } from '../../services/geminiService';
 import Markdown from 'react-markdown';
 import { generateId } from '../../services/storageService';
+import { StackedPaper } from '../ui/StackedPaper';
 
 enum StenoTab {
   WORKSPACE = 'Workspace',
@@ -164,34 +165,36 @@ const StenoResearchView: React.FC = () => {
         return (
           <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 lg:p-6 overflow-y-auto lg:overflow-hidden">
             {/* Notepad Panel */}
-            <div className="flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <FileText size={14} /> Notepad
-                </h3>
-                <div className="flex gap-4">
-                  <button 
-                    onClick={() => handleConvertToSource(notepad, 'Notepad Draft')}
-                    disabled={!notepad.trim()}
-                    className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 disabled:opacity-30 flex items-center gap-1"
-                  >
-                    Convert to Source <ArrowRight size={10} />
-                  </button>
-                  <button 
-                    onClick={() => handleCommitToLedger(notepad)}
-                    disabled={!notepad.trim()}
-                    className="text-[10px] font-bold text-emerald-500 hover:text-emerald-600 disabled:opacity-30 flex items-center gap-1"
-                  >
-                    Commit to Ledger <Check size={10} />
-                  </button>
+            <div className="flex flex-col h-full">
+              <StackedPaper className="flex-1">
+                <div className="p-4 border-b border-slate-900/10 flex items-center justify-between relative z-20">
+                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                    <FileText size={14} /> Notepad
+                  </h3>
+                  <div className="flex gap-4">
+                    <button 
+                      onClick={() => handleConvertToSource(notepad, 'Notepad Draft')}
+                      disabled={!notepad.trim()}
+                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 disabled:opacity-30 flex items-center gap-1"
+                    >
+                      Convert to Source <ArrowRight size={10} />
+                    </button>
+                    <button 
+                      onClick={() => handleCommitToLedger(notepad)}
+                      disabled={!notepad.trim()}
+                      className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 disabled:opacity-30 flex items-center gap-1"
+                    >
+                      Commit to Ledger <Check size={10} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <textarea
-                value={notepad}
-                onChange={(e) => setNotepad(e.target.value)}
-                placeholder="Draft your messy ideas here..."
-                className="flex-1 p-6 bg-transparent border-none focus:ring-0 resize-none font-serif text-lg text-slate-800 dark:text-slate-200"
-              />
+                <textarea
+                  value={notepad}
+                  onChange={(e) => setNotepad(e.target.value)}
+                  placeholder="Draft your messy ideas here..."
+                  className="flex-1 p-6 bg-transparent border-none focus:ring-0 resize-none font-serif text-lg text-slate-800 dark:text-slate-200 relative z-20"
+                />
+              </StackedPaper>
             </div>
 
             {/* AI Chat Panel */}
@@ -293,9 +296,8 @@ const StenoResearchView: React.FC = () => {
                   </div>
                 )}
                 {ledger.map(entry => (
-                  <div key={entry.id} className="steno-pad relative group">
-                    <div className="steno-torn-edge" />
-                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <StackedPaper key={entry.id} className="group">
+                    <div className="absolute top-8 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">
                       <button 
                         onClick={() => copyToClipboard(entry.content, entry.id)}
                         className="p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur rounded-lg shadow-sm hover:text-indigo-500"
@@ -303,13 +305,15 @@ const StenoResearchView: React.FC = () => {
                         {copiedId === entry.id ? <Check size={14} /> : <Copy size={14} />}
                       </button>
                     </div>
-                    <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-4">
-                      ENTRY // {new Date(entry.timestamp).toLocaleString()}
+                    <div className="p-8 relative z-20">
+                      <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-4">
+                        ENTRY // {new Date(entry.timestamp).toLocaleString()}
+                      </div>
+                      <div className="prose prose-slate dark:prose-invert max-w-none font-serif text-lg leading-relaxed">
+                        <Markdown>{entry.content}</Markdown>
+                      </div>
                     </div>
-                    <div className="prose prose-slate dark:prose-invert max-w-none font-serif text-lg leading-relaxed">
-                      <Markdown>{entry.content}</Markdown>
-                    </div>
-                  </div>
+                  </StackedPaper>
                 ))}
               </div>
             </div>
@@ -448,13 +452,15 @@ const StenoResearchView: React.FC = () => {
                       Clear
                     </button>
                   </div>
-                  <div className="flex-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 relative">
-                    <textarea
-                      value={architectInput}
-                      onChange={(e) => setArchitectInput(e.target.value)}
-                      placeholder="Paste massive brain-dumps or transcripts here to shred them into atomic notes..."
-                      className="w-full h-full bg-transparent border-none focus:ring-0 resize-none font-serif text-lg leading-relaxed"
-                    />
+                  <div className="flex-1 relative">
+                    <StackedPaper className="h-full">
+                      <textarea
+                        value={architectInput}
+                        onChange={(e) => setArchitectInput(e.target.value)}
+                        placeholder="Paste massive brain-dumps or transcripts here to shred them into atomic notes..."
+                        className="w-full h-full bg-transparent border-none focus:ring-0 resize-none font-serif text-lg leading-relaxed p-6 relative z-20"
+                      />
+                    </StackedPaper>
                   </div>
                   <button
                     onClick={handleArchitectShred}
@@ -477,25 +483,27 @@ const StenoResearchView: React.FC = () => {
                       </div>
                     )}
                     {architectResults.map((res, i) => (
-                      <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group">
-                        <div className="prose prose-slate dark:prose-invert max-w-none text-sm mb-4">
-                          <Markdown>{res}</Markdown>
+                      <StackedPaper key={i} className="group">
+                        <div className="p-6 relative z-20">
+                          <div className="prose prose-slate dark:prose-invert max-w-none text-sm mb-4">
+                            <Markdown>{res}</Markdown>
+                          </div>
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              onClick={() => handleCommitToLedger(res)}
+                              className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors"
+                            >
+                              Commit to Ledger
+                            </button>
+                            <button 
+                              onClick={() => handleConvertToSource(res, 'Atomic Note')}
+                              className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-colors"
+                            >
+                              Send to Sources
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={() => handleCommitToLedger(res)}
-                            className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors"
-                          >
-                            Commit to Ledger
-                          </button>
-                          <button 
-                            onClick={() => handleConvertToSource(res, 'Atomic Note')}
-                            className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-colors"
-                          >
-                            Send to Sources
-                          </button>
-                        </div>
-                      </div>
+                      </StackedPaper>
                     ))}
                   </div>
                 </div>
