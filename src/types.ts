@@ -21,7 +21,8 @@ export enum ViewType {
   SOURCE_READER = 'SourceReader',
   MATRIX = 'Matrix',
   DICTIONARY = 'Dictionary',
-  STENO_RESEARCH = 'StenoResearch'
+  STENO_RESEARCH = 'StenoResearch',
+  SEMANTIC_EDITOR = 'SemanticEditor'
 }
 
 export const APP_DATA_VERSION = 11;
@@ -82,6 +83,7 @@ export interface AppPrompts {
   TOOLBOX_URL_ANALYSIS: string;
   GENERATE_CONLANG_WORD: string;
   CONNECT_NOTES: string;
+  AI_MODEL: string;
 }
 
 export interface Plotline {
@@ -249,6 +251,7 @@ export interface Note {
   aiAnalysis?: string;
   timestamp: number;
   imageUrl?: string;
+  isCanon?: boolean;
 }
 
 export interface CalendarMonth {
@@ -299,10 +302,33 @@ export interface AnalysisOptions {
   extractLore: boolean;
 }
 
+export interface LedgerEntry {
+  id: string;
+  content: string;
+  timestamp: number;
+  tags: string[];
+}
+
+export interface SemanticDocument {
+  id: string;
+  title: string;
+  content: string;
+  lastModified: number;
+}
+
+export interface Idea {
+  id: string;
+  content: string;
+  tags: string[];
+  isCanon: boolean;
+  timestamp: number;
+}
+
 export interface ProjectData {
   id: string;
   lastModified: number;
   title: string;
+  shortName?: string;
   author?: string;
   version?: string; 
   summary: string;
@@ -319,7 +345,9 @@ export interface ProjectData {
   plotHoles?: PlotHole[]; 
   sentimentArc?: SentimentPoint[];
   notes: Note[];
+  ideas?: Note[];
   themes: string[];
+  ledger?: Note[];
 
   manuscriptHistory?: ManuscriptHistoryEntry[];
   latestManuscriptText?: string;
@@ -352,12 +380,15 @@ export interface ProjectData {
 
   languages?: Language[];
 
+  semanticDocuments?: SemanticDocument[];
+
   isSampleProject?: boolean;
 }
 
 export interface ProjectMetadata {
   id: string;
   title: string;
+  shortName?: string;
   author?: string;
   summary: string;
   coverDescription?: string;
@@ -387,6 +418,7 @@ export interface User {
     colorfulIcons?: boolean;
     reducedMotion?: boolean;
     showAutoSaveIndicator?: boolean;
+    semanticSearchEnabled?: boolean;
   };
 }
 

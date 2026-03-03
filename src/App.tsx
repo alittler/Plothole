@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
 import { 
   ProjectData, ProjectMetadata, User, ViewType, Note, 
-  AppPrompts, ToolboxLink
+  AppPrompts, ToolboxLink, Idea
 } from './types';
 import { 
   getAllProjectsMetadata, loadProjectById, saveProjectData, 
@@ -15,7 +15,8 @@ import {
   generateId
 } from './services/storageService';
 import { 
-  analyzeManuscript, generateBookCover, doubleProcessNote, extractThemesFromNotes
+  analyzeManuscript, generateBookCover, doubleProcessNote, extractThemesFromNotes,
+  DEFAULT_PROMPTS
 } from './services/geminiService';
 
 // Components
@@ -26,6 +27,7 @@ import { BookshelfView } from './components/Views/BookshelfView';
 import { DashboardView } from './components/Views/DashboardView';
 import { ResearchSystemView } from './components/Views/ResearchSystemView';
 import { CharacterView } from './components/Views/CharacterView';
+import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
 import { WorldSystemView } from './components/Views/WorldSystemView';
 import { PlotSystemView } from './components/Views/PlotSystemView';
 import { ManuscriptSystemView } from './components/Views/ManuscriptSystemView';
@@ -34,6 +36,7 @@ import { AdminView } from './components/Views/AdminView';
 import { ToolboxView } from './components/Views/ToolboxView';
 import { BlueprintRescueView } from './components/Views/BlueprintRescueView';
 import StenoResearchView from './components/Views/StenoResearchView';
+import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { AlertCircle, X, Sparkles, Menu } from 'lucide-react';
 
 const DEMO_USER: User = {
@@ -43,17 +46,22 @@ const DEMO_USER: User = {
   role: 'admin',
   lastActive: Date.now(),
   themeColor: '59 130 246',
-  preferences: { themeMode: 'light', fontSize: 'md', fontFamily: 'sans', landingPage: ViewType.BOOKSHELF, aiVerbosity: 'detailed', colorfulIcons: true }
+  preferences: { themeMode: 'light', fontSize: 'md', fontFamily: 'sans', landingPage: ViewType.BOOKSHELF, aiVerbosity: 'detailed', colorfulIcons: true, semanticSearchEnabled: false }
 };
 
 const App: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [currentUser, setCurrentUser] = useState<User>(DEMO_USER);
-  const [currentView, setCurrentView] = useState<ViewType>(DEMO_USER.preferences?.landingPage || ViewType.BOOKSHELF);
+  const currentView = (decodeURIComponent(location.pathname.slice(1)) as ViewType) || DEMO_USER.preferences?.landingPage || ViewType.BOOKSHELF;
+  const setCurrentView = (view: ViewType) => navigate(`/${view}`);
+  
   const [projectsMetadata, setProjectsMetadata] = useState<ProjectMetadata[]>([]);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [globalResources, setGlobalResources] = useState<ToolboxLink[]>([]);
-  const [appPrompts, setAppPromptsState] = useState<AppPrompts>({} as any);
+  const [appPrompts, setAppPromptsState] = useState<AppPrompts>(DEFAULT_PROMPTS);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
@@ -90,10 +98,13 @@ const App: React.FC = () => {
 
   const handleError = useCallback((err: any) => {
       console.error("App Error:", err);
-      if (err.message?.includes("AI_CONFIG_ERROR") || err.message?.includes("API Key")) {
+      const msg = err.message || String(err);
+      if (msg.includes("AI_CONFIG_ERROR") || msg.includes("API Key")) {
           setAiError("AI services are unavailable: Please check your environment configuration.");
+      } else if (msg.includes("quota") || msg.includes("limit")) {
+          setAiError("AI Rate Limit reached. Please wait a moment and try again.");
       } else {
-          setAiError("An unexpected system error occurred. Please try again.");
+          setAiError(`An unexpected error occurred: ${msg.substring(0, 100)}`);
       }
       setTimeout(() => setAiError(null), 8000);
   }, []);
@@ -137,10 +148,10 @@ const App: React.FC = () => {
     await refreshMetadata();
   }, [projectData, refreshMetadata]);
 
-  const handleCreateProject = async (title: string, author: string, useSample: boolean) => {
+  const handleCreateProject = async (title: string, author: string, useSample: boolean, shortName?: string) => {
     const id = generateId();
     let newProject: ProjectData = {
-      id, title, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: []
+      id, title, shortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: []
     };
 
     if (useSample) {
@@ -184,7 +195,7 @@ const App: React.FC = () => {
         content = await file.text();
       }
 
-      const analysis = await analyzeManuscript(content, 300000, {
+      const analysis = await analyzeManuscript(content, undefined, {
         extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true
       });
 
@@ -234,6 +245,19 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAddIdeaToProject = async (projectId: string, content: string, tags: string[]) => {
+    if (projectData?.id === projectId) {
+      const newIdea: Idea = {
+        id: generateId(),
+        content,
+        tags,
+        isCanon: false,
+        timestamp: Date.now()
+      };
+      await updateProjectData({ ideas: [newIdea, ...(projectData.ideas || [])] });
+    }
+  };
+
   const handleGenerateCover = async () => {
     if (!projectData) return;
     setIsGeneratingCover(true);
@@ -245,6 +269,26 @@ const App: React.FC = () => {
       handleError(e);
     } finally {
       setIsGeneratingCover(false);
+    }
+  };
+
+  const handleToggleCanon = async (noteId: string, isCanon: boolean) => {
+    // Check global notes
+    const globalNote = globalNotes.find(n => n.id === noteId);
+    if (globalNote) {
+      const updated = globalNotes.map(n => n.id === noteId ? { ...n, isCanon } : n);
+      setGlobalNotes(updated);
+      await saveGlobalNote({ ...globalNote, isCanon });
+      return;
+    }
+
+    // Check project notes (ideas)
+    if (projectData?.ideas) {
+      const idea = projectData.ideas.find(n => n.id === noteId);
+      if (idea) {
+        const updated = projectData.ideas.map(n => n.id === noteId ? { ...n, isCanon } : n);
+        await updateProjectData({ ideas: updated });
+      }
     }
   };
 
@@ -260,7 +304,7 @@ const App: React.FC = () => {
         return <BookshelfView projects={projectsMetadata} activeProjectId={projectData?.id || ''} currentUser={currentUser} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); setCurrentView(ViewType.DASHBOARD); } }} onCreateProject={handleCreateProject} onUploadProject={handleUploadManuscript} onDeleteProject={async id => { await deleteProject(id); await refreshMetadata(); if (projectData?.id === id) setProjectData(null); }} onOpenDashboard={() => setCurrentView(ViewType.DASHBOARD)} isAnalyzing={isAnalyzing} />;
 
       case ViewType.NOTES: 
-        return <ResearchSystemView currentView={currentView} onChangeView={setCurrentView} data={{...projectData, notes: globalNotes} as any} onAddNote={async n => { setGlobalNotes(prev => [n, ...prev]); await saveGlobalNote(n); }} onDeleteNote={async id => { setGlobalNotes(prev => prev.filter(n => n.id !== id)); await deleteGlobalNote(id); }} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onAddDoubleProcessedNote={handleDoubleProcessNote} activeTasks={activeTasks} />;
+        return <ResearchSystemView currentView={currentView} onChangeView={setCurrentView} data={{...projectData, notes: globalNotes} as any} onAddNote={async n => { setGlobalNotes(prev => [n, ...prev]); await saveGlobalNote(n); }} onAddIdeaToProject={handleAddIdeaToProject} onToggleCanon={handleToggleCanon} onDeleteNote={async id => { setGlobalNotes(prev => prev.filter(n => n.id !== id)); await deleteGlobalNote(id); }} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onAddDoubleProcessedNote={handleDoubleProcessNote} activeTasks={activeTasks} onUpdateProject={updateProjectData} semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled} />;
 
       case ViewType.CHARACTERS: 
         return <CharacterView projectTitle={projectData?.title || ''} characters={projectData?.characters || []} locations={projectData?.locations || []} timeline={projectData?.timeline || []} artifacts={projectData?.artifacts || []} themes={projectData?.themes || []} notes={globalNotes} manuscriptHistory={projectData?.manuscriptHistory || []} onUpdateCharacter={(c) => updateProjectData({ characters: projectData?.characters.map(ch => ch.id === c.id ? c : ch) })} onAddCharacter={(c) => updateProjectData({ characters: [...(projectData?.characters || []), c] })} onLinkClick={(type, id) => { if (type === 'location') { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} characterLimit={projectData?.characterLimit} onChangeView={setCurrentView} onExtractThemesFromNotes={async () => { 
@@ -275,7 +319,7 @@ const App: React.FC = () => {
 
       case ViewType.DASHBOARD:
         return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => {}} onUpdateManuscript={handleUploadManuscript} onRescanManuscript={handleUploadManuscript} onExportManuscript={() => {}} onImportManuscript={handleUploadManuscript} onLoadSample={() => {}} isAnalyzing={isAnalyzing} error={null} onUpdateMetadata={(t, a) => updateProjectData({ title: t, author: a })} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={(t) => {
-            analyzeManuscript(t, 300000, { extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true })
+            analyzeManuscript(t, undefined, { extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true })
             .then(a => updateProjectData({ summary: a.summary, themes: a.themes }))
             .catch(handleError);
         }} onRestoreHistory={() => {}} onGenerateCover={handleGenerateCover} isGeneratingCover={isGeneratingCover} /> : null;
@@ -305,13 +349,16 @@ const App: React.FC = () => {
         return <ToolboxView bakedResources={globalResources} onAddResource={async (l) => { setGlobalResources(prev => [...prev, l]); await saveGlobalResource(l); }} onDeleteResource={async (id) => { setGlobalResources(prev => prev.filter(r => r.id !== id)); await deleteGlobalResource(id); }} />;
 
       case ViewType.ADMIN:
-        return <AdminView data={projectData} appPrompts={appPrompts} onSavePrompts={async (p) => { setAppPromptsState(p); await saveAppPrompts(p); }} onUpdateProject={updateProjectData} onFullArchive={() => exportFullArchive(globalNotes)} globalResources={[]} onAddGlobalResource={async () => {}} onDeleteGlobalResource={async () => {}} onToggleViewVisibility={() => {}} />;
+        return <AdminView data={projectData} appPrompts={appPrompts} onSavePrompts={async (p) => { setAppPromptsState(p); await saveAppPrompts(p); }} onUpdateProject={updateProjectData} onFullArchive={() => exportFullArchive(globalNotes)} globalResources={[]} onAddGlobalResource={async () => {}} onDeleteGlobalResource={async () => {}} onToggleViewVisibility={() => {}} projectsMetadata={projectsMetadata} />;
 
       case ViewType.SETTINGS:
         return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} />;
 
       case ViewType.STENO_RESEARCH:
-        return <StenoResearchView />;
+        return projectData ? <StenoResearchView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Steno Research.</div>;
+
+      case ViewType.SEMANTIC_EDITOR:
+        return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
 
       default: 
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
@@ -332,6 +379,12 @@ const App: React.FC = () => {
         isAiOpen={isAiOpen} 
         currentUser={currentUser} 
         isProcessing={activeTasks.length > 0} 
+        activeProjectTitle={projectData?.title}
+        onQuickNote={async (text) => {
+          const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
+          setGlobalNotes(prev => [n, ...prev]);
+          await saveGlobalNote(n);
+        }}
       />
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
         {/* Mobile Header */}
@@ -368,7 +421,7 @@ const App: React.FC = () => {
             </button>
           </div>
         )}
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative pb-24 lg:pb-0">
           {viewContent}
         </div>
         

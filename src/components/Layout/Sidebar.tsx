@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType, User } from '../../types';
-import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X } from 'lucide-react';
+import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database } from 'lucide-react';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -14,6 +14,8 @@ interface SidebarProps {
   isAiOpen: boolean;
   currentUser: User;
   isProcessing: boolean;
+  activeProjectTitle?: string;
+  onQuickNote?: (text: string) => void;
 }
 
 interface NavItem {
@@ -31,7 +33,7 @@ interface SidebarSection {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing
+  currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, activeProjectTitle, onQuickNote
 }) => {
   const sections: SidebarSection[] = [
     {
@@ -40,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: ViewType.BOOKSHELF, label: 'Library', icon: Book, always: true },
         { id: ViewType.NOTES, label: 'Notebook', icon: Search, always: true },
         { id: ViewType.STENO_RESEARCH, label: 'Steno Research', icon: Zap, always: true },
+        { id: ViewType.SEMANTIC_EDITOR, label: 'Semantic Engine', icon: Database, always: true },
         { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
       ]
     },
@@ -78,16 +81,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         ${isCollapsed ? 'lg:w-20' : 'w-64'}
       `}>
-        <div className="p-6 flex items-center justify-between">
-          {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white">PLOTHOLE</span>}
-          <div className="flex items-center gap-2">
-            <button onClick={onToggleCollapse} className="hidden lg:block p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white">
-              {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-            </button>
-            <button onClick={onClose} className="lg:hidden p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white">
-              <X size={20} />
-            </button>
+        <div className="p-6 flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white">PLOTHOLE</span>}
+            <div className="flex items-center gap-2">
+              <button onClick={onToggleCollapse} className="hidden lg:block p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white">
+                {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+              </button>
+              <button onClick={onClose} className="lg:hidden p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
           </div>
+          {!isCollapsed && (
+            <div className="px-0.5 min-h-[15px]">
+              {activeProjectTitle && (
+                <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest truncate block">
+                  {activeProjectTitle}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
       <nav className="flex-1 overflow-y-auto px-3 space-y-8 py-4">
@@ -138,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </nav>
 
-      <div className="p-4 mt-auto">
+      <div className="p-4 mt-auto space-y-2">
         <button
           onClick={onToggleAi}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${isAiOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-900 hover:bg-slate-800 text-slate-300'}`}
@@ -146,6 +160,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Sparkles size={18} className={isProcessing ? 'animate-spin' : ''} />
           {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">AI Architect</span>}
         </button>
+        {currentUser.role === 'admin' && onQuickNote && (
+          <button
+            onClick={() => {
+              const note = window.prompt("Admin Note (Edits to make):");
+              if (note && note.trim()) {
+                onQuickNote(note.trim());
+              }
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all bg-amber-900/20 hover:bg-amber-900/40 text-amber-500"
+          >
+            <PenTool size={18} />
+            {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">Admin Note</span>}
+          </button>
+        )}
       </div>
     </aside>
     </>

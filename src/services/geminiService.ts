@@ -46,13 +46,7 @@ const unifiedAnalysisSchema = {
           role: { type: Type.STRING },
           description: { type: Type.STRING },
           traits: { type: Type.ARRAY, items: { type: Type.STRING } },
-          species: { type: Type.STRING },
-          family: { type: Type.STRING },
-          archetype: { type: Type.STRING },
-          livingStatus: { type: Type.STRING },
-          goals: { type: Type.STRING }
-        },
-        required: ["name", "role", "description"]
+        }
       }
     },
     minorCharacters: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -106,7 +100,7 @@ const unifiedAnalysisSchema = {
       }
     }
   },
-  required: ["title", "summary", "characters", "timeline", "locations"]
+  required: ["title", "summary"]
 };
 
 export const DEFAULT_PROMPTS: AppPrompts = {
@@ -125,51 +119,113 @@ export const DEFAULT_PROMPTS: AppPrompts = {
   MISSPELLINGS_SCAN: 'Find misspellings of "{name}".',
   TOOLBOX_URL_ANALYSIS: "Analyze this URL for creative writer utility.",
   GENERATE_CONLANG_WORD: 'Construct a word for "{word}" in "{langName}".',
-  CONNECT_NOTES: "Synthesize these notes into a narrative thread."
+  CONNECT_NOTES: "Synthesize these notes into a narrative thread.",
+  AI_MODEL: "gemini-3-flash-preview"
 };
 
 const getCurrentPrompts = async (): Promise<AppPrompts> => {
   const saved = await getAppPrompts();
-  return { ...DEFAULT_PROMPTS, ...saved };
+  return { ...DEFAULT_PROMPTS, ...(saved || {}) };
 };
 
-export const analyzeManuscript = async (text: string, tokenLimit: number = 300000, options: AnalysisOptions): Promise<ManuscriptAnalysisResponse> => {
+export const analyzeManuscript = async (text: string, tokenLimit?: number, options?: AnalysisOptions): Promise<ManuscriptAnalysisResponse> => {
   const ai = getAiClient();
-  const model = "gemini-3.1-pro-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
 
-  const systemInstruction = `You are a story architect. Perform an exhaustive scan and return strictly JSON.`;
-  const contextText = text.substring(0, tokenLimit);
+  // Determine intelligent chunk size based on model
+  let maxChars = 150000; // Default safe limit
+  if (model.includes('1.5') || model.includes('3.1')) {
+    maxChars = 800000; // Models with huge context
+  } else if (model.includes('3-flash')) {
+    maxChars = 400000;
+  }
 
-  const res = await ai.models.generateContent({
-    model,
-    contents: [{ role: 'user', parts: [{ text: contextText }] }],
-    config: { 
-      systemInstruction,
-      responseMimeType: "application/json", 
-      responseSchema: unifiedAnalysisSchema,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
-    }
-  });
+  const actualLimit = tokenLimit || maxChars;
+  const textLength = text.length;
 
-  const data = safeJsonParse(res.text, {});
-  return {
-    title: data.title || "Untitled Project",
-    summary: data.summary || "Summary extraction incomplete.",
-    coverDescription: data.coverDescription || "",
-    themes: data.themes || [],
-    characters: (data.characters || []).map((c: any) => ({ ...c, id: generateId(), source: 'ai' })),
-    minorCharacters: data.minorCharacters || [],
-    timeline: (data.timeline || []).map((e: any) => ({ ...e, id: generateId(), source: 'ai' })),
-    locations: (data.locations || []).map((l: any) => ({ ...l, id: generateId(), source: 'ai' })),
-    artifacts: (data.artifacts || []).map((a: any) => ({ ...a, id: generateId(), source: 'ai' })),
-    lore: (data.lore || []).map((l: any) => ({ ...l, id: generateId(), source: 'ai' })),
+  const systemInstruction = `You are a world-class story architect. Perform a scan of the provided manuscript snippet and extract a structured living encyclopedia. Return strictly JSON.`;
+
+  // Intelligent Chunking Strategy:
+  // If text is within limits, process normally.
+  // If text is significantly larger, take Start, Middle, and End chunks to get a full narrative overview.
+  const chunks: string[] = [];
+  if (textLength <= actualLimit) {
+    chunks.push(text);
+  } else {
+    // Take Start
+    chunks.push(text.substring(0, actualLimit));
+    // Take Middle
+    const mid = Math.floor(textLength / 2);
+    const midStart = Math.max(0, mid - Math.floor(actualLimit / 2));
+    chunks.push(text.substring(midStart, midStart + actualLimit));
+    // Take End
+    chunks.push(text.substring(Math.max(0, textLength - actualLimit)));
+  }
+
+  const results = await Promise.all(chunks.map(async (chunk) => {
+    const res = await ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: chunk }] }],
+      config: { 
+        systemInstruction,
+        responseMimeType: "application/json", 
+        responseSchema: unifiedAnalysisSchema
+      }
+    });
+    return safeJsonParse(res.text, {});
+  }));
+
+  // Merge Results
+  const merged: ManuscriptAnalysisResponse = {
+    title: results[0].title || "Untitled Project",
+    summary: results.map((r, i) => `[Part ${i+1}]: ${r.summary || ""}`).join("\n\n"),
+    coverDescription: results[0].coverDescription || "",
+    themes: Array.from(new Set(results.flatMap(r => r.themes || []))),
+    characters: [],
+    minorCharacters: Array.from(new Set(results.flatMap(r => r.minorCharacters || []))),
+    timeline: [],
+    locations: [],
+    artifacts: [],
+    lore: [],
     urls: []
   };
+
+  // Deduplicate and merge entities by name
+  const charMap = new Map();
+  results.forEach(r => (r.characters || []).forEach((c: any) => {
+    if (!charMap.has(c.name)) charMap.set(c.name, { ...c, id: generateId(), source: 'ai' });
+  }));
+  merged.characters = Array.from(charMap.values());
+
+  const locMap = new Map();
+  results.forEach(r => (r.locations || []).forEach((l: any) => {
+    if (!locMap.has(l.name)) locMap.set(l.name, { ...l, id: generateId(), source: 'ai' });
+  }));
+  merged.locations = Array.from(locMap.values());
+
+  const artMap = new Map();
+  results.forEach(r => (r.artifacts || []).forEach((a: any) => {
+    if (!artMap.has(a.name)) artMap.set(a.name, { ...a, id: generateId(), source: 'ai' });
+  }));
+  merged.artifacts = Array.from(artMap.values());
+
+  const loreMap = new Map();
+  results.forEach(r => (r.lore || []).forEach((l: any) => {
+    if (!loreMap.has(l.term)) loreMap.set(l.term, { ...l, id: generateId(), source: 'ai' });
+  }));
+  merged.lore = Array.from(loreMap.values());
+
+  // Timeline needs careful merging (sort by date if possible, but they are strings)
+  merged.timeline = results.flatMap(r => (r.timeline || []).map((e: any) => ({ ...e, id: generateId(), source: 'ai' })));
+
+  return merged;
 };
 
 export const detectManuscriptStructure = async (snippet: string): Promise<{actPattern: string, chapterPattern: string, scenePattern: string}> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const systemInstruction = "Identify novel structure patterns (Acts, Chapters, Scenes) from the text. Return JSON with Javascript Regex strings (using ^ for start-of-line).";
 
   const response = await ai.models.generateContent({
@@ -195,7 +251,8 @@ export const detectManuscriptStructure = async (snippet: string): Promise<{actPa
 
 export const getEvocativeTitles = async (scenes: {id: string, content: string}[]): Promise<{id: string, title: string}[]> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
 
   const payload = scenes.map(s => `ID: ${s.id}\nCONTENT: ${s.content.substring(0, 500)}`).join('\n\n---\n\n');
 
@@ -223,8 +280,8 @@ export const getEvocativeTitles = async (scenes: {id: string, content: string}[]
 
 export const doubleProcessNote = async (rawNote: string): Promise<{ expanded: string, summary: string, tags: string[] }> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
   const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
 
   const expansionRes = await ai.models.generateContent({
     model,
@@ -274,7 +331,8 @@ export const generateBookCover = async (title: string, author: string, summary: 
 
 export const processRawNotes = async (text: string): Promise<{content: string, category: string, tags: string[], analysis: string}[]> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const response = await ai.models.generateContent({
     model,
     contents: `Analyze and extract entities: ${text}`,
@@ -300,7 +358,8 @@ export const processRawNotes = async (text: string): Promise<{content: string, c
 
 export const extractThemesFromNotes = async (notes: Note[]): Promise<string[]> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const text = notes.map(n => n.content).join('\n');
   const response = await ai.models.generateContent({
     model,
@@ -315,7 +374,8 @@ export const extractThemesFromNotes = async (notes: Note[]): Promise<string[]> =
 
 export const askProjectAI = async (prompt: string, projectData: ProjectData | null): Promise<string> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const context = projectData ? `Project Title: ${projectData.title}` : "No project context.";
   const response = await ai.models.generateContent({
     model,
@@ -326,7 +386,8 @@ export const askProjectAI = async (prompt: string, projectData: ProjectData | nu
 
 export const analyzeRelationships = async (text: string, characters: Character[]): Promise<Relationship[]> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const charNames = characters.map(c => c.name).join(', ');
   const response = await ai.models.generateContent({
     model,
@@ -359,7 +420,8 @@ export const analyzeRelationships = async (text: string, characters: Character[]
 
 export const analyzeUrlForToolbox = async (url: string): Promise<{label: string, category: string, description: string}> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const response = await ai.models.generateContent({
     model,
     contents: `Analyze website utility for a writer: ${url}`,
@@ -376,7 +438,8 @@ export const analyzeUrlForToolbox = async (url: string): Promise<{label: string,
 
 export const generateConlangWord = async (language: Language, word: string): Promise<{translation: string, etymology: string}> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const response = await ai.models.generateContent({
     model,
     contents: `Construct word for "${word}" based on phonology rules of ${language.name}`,
@@ -393,7 +456,8 @@ export const generateConlangWord = async (language: Language, word: string): Pro
 
 export const analyzeConlangPhonology = async (dictionary: string): Promise<string> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const prompt = `
     You are an expert computational linguist specializing in phonology and conlanging.
     Analyze the following fictional dictionary and deduce a set of plausible phonological rules in IPA notation.
@@ -418,7 +482,8 @@ export const analyzeConlangPhonology = async (dictionary: string): Promise<strin
 
 export const analyzePlotMatrix = async (events: TimelineEvent[]): Promise<{ plotlines: Plotline[], cells: MatrixCell[] }> => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const eventData = events.map(e => e.title).join(', ');
   const response = await ai.models.generateContent({
     model,
@@ -446,9 +511,41 @@ export const analyzePlotMatrix = async (events: TimelineEvent[]): Promise<{ plot
   return { plotlines, cells };
 };
 
+export const generateSourceGuide = async (text: string) => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  
+  const response = await ai.models.generateContent({
+    model,
+    contents: `Analyze the following source text and provide a JSON response with three keys:
+1. "summary": A brief 2-3 sentence summary of the text.
+2. "topics": An array of 3-5 key topics or themes found in the text.
+3. "questions": An array of 3-5 suggested questions a user could ask to explore this text further.
+
+Source Text:
+${text.substring(0, 15000)}`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          summary: { type: Type.STRING },
+          topics: { type: Type.ARRAY, items: { type: Type.STRING } },
+          questions: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["summary", "topics", "questions"]
+      }
+    }
+  });
+  
+  return safeJsonParse(response.text, { summary: "", topics: [], questions: [] });
+};
+
 export const stenoResearch = async (text: string) => {
   const ai = getAiClient();
-  const model = "gemini-3-flash-preview";
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const prompt = `
     Perform high-speed research and entity extraction on the following text.
     Extract key entities (people, places, organizations), summarize the core message, and identify any actionable insights or interesting connections.
@@ -482,8 +579,10 @@ export const chatWithAssistant = async (
   context: string = ''
 ) => {
   const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const chat = ai.chats.create({
-    model: "gemini-3-flash-preview",
+    model,
     config: {
       systemInstruction: `You are the Plothole Story Architect, a world-class narrative consultant. 
       Your goal is to help the writer develop their story, characters, and world.
@@ -504,4 +603,31 @@ export const chatWithAssistant = async (
 
   const response = await chat.sendMessage({ message });
   return response.text;
+};
+
+export const semanticSearchNotes = async (query: string, notes: Note[]): Promise<string[]> => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+
+  const noteData = notes.map(n => `ID: ${n.id}\nCONTENT: ${n.content}\nTAGS: ${n.tags.join(', ')}`).join('\n\n---\n\n');
+
+  const response = await ai.models.generateContent({
+    model,
+    contents: `You are a semantic search engine. Given a query and a list of notes, return the IDs of the most relevant notes in order of relevance. Return strictly a JSON array of strings.
+
+Query: ${query}
+
+Notes:
+${noteData}`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING }
+      }
+    }
+  });
+
+  return safeJsonParse(response.text, []);
 };

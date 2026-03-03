@@ -2,44 +2,61 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Zap, Loader2, Send, Trash2, Layout, BookOpen, 
   FileText, MessageSquare, Cpu, Code, Plus, ArrowRight,
-  Download, Upload, Copy, Check, Sparkles, User
+  Download, Upload, Copy, Check, Sparkles, User, Pin, Link as LinkIcon
 } from 'lucide-react';
-import { stenoResearch, chatWithAssistant } from '../../services/geminiService';
+import { stenoResearch, chatWithAssistant, generateSourceGuide as generateSourceGuideAi } from '../../services/geminiService';
 import Markdown from 'react-markdown';
 import { generateId } from '../../services/storageService';
 import { StackedPaper } from '../ui/StackedPaper';
+import * as pdfjsLib from 'pdfjs-dist';
+
+import { ProjectData, Note } from '../../types';
+
+// Initialize PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 enum StenoTab {
   WORKSPACE = 'Workspace',
   LEDGER = 'Ledger',
   SOURCES = 'Sources',
   CHAT = 'Chat',
-  ARCHITECT = 'Architect',
-  RAW = 'Raw'
+  ARCHITECT = 'Architect'
+}
+
+interface SourceGuide {
+  summary: string;
+  topics: string[];
+  questions: string[];
 }
 
 interface Source {
   id: string;
   name: string;
   content: string;
-  type: 'text' | 'pdf' | 'image';
+  type: 'text' | 'pdf' | 'image' | 'url';
   timestamp: number;
+  guide?: SourceGuide;
+  isAnalyzing?: boolean;
 }
 
-interface LedgerEntry {
-  id: string;
-  content: string;
-  timestamp: number;
-  tags: string[];
+
+interface StenoResearchViewProps {
+  projectData: ProjectData;
+  onUpdateProject: (data: Partial<ProjectData>) => void;
 }
 
-const StenoResearchView: React.FC = () => {
+const StenoResearchView: React.FC<StenoResearchViewProps> = ({ projectData, onUpdateProject }) => {
   const [activeTab, setActiveTab] = useState<StenoTab>(StenoTab.WORKSPACE);
   
   // Shared State
-  const [notepad, setNotepad] = useState('');
+  const ideas = projectData.ideas || [];
+  const setIdeas = (newIdeas: Note[] | ((prev: Note[]) => Note[])) => {
+    const updated = typeof newIdeas === 'function' ? newIdeas(ideas) : newIdeas;
+    onUpdateProject({ ideas: updated });
+  };
   const [sources, setSources] = useState<Source[]>([]);
-  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const ledger = projectData.ledger || [];
+  
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -70,26 +87,41 @@ const StenoResearchView: React.FC = () => {
   };
 
   const handleCommitToLedger = (content: string) => {
-    const newEntry: LedgerEntry = {
+    const newEntry: Note = {
       id: generateId(),
       content,
       timestamp: Date.now(),
-      tags: []
+      tags: [],
+      isCanon: true
     };
-    setLedger(prev => [newEntry, ...prev]);
+    onUpdateProject({ ledger: [newEntry, ...ledger] });
   };
 
-  const handleSendMessage = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
+  const handleSaveIdea = (content: string) => {
+    const newIdea: Note = {
+      id: generateId(),
+      content,
+      tags: [],
+      isCanon: false,
+      timestamp: Date.now()
+    };
+    setIdeas(prev => [newIdea, ...prev]);
+  };
+
+  const handleSendMessage = async (msg?: string) => {
+    const userMsg = msg || chatInput.trim();
+    if (!userMsg || isChatLoading) return;
     
-    const userMsg = chatInput.trim();
     setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setChatInput('');
+    if (!msg) setChatInput('');
     setIsChatLoading(true);
 
     try {
-      // Use sources as context if needed, for now just simple chat
-      const context = sources.map(s => `Source: ${s.name}\n${s.content}`).join('\n\n');
+      const canonIdeas = ideas.filter(i => i.isCanon).map(i => `Canon Idea: ${i.content}`).join('\n\n');
+      const context = sources.map(s => `Source: ${s.name}\n${s.content}`).join('\n\n') + 
+        (canonIdeas ? `\n\n${canonIdeas}` : '') +
+        `\n\nINSTRUCTIONS: When answering, you MUST cite your sources inline using the exact format [Source: Source Name].`;
+      
       const history = chatMessages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
@@ -118,23 +150,52 @@ const StenoResearchView: React.FC = () => {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const generateSourceGuide = async (sourceId: string, content: string) => {
+    try {
+      setSources(prev => prev.map(s => s.id === sourceId ? { ...s, isAnalyzing: true } : s));
+      const guide = await generateSourceGuideAi(content);
+      setSources(prev => prev.map(s => s.id === sourceId ? { ...s, guide, isAnalyzing: false } : s));
+    } catch (err) {
+      console.error("Failed to generate source guide:", err);
+      setSources(prev => prev.map(s => s.id === sourceId ? { ...s, isAnalyzing: false } : s));
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      const newSource: Source = {
-        id: generateId(),
-        name: file.name,
-        content,
-        type: 'text',
-        timestamp: Date.now()
-      };
-      setSources(prev => [newSource, ...prev]);
+    const id = generateId();
+    let content = '';
+    let type: 'text' | 'pdf' = 'text';
+
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      type = 'pdf';
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item: any) => item.str).join(' ');
+        fullText += pageText + '\n';
+      }
+      content = fullText;
+    } else {
+      content = await file.text();
+    }
+
+    const newSource: Source = {
+      id,
+      name: file.name,
+      content,
+      type,
+      timestamp: Date.now(),
+      isAnalyzing: true
     };
-    reader.readAsText(file);
+    
+    setSources(prev => [newSource, ...prev]);
+    generateSourceGuide(id, content);
   };
 
   const handleAddManualSource = () => {
@@ -143,14 +204,17 @@ const StenoResearchView: React.FC = () => {
     const content = prompt("Enter source content:");
     if (!content) return;
     
+    const id = generateId();
     const newSource: Source = {
-      id: generateId(),
+      id,
       name,
       content,
       type: 'text',
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      isAnalyzing: true
     };
     setSources(prev => [newSource, ...prev]);
+    generateSourceGuide(id, content);
   };
 
   const copyToClipboard = (text: string, id: string) => {
@@ -159,44 +223,16 @@ const StenoResearchView: React.FC = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  const allTags = Array.from(new Set(ideas.flatMap(i => i.tags)));
+  const filteredIdeas = selectedTag ? ideas.filter(i => i.tags.includes(selectedTag)) : ideas;
+
   const renderTabContent = () => {
     switch (activeTab) {
       case StenoTab.WORKSPACE:
         return (
           <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 lg:p-6 overflow-y-auto lg:overflow-hidden">
-            {/* Notepad Panel */}
-            <div className="flex flex-col h-full">
-              <StackedPaper className="flex-1">
-                <div className="p-4 border-b border-slate-900/10 flex items-center justify-between relative z-20">
-                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                    <FileText size={14} /> Notepad
-                  </h3>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => handleConvertToSource(notepad, 'Notepad Draft')}
-                      disabled={!notepad.trim()}
-                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 disabled:opacity-30 flex items-center gap-1"
-                    >
-                      Convert to Source <ArrowRight size={10} />
-                    </button>
-                    <button 
-                      onClick={() => handleCommitToLedger(notepad)}
-                      disabled={!notepad.trim()}
-                      className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 disabled:opacity-30 flex items-center gap-1"
-                    >
-                      Commit to Ledger <Check size={10} />
-                    </button>
-                  </div>
-                </div>
-                <textarea
-                  value={notepad}
-                  onChange={(e) => setNotepad(e.target.value)}
-                  placeholder="Draft your messy ideas here..."
-                  className="flex-1 p-6 bg-transparent border-none focus:ring-0 resize-none font-serif text-lg text-slate-800 dark:text-slate-200 relative z-20"
-                />
-              </StackedPaper>
-            </div>
-
             {/* AI Chat Panel */}
             <div className="flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-slate-100 dark:border-slate-800">
@@ -208,14 +244,47 @@ const StenoResearchView: React.FC = () => {
                 {chatMessages.length === 0 && (
                   <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 p-8">
                     <Sparkles size={32} className="mb-2 opacity-20" />
-                    <p className="text-xs italic">Ask the AI to help synthesize your notes and sources.</p>
+                    <p className="text-xs italic mb-6">Ask the AI to help synthesize your notes and sources.</p>
+                    
+                    {/* Suggested Questions */}
+                    <div className="w-full space-y-2">
+                      {sources.flatMap(s => s.guide?.questions || []).slice(0, 4).map((q, i) => (
+                        <button 
+                          key={i}
+                          onClick={() => handleSendMessage(q)}
+                          className="w-full text-left p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors text-xs text-slate-600 dark:text-slate-300"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                     <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'}`}>
-                      <Markdown>{msg.text}</Markdown>
+                      <Markdown
+                        components={{
+                          p: ({node, children}) => {
+                            // Render citations as pills
+                            if (typeof children === 'string' || Array.isArray(children)) {
+                              return <p className="mb-2 last:mb-0">{children}</p>;
+                            }
+                            return <p className="mb-2 last:mb-0">{children}</p>;
+                          }
+                        }}
+                      >
+                        {msg.text.replace(/\[Source:\s*(.+?)\]/g, '`[$1]`')}
+                      </Markdown>
                     </div>
+                    {msg.role === 'model' && (
+                      <button 
+                        onClick={() => handleSaveIdea(msg.text)}
+                        className="mt-1 flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-indigo-500 uppercase tracking-widest transition-colors"
+                      >
+                        <Pin size={10} /> Save as Idea
+                      </button>
+                    )}
                   </div>
                 ))}
                 <div ref={chatEndRef} />
@@ -230,7 +299,7 @@ const StenoResearchView: React.FC = () => {
                   className="flex-1 bg-slate-50 dark:bg-slate-950 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
                 />
                 <button 
-                  onClick={handleSendMessage}
+                  onClick={() => handleSendMessage()}
                   disabled={isChatLoading || !chatInput.trim()}
                   className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
@@ -257,15 +326,53 @@ const StenoResearchView: React.FC = () => {
                   <div className="p-8 text-center text-slate-400 italic text-xs">No sources uploaded yet.</div>
                 )}
                 {sources.map(source => (
-                  <div key={source.id} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-colors group">
+                  <div key={source.id} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-colors group flex flex-col gap-2">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-500">
-                        <FileText size={16} />
+                        {source.isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{source.name}</div>
                         <div className="text-[10px] text-slate-400">{new Date(source.timestamp).toLocaleDateString()}</div>
                       </div>
+                    </div>
+                    {source.guide && (
+                      <div className="pl-11 pr-2 pb-2 space-y-2">
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+                          {source.guide.summary}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {source.guide.topics.slice(0, 3).map((t, i) => (
+                            <span key={i} className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded text-[8px] font-bold uppercase tracking-wider">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Ledger Panel */}
+            <div className="flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <BookOpen size={14} /> Project Ledger
+                </h3>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {(projectData.ledger || []).length === 0 && (
+                  <div className="p-8 text-center text-slate-400 italic text-xs">No entries in ledger. Mark notes as Canon to add them.</div>
+                )}
+                {(projectData.ledger || []).map(entry => (
+                  <div key={entry.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2">
+                      {new Date(entry.timestamp).toLocaleDateString()}
+                    </div>
+                    <div className="text-sm text-slate-700 dark:text-slate-300 font-serif leading-relaxed">
+                      <Markdown>{entry.content}</Markdown>
                     </div>
                   </div>
                 ))}
@@ -275,6 +382,7 @@ const StenoResearchView: React.FC = () => {
         );
 
       case StenoTab.LEDGER:
+        const ledgerEntries = projectData.ledger || [];
         return (
           <div className="h-full p-8 overflow-y-auto">
             <div className="max-w-4xl mx-auto space-y-8">
@@ -288,14 +396,14 @@ const StenoResearchView: React.FC = () => {
               </div>
               
               <div className="space-y-6">
-                {ledger.length === 0 && (
+                {ledgerEntries.length === 0 && (
                   <div className="p-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
                     <BookOpen size={48} className="mx-auto mb-4 text-slate-200 dark:text-slate-800" />
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">The Ledger is Empty</h3>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs mx-auto mt-2">Commit your refined insights from the Architect or Notepad to preserve them here.</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs mx-auto mt-2">Mark notes as "Canon" in the Notebook to preserve them here.</p>
                   </div>
                 )}
-                {ledger.map(entry => (
+                {ledgerEntries.map(entry => (
                   <StackedPaper key={entry.id} className="group">
                     <div className="absolute top-8 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">
                       <button 
@@ -332,7 +440,7 @@ const StenoResearchView: React.FC = () => {
                 <div className="flex gap-2">
                   <label className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20 cursor-pointer">
                     <Upload size={16} /> Upload Files
-                    <input type="file" className="hidden" onChange={handleFileUpload} />
+                    <input type="file" className="hidden" accept=".txt,.md,.json,.csv,.pdf" onChange={handleFileUpload} />
                   </label>
                 </div>
               </div>
@@ -355,9 +463,28 @@ const StenoResearchView: React.FC = () => {
                     </div>
                     <h4 className="font-bold text-slate-900 dark:text-white mb-1 truncate">{source.name}</h4>
                     <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-4">{source.type} • {Math.ceil(source.content.length / 6)} words</p>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 font-serif italic mb-4">
-                      "{source.content.substring(0, 150)}..."
-                    </div>
+                    {source.isAnalyzing ? (
+                      <div className="flex items-center gap-2 text-xs text-indigo-500 mb-4">
+                        <Loader2 size={14} className="animate-spin" /> Generating Guide...
+                      </div>
+                    ) : source.guide ? (
+                      <div className="mb-4 space-y-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                          {source.guide.summary}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {source.guide.topics.slice(0, 3).map((t, i) => (
+                            <span key={i} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 font-serif italic mb-4">
+                        "{source.content.substring(0, 150)}..."
+                      </div>
+                    )}
                     <button 
                       onClick={() => {
                         setArchitectInput(source.content);
@@ -386,6 +513,19 @@ const StenoResearchView: React.FC = () => {
                   <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white">Deep Synthesis</h2>
                     <p className="text-slate-500 dark:text-slate-400 max-w-sm">A focused environment for long-form dialogue and complex reasoning grounded in your sources.</p>
+                    
+                    {/* Suggested Questions */}
+                    <div className="w-full max-w-md mx-auto pt-8 space-y-2">
+                      {sources.flatMap(s => s.guide?.questions || []).slice(0, 4).map((q, i) => (
+                        <button 
+                          key={i}
+                          onClick={() => handleSendMessage(q)}
+                          className="w-full text-left p-4 rounded-xl bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors text-sm text-slate-600 dark:text-slate-300 shadow-sm"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -396,13 +536,30 @@ const StenoResearchView: React.FC = () => {
                   </div>
                   <div className={`max-w-[80%] p-6 rounded-3xl text-base leading-relaxed ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm'}`}>
                     <div className="prose prose-slate dark:prose-invert max-w-none">
-                      <Markdown>{msg.text}</Markdown>
+                      <Markdown
+                        components={{
+                          p: ({node, children}) => {
+                            if (typeof children === 'string' || Array.isArray(children)) {
+                              return <p className="mb-4 last:mb-0">{children}</p>;
+                            }
+                            return <p className="mb-4 last:mb-0">{children}</p>;
+                          }
+                        }}
+                      >
+                        {msg.text.replace(/\[Source:\s*(.+?)\]/g, '`[$1]`')}
+                      </Markdown>
                     </div>
                     {msg.role === 'model' && (
-                      <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                      <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-4">
+                        <button 
+                          onClick={() => handleSaveIdea(msg.text)}
+                          className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 flex items-center gap-1 transition-colors"
+                        >
+                          <Pin size={10} /> Save as Idea
+                        </button>
                         <button 
                           onClick={() => handleCommitToLedger(msg.text)}
-                          className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
+                          className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors"
                         >
                           Commit to Ledger <ArrowRight size={10} />
                         </button>
@@ -424,7 +581,7 @@ const StenoResearchView: React.FC = () => {
                   className="flex-1 bg-transparent border-none focus:ring-0 px-4 py-3 text-sm lg:text-lg"
                 />
                 <button 
-                  onClick={handleSendMessage}
+                  onClick={() => handleSendMessage()}
                   disabled={isChatLoading || !chatInput.trim()}
                   className="px-4 lg:px-6 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
@@ -512,29 +669,6 @@ const StenoResearchView: React.FC = () => {
           </div>
         );
 
-      case StenoTab.RAW:
-        return (
-          <div className="h-full p-8 flex flex-col">
-            <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">RAW TEXT EDITOR</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Distraction-free bulk editing of your project data.</p>
-                </div>
-                <button className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors">
-                  Save All Changes
-                </button>
-              </div>
-              <div className="flex-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-8">
-                <textarea 
-                  className="w-full h-full bg-transparent border-none focus:ring-0 resize-none font-mono text-sm leading-relaxed text-slate-600 dark:text-slate-400"
-                  defaultValue={ledger.map(e => `--- ENTRY ${e.id} ---\n${e.content}`).join('\n\n')}
-                />
-              </div>
-            </div>
-          </div>
-        );
-
       default:
         return null;
     }
@@ -551,8 +685,7 @@ const StenoResearchView: React.FC = () => {
               [StenoTab.LEDGER]: BookOpen,
               [StenoTab.SOURCES]: Search,
               [StenoTab.CHAT]: MessageSquare,
-              [StenoTab.ARCHITECT]: Cpu,
-              [StenoTab.RAW]: Code
+              [StenoTab.ARCHITECT]: Cpu
             }[tab];
             
             const isActive = activeTab === tab;

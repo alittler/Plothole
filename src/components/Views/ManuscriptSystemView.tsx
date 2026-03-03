@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ViewType, ProjectData, Chapter, Note } from '../../types';
-import { PenTool, Plus, Save, Sparkles, FileText } from 'lucide-react';
+import { PenTool, Plus, Save, Sparkles, FileText, Eye, Edit3 } from 'lucide-react';
+import { WikiText } from '../ui/WikiText';
 
 interface ManuscriptSystemViewProps {
   currentView: ViewType;
@@ -13,10 +14,18 @@ interface ManuscriptSystemViewProps {
 }
 
 export const ManuscriptSystemView: React.FC<ManuscriptSystemViewProps> = ({
-  data, onUpdateChapters
+  data, onUpdateChapters, onChangeView
 }) => {
   const [activeChapterId, setActiveChapterId] = React.useState(data.chapters?.[0]?.id || '');
   const activeChapter = data.chapters?.find(c => c.id === activeChapterId);
+  const [isPreview, setIsPreview] = useState(false);
+
+  const extractTags = (text: string) => {
+    const matches = text.match(/#\w+/g);
+    return matches ? Array.from(new Set(matches.map(t => t.slice(1)))) : [];
+  };
+
+  const tags = activeChapter ? extractTags(activeChapter.content) : [];
 
   return (
     <div className="h-full flex bg-white dark:bg-slate-950">
@@ -73,6 +82,12 @@ export const ManuscriptSystemView: React.FC<ManuscriptSystemViewProps> = ({
                 className="text-2xl font-black text-slate-900 dark:text-white bg-transparent border-none focus:ring-0 p-0"
               />
               <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setIsPreview(!isPreview)}
+                  className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-2 text-xs font-bold uppercase"
+                >
+                  {isPreview ? <><Edit3 size={16} /> Edit</> : <><Eye size={16} /> Preview</>}
+                </button>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{activeChapter.wordCount} Words</span>
                 <button className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
                   <Save size={18} />
@@ -80,16 +95,43 @@ export const ManuscriptSystemView: React.FC<ManuscriptSystemViewProps> = ({
               </div>
             </header>
             <div className="flex-1 overflow-y-auto p-12">
-              <textarea
-                value={activeChapter.content}
-                onChange={(e) => {
-                  const updated = data.chapters?.map(c => c.id === activeChapter.id ? { ...c, content: e.target.value } : c) || [];
-                  onUpdateChapters(updated);
-                }}
-                className="w-full h-full bg-transparent border-none focus:ring-0 text-lg leading-relaxed text-slate-800 dark:text-slate-200 resize-none font-serif"
-                placeholder="Once upon a time..."
-              />
+              {isPreview ? (
+                <div className="w-full h-full text-lg leading-relaxed text-slate-800 dark:text-slate-200 font-serif">
+                  <WikiText 
+                    text={activeChapter.content} 
+                    projectData={data} 
+                    onLinkClick={(type, id) => {
+                      if (type === 'character') onChangeView(ViewType.CHARACTERS);
+                      else if (type === 'location' || type === 'lore') onChangeView(ViewType.MAP);
+                    }} 
+                  />
+                </div>
+              ) : (
+                <textarea
+                  value={activeChapter.content}
+                  onChange={(e) => {
+                    const updated = data.chapters?.map(c => c.id === activeChapter.id ? { ...c, content: e.target.value } : c) || [];
+                    onUpdateChapters(updated);
+                  }}
+                  className="w-full h-full bg-transparent border-none focus:ring-0 text-lg leading-relaxed text-slate-800 dark:text-slate-200 resize-none font-serif"
+                  placeholder="Once upon a time..."
+                />
+              )}
             </div>
+            {tags.length > 0 && (
+              <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-wrap gap-2">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center mr-2">Tags:</span>
+                {tags.map(tag => (
+                  <button 
+                    key={tag}
+                    onClick={() => onChangeView(ViewType.NOTES)} // Or some search view
+                    className="px-3 py-1 bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-full text-xs font-bold hover:bg-pink-200 dark:hover:bg-pink-900/50 transition-colors"
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <div className="h-full flex items-center justify-center text-slate-400 italic">Select a chapter to begin writing.</div>
