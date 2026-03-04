@@ -24,12 +24,19 @@ interface WorldSystemViewProps {
   onDeleteLore: (id: string) => void;
 }
 
+enum WorldTab {
+  ATLAS = 'Atlas',
+  LOCATIONS = 'Locations',
+  INVENTORY = 'Inventory',
+  GALLERY = 'Gallery'
+}
+
 export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   data, onAddLocation, onAddArtifact, onAddLore, onUpdateLocation, onUpdateArtifact, onDeleteArtifact, onDeleteLore, onUpdateProject, currentView, onChangeView
 }) => {
+  const [activeTab, setActiveTab] = useState<WorldTab>(WorldTab.ATLAS);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editingArtifact, setEditingArtifact] = useState<Artifact | null>(null);
-  const [editingLore, setEditingLore] = useState<LoreEntry | null>(null);
 
   const handleSaveLocation = () => {
     if (editingLocation) {
@@ -45,13 +52,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
     }
   };
 
-  const handleSaveLore = () => {
-    if (editingLore) {
-      onUpdateProject({ lore: data.lore?.map(l => l.id === editingLore.id ? editingLore : l) });
-      setEditingLore(null);
-    }
-  };
-
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
       <header className="p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -61,28 +61,22 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
             <p className="text-sm text-slate-500 dark:text-slate-400">Geography, artifacts, and the lore of your universe.</p>
           </div>
           <div className="flex gap-2">
-            <button 
-              onClick={() => onChangeView(currentView === ViewType.MAP ? ViewType.LOCATIONS : ViewType.MAP)}
-              className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors flex items-center gap-2 ${currentView === ViewType.MAP ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}
-            >
-              <MapIcon size={16} /> {currentView === ViewType.MAP ? 'View List' : 'View Map'}
-            </button>
-            <button onClick={() => onAddLocation({ id: Math.random().toString(), name: 'New Location', description: '', type: 'City', source: 'manual' })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors flex items-center gap-2">
-              <Plus size={16} /> Add Location
-            </button>
-            <button onClick={() => onAddArtifact({ id: Math.random().toString(), name: 'New Artifact', type: 'Relic', description: '', source: 'manual' })} className="px-4 py-2 bg-amber-600 text-white rounded-xl font-bold text-sm hover:bg-amber-700 transition-colors flex items-center gap-2">
-              <Box size={16} /> Add Artifact
-            </button>
-            <button onClick={() => onAddLore({ id: Math.random().toString(), term: 'New Term', definition: '', category: 'General', source: 'manual' })} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors flex items-center gap-2">
-              <Book size={16} /> Add Lore
-            </button>
+            {[WorldTab.ATLAS, WorldTab.LOCATIONS, WorldTab.INVENTORY, WorldTab.GALLERY].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors ${activeTab === tab ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
         </div>
       </header>
 
       <div className="flex-1 overflow-y-auto p-8">
         <div className="max-w-6xl mx-auto space-y-12">
-          {currentView === ViewType.MAP ? (
+          {activeTab === WorldTab.ATLAS && (
             <div className="h-[600px] w-full">
               <MapView 
                 locations={data.locations} 
@@ -93,71 +87,68 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 }}
               />
             </div>
-          ) : (
-            <>
-              <section className="space-y-6">
+          )}
+
+          {activeTab === WorldTab.LOCATIONS && (
+            <section className="space-y-6">
+              <div className="flex items-center justify-between">
                 <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
                   <MapIcon size={20} className="text-emerald-500" /> Locations
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {data.locations.map(loc => (
-                    <div key={loc.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setEditingLocation(loc)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={14} /></button>
-                          <button onClick={() => onUpdateProject({ locations: data.locations.filter(l => l.id !== loc.id) })} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
-                        </div>
+                <button onClick={() => onAddLocation({ id: Math.random().toString(), name: 'New Location', description: '', type: 'City', source: 'manual' })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors flex items-center gap-2">
+                  <Plus size={16} /> Add Location
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {data.locations.map(loc => (
+                  <div key={loc.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setEditingLocation(loc)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={14} /></button>
+                        <button onClick={() => onUpdateProject({ locations: data.locations.filter(l => l.id !== loc.id) })} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
                       </div>
-                      <h3 className="font-bold text-slate-900 dark:text-white">{loc.name}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{loc.description}</p>
                     </div>
-                  ))}
-                </div>
-              </section>
+                    <h3 className="font-bold text-slate-900 dark:text-white">{loc.name}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{loc.description}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-              <section className="space-y-6">
+          {activeTab === WorldTab.INVENTORY && (
+            <section className="space-y-6">
+              <div className="flex items-center justify-between">
                 <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
                   <Box size={20} className="text-amber-500" /> Artifacts
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {data.artifacts?.map(art => (
-                    <div key={art.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{art.type}</span>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setEditingArtifact(art)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={14} /></button>
-                          <button onClick={() => onDeleteArtifact(art.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
-                        </div>
-                      </div>
-                      <h3 className="font-bold text-slate-900 dark:text-white">{art.name}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{art.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="space-y-6">
-                <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                  <Book size={20} className="text-indigo-500" /> Lore & Lexicon
-                </h2>
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
-                  {data.lore?.map(entry => (
-                    <div key={entry.id} className="p-4 flex items-start justify-between group">
-                      <div>
-                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{entry.category}</span>
-                        <h4 className="font-bold text-slate-900 dark:text-white">{entry.term}</h4>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">{entry.definition}</p>
-                      </div>
+                <button onClick={() => onAddArtifact({ id: Math.random().toString(), name: 'New Artifact', type: 'Relic', description: '', source: 'manual' })} className="px-4 py-2 bg-amber-600 text-white rounded-xl font-bold text-sm hover:bg-amber-700 transition-colors flex items-center gap-2">
+                  <Box size={16} /> Add Artifact
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {data.artifacts?.map(art => (
+                  <div key={art.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{art.type}</span>
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingLore(entry)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={16} /></button>
-                        <button onClick={() => onDeleteLore(entry.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
+                        <button onClick={() => setEditingArtifact(art)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={14} /></button>
+                        <button onClick={() => onDeleteArtifact(art.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
                       </div>
                     </div>
-                  )) || <p className="p-8 text-center text-slate-400 italic">No lore entries yet.</p>}
-                </div>
-              </section>
-            </>
+                    <h3 className="font-bold text-slate-900 dark:text-white">{art.name}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{art.description}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {activeTab === WorldTab.GALLERY && (
+            <div className="h-full flex items-center justify-center text-slate-400 italic">
+              Gallery feature coming soon.
+            </div>
           )}
         </div>
       </div>
@@ -186,18 +177,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
               <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Type</label><input type="text" value={editingArtifact.type} onChange={e => setEditingArtifact({...editingArtifact, type: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" /></div>
             </div>
             <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Description</label><textarea value={editingArtifact.description} onChange={e => setEditingArtifact({...editingArtifact, description: e.target.value})} className="w-full h-32 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 resize-none" /></div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal isOpen={!!editingLore} onClose={() => setEditingLore(null)} title="Edit Lore" footer={<button onClick={handleSaveLore} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold">Save</button>}>
-        {editingLore && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Term</label><input type="text" value={editingLore.term} onChange={e => setEditingLore({...editingLore, term: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Category</label><input type="text" value={editingLore.category} onChange={e => setEditingLore({...editingLore, category: e.target.value as any})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" /></div>
-            </div>
-            <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Definition</label><textarea value={editingLore.definition} onChange={e => setEditingLore({...editingLore, definition: e.target.value})} className="w-full h-32 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 resize-none" /></div>
           </div>
         )}
       </Modal>

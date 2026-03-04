@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { SemanticDocument, ProjectData } from '../../types';
-import { SemanticEngine, SemanticMetadata } from '../../services/semanticEngine';
+import { SemanticWeaver, SemanticManifest } from '../../services/semanticWeaver';
 import { 
   FileText, 
   Activity, 
@@ -13,7 +13,9 @@ import {
   Bookmark,
   ChevronRight,
   Search,
-  Zap
+  Zap,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { StackedPaper } from '../ui/StackedPaper';
 import Markdown from 'react-markdown';
@@ -36,42 +38,36 @@ export const SemanticEditorView: React.FC<SemanticEditorViewProps> = ({ projectD
     onUpdateProject({ semanticDocuments: documents });
   }, [documents]);
 
-  const handleDocChange = (content: string) => {
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (!activeDocId) return;
-    setDocuments(prev => prev.map(d => d.id === activeDocId ? { ...d, content, lastModified: Date.now() } : d));
+    const newContent = e.target.value;
+    setDocuments(prev => prev.map(d => d.id === activeDocId ? { ...d, content: newContent, lastModified: Date.now() } : d));
   };
 
   const handleHeal = async () => {
     if (!activeDoc) return;
     setIsHealing(true);
     try {
-      const healedContent = await SemanticEngine.heal(activeDoc.content);
-      handleDocChange(healedContent);
+      const { prose, metadata: oldMetadata } = SemanticWeaver.parseDocument(activeDoc.content);
+      const newMetadata = await SemanticWeaver.rebuildMetadata(prose, oldMetadata || undefined);
+      const healedContent = SemanticWeaver.formatDocument(prose, newMetadata);
+      
+      setDocuments(prev => prev.map(d => d.id === activeDocId ? { ...d, content: healedContent, lastModified: Date.now() } : d));
     } finally {
       setIsHealing(false);
     }
   };
 
-  const handleTransclude = () => {
-    if (!activeDoc || !transclusionTarget) return;
-    const result = SemanticEngine.transclude(activeDoc.content, transclusionTarget);
-    setTransclusionResult(result);
-  };
-
   const graph = useMemo(() => {
-    if (!activeDoc) return { entities: [], mentions: [], tags: [], anchors: [] };
-    return SemanticEngine.getGraph(activeDoc.content);
+    if (!activeDoc) return { entities: [], mentions: [], tags: [] };
+    const { prose } = SemanticWeaver.parseDocument(activeDoc.content);
+    return SemanticWeaver.extractGraph(prose);
   }, [activeDoc?.content]);
 
-  const metadata: SemanticMetadata | null = useMemo(() => {
+  const metadata: SemanticManifest | null = useMemo(() => {
     if (!activeDoc) return null;
-    const parts = activeDoc.content.split('\n\n===METADATA===\n');
-    if (parts.length < 2) return null;
-    try {
-      return JSON.parse(parts[1]);
-    } catch (e) {
-      return null;
-    }
+    const { metadata } = SemanticWeaver.parseDocument(activeDoc.content);
+    return metadata;
   }, [activeDoc?.content]);
 
   const createNewDoc = () => {
@@ -100,40 +96,42 @@ export const SemanticEditorView: React.FC<SemanticEditorViewProps> = ({ projectD
 
         <div className="flex items-center gap-2">
           <button 
-            onClick={createNewDoc}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors"
-          >
-            New Document
-          </button>
-          <button 
             onClick={handleHeal}
-            disabled={!activeDoc || isHealing}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-lg shadow-indigo-600/20"
+            disabled={isHealing || !activeDoc}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-emerald-700 transition-colors disabled:opacity-50"
           >
-            {isHealing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
-            Heal Document
+             <RefreshCw size={14} className={isHealing ? 'animate-spin' : ''} />
+             {isHealing ? 'Healing...' : 'Heal & Reconcile'}
           </button>
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar: Doc List */}
-        <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto p-4 space-y-2">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Documents</h3>
-          {documents.map(doc => (
-            <button
-              key={doc.id}
-              onClick={() => setActiveDocId(doc.id)}
-              className={`w-full text-left p-3 rounded-xl transition-all flex items-center gap-3 ${activeDocId === doc.id ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-            >
-              <FileText size={16} />
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold truncate">{doc.title}</div>
-                <div className="text-[10px] opacity-50">{new Date(doc.lastModified).toLocaleDateString()}</div>
-              </div>
+        {/* Sidebar */}
+        <div className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Documents</h2>
+            <button onClick={createNewDoc} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
+              <Plus size={14} />
             </button>
-          ))}
-        </aside>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {documents.map(doc => (
+              <button
+                key={doc.id}
+                onClick={() => setActiveDocId(doc.id)}
+                className={`w-full text-left p-3 rounded-xl text-sm transition-colors ${
+                  activeDocId === doc.id 
+                    ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-medium' 
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="truncate">{doc.title}</div>
+                <div className="text-[10px] opacity-60 mt-1">{new Date(doc.lastModified).toLocaleDateString()}</div>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Main Editor */}
         <main className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-slate-900">
@@ -150,7 +148,7 @@ export const SemanticEditorView: React.FC<SemanticEditorViewProps> = ({ projectD
                 </div>
                 <textarea
                   value={activeDoc.content}
-                  onChange={(e) => handleDocChange(e.target.value)}
+                  onChange={(e) => handleContentChange(e)}
                   className="flex-1 p-8 bg-transparent border-none focus:ring-0 resize-none font-mono text-sm leading-relaxed text-slate-700 dark:text-slate-300"
                   placeholder="Write your semantic prose here... Use [[Entities]], @Mentions, #Tags, and ^Anchors."
                 />
@@ -170,11 +168,15 @@ export const SemanticEditorView: React.FC<SemanticEditorViewProps> = ({ projectD
                           <Bookmark size={10} /> [[{e}]]
                         </span>
                       ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                       {graph.mentions.map(m => (
-                        <span key={m} className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded text-[10px] font-bold flex items-center gap-1">
+                        <span key={m} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded text-[10px] font-bold flex items-center gap-1">
                           <AtSign size={10} /> @{m}
                         </span>
                       ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                       {graph.tags.map(t => (
                         <span key={t} className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded text-[10px] font-bold flex items-center gap-1">
                           <Hash size={10} /> #{t}
@@ -184,106 +186,47 @@ export const SemanticEditorView: React.FC<SemanticEditorViewProps> = ({ projectD
                   </div>
                 </section>
 
-                {/* Transclusion Tool */}
+                {/* Metadata Tail */}
                 <section className="space-y-4">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                    <LinkIcon size={14} /> Transclusion
+                    <Database size={14} /> Metadata Tail
+                  </h3>
+                  <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 font-mono text-[10px] text-slate-500 overflow-x-auto">
+                    <pre>{JSON.stringify(metadata, null, 2) || 'No metadata generated yet.'}</pre>
+                  </div>
+                </section>
+
+                {/* Transclusion Test */}
+                <section className="space-y-4">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <LinkIcon size={14} /> Transclusion Test
                   </h3>
                   <div className="flex gap-2">
                     <input 
-                      type="text"
+                      type="text" 
                       value={transclusionTarget}
                       onChange={(e) => setTransclusionTarget(e.target.value)}
                       placeholder="^ID or ^ID:Start-End"
-                      className="flex-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
+                      className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs"
                     />
                     <button 
-                      onClick={handleTransclude}
-                      className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      onClick={() => {}}
+                      className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold"
                     >
-                      <Search size={16} />
+                      Fetch
                     </button>
                   </div>
-                  {transclusionResult !== null && (
-                    <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-serif italic text-slate-600 dark:text-slate-400">
-                      {transclusionResult || <span className="opacity-50">No content found for this target.</span>}
-                    </div>
-                  )}
-                </section>
-
-                {/* Manifest / Integrity */}
-                <section className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <Activity size={14} /> Integrity Manifest
-                    </h3>
-                  </div>
-                  {metadata ? (
-                    <div className="space-y-4">
-                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-                        <div className="text-[8px] font-mono text-slate-400 break-all">HASH: {metadata.hash}</div>
-                      </div>
-
-                      {/* Diff Log */}
-                      {metadata.diffLog && metadata.diffLog.length > 0 && (
-                        <div className="space-y-2">
-                          <h4 className="text-[8px] font-black text-red-500 uppercase tracking-widest">Recent Changes (Diff Log)</h4>
-                          <div className="space-y-1">
-                            {metadata.diffLog.map((log, i) => (
-                              <div key={i} className="p-2 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-100 dark:border-red-900/20 text-[9px] text-red-600 dark:text-red-400">
-                                <span className="font-bold">^{log.id}:</span> {log.change}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        <h4 className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Anchors</h4>
-                        <div className="space-y-1">
-                          {metadata.manifest.map(entry => (
-                            <div key={entry.id} className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 group">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-bold text-slate-900 dark:text-white">^{entry.id}</span>
-                                  <span className={`text-[8px] px-1 rounded font-black uppercase ${entry.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                                    {entry.status}
-                                  </span>
-                                </div>
-                                <div className="text-[10px] font-mono text-slate-400">@{entry.offset}</div>
-                              </div>
-                              <div className="text-[8px] text-slate-400 italic">"...{entry.fingerprint}"</div>
-                              
-                              {/* Ranges */}
-                              {entry.ranges && Object.keys(entry.ranges).length > 0 && (
-                                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                                  {Object.entries(entry.ranges).map(([key, range]) => (
-                                    <div key={key} className="flex items-center justify-between text-[8px]">
-                                      <span className="text-slate-500 font-mono">Range {key}</span>
-                                      <span className={`px-1 rounded font-black uppercase ${range.status === 'active' ? 'text-emerald-500' : 'text-red-500'}`}>
-                                        {range.status}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 text-center text-slate-400 italic text-xs border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                      No metadata found. Click "Heal" to generate.
+                  {transclusionResult && (
+                    <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs border border-indigo-100 dark:border-indigo-900/50">
+                      {transclusionResult}
                     </div>
                   )}
                 </section>
               </aside>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 space-y-4">
-              <Database size={48} className="opacity-10" />
-              <p className="text-sm italic">Select or create a semantic document to begin.</p>
+            <div className="flex-1 flex items-center justify-center text-slate-400 font-serif italic">
+              Select a document to begin editing
             </div>
           )}
         </main>

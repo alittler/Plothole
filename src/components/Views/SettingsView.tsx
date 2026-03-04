@@ -116,6 +116,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentUser.preferences?.semanticSearchEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
             </button>
           </div>
+
+          <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div className="space-y-1">
+              <h3 className="font-bold text-slate-900 dark:text-white">Semantic Engine Dashboard</h3>
+              <p className="text-xs text-slate-500">Access the advanced Semantic Engine view to analyze your story world.</p>
+            </div>
+            <button 
+              onClick={() => onChangeView?.(ViewType.SEMANTIC_EDITOR)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
+            >
+              Open Engine
+            </button>
+          </div>
         </section>
 
         {projectData && (

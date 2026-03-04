@@ -165,7 +165,20 @@ export interface Artifact {
   source?: 'manual' | 'ai';
 }
 
-export type LoreCategory = 'General' | 'Faction' | 'Religion' | 'Magic' | 'Species' | 'Language' | 'Tradition' | 'Culture';
+export interface Source {
+  id: string;
+  title: string;
+  url?: string;
+  content: string;
+  type: 'pdf' | 'web' | 'text' | 'youtube';
+  summary?: string;
+  tags: string[];
+  dateAdded: number;
+  author?: string;
+  citation?: string;
+}
+
+export type LoreCategory = 'General' | 'Faction' | 'Religion' | 'Magic' | 'Species' | 'Language' | 'Tradition' | 'Culture' | 'Dictionary' | 'Encyclopedia';
 
 export interface LoreEntry {
   id: string;
@@ -252,6 +265,8 @@ export interface Note {
   timestamp: number;
   imageUrl?: string;
   isCanon?: boolean;
+  isDead?: boolean;
+  isSavedInLedger?: boolean;
 }
 
 export interface CalendarMonth {
@@ -398,6 +413,8 @@ export interface ProjectMetadata {
   wordCount?: number;
   portraitStyle?: string; 
   coverImage?: string; 
+  characters?: { id: string; name: string; role: string; description?: string }[];
+  locations?: { id: string; name: string; type: string; description?: string }[];
 }
 
 export interface User {

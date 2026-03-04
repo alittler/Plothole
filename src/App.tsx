@@ -273,21 +273,37 @@ const App: React.FC = () => {
   };
 
   const handleToggleCanon = async (noteId: string, isCanon: boolean) => {
+    let targetNote: Note | undefined;
+    
     // Check global notes
     const globalNote = globalNotes.find(n => n.id === noteId);
     if (globalNote) {
       const updated = globalNotes.map(n => n.id === noteId ? { ...n, isCanon } : n);
       setGlobalNotes(updated);
       await saveGlobalNote({ ...globalNote, isCanon });
-      return;
+      targetNote = { ...globalNote, isCanon };
     }
 
     // Check project notes (ideas)
-    if (projectData?.ideas) {
+    if (!targetNote && projectData?.ideas) {
       const idea = projectData.ideas.find(n => n.id === noteId);
       if (idea) {
         const updated = projectData.ideas.map(n => n.id === noteId ? { ...n, isCanon } : n);
         await updateProjectData({ ideas: updated });
+        targetNote = { ...idea, isCanon };
+      }
+    }
+
+    if (targetNote && projectData) {
+      const currentLedger = projectData.ledger || [];
+      if (isCanon) {
+        // Add to ledger if not already there
+        if (!currentLedger.some(n => n.id === noteId)) {
+          await updateProjectData({ ledger: [targetNote, ...currentLedger] });
+        }
+      } else {
+        // Remove from ledger
+        await updateProjectData({ ledger: currentLedger.filter(n => n.id !== noteId) });
       }
     }
   };
@@ -304,7 +320,42 @@ const App: React.FC = () => {
         return <BookshelfView projects={projectsMetadata} activeProjectId={projectData?.id || ''} currentUser={currentUser} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); setCurrentView(ViewType.DASHBOARD); } }} onCreateProject={handleCreateProject} onUploadProject={handleUploadManuscript} onDeleteProject={async id => { await deleteProject(id); await refreshMetadata(); if (projectData?.id === id) setProjectData(null); }} onOpenDashboard={() => setCurrentView(ViewType.DASHBOARD)} isAnalyzing={isAnalyzing} />;
 
       case ViewType.NOTES: 
-        return <ResearchSystemView currentView={currentView} onChangeView={setCurrentView} data={{...projectData, notes: globalNotes} as any} onAddNote={async n => { setGlobalNotes(prev => [n, ...prev]); await saveGlobalNote(n); }} onAddIdeaToProject={handleAddIdeaToProject} onToggleCanon={handleToggleCanon} onDeleteNote={async id => { setGlobalNotes(prev => prev.filter(n => n.id !== id)); await deleteGlobalNote(id); }} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onAddDoubleProcessedNote={handleDoubleProcessNote} activeTasks={activeTasks} onUpdateProject={updateProjectData} semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled} />;
+        return <ResearchSystemView currentView={currentView} onChangeView={setCurrentView} data={{...projectData, notes: globalNotes} as any} projectsMetadata={projectsMetadata} currentUser={currentUser} onAddNote={async n => { 
+          let noteToSave = { ...n };
+          
+          // Auto-Ledger Logic
+          if (projectData) {
+            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const projectTags = [projectData.shortName, projectData.title].filter(Boolean).map(s => normalize(s!));
+            const charTags = (projectData.characters || []).map(c => normalize(c.name));
+            const locTags = (projectData.locations || []).map(l => normalize(l.name));
+            
+            const noteTags = n.tags.map(t => normalize(t));
+            const shouldCanonize = noteTags.some(t => projectTags.includes(t) || charTags.includes(t) || locTags.includes(t));
+
+            if (shouldCanonize) {
+              noteToSave.isCanon = true;
+              const currentLedger = projectData.ledger || [];
+              if (!currentLedger.some(ln => ln.id === n.id)) {
+                await updateProjectData({ ledger: [{...noteToSave, isSavedInLedger: true}, ...currentLedger] });
+              }
+            }
+          }
+
+          setGlobalNotes(prev => [noteToSave, ...prev]); 
+          await saveGlobalNote(noteToSave); 
+        }} onAddIdeaToProject={handleAddIdeaToProject} onToggleCanon={handleToggleCanon} onDeleteNote={async id => { 
+          if (globalNotes.some(n => n.id === id)) {
+            setGlobalNotes(prev => prev.filter(n => n.id !== id)); 
+            await deleteGlobalNote(id); 
+          } else if (projectData?.ideas?.some(n => n.id === id)) {
+            await updateProjectData({ ideas: projectData.ideas.filter(n => n.id !== id) });
+          }
+        }} onDeleteAllNotes={async () => {
+          setGlobalNotes([]);
+          for (const note of globalNotes) await deleteGlobalNote(note.id);
+          if (projectData?.ideas) await updateProjectData({ ideas: [] });
+        }} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onAddDoubleProcessedNote={handleDoubleProcessNote} activeTasks={activeTasks} onUpdateProject={updateProjectData} semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled} />;
 
       case ViewType.CHARACTERS: 
         return <CharacterView projectTitle={projectData?.title || ''} characters={projectData?.characters || []} locations={projectData?.locations || []} timeline={projectData?.timeline || []} artifacts={projectData?.artifacts || []} themes={projectData?.themes || []} notes={globalNotes} manuscriptHistory={projectData?.manuscriptHistory || []} onUpdateCharacter={(c) => updateProjectData({ characters: projectData?.characters.map(ch => ch.id === c.id ? c : ch) })} onAddCharacter={(c) => updateProjectData({ characters: [...(projectData?.characters || []), c] })} onLinkClick={(type, id) => { if (type === 'location') { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} characterLimit={projectData?.characterLimit} onChangeView={setCurrentView} onExtractThemesFromNotes={async () => { 
@@ -343,7 +394,7 @@ const App: React.FC = () => {
       case ViewType.PROCESSOR:
       case ViewType.SOURCE_READER:
       case ViewType.TABLE:
-        return projectData ? <ManuscriptSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateChapters={(c) => updateProjectData({ chapters: c })} onAddNote={async n => { setGlobalNotes(prev => [n, ...prev]); await saveGlobalNote(n); }} onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })} onAddCharacter={(c) => updateProjectData({ characters: [...projectData.characters, c] })} /> : null;
+        return projectData ? <ManuscriptSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} projectsMetadata={projectsMetadata} onUpdateChapters={(c) => updateProjectData({ chapters: c })} onAddNote={async n => { setGlobalNotes(prev => [n, ...prev]); await saveGlobalNote(n); }} onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })} onAddCharacter={(c) => updateProjectData({ characters: [...projectData.characters, c] })} /> : null;
 
       case ViewType.TOOLBOX:
         return <ToolboxView bakedResources={globalResources} onAddResource={async (l) => { setGlobalResources(prev => [...prev, l]); await saveGlobalResource(l); }} onDeleteResource={async (id) => { setGlobalResources(prev => prev.filter(r => r.id !== id)); await deleteGlobalResource(id); }} />;
@@ -352,10 +403,10 @@ const App: React.FC = () => {
         return <AdminView data={projectData} appPrompts={appPrompts} onSavePrompts={async (p) => { setAppPromptsState(p); await saveAppPrompts(p); }} onUpdateProject={updateProjectData} onFullArchive={() => exportFullArchive(globalNotes)} globalResources={[]} onAddGlobalResource={async () => {}} onDeleteGlobalResource={async () => {}} onToggleViewVisibility={() => {}} projectsMetadata={projectsMetadata} />;
 
       case ViewType.SETTINGS:
-        return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} />;
+        return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} />;
 
       case ViewType.STENO_RESEARCH:
-        return projectData ? <StenoResearchView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Steno Research.</div>;
+        return projectData ? <StenoResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Steno Research.</div>;
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
@@ -382,8 +433,14 @@ const App: React.FC = () => {
         activeProjectTitle={projectData?.title}
         onQuickNote={async (text) => {
           const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
-          setGlobalNotes(prev => [n, ...prev]);
-          await saveGlobalNote(n);
+          if (projectData) {
+            // If inside a project, save to project ideas
+            await updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
+          } else {
+            // Otherwise save as global note
+            setGlobalNotes(prev => [n, ...prev]);
+            await saveGlobalNote(n);
+          }
         }}
       />
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">

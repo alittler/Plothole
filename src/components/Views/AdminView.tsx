@@ -116,8 +116,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   projects: projectsMetadata.map(p => ({
                     id: p.id,
                     title: p.title,
-                    lastModified: p.lastModified,
-                    version: p.version
+                    lastModified: p.lastModified
                   }))
                 }, null, 2)}
               </pre>

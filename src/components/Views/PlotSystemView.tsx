@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
-import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, LayoutGrid } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
 interface PlotSystemViewProps {
@@ -16,9 +16,16 @@ interface PlotSystemViewProps {
   onUpdateProject: (updates: Partial<ProjectData>) => void;
 }
 
+enum PlotTab {
+  TIMELINE = 'Timeline',
+  CALENDAR = 'Calendar',
+  BEATS = 'Beats'
+}
+
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
   data, onAddTimelineEvent, onUpdateTimelineEvent, onUpdateProject
 }) => {
+  const [activeTab, setActiveTab] = useState<PlotTab>(PlotTab.TIMELINE);
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
 
   const handleSave = () => {
@@ -42,44 +49,76 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
             <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">CHRONOLOGY & PLOT</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">The sequence of events that define your story.</p>
           </div>
-          <button onClick={() => onAddTimelineEvent({ id: Math.random().toString(), date: 'Year 1', title: 'New Event', description: '', charactersInvolved: [], location: '', source: 'manual' })} className="px-6 py-2 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition-colors flex items-center gap-2">
-            <Plus size={18} /> Add Event
-          </button>
+          <div className="flex gap-2">
+            {[PlotTab.TIMELINE, PlotTab.CALENDAR, PlotTab.BEATS].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors flex items-center gap-2 ${activeTab === tab ? 'bg-amber-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}
+              >
+                {tab === PlotTab.TIMELINE && <List size={16} />}
+                {tab === PlotTab.CALENDAR && <Calendar size={16} />}
+                {tab === PlotTab.BEATS && <LayoutGrid size={16} />}
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
       <div className="flex-1 overflow-y-auto p-8">
         <div className="max-w-4xl mx-auto">
-          <div className="relative border-l-2 border-slate-200 dark:border-slate-800 pl-8 space-y-12">
-            {data.timeline.map((event, idx) => (
-              <div key={event.id} className="relative group">
-                <div className="absolute -left-[41px] top-0 w-4 h-4 rounded-full bg-amber-500 border-4 border-white dark:border-slate-950 shadow-sm" />
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-black text-amber-600 uppercase tracking-widest">{event.date}</span>
-                    <div className="flex items-center gap-2">
-                      {event.source === 'ai' && <Sparkles size={14} className="text-amber-400" />}
-                      <button onClick={() => setEditingEvent(event)} className="p-1 text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100">
-                        <Edit2 size={14} />
-                      </button>
-                      <button onClick={() => handleDelete(event.id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                        <Trash2 size={14} />
-                      </button>
+          {activeTab === PlotTab.TIMELINE && (
+            <>
+              <div className="flex justify-end mb-8">
+                <button onClick={() => onAddTimelineEvent({ id: Math.random().toString(), date: 'Year 1', title: 'New Event', description: '', charactersInvolved: [], location: '', source: 'manual' })} className="px-6 py-2 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition-colors flex items-center gap-2">
+                  <Plus size={18} /> Add Event
+                </button>
+              </div>
+              <div className="relative border-l-2 border-slate-200 dark:border-slate-800 pl-8 space-y-12">
+                {data.timeline.map((event, idx) => (
+                  <div key={event.id} className="relative group">
+                    <div className="absolute -left-[41px] top-0 w-4 h-4 rounded-full bg-amber-500 border-4 border-white dark:border-slate-950 shadow-sm" />
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 hover:shadow-md transition-all">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black text-amber-600 uppercase tracking-widest">{event.date}</span>
+                        <div className="flex items-center gap-2">
+                          {event.source === 'ai' && <Sparkles size={14} className="text-amber-400" />}
+                          <button onClick={() => setEditingEvent(event)} className="p-1 text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100">
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => handleDelete(event.id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">{event.title}</h3>
+                      <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{event.description}</p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {event.charactersInvolved.map(char => (
+                          <span key={char} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded text-[10px] font-bold">
+                            {char}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">{event.title}</h3>
-                  <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{event.description}</p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {event.charactersInvolved.map(char => (
-                      <span key={char} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded text-[10px] font-bold">
-                        {char}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
+
+          {activeTab === PlotTab.CALENDAR && (
+            <div className="h-96 flex items-center justify-center text-slate-400 italic border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+              Calendar system feature coming soon.
+            </div>
+          )}
+
+          {activeTab === PlotTab.BEATS && (
+            <div className="h-96 flex items-center justify-center text-slate-400 italic border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+              Beat board feature coming soon.
+            </div>
+          )}
         </div>
       </div>
 

@@ -41,14 +41,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { id: ViewType.BOOKSHELF, label: 'Library', icon: Book, always: true },
         { id: ViewType.NOTES, label: 'Notebook', icon: Search, always: true },
-        { id: ViewType.STENO_RESEARCH, label: 'Steno Research', icon: Zap, always: true },
-        { id: ViewType.SEMANTIC_EDITOR, label: 'Semantic Engine', icon: Database, always: true },
         { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
       ]
     },
     {
       title: 'Story',
       items: [
+        { id: ViewType.STENO_RESEARCH, label: 'Research', icon: Zap, always: true },
         { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
         { id: ViewType.MAP, label: 'World Hub', icon: Map, projectOnly: true },
         { id: ViewType.TIMELINE, label: 'Continuity', icon: Calendar, projectOnly: true },
