@@ -51,15 +51,15 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="space-y-1 text-center md:text-left">
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">DRAMATIS PERSONAE</h1>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">CHARACTERS & CAST</h1>
             <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Manage the souls that inhabit your story.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
             {[CharacterTab.ROSTER, CharacterTab.RELATIONSHIPS, CharacterTab.NOTES].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors flex items-center gap-2 ${activeTab === tab ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}
+                className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 {tab === CharacterTab.ROSTER && <Users size={16} />}
                 {tab === CharacterTab.RELATIONSHIPS && <Network size={16} />}

@@ -37,7 +37,9 @@ import { ToolboxView } from './components/Views/ToolboxView';
 import { BlueprintRescueView } from './components/Views/BlueprintRescueView';
 import StenoResearchView from './components/Views/StenoResearchView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
+import { SignInPage } from './components/Views/SignInPage';
 import { AlertCircle, X, Sparkles, Menu } from 'lucide-react';
+import { SignedIn, SignedOut, SignInButton, UserButton, useClerk } from '@clerk/clerk-react';
 
 const DEMO_USER: User = {
   id: 'user-1',
@@ -52,9 +54,10 @@ const DEMO_USER: User = {
 const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const clerk = useClerk();
 
   const [currentUser, setCurrentUser] = useState<User>(DEMO_USER);
-  const currentView = (decodeURIComponent(location.pathname.slice(1)) as ViewType) || DEMO_USER.preferences?.landingPage || ViewType.BOOKSHELF;
+  const currentView = (decodeURIComponent(location.hash.slice(2)) as ViewType) || DEMO_USER.preferences?.landingPage || ViewType.BOOKSHELF;
   const setCurrentView = (view: ViewType) => navigate(`/${view}`);
   
   const [projectsMetadata, setProjectsMetadata] = useState<ProjectMetadata[]>([]);
@@ -311,7 +314,7 @@ const App: React.FC = () => {
   const viewContent = useMemo(() => {
     if (!isLoaded) return <div className="h-full flex items-center justify-center text-primary animate-pulse font-bold uppercase tracking-widest">Initialising Core Engines...</div>;
 
-    if (!projectData && ![ViewType.BOOKSHELF, ViewType.TOOLBOX, ViewType.ADMIN, ViewType.SETTINGS, ViewType.NOTES, ViewType.STENO_RESEARCH].includes(currentView)) {
+    if (!projectData && ![ViewType.BOOKSHELF, ViewType.TOOLBOX, ViewType.ADMIN, ViewType.SETTINGS, ViewType.NOTEPAD, ViewType.STENO_RESEARCH].includes(currentView)) {
         return <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock drafting tools.</div>;
     }
 
@@ -319,7 +322,7 @@ const App: React.FC = () => {
       case ViewType.BOOKSHELF: 
         return <BookshelfView projects={projectsMetadata} activeProjectId={projectData?.id || ''} currentUser={currentUser} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); setCurrentView(ViewType.DASHBOARD); } }} onCreateProject={handleCreateProject} onUploadProject={handleUploadManuscript} onDeleteProject={async id => { await deleteProject(id); await refreshMetadata(); if (projectData?.id === id) setProjectData(null); }} onOpenDashboard={() => setCurrentView(ViewType.DASHBOARD)} isAnalyzing={isAnalyzing} />;
 
-      case ViewType.NOTES: 
+      case ViewType.NOTEPAD: 
         return <ResearchSystemView currentView={currentView} onChangeView={setCurrentView} data={{...projectData, notes: globalNotes} as any} projectsMetadata={projectsMetadata} currentUser={currentUser} onAddNote={async n => { 
           let noteToSave = { ...n };
           
@@ -400,7 +403,23 @@ const App: React.FC = () => {
         return <ToolboxView bakedResources={globalResources} onAddResource={async (l) => { setGlobalResources(prev => [...prev, l]); await saveGlobalResource(l); }} onDeleteResource={async (id) => { setGlobalResources(prev => prev.filter(r => r.id !== id)); await deleteGlobalResource(id); }} />;
 
       case ViewType.ADMIN:
-        return <AdminView data={projectData} appPrompts={appPrompts} onSavePrompts={async (p) => { setAppPromptsState(p); await saveAppPrompts(p); }} onUpdateProject={updateProjectData} onFullArchive={() => exportFullArchive(globalNotes)} globalResources={[]} onAddGlobalResource={async () => {}} onDeleteGlobalResource={async () => {}} onToggleViewVisibility={() => {}} projectsMetadata={projectsMetadata} />;
+        return <AdminView 
+          data={projectData} 
+          globalNotes={globalNotes}
+          appPrompts={appPrompts} 
+          onSavePrompts={async (p) => { setAppPromptsState(p); await saveAppPrompts(p); }} 
+          onUpdateProject={updateProjectData} 
+          onFullArchive={() => exportFullArchive(globalNotes)} 
+          globalResources={[]} 
+          onAddGlobalResource={async () => {}} 
+          onDeleteGlobalResource={async () => {}} 
+          onToggleViewVisibility={() => {}} 
+          projectsMetadata={projectsMetadata} 
+          onDeleteGlobalNote={async id => {
+            setGlobalNotes(prev => prev.filter(n => n.id !== id));
+            await deleteGlobalNote(id);
+          }}
+        />;
 
       case ViewType.SETTINGS:
         return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} />;
@@ -410,6 +429,9 @@ const App: React.FC = () => {
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
+
+      case ViewType.SIGN_IN:
+        return <SignInPage />;
 
       default: 
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
@@ -448,9 +470,20 @@ const App: React.FC = () => {
         <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
           <div className="w-10" /> {/* Spacer */}
           <span className="font-black tracking-tighter text-slate-900 dark:text-white">PLOTHOLE</span>
-          <button onClick={() => setIsAiOpen(!isAiOpen)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-indigo-600">
-            <Sparkles size={24} />
-          </button>
+          <div className="flex items-center gap-2">
+            <SignedOut>
+              <button onClick={() => setCurrentView(ViewType.SIGN_IN)} className="text-sm font-bold text-indigo-600">Sign In</button>
+            </SignedOut>
+            <SignedIn>
+              <div className="flex items-center gap-4">
+                <button onClick={() => clerk.signOut()} className="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-red-600">Sign Out</button>
+                <UserButton />
+              </div>
+            </SignedIn>
+            <button onClick={() => setIsAiOpen(!isAiOpen)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-indigo-600">
+              <Sparkles size={24} />
+            </button>
+          </div>
         </div>
 
         {!hasApiKey && (

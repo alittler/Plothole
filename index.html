@@ -2,10 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>Steno - World Building Studio</title>
+    <script>
+      window.addEventListener('error', function(event) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:9999;padding:20px;font-family:monospace;white-space:pre-wrap;';
+        errorDiv.textContent = 'Global Error: ' + event.message + '\n' + (event.error && event.error.stack ? event.error.stack : '');
+        document.body.appendChild(errorDiv);
+      });
+      window.addEventListener('unhandledrejection', function(event) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:orange;color:white;z-index:9999;padding:20px;font-family:monospace;white-space:pre-wrap;';
+        errorDiv.textContent = 'Unhandled Promise Rejection: ' + event.reason;
+        document.body.appendChild(errorDiv);
+      });
+    </script>
   </head>
-  <body>
+  <body style="background: red;">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

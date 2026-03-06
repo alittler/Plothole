@@ -1,13 +1,28 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { ManuscriptAnalysisResponse, Note, ProjectData, Character, Relationship, Artifact, LoreEntry, TimelineEvent, AnalysisOptions, Language, Plotline, MatrixCell, AppPrompts } from "../types";
-import { getAppPrompts, generateId } from "./storageService";
+import { getAppPrompts, generateId, getApiKey, saveApiKey } from "./storageService";
+
+let initializedApiKey: string | null = null;
+
+export const initializeApiKey = async () => {
+  initializedApiKey = process.env.GEMINI_API_KEY || await getApiKey('gemini_api_key');
+};
+
+export const isApiKeyValid = () => {
+  return !!initializedApiKey && initializedApiKey.trim().length >= 10;
+};
+
+export const setUserProvidedApiKey = async (name: string, key: string) => {
+  initializedApiKey = key;
+  await saveApiKey(name, key);
+};
 
 /**
  * Helper to get an AI client instance on-demand.
  * Validates the API key at the moment of call rather than module load.
  */
 const getAiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = initializedApiKey;
   if (!apiKey || apiKey === 'undefined' || apiKey.trim().length < 10) {
     throw new Error("AI_CONFIG_ERROR: No valid API Key detected. Please click 'Connect Key' at the top of the screen.");
   }

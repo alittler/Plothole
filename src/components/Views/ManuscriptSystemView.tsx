@@ -37,30 +37,27 @@ export const ManuscriptSystemView: React.FC<ManuscriptSystemViewProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-slate-950">
-      <header className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
-         <div className="flex items-center gap-2">
-            <h2 className="font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2 mr-4">
-              <FileText size={18} className="text-indigo-500" /> Manuscript
-            </h2>
-            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-              {[ManuscriptTab.EDITOR, ManuscriptTab.OUTLINE, ManuscriptTab.ANALYSIS].map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
-                    activeTab === tab 
-                      ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' 
-                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  {tab === ManuscriptTab.EDITOR && <Edit3 size={14} />}
-                  {tab === ManuscriptTab.OUTLINE && <List size={14} />}
-                  {tab === ManuscriptTab.ANALYSIS && <BarChart2 size={14} />}
-                  {tab}
-                </button>
-              ))}
-            </div>
-         </div>
+      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="space-y-1 text-center md:text-left">
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">MANUSCRIPT & DRAFTING</h1>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Write and refine your narrative content.</p>
+          </div>
+          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+            {[ManuscriptTab.EDITOR, ManuscriptTab.OUTLINE, ManuscriptTab.ANALYSIS].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+              >
+                {tab === ManuscriptTab.EDITOR && <Edit3 size={16} />}
+                {tab === ManuscriptTab.OUTLINE && <List size={16} />}
+                {tab === ManuscriptTab.ANALYSIS && <BarChart2 size={16} />}
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
@@ -160,7 +157,7 @@ export const ManuscriptSystemView: React.FC<ManuscriptSystemViewProps> = ({
                       {tags.map(tag => (
                         <button 
                           key={tag}
-                          onClick={() => onChangeView(ViewType.NOTES)} // Or some search view
+                          onClick={() => onChangeView(ViewType.NOTEPAD)} // Or some search view
                           className="px-3 py-1 bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 rounded-full text-xs font-bold hover:bg-pink-200 dark:hover:bg-pink-900/50 transition-colors"
                         >
                           #{tag}

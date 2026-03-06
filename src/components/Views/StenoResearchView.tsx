@@ -24,9 +24,7 @@ enum StenoTab {
   LEDGER = 'Ledger',
   SOURCES = 'Sources',
   CHAT = 'Chat',
-  ARCHITECT = 'Architect',
-  ENCYCLOPEDIA = 'Encyclopedia',
-  DICTIONARY = 'Dictionary'
+  ARCHITECT = 'Architect'
 }
 
 
@@ -216,72 +214,6 @@ const StenoResearchView: React.FC<StenoResearchViewProps> = ({ projectData, glob
           </div>
         );
 
-      case StenoTab.ENCYCLOPEDIA:
-        return (
-          <div className="h-full p-8 overflow-y-auto">
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Encyclopedia</h2>
-                <button 
-                  onClick={() => {
-                    const newLore = { id: generateId(), term: 'New Entry', definition: '', category: 'General', source: 'manual' };
-                    onUpdateProject({ lore: [...(projectData.lore || []), newLore] });
-                  }}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors flex items-center gap-2"
-                >
-                  <Plus size={16} /> Add Entry
-                </button>
-              </div>
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
-                {projectData.lore?.filter(l => l.category !== 'Dictionary').map(entry => (
-                  <div key={entry.id} className="p-6 flex items-start justify-between group">
-                    <div>
-                      <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{entry.category}</span>
-                      <h4 className="font-bold text-slate-900 dark:text-white text-lg">{entry.term}</h4>
-                      <p className="text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">{entry.definition}</p>
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => onUpdateProject({ lore: projectData.lore?.filter(l => l.id !== entry.id) })} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
-                    </div>
-                  </div>
-                )) || <p className="p-8 text-center text-slate-400 italic">No encyclopedia entries yet.</p>}
-              </div>
-            </div>
-          </div>
-        );
-
-      case StenoTab.DICTIONARY:
-        return (
-          <div className="h-full p-8 overflow-y-auto">
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Dictionary</h2>
-                <button 
-                  onClick={() => {
-                    const newTerm = { id: generateId(), term: 'New Word', definition: '', category: 'Dictionary', source: 'manual' };
-                    onUpdateProject({ lore: [...(projectData.lore || []), newTerm] });
-                  }}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors flex items-center gap-2"
-                >
-                  <Plus size={16} /> Add Word
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {projectData.lore?.filter(l => l.category === 'Dictionary').map(entry => (
-                  <div key={entry.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Term</span>
-                      <button onClick={() => onUpdateProject({ lore: projectData.lore?.filter(l => l.id !== entry.id) })} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
-                    </div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-xl font-serif italic">{entry.term}</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">{entry.definition}</p>
-                  </div>
-                )) || <p className="col-span-2 p-8 text-center text-slate-400 italic">No dictionary entries yet.</p>}
-              </div>
-            </div>
-          </div>
-        );
-
       case StenoTab.ARCHITECT:
         return (
           <div className="h-full flex flex-col overflow-hidden">
@@ -304,8 +236,14 @@ const StenoResearchView: React.FC<StenoResearchViewProps> = ({ projectData, glob
                       <textarea
                         value={architectInput}
                         onChange={(e) => setArchitectInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleArchitectShred();
+                          }
+                        }}
                         placeholder="Paste massive brain-dumps or transcripts here to shred them into atomic notes..."
-                        className="w-full h-full bg-transparent border-none focus:ring-0 resize-none font-serif text-lg leading-relaxed p-6 relative z-20"
+                        className="w-full h-full bg-transparent border-none focus:ring-0 resize-none font-serif text-lg leading-relaxed p-6 relative z-20 text-slate-900 dark:text-white"
                       />
                     </StackedPaper>
                   </div>
@@ -359,74 +297,6 @@ const StenoResearchView: React.FC<StenoResearchViewProps> = ({ projectData, glob
           </div>
         );
 
-      case StenoTab.ENCYCLOPEDIA:
-        return (
-          <div className="h-full p-8 overflow-y-auto">
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Encyclopedia</h2>
-                <button 
-                  onClick={() => {
-                    const newLore = { id: generateId(), term: 'New Entry', definition: '', category: 'General', source: 'manual' };
-                    // @ts-ignore
-                    onUpdateProject({ lore: [...(projectData.lore || []), newLore] });
-                  }}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors flex items-center gap-2"
-                >
-                  <Plus size={16} /> Add Entry
-                </button>
-              </div>
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
-                {projectData.lore?.filter(l => l.category !== 'Dictionary').map(entry => (
-                  <div key={entry.id} className="p-6 flex items-start justify-between group">
-                    <div>
-                      <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{entry.category}</span>
-                      <h4 className="font-bold text-slate-900 dark:text-white text-lg">{entry.term}</h4>
-                      <p className="text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">{entry.definition}</p>
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => onUpdateProject({ lore: projectData.lore?.filter(l => l.id !== entry.id) })} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
-                    </div>
-                  </div>
-                )) || <p className="p-8 text-center text-slate-400 italic">No encyclopedia entries yet.</p>}
-              </div>
-            </div>
-          </div>
-        );
-
-      case StenoTab.DICTIONARY:
-        return (
-          <div className="h-full p-8 overflow-y-auto">
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Dictionary</h2>
-                <button 
-                  onClick={() => {
-                    const newTerm = { id: generateId(), term: 'New Word', definition: '', category: 'Dictionary', source: 'manual' };
-                    // @ts-ignore
-                    onUpdateProject({ lore: [...(projectData.lore || []), newTerm] });
-                  }}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors flex items-center gap-2"
-                >
-                  <Plus size={16} /> Add Word
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {projectData.lore?.filter(l => l.category === 'Dictionary').map(entry => (
-                  <div key={entry.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Term</span>
-                      <button onClick={() => onUpdateProject({ lore: projectData.lore?.filter(l => l.id !== entry.id) })} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
-                    </div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-xl font-serif italic">{entry.term}</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">{entry.definition}</p>
-                  </div>
-                )) || <p className="col-span-2 p-8 text-center text-slate-400 italic">No dictionary entries yet.</p>}
-              </div>
-            </div>
-          </div>
-        );
-
       default:
         return null;
     }
@@ -434,34 +304,37 @@ const StenoResearchView: React.FC<StenoResearchViewProps> = ({ projectData, glob
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
-      {/* Navigation Tabs */}
-      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 overflow-x-auto no-scrollbar">
-        <div className="max-w-6xl mx-auto flex items-center gap-4 lg:gap-8 min-w-max">
-          {Object.values(StenoTab).map(tab => {
-            const Icon = {
-              [StenoTab.WORKSPACE]: Layout,
-              [StenoTab.LEDGER]: BookOpen,
-              [StenoTab.SOURCES]: Search,
-              [StenoTab.CHAT]: MessageSquare,
-              [StenoTab.ARCHITECT]: Cpu,
-              [StenoTab.ENCYCLOPEDIA]: Book,
-              [StenoTab.DICTIONARY]: FileText
-            }[tab];
-            
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`py-6 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] border-b-2 transition-all ${isActive ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-              >
-                <Icon size={16} />
-                {tab}
-              </button>
-            );
-          })}
+      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="space-y-1 text-center md:text-left">
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">RESEARCH & ARCHITECT</h1>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Analyze sources, manage your ledger, and architect new ideas.</p>
+          </div>
+          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar">
+            {Object.values(StenoTab).map(tab => {
+              const Icon = {
+                [StenoTab.WORKSPACE]: Layout,
+                [StenoTab.LEDGER]: BookOpen,
+                [StenoTab.SOURCES]: Search,
+                [StenoTab.CHAT]: MessageSquare,
+                [StenoTab.ARCHITECT]: Cpu
+              }[tab];
+              
+              const isActive = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap ${isActive ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                >
+                  <Icon size={16} />
+                  {tab}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </nav>
+      </header>
 
       <div className="flex-1 overflow-hidden relative">
         {renderTabContent()}

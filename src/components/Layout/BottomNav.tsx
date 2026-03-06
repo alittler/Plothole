@@ -13,12 +13,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   currentView, onChangeView, onOpenSidebar, hasActiveProject
 }) => {
   const navItems = [
-    { id: ViewType.BOOKSHELF, label: 'Library', icon: Book },
-    { id: ViewType.NOTES, label: 'Notebook', icon: Search },
+    { id: ViewType.BOOKSHELF, label: 'Books', icon: Book },
+    { id: ViewType.NOTEPAD, label: 'Notepad', icon: Search },
     { id: ViewType.STENO_RESEARCH, label: 'Research', icon: Zap },
     ...(hasActiveProject ? [{ id: ViewType.DASHBOARD, label: 'Dash', icon: LayoutGrid }] : []),
   ];
-
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[1000] lg:hidden">
       <div className="bg-slate-900/95 backdrop-blur-xl border-t border-white/10 p-2 flex items-center justify-around pb-safe">
@@ -36,6 +35,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           );
         })}
         <button
+          key="more"
           onClick={onOpenSidebar}
           className="flex flex-col items-center gap-1 p-2 rounded-xl text-slate-400 hover:text-slate-200"
         >

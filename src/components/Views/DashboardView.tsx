@@ -83,7 +83,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800">
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">LATEST ACTIVITY</h2>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6 uppercase tracking-tight">LATEST ACTIVITY</h2>
               <div className="space-y-4">
                 {projectData.changeLog?.slice(0, 5).map(log => (
                   <div key={log.id} className="flex items-center gap-4 text-sm">

@@ -2,6 +2,20 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { initDb, getPool } from './src/db.js';
+// @ts-ignore
+import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
+import { Resend } from 'resend';
+import * as Sentry from "@sentry/node";
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    tracesSampleRate: 1.0,
+  });
+}
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,28 +24,146 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Initialize DB
+  await initDb();
+
+  app.use(express.json({ limit: '50mb' }));
+  
+  // Clerk Middleware
+  app.use(ClerkExpressWithAuth());
+
   // API Routes
   app.get('/api/config', (req: express.Request, res: express.Response) => {
-    // Expose only non-sensitive configuration to the frontend
     res.json({
       hasGeminiKey: !!(process.env.GEMINI_API_KEY),
+      hasDb: !!(process.env.DATABASE_URL),
+      hasClerk: !!(process.env.VITE_CLERK_PUBLISHABLE_KEY),
       env: process.env.NODE_ENV || 'development',
     });
   });
 
+  // Protected API Routes
+  app.get('/api/projects', async (req: any, res) => {
+    const { userId } = req.auth;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
+
+    try {
+      const result = await pool.query('SELECT data FROM projects WHERE user_id = $1 ORDER BY last_modified DESC', [userId]);
+      res.json(result.rows.map(row => row.data));
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+  });
+
+  app.post('/api/projects', async (req: any, res) => {
+    const { userId } = req.auth;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
+
+    const project = req.body;
+    try {
+      // Ensure user exists in our local table
+      await pool.query('INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [userId, 'user@example.com']); // Email would ideally come from clerk webhook or token
+
+      await pool.query(
+        'INSERT INTO projects (id, user_id, title, data, last_modified) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET data = $4, title = $3, last_modified = CURRENT_TIMESTAMP',
+        [project.id, userId, project.title, project]
+      );
+
+      // Send notification if it's a new project and Resend is configured
+      if (resend && !project.lastModified) {
+        try {
+          await resend.emails.send({
+            from: 'Plothole <onboarding@resend.dev>',
+            to: 'alittler86@gmail.com', // User's email from context
+            subject: 'New Project Created: ' + project.title,
+            html: `<p>You just created a new project in Plothole: <strong>${project.title}</strong></p>`
+          });
+        } catch (e) {
+          console.error("Failed to send email:", e);
+        }
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to save project' });
+    }
+  });
+
+  app.delete('/api/projects/:id', async (req: any, res) => {
+    const { userId } = req.auth;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
+
+    try {
+      await pool.query('DELETE FROM projects WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to delete project' });
+    }
+  });
+
+  // Global Notes
+  app.get('/api/notes', async (req: any, res) => {
+    const { userId } = req.auth;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
+
+    try {
+      const result = await pool.query('SELECT data FROM global_notes WHERE user_id = $1 ORDER BY timestamp DESC', [userId]);
+      res.json(result.rows.map(row => row.data));
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch notes' });
+    }
+  });
+
+  app.post('/api/notes', async (req: any, res) => {
+    const { userId } = req.auth;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
+
+    const note = req.body;
+    try {
+      await pool.query(
+        'INSERT INTO global_notes (id, user_id, content, tags, data, timestamp) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET content = $3, tags = $4, data = $5, timestamp = CURRENT_TIMESTAMP',
+        [note.id, userId, note.content, note.tags, note]
+      );
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to save note' });
+    }
+  });
+
+  app.get('/test', (req, res) => {
+    res.send('Server is working');
+  });
+
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+  });
+
   // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    // Serve static files in production
-    app.use(express.static(path.join(__dirname, 'dist')));
-    app.get('*', (req: express.Request, res: express.Response) => {
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-    });
+  const vite = await createViteServer({
+    server: { middlewareMode: true },
+    appType: 'spa',
+  });
+  app.use(vite.middlewares);
+
+  // Sentry error handler must be before any other error middleware and after all controllers
+  if (process.env.SENTRY_DSN) {
+    Sentry.setupExpressErrorHandler(app);
   }
 
   app.listen(PORT, '0.0.0.0', () => {

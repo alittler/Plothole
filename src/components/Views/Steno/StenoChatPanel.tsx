@@ -136,19 +136,24 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
         <div ref={chatEndRef} />
       </div>
 
-      <div className={`p-4 border-t border-slate-100 dark:border-slate-800 flex gap-2 ${isFullScreen ? 'sticky bottom-0 bg-white dark:bg-slate-900 z-10' : ''}`}>
-        <input 
-          type="text" 
+      <div className={`p-4 border-t border-slate-100 dark:border-slate-800 flex gap-2 items-end ${isFullScreen ? 'sticky bottom-0 bg-white dark:bg-slate-900 z-10' : ''}`}>
+        <textarea 
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSendMessage();
+            }
+          }}
           placeholder="Ask anything..."
-          className="flex-1 bg-slate-50 dark:bg-slate-950 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+          rows={1}
+          className="flex-1 bg-slate-50 dark:bg-slate-950 border-none rounded-xl px-4 py-3 text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none"
         />
         <button 
           onClick={() => handleSendMessage()}
           disabled={isChatLoading || !chatInput.trim()}
-          className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+          className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
         >
           {isChatLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
         </button>

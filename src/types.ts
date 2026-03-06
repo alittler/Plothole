@@ -7,7 +7,7 @@ export enum ViewType {
   TABLE = 'Table',
   CALENDAR = 'Calendar',
   GALLERY = 'Gallery',
-  NOTES = 'Notes',
+  NOTEPAD = 'Notepad',
   MAP = 'Map',
   LOCATIONS = 'Locations',
   ADMIN = 'Admin',
@@ -22,7 +22,8 @@ export enum ViewType {
   MATRIX = 'Matrix',
   DICTIONARY = 'Dictionary',
   STENO_RESEARCH = 'StenoResearch',
-  SEMANTIC_EDITOR = 'SemanticEditor'
+  SEMANTIC_EDITOR = 'SemanticEditor',
+  SIGN_IN = 'SignIn'
 }
 
 export const APP_DATA_VERSION = 11;
@@ -167,15 +168,23 @@ export interface Artifact {
 
 export interface Source {
   id: string;
-  title: string;
+  name: string;
+  title?: string;
   url?: string;
   content: string;
   type: 'pdf' | 'web' | 'text' | 'youtube';
   summary?: string;
-  tags: string[];
-  dateAdded: number;
+  tags?: string[];
+  timestamp: number;
+  dateAdded?: number;
   author?: string;
   citation?: string;
+  isAnalyzing?: boolean;
+  guide?: {
+    summary: string;
+    topics: string[];
+    questions: string[];
+  };
 }
 
 export type LoreCategory = 'General' | 'Faction' | 'Religion' | 'Magic' | 'Species' | 'Language' | 'Tradition' | 'Culture' | 'Dictionary' | 'Encyclopedia';

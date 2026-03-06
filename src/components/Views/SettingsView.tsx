@@ -48,12 +48,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="h-full overflow-y-auto p-8 bg-slate-50 dark:bg-slate-950">
-      <div className="max-w-4xl mx-auto space-y-12">
-        <header className="space-y-1">
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">SYSTEM SETTINGS</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Configure your writing environment and user profile.</p>
-        </header>
+    <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950">
+      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-8">
+        <div className="max-w-4xl mx-auto flex items-center gap-6">
+          <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg">
+            <Settings size={32} />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">SYSTEM SETTINGS</h1>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Configure your writing environment and user profile.</p>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-4xl mx-auto px-4 pb-12 space-y-12">
 
         <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
           <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">

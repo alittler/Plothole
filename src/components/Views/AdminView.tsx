@@ -1,9 +1,10 @@
 import React from 'react';
-import { ProjectData, AppPrompts, ToolboxLink, ProjectMetadata } from '../../types';
-import { Shield, Sparkles, Save, Database } from 'lucide-react';
+import { ProjectData, AppPrompts, ToolboxLink, ProjectMetadata, Note } from '../../types';
+import { Shield, Sparkles, Save, Database, Trash2, Clock, Tag } from 'lucide-react';
 
 interface AdminViewProps {
   data: ProjectData | null;
+  globalNotes: Note[];
   appPrompts: AppPrompts;
   onSavePrompts: (p: AppPrompts) => void;
   onUpdateProject: (d: Partial<ProjectData>) => void;
@@ -13,25 +14,43 @@ interface AdminViewProps {
   onDeleteGlobalResource: () => void;
   onToggleViewVisibility: () => void;
   projectsMetadata: ProjectMetadata[];
+  onDeleteGlobalNote: (id: string) => void;
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
-  appPrompts, onSavePrompts, projectsMetadata
+  data, globalNotes, appPrompts, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote
 }) => {
   const [prompts, setPrompts] = React.useState(appPrompts);
 
+  const adminNotes = React.useMemo(() => {
+    const globalAdminNotes = globalNotes.filter(n => n.tags.includes('admin_note'));
+    const projectAdminNotes = data?.ideas?.filter(n => n.tags.includes('admin_note')) || [];
+    return [...globalAdminNotes, ...projectAdminNotes].sort((a, b) => b.timestamp - a.timestamp);
+  }, [globalNotes, data]);
+
+  const handleDeleteNote = async (id: string) => {
+    if (globalNotes.some(n => n.id === id)) {
+      onDeleteGlobalNote(id);
+    } else if (data?.ideas?.some(n => n.id === id)) {
+      onUpdateProject({ ideas: data.ideas.filter(n => n.id !== id) });
+    }
+  };
+
   return (
-    <div className="h-full overflow-y-auto p-8 bg-slate-50 dark:bg-slate-950">
-      <div className="max-w-4xl mx-auto space-y-12">
-        <header className="flex items-center gap-4">
-          <div className="p-3 bg-slate-900 text-white rounded-2xl">
+    <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950">
+      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-8">
+        <div className="max-w-4xl mx-auto flex items-center gap-6">
+          <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg">
             <Shield size={32} />
           </div>
           <div className="space-y-1">
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">ADMIN CONSOLE</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Fine-tune the AI engines and system prompts.</p>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">ADMIN CONSOLE</h1>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Fine-tune the AI engines and system prompts.</p>
           </div>
-        </header>
+        </div>
+      </header>
+
+      <div className="max-w-4xl mx-auto px-4 pb-12 space-y-12">
 
         <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
@@ -94,6 +113,57 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 />
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
+            <div className="flex items-center gap-4">
+              <Shield className="text-amber-500" size={24} />
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Admin Notes</h2>
+            </div>
+            <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full text-[10px] font-black uppercase tracking-widest">
+              {adminNotes.length} Notes
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            {adminNotes.length === 0 ? (
+              <p className="text-center py-8 text-slate-400 italic text-sm">No admin notes found.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {adminNotes.map(note => (
+                  <div key={note.id} className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 group relative">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg">
+                          <Shield size={16} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                            <Clock size={10} /> {new Date(note.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="p-2 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{note.content}</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {note.tags.map(tag => (
+                        <span key={tag} className="px-2 py-1 bg-white dark:bg-slate-900 text-[10px] font-bold text-slate-400 rounded-md border border-slate-100 dark:border-slate-800 flex items-center gap-1">
+                          <Tag size={8} /> {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 

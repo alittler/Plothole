@@ -169,7 +169,9 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
         if (!combined.some(n => n.id === idea.id)) combined.push(idea);
       });
     }
-    return combined.sort((a, b) => b.timestamp - a.timestamp);
+    return combined
+      .filter(n => !n.tags.includes('admin_note'))
+      .sort((a, b) => b.timestamp - a.timestamp);
   }, [data.notes, data.ideas]);
 
   const filteredNotes = React.useMemo(() => {
