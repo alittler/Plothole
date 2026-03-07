@@ -17,6 +17,7 @@ interface SidebarProps {
   isProcessing: boolean;
   activeProjectTitle?: string;
   onQuickNote?: (text: string) => void;
+  appName?: string;
 }
 
 interface NavItem {
@@ -34,7 +35,7 @@ interface SidebarSection {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, activeProjectTitle, onQuickNote
+  currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, activeProjectTitle, onQuickNote, appName = 'PLOTHOLE'
 }) => {
   const { signOut } = useClerk();
   const sections: SidebarSection[] = [
@@ -42,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'Workspace',
       items: [
         { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
-        { id: ViewType.NOTES, label: 'Notes', icon: Search, always: true },
+        { id: ViewType.NOTEPAD, label: 'Notepad', icon: Search, always: true },
         { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
       ]
     },
@@ -84,7 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       `}>
         <div className="p-6 flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white">PLOTHOLE</span>}
+            {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white uppercase">{appName}</span>}
             <div className="flex items-center gap-2">
               <button onClick={onToggleCollapse} className="hidden lg:block p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white">
                 {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}

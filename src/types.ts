@@ -22,8 +22,7 @@ export enum ViewType {
   MATRIX = 'Matrix',
   DICTIONARY = 'Dictionary',
   STENO_RESEARCH = 'StenoResearch',
-  SEMANTIC_EDITOR = 'SemanticEditor',
-  SIGN_IN = 'SignIn'
+  SEMANTIC_EDITOR = 'SemanticEditor'
 }
 
 export const APP_DATA_VERSION = 11;
@@ -65,6 +64,10 @@ export interface ManuscriptStructure {
     chapterPattern: string;
     scenePattern: string;
   };
+}
+
+export interface AppSettings {
+  appName: string;
 }
 
 export interface AppPrompts {

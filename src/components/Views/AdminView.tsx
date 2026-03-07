@@ -1,11 +1,13 @@
 import React from 'react';
-import { ProjectData, AppPrompts, ToolboxLink, ProjectMetadata, Note } from '../../types';
-import { Shield, Sparkles, Save, Database, Trash2, Clock, Tag } from 'lucide-react';
+import { ProjectData, AppPrompts, ToolboxLink, ProjectMetadata, Note, AppSettings } from '../../types';
+import { Shield, Sparkles, Save, Database, Trash2, Clock, Tag, Type } from 'lucide-react';
 
 interface AdminViewProps {
   data: ProjectData | null;
   globalNotes: Note[];
   appPrompts: AppPrompts;
+  appSettings: AppSettings;
+  onSaveSettings: (s: AppSettings) => void;
   onSavePrompts: (p: AppPrompts) => void;
   onUpdateProject: (d: Partial<ProjectData>) => void;
   onFullArchive: () => void;
@@ -18,9 +20,10 @@ interface AdminViewProps {
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
-  data, globalNotes, appPrompts, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote
+  data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote
 }) => {
   const [prompts, setPrompts] = React.useState(appPrompts);
+  const [settings, setSettings] = React.useState(appSettings);
 
   const adminNotes = React.useMemo(() => {
     const globalAdminNotes = globalNotes.filter(n => n.tags.includes('admin_note'));
@@ -51,6 +54,36 @@ export const AdminView: React.FC<AdminViewProps> = ({
       </header>
 
       <div className="max-w-4xl mx-auto px-4 pb-12 space-y-12">
+
+        <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
+            <div className="flex items-center gap-4">
+              <Type className="text-indigo-500" size={24} />
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">App Settings</h2>
+            </div>
+            <button
+              onClick={() => onSaveSettings(settings)}
+              className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors"
+            >
+              <Save size={18} />
+              Save Settings
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">App Name</label>
+              <input
+                type="text"
+                value={settings.appName}
+                onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500"
+                placeholder="Plothole AI"
+              />
+              <p className="text-xs text-slate-500">This name will be displayed in the sidebar and login screen.</p>
+            </div>
+          </div>
+        </section>
 
         <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">

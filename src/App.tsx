@@ -12,6 +12,8 @@ import {
   exportFullArchive,
   getAppPrompts,
   saveAppPrompts,
+  getAppSettings,
+  saveAppSettings,
   generateId
 } from './services/storageService';
 import { 
@@ -86,6 +88,7 @@ const App: React.FC = () => {
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [globalResources, setGlobalResources] = useState<ToolboxLink[]>([]);
   const [appPrompts, setAppPromptsState] = useState<AppPrompts>(DEFAULT_PROMPTS);
+  const [appSettings, setAppSettings] = useState<{ appName: string }>({ appName: 'Plothole AI' });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
@@ -134,18 +137,24 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    document.title = appSettings.appName;
+  }, [appSettings.appName]);
+
+  useEffect(() => {
     const init = async () => {
       try {
-        const [meta, notes, resources, prompts] = await Promise.all([
+        const [meta, notes, resources, prompts, settings] = await Promise.all([
           getAllProjectsMetadata(),
           getAllGlobalNotes(),
           getAllGlobalResources(),
-          getAppPrompts()
+          getAppPrompts(),
+          getAppSettings()
         ]);
         setProjectsMetadata(meta);
         setGlobalNotes(notes);
         setGlobalResources(resources);
         if (prompts) setAppPromptsState(prev => ({ ...prev, ...prompts }));
+        if (settings) setAppSettings(prev => ({ ...prev, ...settings }));
 
         await checkApiKey();
 
@@ -348,7 +357,7 @@ const App: React.FC = () => {
   const viewContent = useMemo(() => {
     if (!isLoaded || !isClerkLoaded) return <div className="h-full flex items-center justify-center text-primary animate-pulse font-bold uppercase tracking-widest">Initialising Core Engines...</div>;
 
-    if (!projectData && ![ViewType.BOOKSHELF, ViewType.TOOLBOX, ViewType.ADMIN, ViewType.SETTINGS, ViewType.NOTES].includes(currentView)) {
+    if (!projectData && ![ViewType.BOOKSHELF, ViewType.TOOLBOX, ViewType.ADMIN, ViewType.SETTINGS, ViewType.NOTEPAD].includes(currentView)) {
         return <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock drafting tools.</div>;
     }
 
@@ -356,7 +365,7 @@ const App: React.FC = () => {
       case ViewType.BOOKSHELF: 
         return <BookshelfView projects={projectsMetadata} activeProjectId={projectData?.id || ''} currentUser={currentUser} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); setCurrentView(ViewType.DASHBOARD); } }} onCreateProject={handleCreateProject} onUploadProject={handleUploadManuscript} onDeleteProject={async id => { await deleteProject(id); await refreshMetadata(); if (projectData?.id === id) setProjectData(null); }} onOpenDashboard={() => setCurrentView(ViewType.DASHBOARD)} isAnalyzing={isAnalyzing} />;
 
-      case ViewType.NOTES: 
+      case ViewType.NOTEPAD: 
         return <ResearchSystemView currentView={currentView} onChangeView={setCurrentView} data={{...projectData, notes: globalNotes} as any} projectsMetadata={projectsMetadata} currentUser={currentUser} onAddNote={async n => { 
           let noteToSave = { ...n };
           
@@ -441,6 +450,8 @@ const App: React.FC = () => {
           data={projectData} 
           globalNotes={globalNotes}
           appPrompts={appPrompts} 
+          appSettings={appSettings}
+          onSaveSettings={async (s) => { setAppSettings(s); await saveAppSettings(s); }}
           onSavePrompts={async (p) => { setAppPromptsState(p); await saveAppPrompts(p); }} 
           onUpdateProject={updateProjectData} 
           onFullArchive={() => exportFullArchive(globalNotes)} 
@@ -495,12 +506,13 @@ const App: React.FC = () => {
             await saveGlobalNote(n);
           }
         }}
+        appName={appSettings.appName}
       />
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
         {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
           <div className="w-10" /> {/* Spacer */}
-          <span className="font-black tracking-tighter text-slate-900 dark:text-white">PLOTHOLE</span>
+          <span className="font-black tracking-tighter text-slate-900 dark:text-white uppercase">{appSettings.appName}</span>
           <button onClick={() => setIsAiOpen(!isAiOpen)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-indigo-600">
             <Sparkles size={24} />
           </button>
@@ -568,7 +580,7 @@ const App: React.FC = () => {
       ) : (
         <>
           <SignedOut>
-            <SignInPage />
+            <SignInPage appName={appSettings.appName} />
           </SignedOut>
           <SignedIn>
             {renderAppContent()}

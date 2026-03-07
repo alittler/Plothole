@@ -3,7 +3,7 @@ import { SignIn } from '@clerk/clerk-react';
 import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 
-export const SignInPage: React.FC = () => {
+export const SignInPage: React.FC<{ appName?: string }> = ({ appName = 'Plothole AI' }) => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
       <motion.div 
@@ -16,7 +16,7 @@ export const SignInPage: React.FC = () => {
             <Sparkles className="text-white w-10 h-10" />
           </div>
           <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white uppercase">
-            Plothole AI
+            {appName}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 font-medium text-center mt-2 italic">
             Your Research & Writing Partner
