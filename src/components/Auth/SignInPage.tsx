@@ -1,17 +1,9 @@
 import React from 'react';
-import { useClerk } from '@clerk/clerk-react';
+import { SignIn } from '@clerk/clerk-react';
 import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 
 export const SignInPage: React.FC = () => {
-  const { buildSignInUrl } = useClerk();
-
-  const handleCustomSignIn = () => {
-    const signInUrl = buildSignInUrl();
-    // Open in a new window to avoid iframe embedding restrictions
-    window.open(signInUrl, '_blank', 'width=600,height=700');
-  };
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
       <motion.div 
@@ -31,18 +23,21 @@ export const SignInPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="w-full bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden p-8 flex flex-col items-center text-center">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Authentication Required</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-8">
-            To protect your security, the sign-in page must be opened in a secure popup window.
-          </p>
-          
-          <button 
-            onClick={handleCustomSignIn}
-            className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
-          >
-            Open Sign-In Window
-          </button>
+        <div className="w-full bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden p-8 flex flex-col items-center">
+          <SignIn 
+            routing="virtual"
+            appearance={{
+              elements: {
+                formButtonPrimary: "bg-indigo-600 hover:bg-indigo-700 text-sm font-bold uppercase tracking-widest rounded-xl",
+                card: "shadow-none border-none p-0 bg-transparent",
+                headerTitle: "hidden",
+                headerSubtitle: "hidden",
+                socialButtonsBlockButton: "rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                footerActionLink: "text-indigo-600 hover:text-indigo-700 font-bold",
+                formFieldInput: "rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 transition-all",
+              }
+            }}
+          />
         </div>
       </motion.div>
     </div>

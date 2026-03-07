@@ -49,7 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'Story',
       items: [
-        { id: ViewType.STENO_RESEARCH, label: 'Research', icon: Zap, always: true },
+        { id: ViewType.STENO_RESEARCH, label: 'Research', icon: Zap, projectOnly: true },
         { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
         { id: ViewType.MAP, label: 'World Hub', icon: Map, projectOnly: true },
         { id: ViewType.TIMELINE, label: 'Plot & Timeline', icon: Calendar, projectOnly: true },
@@ -151,56 +151,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           );
         })}
-      </nav>
 
-      <div className="p-4 mt-auto space-y-2">
-        <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900/50 border border-slate-800/50 transition-all ${isCollapsed ? 'justify-center' : ''}`}>
-          <UserButton 
-            appearance={{
-              elements: {
-                userButtonAvatarBox: "w-8 h-8 rounded-lg",
-                userButtonTrigger: "focus:shadow-none focus:outline-none",
-              }
-            }}
-          />
-          {!isCollapsed && (
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-xs font-bold text-white truncate">{currentUser.name}</span>
-              <span className="text-[10px] text-slate-500 truncate uppercase tracking-widest font-black">{currentUser.role}</span>
-            </div>
-          )}
-        </div>
+        <div className="pt-4 space-y-2 border-t border-slate-800/50">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900/50 border border-slate-800/50 transition-all ${isCollapsed ? 'justify-center' : ''}`}>
+            <UserButton 
+              appearance={{
+                elements: {
+                  userButtonAvatarBox: "w-8 h-8 rounded-lg",
+                  userButtonTrigger: "focus:shadow-none focus:outline-none",
+                }
+              }}
+            />
+            {!isCollapsed && (
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-xs font-bold text-white truncate">{currentUser.name}</span>
+                <span className="text-[10px] text-slate-500 truncate uppercase tracking-widest font-black">{currentUser.role}</span>
+              </div>
+            )}
+          </div>
 
-        <button
-          onClick={onToggleAi}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${isAiOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-900 hover:bg-slate-800 text-slate-300'}`}
-        >
-          <Sparkles size={18} className={isProcessing ? 'animate-spin' : ''} />
-          {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">AI Architect</span>}
-        </button>
-        {currentUser.role === 'admin' && onQuickNote && (
           <button
-            onClick={() => {
-              const note = window.prompt("Admin Note (Edits to make):");
-              if (note && note.trim()) {
-                onQuickNote(note.trim());
-              }
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all bg-amber-900/20 hover:bg-amber-900/40 text-amber-500"
+            onClick={onToggleAi}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${isAiOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-900 hover:bg-slate-800 text-slate-300'}`}
           >
-            <PenTool size={18} />
-            {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">Admin Note</span>}
+            <Sparkles size={18} className={isProcessing ? 'animate-spin' : ''} />
+            {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">AI Architect</span>}
           </button>
-        )}
-        <button
-          onClick={() => signOut()}
-          className="w-full flex lg:hidden items-center gap-3 px-4 py-3 rounded-2xl transition-all bg-red-900/20 hover:bg-red-900/40 text-red-500"
-        >
-          <LogOut size={18} />
-          {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">Sign Out</span>}
-        </button>
-      </div>
+          {currentUser.role === 'admin' && onQuickNote && (
+            <button
+              onClick={() => {
+                const note = window.prompt("Admin Note (Edits to make):");
+                if (note && note.trim()) {
+                  onQuickNote(note.trim());
+                }
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all bg-amber-900/20 hover:bg-amber-900/40 text-amber-500"
+            >
+              <PenTool size={18} />
+              {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">Admin Note</span>}
+            </button>
+          )}
+          <button
+            onClick={() => signOut()}
+            className="w-full flex lg:hidden items-center gap-3 px-4 py-3 rounded-2xl transition-all bg-red-900/20 hover:bg-red-900/40 text-red-500"
+          >
+            <LogOut size={18} />
+            {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">Sign Out</span>}
+          </button>
+        </div>
+      </nav>
     </aside>
+
     </>
   );
 };
