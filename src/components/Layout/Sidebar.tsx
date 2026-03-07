@@ -155,6 +155,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="pt-4 space-y-2 border-t border-slate-800/50">
           <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900/50 border border-slate-800/50 transition-all ${isCollapsed ? 'justify-center' : ''}`}>
             <UserButton 
+              afterSignOutUrl={window.location.origin}
               appearance={{
                 elements: {
                   userButtonAvatarBox: "w-8 h-8 rounded-lg",
@@ -192,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           )}
           <button
-            onClick={() => signOut()}
+            onClick={() => signOut({ redirectUrl: window.location.origin })}
             className="w-full flex lg:hidden items-center gap-3 px-4 py-3 rounded-2xl transition-all bg-red-900/20 hover:bg-red-900/40 text-red-500"
           >
             <LogOut size={18} />

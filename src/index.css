@@ -17,6 +17,17 @@
   }
 }
 
+/* Hide Clerk Development Mode Badge */
+.cl-devMode {
+  display: none !important;
+}
+.cl-internal-b3al6g {
+  display: none !important;
+}
+.cl-internal-1dauvpw {
+  display: none !important;
+}
+
 .leaflet-container {
   width: 100%;
   height: 100%;
