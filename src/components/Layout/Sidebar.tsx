@@ -1,7 +1,7 @@
 import React from 'react';
 import { ViewType, User } from '../../types';
-import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database } from 'lucide-react';
-import { SignedIn, SignedOut, SignInButton, UserButton, useClerk } from '@clerk/clerk-react';
+import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut } from 'lucide-react';
+import { UserButton, useClerk } from '@clerk/clerk-react';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -36,20 +36,20 @@ interface SidebarSection {
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, activeProjectTitle, onQuickNote
 }) => {
-  const clerk = useClerk();
+  const { signOut } = useClerk();
   const sections: SidebarSection[] = [
     {
       title: 'Workspace',
       items: [
         { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
-        { id: ViewType.NOTEPAD, label: 'Notepad', icon: Search, always: true },
+        { id: ViewType.NOTES, label: 'Notes', icon: Search, always: true },
         { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
       ]
     },
     {
       title: 'Story',
       items: [
-        { id: ViewType.STENO_RESEARCH, label: 'Research', icon: Zap, projectOnly: true },
+        { id: ViewType.STENO_RESEARCH, label: 'Research', icon: Zap, always: true },
         { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
         { id: ViewType.MAP, label: 'World Hub', icon: Map, projectOnly: true },
         { id: ViewType.TIMELINE, label: 'Plot & Timeline', icon: Calendar, projectOnly: true },
@@ -154,14 +154,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       <div className="p-4 mt-auto space-y-2">
-        <div className="flex justify-center p-2">
-          <SignedOut>
-            <button onClick={() => window.open(clerk.buildSignInUrl(), '_blank')} className="text-sm font-bold text-indigo-600">Sign In</button>
-          </SignedOut>
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900/50 border border-slate-800/50 transition-all ${isCollapsed ? 'justify-center' : ''}`}>
+          <UserButton 
+            appearance={{
+              elements: {
+                userButtonAvatarBox: "w-8 h-8 rounded-lg",
+                userButtonTrigger: "focus:shadow-none focus:outline-none",
+              }
+            }}
+          />
+          {!isCollapsed && (
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-xs font-bold text-white truncate">{currentUser.name}</span>
+              <span className="text-[10px] text-slate-500 truncate uppercase tracking-widest font-black">{currentUser.role}</span>
+            </div>
+          )}
         </div>
+
         <button
           onClick={onToggleAi}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${isAiOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-900 hover:bg-slate-800 text-slate-300'}`}
@@ -183,6 +192,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">Admin Note</span>}
           </button>
         )}
+        <button
+          onClick={() => signOut()}
+          className="w-full flex lg:hidden items-center gap-3 px-4 py-3 rounded-2xl transition-all bg-red-900/20 hover:bg-red-900/40 text-red-500"
+        >
+          <LogOut size={18} />
+          {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">Sign Out</span>}
+        </button>
       </div>
     </aside>
     </>

@@ -37,9 +37,9 @@ import { ToolboxView } from './components/Views/ToolboxView';
 import { BlueprintRescueView } from './components/Views/BlueprintRescueView';
 import StenoResearchView from './components/Views/StenoResearchView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
-import { SignInPage } from './components/Views/SignInPage';
 import { AlertCircle, X, Sparkles, Menu } from 'lucide-react';
-import { SignedIn, SignedOut, SignInButton, UserButton, useClerk } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, useUser } from '@clerk/clerk-react';
+import { SignInPage } from './components/Auth/SignInPage';
 
 const DEMO_USER: User = {
   id: 'user-1',
@@ -54,10 +54,22 @@ const DEMO_USER: User = {
 const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const clerk = useClerk();
+  const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
 
   const [currentUser, setCurrentUser] = useState<User>(DEMO_USER);
-  const currentView = (decodeURIComponent(location.hash.slice(2)) as ViewType) || DEMO_USER.preferences?.landingPage || ViewType.BOOKSHELF;
+  
+  // Sync Clerk user with app user
+  useEffect(() => {
+    if (isClerkLoaded && clerkUser) {
+      setCurrentUser(prev => ({
+        ...prev,
+        id: clerkUser.id,
+        name: clerkUser.fullName || clerkUser.username || 'Writer',
+        email: clerkUser.primaryEmailAddress?.emailAddress || 'writer@plothole.ai',
+      }));
+    }
+  }, [isClerkLoaded, clerkUser]);
+  const currentView = (decodeURIComponent(location.pathname.slice(1)) as ViewType) || DEMO_USER.preferences?.landingPage || ViewType.BOOKSHELF;
   const setCurrentView = (view: ViewType) => navigate(`/${view}`);
   
   const [projectsMetadata, setProjectsMetadata] = useState<ProjectMetadata[]>([]);
@@ -312,9 +324,9 @@ const App: React.FC = () => {
   };
 
   const viewContent = useMemo(() => {
-    if (!isLoaded) return <div className="h-full flex items-center justify-center text-primary animate-pulse font-bold uppercase tracking-widest">Initialising Core Engines...</div>;
+    if (!isLoaded || !isClerkLoaded) return <div className="h-full flex items-center justify-center text-primary animate-pulse font-bold uppercase tracking-widest">Initialising Core Engines...</div>;
 
-    if (!projectData && ![ViewType.BOOKSHELF, ViewType.TOOLBOX, ViewType.ADMIN, ViewType.SETTINGS, ViewType.NOTEPAD, ViewType.STENO_RESEARCH].includes(currentView)) {
+    if (!projectData && ![ViewType.BOOKSHELF, ViewType.TOOLBOX, ViewType.ADMIN, ViewType.SETTINGS, ViewType.NOTES, ViewType.STENO_RESEARCH].includes(currentView)) {
         return <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock drafting tools.</div>;
     }
 
@@ -322,7 +334,7 @@ const App: React.FC = () => {
       case ViewType.BOOKSHELF: 
         return <BookshelfView projects={projectsMetadata} activeProjectId={projectData?.id || ''} currentUser={currentUser} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); setCurrentView(ViewType.DASHBOARD); } }} onCreateProject={handleCreateProject} onUploadProject={handleUploadManuscript} onDeleteProject={async id => { await deleteProject(id); await refreshMetadata(); if (projectData?.id === id) setProjectData(null); }} onOpenDashboard={() => setCurrentView(ViewType.DASHBOARD)} isAnalyzing={isAnalyzing} />;
 
-      case ViewType.NOTEPAD: 
+      case ViewType.NOTES: 
         return <ResearchSystemView currentView={currentView} onChangeView={setCurrentView} data={{...projectData, notes: globalNotes} as any} projectsMetadata={projectsMetadata} currentUser={currentUser} onAddNote={async n => { 
           let noteToSave = { ...n };
           
@@ -430,115 +442,108 @@ const App: React.FC = () => {
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
 
-      case ViewType.SIGN_IN:
-        return <SignInPage />;
-
       default: 
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
   }, [isLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleCreateProject, handleUploadManuscript, handleGenerateCover, handleDoubleProcessNote, handleError]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors">
-      <Sidebar 
-        currentView={currentView} 
-        onChangeView={setCurrentView} 
-        isOpen={isMobileSidebarOpen} 
-        isCollapsed={isSidebarCollapsed} 
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
-        onClose={() => setIsMobileSidebarOpen(false)} 
-        hasActiveProject={!!projectData} 
-        onToggleAi={() => setIsAiOpen(!isAiOpen)} 
-        isAiOpen={isAiOpen} 
-        currentUser={currentUser} 
-        isProcessing={activeTasks.length > 0} 
-        activeProjectTitle={projectData?.title}
-        onQuickNote={async (text) => {
-          const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
-          if (projectData) {
-            // If inside a project, save to project ideas
-            await updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
-          } else {
-            // Otherwise save as global note
-            setGlobalNotes(prev => [n, ...prev]);
-            await saveGlobalNote(n);
-          }
-        }}
-      />
-      <main className="flex-1 h-full relative overflow-hidden flex flex-col">
-        {/* Mobile Header */}
-        <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-          <div className="w-10" /> {/* Spacer */}
-          <span className="font-black tracking-tighter text-slate-900 dark:text-white">PLOTHOLE</span>
-          <div className="flex items-center gap-2">
-            <SignedOut>
-              <button onClick={() => setCurrentView(ViewType.SIGN_IN)} className="text-sm font-bold text-indigo-600">Sign In</button>
-            </SignedOut>
-            <SignedIn>
-              <div className="flex items-center gap-4">
-                <button onClick={() => clerk.signOut()} className="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-red-600">Sign Out</button>
-                <UserButton />
-              </div>
-            </SignedIn>
-            <button onClick={() => setIsAiOpen(!isAiOpen)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-indigo-600">
-              <Sparkles size={24} />
-            </button>
-          </div>
-        </div>
-
-        {!hasApiKey && (
-          <div className="bg-indigo-600 text-white px-6 py-3 flex items-center justify-between shadow-lg z-[1001]">
-            <div className="flex items-center gap-3 text-sm font-bold">
-              <Sparkles size={18} className="animate-pulse" />
-              <span>Connect your Gemini API Key to unlock AI story analysis features.</span>
-            </div>
-            <button 
-              onClick={handleOpenKeySelection}
-              className="px-4 py-1.5 bg-white text-indigo-600 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-colors shadow-sm"
-            >
-              Connect Key
-            </button>
-          </div>
-        )}
-        {aiError && (
-          <div className="bg-amber-500 text-white px-6 py-4 flex items-center justify-between shadow-2xl animate-in slide-in-from-top duration-300 z-[1000] border-b border-amber-600/50">
-            <div className="flex items-center gap-4 font-bold text-sm">
-              <AlertCircle size={22} className="animate-pulse" />
-              {aiError}
-            </div>
-            <button onClick={() => setAiError(null)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-              <X size={20} />
-            </button>
-          </div>
-        )}
-        <div className="flex-1 overflow-hidden relative pb-24 lg:pb-0">
-          {viewContent}
-        </div>
-        
-        {/* Mobile Floating Nav */}
-        <BottomNav 
-          currentView={currentView} 
-          onChangeView={setCurrentView} 
-          onOpenSidebar={() => setIsMobileSidebarOpen(true)}
-          hasActiveProject={!!projectData}
-        />
-
-        {rescueData && (
-          <BlueprintRescueView 
-            rawData={rescueData} 
-            onCommit={async (migrated) => {
-              await saveProjectData(migrated);
-              setProjectData(migrated);
-              await refreshMetadata();
-              setRescueData(null);
-              setCurrentView(ViewType.DASHBOARD);
-            }} 
-            onCancel={() => setRescueData(null)} 
+    <>
+      <SignedOut>
+        <SignInPage />
+      </SignedOut>
+      <SignedIn>
+        <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors">
+          <Sidebar 
+            currentView={currentView} 
+            onChangeView={setCurrentView} 
+            isOpen={isMobileSidebarOpen} 
+            isCollapsed={isSidebarCollapsed} 
+            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+            onClose={() => setIsMobileSidebarOpen(false)} 
+            hasActiveProject={!!projectData} 
+            onToggleAi={() => setIsAiOpen(!isAiOpen)} 
+            isAiOpen={isAiOpen} 
+            currentUser={currentUser} 
+            isProcessing={activeTasks.length > 0} 
+            activeProjectTitle={projectData?.title}
+            onQuickNote={async (text) => {
+              const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
+              if (projectData) {
+                // If inside a project, save to project ideas
+                await updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
+              } else {
+                // Otherwise save as global note
+                setGlobalNotes(prev => [n, ...prev]);
+                await saveGlobalNote(n);
+              }
+            }}
           />
-        )}
-      </main>
-      <AiAssistant projectData={projectData} isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} onToggle={() => setIsAiOpen(!isAiOpen)} />
-    </div>
+          <main className="flex-1 h-full relative overflow-hidden flex flex-col">
+            {/* Mobile Header */}
+            <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+              <div className="w-10" /> {/* Spacer */}
+              <span className="font-black tracking-tighter text-slate-900 dark:text-white">PLOTHOLE</span>
+              <button onClick={() => setIsAiOpen(!isAiOpen)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-indigo-600">
+                <Sparkles size={24} />
+              </button>
+            </div>
+
+            {!hasApiKey && (
+              <div className="bg-indigo-600 text-white px-6 py-3 flex items-center justify-between shadow-lg z-[1001]">
+                <div className="flex items-center gap-3 text-sm font-bold">
+                  <Sparkles size={18} className="animate-pulse" />
+                  <span>Connect your Gemini API Key to unlock AI story analysis features.</span>
+                </div>
+                <button 
+                  onClick={handleOpenKeySelection}
+                  className="px-4 py-1.5 bg-white text-indigo-600 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-colors shadow-sm"
+                >
+                  Connect Key
+                </button>
+              </div>
+            )}
+            {aiError && (
+              <div className="bg-amber-500 text-white px-6 py-4 flex items-center justify-between shadow-2xl animate-in slide-in-from-top duration-300 z-[1000] border-b border-amber-600/50">
+                <div className="flex items-center gap-4 font-bold text-sm">
+                  <AlertCircle size={22} className="animate-pulse" />
+                  {aiError}
+                </div>
+                <button onClick={() => setAiError(null)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+            )}
+            <div className="flex-1 overflow-hidden relative pb-24 lg:pb-0">
+              {viewContent}
+            </div>
+            
+            {/* Mobile Floating Nav */}
+            <BottomNav 
+              currentView={currentView} 
+              onChangeView={setCurrentView} 
+              onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+              hasActiveProject={!!projectData}
+            />
+
+            {rescueData && (
+              <BlueprintRescueView 
+                rawData={rescueData} 
+                onCommit={async (migrated) => {
+                  await saveProjectData(migrated);
+                  setProjectData(migrated);
+                  await refreshMetadata();
+                  setRescueData(null);
+                  setCurrentView(ViewType.DASHBOARD);
+                }} 
+                onCancel={() => setRescueData(null)} 
+              />
+            )}
+          </main>
+          <AiAssistant projectData={projectData} isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} onToggle={() => setIsAiOpen(!isAiOpen)} />
+        </div>
+      </SignedIn>
+    </>
   );
 };
 

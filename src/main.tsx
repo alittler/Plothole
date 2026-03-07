@@ -5,11 +5,7 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App.tsx';
 import './index.css';
 
-let PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-if (PUBLISHABLE_KEY?.startsWith('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=')) {
-  PUBLISHABLE_KEY = PUBLISHABLE_KEY.replace('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=', '');
-}
+const PUBLISHABLE_KEY = (import.meta as any).env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key");
@@ -17,7 +13,7 @@ if (!PUBLISHABLE_KEY) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
       <HashRouter>
         <App />
       </HashRouter>
