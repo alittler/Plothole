@@ -38,6 +38,26 @@ const generateHash = (str: string): string => {
   return Math.abs(hash).toString(16);
 };
 
+export const getApiKey = async (keyName: string): Promise<string | null> => {
+  const db = await getDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction(GLOBALS_STORE, 'readonly');
+    const req = tx.objectStore(GLOBALS_STORE).get(keyName);
+    req.onsuccess = () => resolve(req.result?.data || null);
+    req.onerror = () => resolve(null);
+  });
+};
+
+export const saveApiKey = async (keyName: string, key: string): Promise<void> => {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(GLOBALS_STORE, 'readwrite');
+    tx.objectStore(GLOBALS_STORE).put({ id: keyName, data: key });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
 export const getAppSettings = async (): Promise<Partial<AppSettings> | null> => {
   const db = await getDB();
   return new Promise((resolve) => {

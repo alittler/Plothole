@@ -268,9 +268,15 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <StackedPaper className="space-y-4">
+      <div className="flex-1 overflow-y-auto relative">
+        <div className="min-h-full relative pt-8 pb-32 lg:pb-8 px-4 lg:px-8 paper-texture lg:!bg-none lg:!bg-transparent">
+          {/* Torn edges only visible on mobile */}
+          <div className="lg:hidden absolute top-0 left-0 right-0 torn-paper-edge translate-y-[-12px] opacity-50" />
+          <div className="lg:hidden absolute top-0 left-0 right-0 torn-paper-edge translate-y-[-6px] opacity-75" />
+          <div className="lg:hidden absolute top-0 left-0 right-0 torn-paper-edge" />
+          
+          <div className="max-w-4xl mx-auto space-y-8 relative z-10">
+            <StackedPaper className="space-y-4">
             <div className="p-6 relative z-20">
               <div className="relative">
                 <textarea
@@ -371,6 +377,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
               </StackedPaper>
             ))}
           </div>
+        </div>
         </div>
       </div>
 
