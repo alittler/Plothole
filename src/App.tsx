@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
 import { 
   ProjectData, ProjectMetadata, User, ViewType, Note, 
-  AppPrompts, ToolboxLink, Idea
+  AppPrompts, ToolboxLink, Idea, Artifact, LoreEntry, ChangeLogEntry
 } from './types';
 import { 
   getAllProjectsMetadata, loadProjectById, saveProjectData, 
@@ -14,12 +14,15 @@ import {
   saveAppPrompts,
   getAppSettings,
   saveAppSettings,
-  generateId
+  generateId,
+  exportProjectPlothole
 } from './services/storageService';
 import { 
-  analyzeManuscript, generateBookCover, doubleProcessNote, extractThemesFromNotes,
-  DEFAULT_PROMPTS
+  analyzeManuscript, generateBookCover, doubleProcessNote, extractThemesFromNotes, extractSoftAnchors, auditPlotThreads,
+  DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid
 } from './services/geminiService';
+import { createCommit, updateIntegrityHash } from './services/versioningService';
+import { Commit, BackupStatus } from './types';
 
 // Components
 import { Sidebar } from './components/Layout/Sidebar';
@@ -37,8 +40,9 @@ import { SettingsView } from './components/Views/SettingsView';
 import { AdminView } from './components/Views/AdminView';
 import { ToolboxView } from './components/Views/ToolboxView';
 import { BlueprintRescueView } from './components/Views/BlueprintRescueView';
-import StenoResearchView from './components/Views/StenoResearchView';
+import ResearchView from './components/Views/ResearchView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
+import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { AlertCircle, X, Sparkles, Menu } from 'lucide-react';
 import { SignedIn, SignedOut, useUser } from '@clerk/clerk-react';
 import { SignInPage } from './components/Auth/SignInPage';
@@ -98,14 +102,14 @@ const App: React.FC = () => {
   const [isExtractingThemes, setIsExtractingThemes] = useState(false);
   const [currentMapParentId, setCurrentMapParentId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+
   const [rescueData, setRescueData] = useState<any | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [hasApiKey, setHasApiKey] = useState<boolean>(true);
 
   const checkApiKey = useCallback(async () => {
-    // In this environment, GEMINI_API_KEY is usually available in process.env
-    const apiKey = process.env.GEMINI_API_KEY;
-    const hasKey = !!apiKey && apiKey.length > 10;
+    await initializeApiKey();
+    const hasKey = isApiKeyValid();
     setHasApiKey(hasKey);
     return hasKey;
   }, []);
@@ -180,6 +184,76 @@ const App: React.FC = () => {
   }, [checkApiKey]); // Removed currentView/projectData/location to prevent infinite loops, init should only run once
 
 
+  const [lastBackupMilestone, setLastBackupMilestone] = useState<{ words: number, commits: number }>({ words: 0, commits: 0 });
+
+  useEffect(() => {
+    if (!projectData) return;
+    const totalWords = (projectData.chapters || []).reduce((acc, c) => acc + (c.wordCount || 0), 0);
+    const commitCount = projectData.commits?.length || 0;
+
+    const wordMilestone = Math.floor(totalWords / 5000) * 5000;
+    const commitMilestone = Math.floor(commitCount / 10) * 10;
+
+    const shouldBackup = (wordMilestone > 0 && wordMilestone > lastBackupMilestone.words) || 
+                       (commitMilestone > 0 && commitMilestone > lastBackupMilestone.commits);
+
+    if (shouldBackup) {
+      console.log(`Milestone reached. Triggering backup...`);
+      setLastBackupMilestone({ words: wordMilestone, commits: commitMilestone });
+
+      const backupId = generateId();
+      const newBackup: BackupStatus = {
+        id: backupId,
+        timestamp: Date.now(),
+        wordCount: totalWords,
+        hash: projectData.integrityHash || '',
+        status: 'pending'
+      };
+
+      // Pessimistic update to project data to show "pending"
+      const updatedBackups = [...(projectData.backups || []), newBackup];
+      // We don't want to trigger ANOTHER commit here, so we bypass updateProjectData
+      const directUpdate = { ...projectData, backups: updatedBackups };
+      setProjectData(directUpdate);
+      saveProjectData(directUpdate);
+
+      // Automated backup logic
+      fetch('/api/backup-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          projectTitle: projectData.title, 
+          wordCount: totalWords,
+          hash: projectData.integrityHash,
+          backupData: projectData 
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          // Poll for verification
+          setTimeout(() => {
+            fetch(`/api/verify-backup/${data.resendId}`)
+            .then(res => res.json())
+            .then(verifyData => {
+              if (verifyData.status === 'delivered') {
+                setProjectData(prev => {
+                  if (!prev) return null;
+                  const updated: ProjectData = {
+                    ...prev,
+                    backups: prev.backups?.map(b => b.id === backupId ? { ...b, status: 'delivered' as const, resendId: data.resendId } : b)
+                  };
+                  saveProjectData(updated);
+                  return updated;
+                });
+              }
+            });
+          }, 5000);
+        }
+      })
+      .catch(err => console.error("Backup failed", err));
+    }
+  }, [projectData, lastBackupMilestone]);
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--color-primary', currentUser.themeColor);
@@ -188,16 +262,75 @@ const App: React.FC = () => {
 
   const updateProjectData = useCallback(async (updates: Partial<ProjectData>) => {
     if (!projectData) return;
-    const updated = { ...projectData, ...updates, lastModified: Date.now() };
+
+    // Auto-generate change log entry for notable entities
+    let newLog: ChangeLogEntry | null = null;
+    if (updates.characters && updates.characters.length !== projectData.characters?.length) {
+      const added = updates.characters.find(c => !projectData.characters?.some(pc => pc.id === c.id));
+      if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Character', entityName: added.name, entityId: added.id, action: 'Created' };
+    } else if (updates.locations && updates.locations.length !== projectData.locations?.length) {
+      const added = updates.locations.find(l => !projectData.locations?.some(pl => pl.id === l.id));
+      if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Location', entityName: added.name, entityId: added.id, action: 'Created' };
+    } else if (updates.timeline && updates.timeline.length !== projectData.timeline?.length) {
+      const added = updates.timeline.find(e => !projectData.timeline?.some(pe => pe.id === e.id));
+      if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Timeline', entityName: added.title, entityId: added.id, action: 'Created' };
+    }
+
+    const baseUpdated = { 
+      ...projectData, 
+      ...updates,
+      changeLog: newLog ? [...(projectData.changeLog || []), newLog] : projectData.changeLog
+    };
+    const commit = await createCommit(baseUpdated, updates.title ? `Meta update: ${updates.title}` : 'Manual Save');
+    const integrityHash = await updateIntegrityHash(baseUpdated);
+
+    const updated: ProjectData = { 
+      ...baseUpdated, 
+      commits: [...(projectData.commits || []), commit],
+      integrityHash,
+      lastModified: Date.now() 
+    };
+
     setProjectData(updated);
     await saveProjectData(updated);
     await refreshMetadata();
   }, [projectData, refreshMetadata]);
+  const handleAuditThreads = async () => {
+    if (!projectData) return;
+    setIsAnalyzing(true);
+    addTask('Auditing Plot Threads');
+    try {
+      const threads = await auditPlotThreads(projectData.chapters || [], projectData.timeline);
+      await updateProjectData({ aiDeadThreads: threads });
+    } catch (e) {
+      handleError(e);
+    } finally {
+      setIsAnalyzing(false);
+      removeTask('Auditing Plot Threads');
+    }
+  };
+
+  const handleRestoreCommit = async (commit: Commit) => {
+    if (!projectData || !commit.snapshot) return;
+    if (confirm(`Are you sure you want to restore the manuscript to the state of commit [${commit.hash.slice(0, 8)}]? Current unsaved changes (if any) will be lost.`)) {
+      // Create a NEW commit for the restoration action itself
+      const restorationCommit = await createCommit({ ...projectData, chapters: commit.snapshot }, `Restored to commit [${commit.hash.slice(0, 8)}]`);
+      const updated: ProjectData = {
+        ...projectData,
+        chapters: commit.snapshot,
+        commits: [...(projectData.commits || []), restorationCommit],
+        lastModified: Date.now()
+      };
+      setProjectData(updated);
+      await saveProjectData(updated);
+      alert("Manuscript restored successfully.");
+    }
+  };
 
   const handleCreateProject = async (title: string, author: string, useSample: boolean, shortName?: string) => {
     const id = generateId();
     let newProject: ProjectData = {
-      id, title, shortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: []
+      id, title, shortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: [], sources: []
     };
 
     if (useSample) {
@@ -217,7 +350,7 @@ const App: React.FC = () => {
   };
 
   const handleUploadManuscript = async (file: File) => {
-    addTask('analyze-upload');
+    addTask('Analyzing Upload');
     setIsAnalyzing(true);
     setAiError(null);
 
@@ -269,9 +402,134 @@ const App: React.FC = () => {
       handleError(err);
     } finally {
       setIsAnalyzing(false);
-      removeTask('analyze-upload');
+      removeTask('Analyzing Upload');
     }
   };
+
+  const mergeAnalysisIntoProject = useCallback(async (analysis: any, content?: string) => {
+    if (!projectData) return;
+
+    // Merge logic:
+    // 1. Characters: If name matches, update description/traits if they are more detailed. If new, add.
+    const updatedCharacters = [...(projectData.characters || [])];
+    analysis.characters.forEach((ac: any) => {
+      const existingIdx = updatedCharacters.findIndex(c => c.name.toLowerCase() === ac.name.toLowerCase());
+      if (existingIdx >= 0) {
+        // Only update if existing is very short or AI source
+        if (updatedCharacters[existingIdx].description.length < ac.description.length || updatedCharacters[existingIdx].source === 'ai') {
+           updatedCharacters[existingIdx] = { 
+             ...updatedCharacters[existingIdx], 
+             description: ac.description || updatedCharacters[existingIdx].description,
+             traits: Array.from(new Set([...updatedCharacters[existingIdx].traits, ...(ac.traits || [])])),
+             source: 'ai'
+           };
+        }
+      } else {
+        updatedCharacters.push({ ...ac, id: generateId(), source: 'ai' });
+      }
+    });
+
+    // 2. Locations: Same logic
+    const updatedLocations = [...(projectData.locations || [])];
+    analysis.locations.forEach((al: any) => {
+      const existingIdx = updatedLocations.findIndex(l => l.name.toLowerCase() === al.name.toLowerCase());
+      if (existingIdx >= 0) {
+        if (updatedLocations[existingIdx].description.length < al.description.length || updatedLocations[existingIdx].source === 'ai') {
+          updatedLocations[existingIdx] = { ...updatedLocations[existingIdx], ...al, source: 'ai' };
+        }
+      } else {
+        updatedLocations.push({ ...al, id: generateId(), source: 'ai' });
+      }
+    });
+
+    // 3. Timeline: Append new ones for now, maybe deduplicate by title later
+    const updatedTimeline = [...(projectData.timeline || []), ...analysis.timeline.map((e: any) => ({ ...e, id: generateId(), source: 'ai' }))];
+
+    const updates: Partial<ProjectData> = {
+      summary: analysis.summary || projectData.summary,
+      characters: updatedCharacters,
+      locations: updatedLocations,
+      timeline: updatedTimeline,
+      themes: Array.from(new Set([...(projectData.themes || []), ...(analysis.themes || [])])),
+      artifacts: Array.from(new Map([...(projectData.artifacts || []).map(a => [a.name, a]), ...analysis.artifacts.map((a: any) => [a.name, { ...a, id: generateId(), source: 'ai' }])]).values()) as Artifact[],
+      lore: Array.from(new Map([...(projectData.lore || []).map(l => [l.term, l]), ...analysis.lore.map((l: any) => [l.term, { ...l, id: generateId(), source: 'ai' }])]).values()) as LoreEntry[]
+    };
+
+    if (content) {
+      updates.chapters = [
+        ...(projectData.chapters || []),
+        { 
+          id: generateId(), 
+          title: `Imported ${new Date().toLocaleDateString()}`, 
+          content, 
+          order: (projectData.chapters?.length || 0), 
+          status: 'Draft', 
+          lastModified: Date.now(),
+          scenes: [],
+          wordCount: content.trim().split(/\s+/).filter(w => w.length > 0).length
+        }
+      ];
+    }
+
+    await updateProjectData(updates);
+    setAiError("Analysis complete. Characters and world details updated.");
+    setTimeout(() => setAiError(null), 5000);
+  }, [projectData, updateProjectData]);
+
+  useEffect(() => {
+    const handleUpload = async (e: any) => {
+      const file = e.detail as File;
+      if (!file) return;
+      console.log("Manuscript upload event received:", file.name);
+      
+      addTask('analyze-existing');
+      setIsAnalyzing(true);
+      try {
+        const text = await file.text();
+        console.log("File read successful, length:", text.length);
+        const analysis = await analyzeManuscript(text, undefined, {
+          extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true
+        });
+        console.log("AI Analysis complete, merging results...");
+        await mergeAnalysisIntoProject(analysis, text);
+      } catch (err) {
+        console.error("Manuscript upload handler error:", err);
+        handleError(err);
+      } finally {
+        setIsAnalyzing(false);
+        removeTask('analyze-existing');
+      }
+    };
+
+    const handleAnalyzeCurrent = async (e: any) => {
+      const text = e.detail as string;
+      if (!text) return;
+      console.log("Analyze current manuscript event received, length:", text.length);
+      
+      addTask('analyze-current');
+      setIsAnalyzing(true);
+      try {
+        const analysis = await analyzeManuscript(text, undefined, {
+          extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true
+        });
+        console.log("AI Analysis of current editor complete, merging results...");
+        await mergeAnalysisIntoProject(analysis);
+      } catch (err) {
+        console.error("Analyze current handler error:", err);
+        handleError(err);
+      } finally {
+        setIsAnalyzing(false);
+        removeTask('analyze-current');
+      }
+    };
+
+    window.addEventListener('manuscript-upload', handleUpload);
+    window.addEventListener('manuscript-analyze-current', handleAnalyzeCurrent);
+    return () => {
+      window.removeEventListener('manuscript-upload', handleUpload);
+      window.removeEventListener('manuscript-analyze-current', handleAnalyzeCurrent);
+    };
+  }, [mergeAnalysisIntoProject, handleError]);
 
   const handleDoubleProcessNote = async (text: string) => {
     addTask('double-process');
@@ -304,9 +562,45 @@ const App: React.FC = () => {
     }
   };
 
+  const handleExtractSoftAnchors = async () => {
+    if (!projectData) return;
+    setIsAnalyzing(true);
+    addTask('Syncing Timeline (Soft Anchors)');
+    setAiError(null);
+    try {
+      const manuscriptText = projectData.chapters?.map(c => c.content).join('\n') || '';
+      if (!manuscriptText) throw new Error("No manuscript content to analyze.");
+      
+      const existingEvents = projectData.timeline.map(e => ({ id: e.id, title: e.title, uei: e.uei || 0 }));
+      const newAnchors = await extractSoftAnchors(manuscriptText, existingEvents);
+      
+      if (newAnchors && newAnchors.length > 0) {
+        const generatedEvents = newAnchors.map(a => ({
+          id: generateId(),
+          date: a.date || 'Unknown Date',
+          title: a.title,
+          description: a.description,
+          uei: a.uei,
+          isSoftAnchor: true,
+          referenceEventId: a.referenceEventId,
+          charactersInvolved: [],
+          location: '',
+          source: 'ai' as const
+        }));
+        await updateProjectData({ timeline: [...projectData.timeline, ...generatedEvents] });
+      }
+    } catch (e) {
+      handleError(e);
+    } finally {
+      setIsAnalyzing(false);
+      removeTask('Syncing Timeline (Soft Anchors)');
+    }
+  };
+
   const handleGenerateCover = async () => {
     if (!projectData) return;
     setIsGeneratingCover(true);
+    addTask('Generating Cover Art');
     setAiError(null);
     try {
       const coverUrl = await generateBookCover(projectData.title, projectData.author || '', projectData.summary);
@@ -315,6 +609,7 @@ const App: React.FC = () => {
       handleError(e);
     } finally {
       setIsGeneratingCover(false);
+      removeTask('Generating Cover Art');
     }
   };
 
@@ -404,29 +699,38 @@ const App: React.FC = () => {
         }} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onAddDoubleProcessedNote={handleDoubleProcessNote} activeTasks={activeTasks} onUpdateProject={updateProjectData} semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled} />;
 
       case ViewType.CHARACTERS: 
-        return <CharacterView projectTitle={projectData?.title || ''} characters={projectData?.characters || []} locations={projectData?.locations || []} timeline={projectData?.timeline || []} artifacts={projectData?.artifacts || []} themes={projectData?.themes || []} notes={globalNotes} manuscriptHistory={projectData?.manuscriptHistory || []} onUpdateCharacter={(c) => updateProjectData({ characters: projectData?.characters.map(ch => ch.id === c.id ? c : ch) })} onAddCharacter={(c) => updateProjectData({ characters: [...(projectData?.characters || []), c] })} onLinkClick={(type, id) => { if (type === 'location') { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} characterLimit={projectData?.characterLimit} onChangeView={setCurrentView} onExtractThemesFromNotes={async () => { 
+        return <CharacterView projectTitle={projectData?.title || ''} characters={projectData?.characters || []} locations={projectData?.locations || []} timeline={projectData?.timeline || []} artifacts={projectData?.artifacts || []} themes={projectData?.themes || []} notes={globalNotes} manuscriptHistory={projectData?.manuscriptHistory || []} onUpdateCharacter={(c) => updateProjectData({ characters: projectData?.characters.map(ch => ch.id === c.id ? c : ch) })} onAddCharacter={(c) => updateProjectData({ characters: [...(projectData?.characters || []), c] })} onLinkClick={(type, id) => { if (type === 'location') { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} characterLimit={projectData?.characterLimit} onChangeView={setCurrentView} onExtractThemesFromNotes={async () => {
             if (!projectData) return;
             setIsExtractingThemes(true);
+            addTask('Extracting Themes');
             try {
               const themes = await extractThemesFromNotes(globalNotes);
               if (themes.length > 0) await updateProjectData({ themes: Array.from(new Set([...projectData.themes, ...themes])) });
-            } catch (e) { handleError(e); } finally { setIsExtractingThemes(false); }
-          }} 
+            } catch (e) { handleError(e); } finally { 
+              setIsExtractingThemes(false); 
+              removeTask('Extracting Themes');
+            }
+          }}
           isExtractingThemes={isExtractingThemes} />;
-
       case ViewType.DASHBOARD:
         return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => {}} onUpdateManuscript={handleUploadManuscript} onRescanManuscript={handleUploadManuscript} onExportManuscript={() => {}} onImportManuscript={handleUploadManuscript} onLoadSample={() => {}} isAnalyzing={isAnalyzing} error={null} onUpdateMetadata={(t, a) => updateProjectData({ title: t, author: a })} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={(t) => {
+            setIsAnalyzing(true);
+            addTask('Analyzing Manuscript');
             analyzeManuscript(t, undefined, { extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true })
             .then(a => updateProjectData({ summary: a.summary, themes: a.themes }))
-            .catch(handleError);
-        }} onRestoreHistory={() => {}} onGenerateCover={handleGenerateCover} isGeneratingCover={isGeneratingCover} /> : null;
+            .catch(handleError)
+            .finally(() => {
+              setIsAnalyzing(false);
+              removeTask('Analyzing Manuscript');
+            });
+        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p, globalNotes)} isGeneratingCover={isGeneratingCover} /> : null;
 
       case ViewType.TIMELINE:
       case ViewType.BOARD:
       case ViewType.MATRIX:
       case ViewType.PLOT_ANALYSIS:
       case ViewType.CALENDAR:
-        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={(c) => updateProjectData({ calendars: projectData.calendars.map(cal => cal.id === c.id ? c : cal) })} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => {}} onUpdateProject={updateProjectData} /> : null;
+        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={(c) => updateProjectData({ calendars: projectData.calendars.map(cal => cal.id === c.id ? c : cal) })} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => {}} onExtractSoftAnchors={handleExtractSoftAnchors} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
 
       case ViewType.MAP:
       case ViewType.LOCATIONS:
@@ -440,7 +744,7 @@ const App: React.FC = () => {
       case ViewType.PROCESSOR:
       case ViewType.SOURCE_READER:
       case ViewType.TABLE:
-        return projectData ? <ManuscriptSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} projectsMetadata={projectsMetadata} onUpdateChapters={(c) => updateProjectData({ chapters: c })} onAddNote={async n => { setGlobalNotes(prev => [n, ...prev]); await saveGlobalNote(n); }} onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })} onAddCharacter={(c) => updateProjectData({ characters: [...projectData.characters, c] })} /> : null;
+        return projectData ? <ManuscriptSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} projectsMetadata={projectsMetadata} onUpdateChapters={(c) => updateProjectData({ chapters: c })} onAddNote={async n => { setGlobalNotes(prev => [n, ...prev]); await saveGlobalNote(n); }} onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })} onAddCharacter={(c) => updateProjectData({ characters: [...projectData.characters, c] })} isAnalyzing={isAnalyzing} /> : null;
 
       case ViewType.TOOLBOX:
         return <ToolboxView bakedResources={globalResources} onAddResource={async (l) => { setGlobalResources(prev => [...prev, l]); await saveGlobalResource(l); }} onDeleteResource={async (id) => { setGlobalResources(prev => prev.filter(r => r.id !== id)); await deleteGlobalResource(id); }} />;
@@ -453,24 +757,25 @@ const App: React.FC = () => {
           appSettings={appSettings}
           onSaveSettings={async (s) => { setAppSettings(s); await saveAppSettings(s); }}
           onSavePrompts={async (p) => { setAppPromptsState(p); await saveAppPrompts(p); }} 
-          onUpdateProject={updateProjectData} 
-          onFullArchive={() => exportFullArchive(globalNotes)} 
-          globalResources={[]} 
-          onAddGlobalResource={async () => {}} 
-          onDeleteGlobalResource={async () => {}} 
-          onToggleViewVisibility={() => {}} 
-          projectsMetadata={projectsMetadata} 
+          onUpdateProject={updateProjectData}
+          onFullArchive={() => exportFullArchive(globalNotes)}
+          globalResources={[]}
+          onAddGlobalResource={async () => {}}
+          onDeleteGlobalResource={async () => {}}
+          onToggleViewVisibility={() => {}}
+          projectsMetadata={projectsMetadata}
           onDeleteGlobalNote={async id => {
             setGlobalNotes(prev => prev.filter(n => n.id !== id));
             await deleteGlobalNote(id);
           }}
-        />;
-
+          onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }}
+          onChangeView={setCurrentView}
+          />;
       case ViewType.SETTINGS:
-        return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} />;
+        return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} />;
 
-      case ViewType.STENO_RESEARCH:
-        return projectData ? <StenoResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Steno Research.</div>;
+      case ViewType.RESEARCH:
+        return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
@@ -554,6 +859,8 @@ const App: React.FC = () => {
           onOpenSidebar={() => setIsMobileSidebarOpen(true)}
           hasActiveProject={!!projectData}
         />
+
+        <ActiveArchitect tasks={activeTasks} />
 
         {rescueData && (
           <BlueprintRescueView 

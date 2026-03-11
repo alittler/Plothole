@@ -122,17 +122,34 @@ export class SemanticWeaver {
   }
 
   /**
-   * Extracts graph connections (@, [[ ]], #)
+   * Extracts graph connections (@, [[ ]], #, !, %, ?, ^)
    */
-  static extractGraph(prose: string): { mentions: string[], entities: string[], tags: string[] } {
+  static extractGraph(prose: string): { 
+    mentions: string[], 
+    entities: string[], 
+    tags: string[], 
+    todos: string[],
+    sensory: string[],
+    inquiries: string[],
+    temporalAnchors: string[]
+  } {
     const mentions = (prose.match(/@\w+/g) || []).map(s => s.substring(1));
     const entities = (prose.match(/\[\[(.*?)\]\]/g) || []).map(s => s.slice(2, -2));
     const tags = (prose.match(/#\w+/g) || []).map(s => s.substring(1));
+    const todos = (prose.match(/!\w+/g) || []).map(s => s.substring(1));
+    const sensory = (prose.match(/%\w+/g) || []).map(s => s.substring(1));
+    const inquiries = (prose.match(/\?\w+/g) || []).map(s => s.substring(1));
+    const temporalAnchors = (prose.match(/\^([\w-\s]+)/g) || []).map(s => s.substring(1).trim());
 
     return {
       mentions: Array.from(new Set(mentions)),
       entities: Array.from(new Set(entities)),
-      tags: Array.from(new Set(tags))
+      tags: Array.from(new Set(tags)),
+      todos: Array.from(new Set(todos)),
+      sensory: Array.from(new Set(sensory)),
+      inquiries: Array.from(new Set(inquiries)),
+      temporalAnchors: Array.from(new Set(temporalAnchors))
     };
   }
 }
+

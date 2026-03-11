@@ -1,5 +1,5 @@
-import React from 'react';
-import { ToolboxLink } from '../../types';
+import React, { useState } from 'react';
+import { ToolboxLink, Note, ProjectData } from '../../types';
 import { HelpCircle, Plus, ExternalLink, Trash2 } from 'lucide-react';
 
 interface ToolboxViewProps {
@@ -11,7 +11,7 @@ interface ToolboxViewProps {
 export const ToolboxView: React.FC<ToolboxViewProps> = ({
   bakedResources, onAddResource, onDeleteResource
 }) => {
-  const [url, setUrl] = React.useState('');
+  const [url, setUrl] = useState('');
 
   const handleAdd = () => {
     if (!url.trim()) return;
@@ -34,7 +34,6 @@ export const ToolboxView: React.FC<ToolboxViewProps> = ({
       </header>
 
       <div className="max-w-4xl mx-auto px-4 pb-12 space-y-12">
-
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 flex gap-4">
           <input
             type="text"

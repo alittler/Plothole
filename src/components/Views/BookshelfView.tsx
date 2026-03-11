@@ -61,9 +61,15 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                   <h3 className="font-black text-xl text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 transition-colors">{project.title}</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 italic">by {project.author}</p>
                 </div>
-                <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400">
-                  <span>{project.characterCount} Characters</span>
-                  <span>{project.locationCount} Locations</span>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400">
+                    <span>{project.characterCount} Characters</span>
+                    <span>{project.locationCount} Locations</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-indigo-500/60">
+                    <span>{project.commitCount} Commits</span>
+                    <span>{project.backupCount} Redundancies</span>
+                  </div>
                 </div>
               </div>
               <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">

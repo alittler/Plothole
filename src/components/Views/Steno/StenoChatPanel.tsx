@@ -46,10 +46,14 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
     setIsChatLoading(true);
 
     try {
-      const canonIdeas = ideas.filter(i => i.isCanon).map(i => `Canon Idea: ${i.content}`).join('\n\n');
-      const context = sources.map(s => `Source: ${s.name}\n${s.content}`).join('\n\n') + 
-        (canonIdeas ? `\n\n${canonIdeas}` : '') +
-        `\n\nINSTRUCTIONS: When answering, you MUST cite your sources inline using the exact format [Source: Source Name].`;
+      const ledgerContent = ideas.filter(i => i.isCanon).map(i => `Ledger Entry: ${i.content}`).join('\n\n');
+      const context = (ledgerContent ? `### USER LEDGER (PRIORITY)\nYour primary source of truth is the user's Ledger. These are their creative thoughts and drafting notes.\n${ledgerContent}\n\n` : '') +
+        `### EXTERNAL SOURCES\nUse these for research and factual grounding, but the Ledger takes precedence.\n` + 
+        sources.map(s => `Source: ${s.name}\n${s.content}`).join('\n\n') + 
+        `\n\nINSTRUCTIONS: You are Merlin, a grounded AI assistant. 
+        1. GROUNDEDNESS: Prioritize ideas in the USER LEDGER over EXTERNAL RESEARCH. 
+        2. CITATIONS: Every claim MUST include a deep-link citation back to the original text using the format [[Source: Source Name]] or [[Ledger: Entry ID]].
+        3. STYLE: Be concise, analytical, and supportive of the user's creative vision.`;
       
       const history = chatMessages.map(m => ({
         role: m.role,
@@ -98,7 +102,7 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'}`}>
                  {msg.role === 'user' ? <UserIcon size={16} /> : <Sparkles size={16} />}
                </div>
-               <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'}`}>
+               <div className={`max-w-[85%] p-3 rounded-2xl text-sm break-words [overflow-wrap:anywhere] ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'}`}>
                  <div className="prose prose-slate dark:prose-invert max-w-none">
                    <Markdown
                      components={{

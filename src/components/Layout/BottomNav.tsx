@@ -42,8 +42,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         </button>
 
         <button
-          onClick={() => onChangeView(ViewType.STENO_RESEARCH)}
-          className={`flex items-center justify-center p-3 rounded-xl transition-all ${currentView === ViewType.STENO_RESEARCH ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
+          onClick={() => onChangeView(ViewType.RESEARCH)}
+          className={`flex items-center justify-center p-3 rounded-xl transition-all ${currentView === ViewType.RESEARCH ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
         >
           <Zap size={24} />
         </button>

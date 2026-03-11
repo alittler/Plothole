@@ -50,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'Story',
       items: [
-        { id: ViewType.STENO_RESEARCH, label: 'Research', icon: Zap, projectOnly: true },
+        { id: ViewType.RESEARCH, label: 'Research', icon: Database, projectOnly: true },
         { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
         { id: ViewType.MAP, label: 'World Hub', icon: Map, projectOnly: true },
         { id: ViewType.TIMELINE, label: 'Plot & Timeline', icon: Calendar, projectOnly: true },
@@ -79,9 +79,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <aside className={`
         fixed inset-y-0 left-0 z-[1001] lg:relative
-        bg-slate-950 text-slate-400 flex flex-col transition-all duration-300 border-r border-slate-800/50
+        bg-slate-950 text-slate-400 flex flex-col transition-all duration-500 ease-in-out border-r border-slate-800/50
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        ${isCollapsed ? 'lg:w-20' : 'w-64'}
+        ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
       `}>
         <div className="p-6 flex flex-col gap-1">
           <div className="flex items-center justify-between">

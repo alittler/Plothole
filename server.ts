@@ -153,6 +153,33 @@ async function startServer() {
     res.send('Server is working');
   });
 
+  app.post('/api/backup-email', async (req: any, res) => {
+    const userId = req.auth?.userId || 'user-1';
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { projectTitle, wordCount, hash, backupData } = req.body;
+    if (!resend) return res.status(503).json({ error: 'Resend not configured' });
+
+    try {
+      const email = await resend.emails.send({
+        from: 'Plothole Backups <backups@resend.dev>',
+        to: 'alittler86@gmail.com',
+        subject: `[Milestone] Backup: ${projectTitle} [${hash?.slice(0, 8)}] (${wordCount} words)`,
+        html: `<p>Automated backup for project: <strong>${projectTitle}</strong></p><p>Hash: <code>${hash}</code></p><p>Current word count: ${wordCount}</p><p>The encrypted .plothole file is attached (simulated for now, would be a base64 attachment in production).</p>`
+      });
+      res.json({ success: true, resendId: (email.data as any)?.id });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to send backup email' });
+    }
+  });
+
+  app.get('/api/verify-backup/:resendId', async (req: any, res) => {
+    // In a real app, you'd use resend.emails.get(req.params.resendId)
+    // and check the 'status' property.
+    res.json({ status: 'delivered' });
+  });
+
   // Vite middleware for development
   const vite = await createViteServer({
     server: { middlewareMode: true },

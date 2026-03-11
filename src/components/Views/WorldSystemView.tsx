@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ViewType, ProjectData, Location, Artifact, LoreEntry } from '../../types';
-import { Plus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText } from 'lucide-react';
+import { Plus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X } from 'lucide-react';
+
 import { Modal } from '../ui/Modal';
 import { MapView } from '../ui/MapView';
 import { generateId } from '../../services/storageService';
@@ -31,15 +32,52 @@ enum WorldTab {
   INVENTORY = 'Inventory',
   ENCYCLOPEDIA = 'Encyclopedia',
   DICTIONARY = 'Dictionary',
-  GALLERY = 'Gallery'
+  COSMOLOGY = 'Cosmology'
 }
 
 export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
-  data, onAddLocation, onAddArtifact, onAddLore, onUpdateLocation, onUpdateArtifact, onDeleteArtifact, onDeleteLore, onUpdateProject, currentView, onChangeView
+  data, onAddLocation, onAddArtifact, onAddLore, onUpdateLocation, onUpdateArtifact, onDeleteArtifact, onDeleteLore, onUpdateProject, currentView, onChangeView, currentMapParentId, onMapChange
 }) => {
   const [activeTab, setActiveTab] = useState<WorldTab>(WorldTab.ATLAS);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editingArtifact, setEditingArtifact] = useState<Artifact | null>(null);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
+  const zoomInRef = React.useRef<(() => void) | null>(null);
+  const zoomOutRef = React.useRef<(() => void) | null>(null);
+
+  const activeCalendar = data.calendars?.[0] || {
+    id: 'default',
+    name: 'Standard Calendar',
+    weekDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    months: [{ id: '1', name: 'January', days: 30 }],
+    eras: [{ id: '1', name: 'First Age', abbreviation: 'FA', startYear: 0 }],
+    currentEpochDay: 0
+  };
+
+  const DEFAULT_MAP = `data:image/svg+xml,%3Csvg width='800' height='600' viewBox='0 0 800 600' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f5f1e6'/%3E%3Cpath d='M0 0l800 600M800 0L0 600' stroke='%23e2e8f0' stroke-width='1'/%3E%3Ccircle cx='400' cy='300' r='100' fill='none' stroke='%23cbd5e1' stroke-dasharray='10,10'/%3E%3Ctext x='400' y='310' font-family='serif' font-size='24' fill='%2394a3b8' text-anchor='middle' font-style='italic'%3EUncharted Territory%3C/text%3E%3C/svg%3E`;
+
+  const locationQueue = data.locations.filter(l => l.x === undefined || l.y === undefined);
+
+  const handleMapUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (currentMapParentId) {
+        onUpdateProject({ 
+          locations: data.locations.map(l => l.id === currentMapParentId ? { ...l, mapImage: base64 } : l) 
+        });
+      } else {
+        onUpdateProject({ rootMapImage: base64 });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const filteredLocations = data.locations.filter(l => l.parentId === (currentMapParentId || undefined));
+  const parentLocation = data.locations.find(l => l.id === currentMapParentId);
 
   const handleSaveLocation = () => {
     if (editingLocation) {
@@ -56,15 +94,15 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
+      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="space-y-1 text-center md:text-left">
             <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">WORLD HUB</h1>
             <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Geography, artifacts, and the lore of your universe.</p>
           </div>
           <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar">
-            {[WorldTab.ATLAS, WorldTab.LOCATIONS, WorldTab.INVENTORY, WorldTab.ENCYCLOPEDIA, WorldTab.DICTIONARY, WorldTab.GALLERY].map(tab => (
+            {Object.values(WorldTab).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -77,19 +115,319 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-6xl mx-auto space-y-12">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="max-w-6xl mx-auto h-full flex flex-col space-y-12">
           {activeTab === WorldTab.ATLAS && (
-            <div className="h-[600px] w-full">
+            <div className="flex-1 min-h-[600px] relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-100 dark:bg-slate-900 max-w-full">
+              {/* Map Component */}
               <MapView 
-                locations={data.locations} 
-                rootMapImage={data.rootMapImage} 
+                locations={filteredLocations} 
+                rootMapImage={parentLocation?.mapImage || data.rootMapImage || DEFAULT_MAP} 
+                mapUnit={data.mapUnit}
+                zoomInRef={zoomInRef}
+                zoomOutRef={zoomOutRef}
+                onDimensionsDetected={(width, height) => setMapDimensions({ width, height })}
                 onLocationClick={(id) => {
                   const loc = data.locations.find(l => l.id === id);
-                  if (loc) setEditingLocation(loc);
+                  if (loc) {
+                    if (loc.mapImage) onMapChange(loc.id);
+                    else setEditingLocation(loc);
+                  }
+                }}
+                onLocationPlace={(id, x, y) => {
+                  const loc = data.locations.find(l => l.id === id);
+                  if (loc) {
+                    onUpdateLocation({ ...loc, x, y, parentId: currentMapParentId || undefined });
+                  }
+                }}
+                onMapClick={(x, y) => {
+                  console.log("Map Clicked", x, y);
                 }}
               />
+
+              {/* Floating Header Controls (Google Maps Style) */}
+              <div className="absolute top-6 left-6 right-6 flex items-start justify-between pointer-events-none z-30">
+                <div className="flex flex-col gap-3 pointer-events-auto">
+                  {/* Breadcrumbs */}
+                  <div className="flex items-center gap-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-white/20">
+                    <button onClick={() => onMapChange(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-emerald-600">
+                      <MapIcon size={20} />
+                    </button>
+                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
+                    <div className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
+                      <button onClick={() => onMapChange(null)} className="hover:text-emerald-500">World</button>
+                      {parentLocation && (
+                        <>
+                          <ChevronRight size={14} className="text-slate-400" />
+                          <span className="text-slate-900 dark:text-white font-black uppercase tracking-tight">{parentLocation.name}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 items-end pointer-events-auto">
+                  <div className="flex gap-2 p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/20">
+                    <button 
+                      onClick={() => zoomInRef.current?.()}
+                      className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
+                      title="Zoom In"
+                    >
+                      <Plus size={20} />
+                    </button>
+                    <button 
+                      onClick={() => zoomOutRef.current?.()}
+                      className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
+                      title="Zoom Out"
+                    >
+                      <X size={20} className="rotate-45" /> {/* Using X as a minus or could use Minus icon */}
+                    </button>
+                    
+                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+
+                    <button 
+                      onClick={() => setIsQueueOpen(!isQueueOpen)}
+                      className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all ${isQueueOpen ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'}`}
+                    >
+                      <Layout size={14} /> {isQueueOpen ? 'Close Queue' : 'Open Queue'}
+                      {locationQueue.length > 0 && <span className={`px-1.5 rounded-full ${isQueueOpen ? 'bg-white/20' : 'bg-indigo-100 text-indigo-600'}`}>{locationQueue.length}</span>}
+                    </button>
+                    
+                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+                    
+                    <label className="p-2 text-slate-500 hover:text-indigo-600 cursor-pointer transition-colors" title="Upload Map">
+                      <Upload size={20} />
+                      <input type="file" className="hidden" accept="image/*" onChange={handleMapUpload} />
+                    </label>
+                  </div>
+
+                  {/* Scale Calibration Panel */}
+                  <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/20 w-64 space-y-3">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <Search size={12} /> Scale Calibration
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 uppercase font-bold">
+                        <span>Image Width:</span>
+                        <span className="font-mono">{mapDimensions.width}px</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="number"
+                          value={data.mapScale || 100}
+                          onChange={(e) => onUpdateProject({ mapScale: parseInt(e.target.value) })}
+                          className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                          placeholder="Width value"
+                        />
+                        <select 
+                          value={data.mapUnit || 'km'}
+                          onChange={(e) => onUpdateProject({ mapUnit: e.target.value })}
+                          className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-2 py-1.5 text-[10px] font-black uppercase text-indigo-600"
+                        >
+                          <option value="km">KM</option>
+                          <option value="mi">Miles</option>
+                        </select>
+                      </div>
+                      <p className="text-[9px] text-slate-400 leading-tight italic text-center">
+                        Define how many {data.mapUnit || 'km'} the entire width of the image represents.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating Side Drawer (Location Queue) */}
+              <aside className={`
+                absolute top-24 bottom-6 right-6 z-40 w-80 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-2xl transition-all duration-500 ease-in-out rounded-3xl p-6 flex flex-col space-y-6
+                ${isQueueOpen ? 'translate-x-0 opacity-100 scale-100' : 'translate-x-12 opacity-0 scale-95 pointer-events-none'}
+              `}>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <Layout size={14} /> Location Queue
+                  </h3>
+                  <button onClick={() => setIsQueueOpen(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400">
+                    <X size={16} />
+                  </button>
+                </div>
+                
+                <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                  {locationQueue.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center space-y-3 p-4">
+                      <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300">
+                        <CheckCircle size={24} />
+                      </div>
+                      <p className="text-xs text-slate-400 italic">All locations have been spatially placed.</p>
+                    </div>
+                  ) : (
+                    locationQueue.map(loc => (
+                      <div 
+                        key={loc.id} 
+                        draggable
+                        onDragStart={(e) => e.dataTransfer.setData('locationId', loc.id)}
+                        className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-emerald-500/50 transition-all hover:shadow-md"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
+                          <Sparkles size={12} className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <h4 className="font-bold text-slate-900 dark:text-white text-sm break-words">{loc.name}</h4>
+                        <p className="text-[10px] text-slate-500 line-clamp-2 mt-1 italic">Drag to place on map</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                <div className="p-4 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-600/20">
+                  <p className="text-[10px] text-indigo-50 font-bold leading-relaxed">
+                    <strong>Placement Mode:</strong> Drag cards from this queue and drop them anywhere on the map to define their coordinates.
+                  </p>
+                </div>
+              </aside>
             </div>
+          )}
+
+          {activeTab === WorldTab.COSMOLOGY && (
+            <section className="space-y-8">
+               <div className="flex items-center justify-between">
+                <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                  <Clock size={20} className="text-indigo-500" /> Cosmology Engine
+                </h2>
+                <div className="px-4 py-2 bg-slate-900 text-white rounded-xl font-mono text-xs">
+                  Day Count: {activeCalendar.currentEpochDay || 0}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                    <span>Temporal Constants</span>
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Days per Week</span>
+                      <input type="number" value={activeCalendar.daysPerWeek || 7} onChange={(e) => {
+                          onUpdateProject({ calendars: [{ ...activeCalendar, daysPerWeek: parseInt(e.target.value) || 7 }] });
+                        }} className="w-20 bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-1 text-right font-mono" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Hours per Day (Ticks)</span>
+                      <input type="number" value={activeCalendar.hoursPerDay || 24} onChange={(e) => {
+                          onUpdateProject({ calendars: [{ ...activeCalendar, hoursPerDay: parseInt(e.target.value) || 24 }] });
+                        }} className="w-20 bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-1 text-right font-mono" />
+                    </div>
+                  </div>
+
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mt-8 flex items-center justify-between">
+                    <span>Months</span>
+                    <button onClick={() => {
+                      const newMonth = { id: generateId(), name: `Month ${activeCalendar.months.length + 1}`, days: 30 };
+                      onUpdateProject({ calendars: [{ ...activeCalendar, months: [...activeCalendar.months, newMonth] }] });
+                    }} className="text-indigo-500 hover:text-indigo-600"><Plus size={14} /></button>
+                  </h3>
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                    {activeCalendar.months.map((m, idx) => (
+                      <div key={m.id} className="flex items-center gap-2">
+                        <input 
+                          type="text" 
+                          value={m.name} 
+                          onChange={(e) => {
+                            const updated = [...activeCalendar.months];
+                            updated[idx] = { ...m, name: e.target.value };
+                            onUpdateProject({ calendars: [{ ...activeCalendar, months: updated }] });
+                          }}
+                          className="flex-1 bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-300"
+                        />
+                        <input 
+                          type="number" 
+                          value={m.days} 
+                          onChange={(e) => {
+                            const updated = [...activeCalendar.months];
+                            updated[idx] = { ...m, days: parseInt(e.target.value) || 0 };
+                            onUpdateProject({ calendars: [{ ...activeCalendar, months: updated }] });
+                          }}
+                          className="w-16 bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-1 text-sm text-center font-mono"
+                        />
+                        <span className="text-xs text-slate-400">days</span>
+                        <button onClick={() => {
+                          const updated = activeCalendar.months.filter(month => month.id !== m.id);
+                          onUpdateProject({ calendars: [{ ...activeCalendar, months: updated }] });
+                        }} className="p-1 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-8">
+                  <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                      <span>Epochs & Eras</span>
+                      <button onClick={() => {
+                        const newEra = { id: generateId(), name: `New Era`, abbreviation: 'NE', startYear: 0 };
+                        onUpdateProject({ calendars: [{ ...activeCalendar, eras: [...activeCalendar.eras, newEra] }] });
+                      }} className="text-indigo-500 hover:text-indigo-600"><Plus size={14} /></button>
+                    </h3>
+                    <div className="space-y-4 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                      {activeCalendar.eras.map((era, idx) => (
+                        <div key={era.id} className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                           <div className="flex items-center gap-2">
+                            <input 
+                              type="text" 
+                              value={era.name} 
+                              onChange={(e) => {
+                                const updated = [...activeCalendar.eras];
+                                updated[idx] = { ...era, name: e.target.value };
+                                onUpdateProject({ calendars: [{ ...activeCalendar, eras: updated }] });
+                              }}
+                              className="flex-1 bg-white dark:bg-slate-900 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-300"
+                              placeholder="Era Name"
+                            />
+                            <input 
+                              type="text" 
+                              value={era.abbreviation} 
+                              onChange={(e) => {
+                                const updated = [...activeCalendar.eras];
+                                updated[idx] = { ...era, abbreviation: e.target.value };
+                                onUpdateProject({ calendars: [{ ...activeCalendar, eras: updated }] });
+                              }}
+                              className="w-16 bg-white dark:bg-slate-900 border-none rounded-lg px-3 py-1 text-sm text-center font-mono uppercase"
+                              placeholder="Abbr."
+                            />
+                            <button onClick={() => {
+                              const updated = activeCalendar.eras.filter(e => e.id !== era.id);
+                              onUpdateProject({ calendars: [{ ...activeCalendar, eras: updated }] });
+                            }} className="p-1 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                           </div>
+                           <div className="flex items-center gap-2 text-xs text-slate-500">
+                             <span>Starts Year:</span>
+                             <input 
+                                type="number" 
+                                value={era.startYear} 
+                                onChange={(e) => {
+                                  const updated = [...activeCalendar.eras];
+                                  updated[idx] = { ...era, startYear: parseInt(e.target.value) || 0 };
+                                  onUpdateProject({ calendars: [{ ...activeCalendar, eras: updated }] });
+                                }}
+                                className="w-20 bg-white dark:bg-slate-900 border-none rounded px-2 py-0.5 text-center font-mono"
+                              />
+                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Global Synchronization</h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Current Day Count (UEI)</span>
+                      <div className="flex items-center gap-2">
+                         <button onClick={() => onUpdateProject({ calendars: [{ ...activeCalendar, currentEpochDay: Math.max(0, (activeCalendar.currentEpochDay || 0) - 1) }] })} className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white">-</button>
+                         <span className="w-16 text-center font-mono font-bold text-slate-900 dark:text-white">{activeCalendar.currentEpochDay || 0}</span>
+                         <button onClick={() => onUpdateProject({ calendars: [{ ...activeCalendar, currentEpochDay: (activeCalendar.currentEpochDay || 0) + 1 }] })} className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white">+</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
           )}
 
           {activeTab === WorldTab.LOCATIONS && (
@@ -98,7 +436,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
                   <MapIcon size={20} className="text-emerald-500" /> Locations
                 </h2>
-                <button onClick={() => onAddLocation({ id: Math.random().toString(), name: 'New Location', description: '', type: 'City', source: 'manual' })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors flex items-center gap-2">
+                <button onClick={() => onAddLocation({ id: generateId(), name: 'New Location', description: '', type: 'City', source: 'manual' })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm flex items-center gap-2">
                   <Plus size={16} /> Add Location
                 </button>
               </div>
@@ -112,8 +450,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         <button onClick={() => onUpdateProject({ locations: data.locations.filter(l => l.id !== loc.id) })} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
                       </div>
                     </div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">{loc.name}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{loc.description}</p>
+                    <div className="break-words [overflow-wrap:anywhere]">
+                      <h3 className="font-bold text-slate-900 dark:text-white">{loc.name}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{loc.description}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -126,7 +466,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
                   <Box size={20} className="text-amber-500" /> Artifacts
                 </h2>
-                <button onClick={() => onAddArtifact({ id: Math.random().toString(), name: 'New Artifact', type: 'Relic', description: '', source: 'manual' })} className="px-4 py-2 bg-amber-600 text-white rounded-xl font-bold text-sm hover:bg-amber-700 transition-colors flex items-center gap-2">
+                <button onClick={() => onAddArtifact({ id: generateId(), name: 'New Artifact', type: 'Relic', description: '', source: 'manual' })} className="px-4 py-2 bg-amber-600 text-white rounded-xl font-bold text-sm flex items-center gap-2">
                   <Box size={16} /> Add Artifact
                 </button>
               </div>
@@ -140,8 +480,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         <button onClick={() => onDeleteArtifact(art.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
                       </div>
                     </div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">{art.name}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{art.description}</p>
+                    <div className="break-words [overflow-wrap:anywhere]">
+                      <h3 className="font-bold text-slate-900 dark:text-white">{art.name}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{art.description}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -154,17 +496,14 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
                   <Book size={20} className="text-indigo-500" /> Encyclopedia
                 </h2>
-                <button 
-                  onClick={() => onAddLore({ id: generateId(), term: 'New Entry', definition: '', category: 'General', source: 'manual' })}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors flex items-center gap-2"
-                >
+                <button onClick={() => onAddLore({ id: generateId(), term: 'New Entry', definition: '', category: 'General', source: 'manual' })} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm flex items-center gap-2">
                   <Plus size={16} /> Add Entry
                 </button>
               </div>
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
                 {data.lore?.filter(l => l.category !== 'Dictionary').map(entry => (
                   <div key={entry.id} className="p-6 flex items-start justify-between group">
-                    <div>
+                    <div className="break-words [overflow-wrap:anywhere] flex-1 min-w-0">
                       <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{entry.category}</span>
                       <h4 className="font-bold text-slate-900 dark:text-white text-lg">{entry.term}</h4>
                       <p className="text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">{entry.definition}</p>
@@ -184,16 +523,13 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
                   <FileText size={20} className="text-emerald-500" /> Dictionary
                 </h2>
-                <button 
-                  onClick={() => onAddLore({ id: generateId(), term: 'New Word', definition: '', category: 'Dictionary', source: 'manual' })}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors flex items-center gap-2"
-                >
+                <button onClick={() => onAddLore({ id: generateId(), term: 'New Word', definition: '', category: 'Dictionary', source: 'manual' })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm flex items-center gap-2">
                   <Plus size={16} /> Add Word
                 </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {data.lore?.filter(l => l.category === 'Dictionary').map(entry => (
-                  <div key={entry.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
+                  <div key={entry.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative break-words [overflow-wrap:anywhere]">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Term</span>
                       <button onClick={() => onDeleteLore(entry.id)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
@@ -205,12 +541,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
               </div>
             </section>
           )}
-
-          {activeTab === WorldTab.GALLERY && (
-            <div className="h-full flex items-center justify-center text-slate-400 italic">
-              Gallery feature coming soon.
-            </div>
-          )}
         </div>
       </div>
 
@@ -218,14 +548,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
         {editingLocation && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Name</label><input type="text" value={editingLocation.name} onChange={e => setEditingLocation({...editingLocation, name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Type</label><input type="text" value={editingLocation.type} onChange={e => setEditingLocation({...editingLocation, type: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" /></div>
+              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Name</label><input type="text" value={editingLocation.name} onChange={e => setEditingLocation({...editingLocation, name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-slate-900 dark:text-white" /></div>
+              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Type</label><input type="text" value={editingLocation.type} onChange={e => setEditingLocation({...editingLocation, type: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-slate-900 dark:text-white" /></div>
             </div>
             <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Description</label><textarea value={editingLocation.description} onChange={e => setEditingLocation({...editingLocation, description: e.target.value})} className="w-full h-32 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 resize-none" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Map X</label><input type="number" value={editingLocation.x || 0} onChange={e => setEditingLocation({...editingLocation, x: parseFloat(e.target.value)})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Map Y</label><input type="number" value={editingLocation.y || 0} onChange={e => setEditingLocation({...editingLocation, y: parseFloat(e.target.value)})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" /></div>
-            </div>
           </div>
         )}
       </Modal>
@@ -234,8 +560,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
         {editingArtifact && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Name</label><input type="text" value={editingArtifact.name} onChange={e => setEditingArtifact({...editingArtifact, name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Type</label><input type="text" value={editingArtifact.type} onChange={e => setEditingArtifact({...editingArtifact, type: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" /></div>
+              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Name</label><input type="text" value={editingArtifact.name} onChange={e => setEditingArtifact({...editingArtifact, name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-slate-900 dark:text-white" /></div>
+              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Type</label><input type="text" value={editingArtifact.type} onChange={e => setEditingArtifact({...editingArtifact, type: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-slate-900 dark:text-white" /></div>
             </div>
             <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Description</label><textarea value={editingArtifact.description} onChange={e => setEditingArtifact({...editingArtifact, description: e.target.value})} className="w-full h-32 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 resize-none" /></div>
           </div>

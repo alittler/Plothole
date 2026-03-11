@@ -25,17 +25,19 @@ const getDB = (): Promise<IDBDatabase> => {
   return dbPromise;
 };
 
-export const generateId = () => crypto.randomUUID();
+export const generateId = () => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const array = new Uint8Array(8);
+  crypto.getRandomValues(array);
+  return Array.from(array).map(b => chars[b % chars.length]).join('');
+};
 
-// Simple string hash for integrity checks
-const generateHash = (str: string): string => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(16);
+// Real SHA-256 hash for integrity checks
+export const generateSHA256 = async (str: string): Promise<string> => {
+  const msgBuffer = new TextEncoder().encode(str);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
 export const getApiKey = async (keyName: string): Promise<string | null> => {
@@ -175,6 +177,8 @@ export const getAllProjectsMetadata = async (): Promise<ProjectMetadata[]> => {
         lastModified: p.lastModified, 
         characterCount: p.characters?.length || 0, 
         locationCount: p.locations?.length || 0,
+        commitCount: p.commits?.length || 0,
+        backupCount: p.backups?.length || 0,
         coverImage: p.coverImage
       })));
     };
@@ -228,6 +232,89 @@ export const clearDatabase = async (): Promise<void> => {
     });
 };
 
+export const exportProjectPlothole = async (project: ProjectData, globalNotes?: Note[]) => {
+    const zip = new JSZip();
+    const safeTitle = project.title.replace(/[^a-z0-9]/gi, '_') || "Untitled_Project";
+    const dateStr = new Date().toISOString().split('T')[0];
+    
+    // manifest.json - The brain of the file
+    zip.file("manifest.json", JSON.stringify({
+      id: project.id,
+      title: project.title,
+      author: project.author,
+      summary: project.summary,
+      lastModified: project.lastModified,
+      uei: project.activeCalendarId,
+      integrityHash: project.integrityHash,
+      commits: project.commits?.length || 0,
+      backups: project.backups?.length || 0
+    }, null, 2));
+
+    // Full project data for restoration
+    zip.file("Project_Data.json", JSON.stringify(project, null, 2));
+
+    // Global Notes / Notepad
+    if (globalNotes && globalNotes.length > 0) {
+      zip.file("global_notepad.json", JSON.stringify(globalNotes, null, 2));
+    }
+
+    // manuscript/ - Markdown versions
+    const manuscriptFolder = zip.folder("manuscript");
+    if (project.chapters && project.chapters.length > 0) {
+      project.chapters.forEach((c, idx) => {
+        manuscriptFolder?.file(`${idx + 1}_${c.title.replace(/\s+/g, '_')}.md`, c.content);
+      });
+    }
+
+    // assets/ - simulated
+    const assetsFolder = zip.folder("assets");
+    if (project.sources && project.sources.length > 0) {
+      project.sources.forEach(s => {
+        if (s.type === 'image') {
+          // If content is base64, save as file
+          const match = s.content.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
+          if (match) {
+            assetsFolder?.file(s.name, match[2], { base64: true });
+          } else {
+            assetsFolder?.file(`${s.name}.txt`, s.content);
+          }
+        } else {
+          assetsFolder?.file(`${s.name}.txt`, s.content);
+        }
+      });
+    }
+
+    // Full project sources JSON
+    zip.file("sources.json", JSON.stringify(project.sources || [], null, 2));
+
+    // ledger.db - simulated relational store
+    zip.file("ledger.db", JSON.stringify(project.ledger || [], null, 2));
+
+    const blob = await zip.generateAsync({type:"blob"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; 
+    link.download = `${safeTitle}.plothole`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+};
+
+export const exportGlobalPvoid = async (globalNotes: Note[]) => {
+    const zip = new JSZip();
+    const dateStr = new Date().toISOString().split('T')[0];
+    const data = { version: APP_DATA_VERSION, timestamp: Date.now(), source: 'Plothole_Global_Vault', globalNotes };
+    
+    zip.file("Global_Vault.json", JSON.stringify(data, null, 2));
+    
+    const blob = await zip.generateAsync({type:"blob"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; 
+    link.download = `P_Library_Archive_${dateStr}.pvoid`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+};
+
 export const exportFullArchive = async (globalNotes: Note[]) => {
     const db = await getDB();
     const allProjects: ProjectData[] = await new Promise((resolve) => {
@@ -243,7 +330,7 @@ export const exportFullArchive = async (globalNotes: Note[]) => {
     zip.file("full_system_restore.json", JSON.stringify(fullRestoreObj, null, 2));
 
     const projectsFolder = zip.folder("Projects");
-    allProjects.forEach(p => {
+    for (const p of allProjects) {
         const safeTitle = p.title.replace(/[^a-z0-9]/gi, '_') || "Untitled_Project";
         const pFolder = projectsFolder?.folder(safeTitle);
         pFolder?.file("Project_Data.json", JSON.stringify(p, null, 2));
@@ -252,25 +339,26 @@ export const exportFullArchive = async (globalNotes: Note[]) => {
             const vaultFolder = pFolder?.folder("Manuscripts");
             const top5 = [...p.manuscriptHistory].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
 
-            const manifest = top5.map(h => ({
+            const manifest = await Promise.all(top5.map(async h => ({
                 id: h.id,
                 filename: h.filename,
                 timestamp: h.timestamp,
                 date: new Date(h.timestamp).toISOString(),
-                hash: generateHash(h.content),
+                hash: await generateSHA256(h.content),
                 wordCount: h.content.trim().split(/\s+/).length
-            }));
+            })));
 
             vaultFolder?.file("Vault_Manifest.json", JSON.stringify(manifest, null, 2));
 
-            top5.forEach((m, idx) => {
+            for (let i = 0; i < top5.length; i++) {
+                const m = top5[i];
                 const dateTag = new Date(m.timestamp).toISOString().slice(0, 10);
-                const hashTag = generateHash(m.content).slice(0, 8);
+                const hashTag = (await generateSHA256(m.content)).slice(0, 8);
                 const ext = m.filename.endsWith('.md') ? '.md' : '.txt';
-                vaultFolder?.file(`${idx + 1}_${dateTag}_${hashTag}${ext}`, m.content);
-            });
+                vaultFolder?.file(`${i + 1}_${dateTag}_${hashTag}${ext}`, m.content);
+            }
         }
-    });
+    }
 
     const blob = await zip.generateAsync({type:"blob"});
     const url = URL.createObjectURL(blob);

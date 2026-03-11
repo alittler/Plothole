@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
-import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, LayoutGrid } from 'lucide-react';
+import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { calculateUEI } from '../../utils/calendarUtils';
 
 interface PlotSystemViewProps {
   currentView: ViewType;
@@ -13,7 +14,9 @@ interface PlotSystemViewProps {
   onAddTimelineEvent: (e: TimelineEvent) => void;
   onUpdateTimelineEvent: (e: TimelineEvent) => void;
   onAnalyzePlot: () => void;
+  onExtractSoftAnchors: () => void;
   onUpdateProject: (updates: Partial<ProjectData>) => void;
+  isAnalyzing?: boolean;
 }
 
 enum PlotTab {
@@ -23,10 +26,25 @@ enum PlotTab {
 }
 
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
-  data, onAddTimelineEvent, onUpdateTimelineEvent, onUpdateProject
+  data, onAddTimelineEvent, onUpdateTimelineEvent, onUpdateProject, onUpdateCalendar, onExtractSoftAnchors, isAnalyzing
 }) => {
   const [activeTab, setActiveTab] = useState<PlotTab>(PlotTab.TIMELINE);
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
+
+  // Calendar State
+  const activeCalendar = data.calendars?.find(c => c.id === data.activeCalendarId) || data.calendars?.[0] || {
+    id: 'default',
+    name: 'Standard Calendar',
+    weekDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    daysPerWeek: 7,
+    hoursPerDay: 24,
+    months: [{ id: '1', name: 'January', days: 30 }],
+    eras: [{ id: '1', name: 'First Age', abbreviation: 'FA', startYear: 0 }],
+    currentEpochDay: 0
+  };
+
+  const [currentYear, setCurrentYear] = useState<number>(1);
+  const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(0);
 
   const handleSave = () => {
     if (editingEvent) {
@@ -38,6 +56,42 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this event?')) {
       onUpdateProject({ timeline: data.timeline.filter(e => e.id !== id) });
+    }
+  };
+
+  // Pre-calculate UEI for events that have parsed dates (for demo purposes we assume "date" could be parsed, 
+  // or we just rely on explicitly set UEIs in the event object)
+  const eventsByUEI = useMemo(() => {
+    const map = new Map<number, TimelineEvent[]>();
+    data.timeline.forEach(event => {
+       if (event.uei !== undefined) {
+         const list = map.get(event.uei) || [];
+         list.push(event);
+         map.set(event.uei, list);
+       }
+    });
+    return map;
+  }, [data.timeline]);
+
+  const currentMonth = activeCalendar.months[currentMonthIndex] || { name: 'Unknown', days: 30 };
+  const daysPerWeek = activeCalendar.daysPerWeek || 7;
+  const gridCells = Array.from({ length: currentMonth.days }, (_, i) => i + 1);
+
+  const handlePrevMonth = () => {
+    if (currentMonthIndex > 0) {
+      setCurrentMonthIndex(currentMonthIndex - 1);
+    } else if (currentYear > 1) {
+      setCurrentYear(currentYear - 1);
+      setCurrentMonthIndex(activeCalendar.months.length - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonthIndex < activeCalendar.months.length - 1) {
+      setCurrentMonthIndex(currentMonthIndex + 1);
+    } else {
+      setCurrentYear(currentYear + 1);
+      setCurrentMonthIndex(0);
     }
   };
 
@@ -70,20 +124,30 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
         <div className="max-w-4xl mx-auto">
           {activeTab === PlotTab.TIMELINE && (
             <>
-              <div className="flex justify-end mb-8">
+              <div className="flex justify-end gap-4 mb-8">
+                <button 
+                  onClick={onExtractSoftAnchors} 
+                  disabled={isAnalyzing}
+                  className="px-6 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold hover:bg-indigo-100 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Sparkles size={18} /> Sync Soft Anchors
+                </button>
                 <button onClick={() => onAddTimelineEvent({ id: Math.random().toString(), date: 'Year 1', title: 'New Event', description: '', charactersInvolved: [], location: '', source: 'manual' })} className="px-6 py-2 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition-colors flex items-center gap-2">
                   <Plus size={18} /> Add Event
                 </button>
               </div>
               <div className="relative border-l-2 border-slate-200 dark:border-slate-800 pl-8 space-y-12">
-                {data.timeline.map((event, idx) => (
+                {data.timeline.sort((a,b) => (a.uei || 0) - (b.uei || 0)).map((event, idx) => (
                   <div key={event.id} className="relative group">
-                    <div className="absolute -left-[41px] top-0 w-4 h-4 rounded-full bg-amber-500 border-4 border-white dark:border-slate-950 shadow-sm" />
-                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 hover:shadow-md transition-all">
+                    <div className={`absolute -left-[41px] top-0 w-4 h-4 rounded-full border-4 border-white dark:border-slate-950 shadow-sm ${event.isSoftAnchor ? 'bg-indigo-400 border-dashed' : 'bg-amber-500'}`} />
+                    <div className={`p-6 rounded-2xl shadow-sm border hover:shadow-md transition-all ${event.isSoftAnchor ? 'bg-indigo-50/30 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-black text-amber-600 uppercase tracking-widest">{event.date}</span>
                         <div className="flex items-center gap-2">
-                          {event.source === 'ai' && <Sparkles size={14} className="text-amber-400" />}
+                          <span className={`text-xs font-black uppercase tracking-widest ${event.isSoftAnchor ? 'text-indigo-500' : 'text-amber-600'}`}>{event.date}</span>
+                          {event.isSoftAnchor && <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded uppercase tracking-widest font-black flex items-center gap-1"><Clock size={10} /> Soft Anchor</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {event.source === 'ai' && <Sparkles size={14} className={event.isSoftAnchor ? 'text-indigo-400' : 'text-amber-400'} />}
                           <button onClick={() => setEditingEvent(event)} className="p-1 text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100">
                             <Edit2 size={14} />
                           </button>
@@ -109,8 +173,68 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
           )}
 
           {activeTab === PlotTab.CALENDAR && (
-            <div className="h-96 flex items-center justify-center text-slate-400 italic border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
-              Calendar system feature coming soon.
+            <div className="space-y-6">
+              <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-4">
+                  <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                    <ChevronLeft size={20} />
+                  </button>
+                  <div className="text-center w-48">
+                    <div className="font-black text-lg text-slate-900 dark:text-white uppercase tracking-tight">{currentMonth.name}</div>
+                    <div className="text-xs font-bold text-amber-500 uppercase tracking-widest">
+                       Year {currentYear} {activeCalendar.eras.length > 0 ? activeCalendar.eras[0].abbreviation : ''}
+                    </div>
+                  </div>
+                  <button onClick={handleNextMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+                <div className="text-xs text-slate-500">
+                  Universal Epoch: <span className="font-mono font-bold text-slate-900 dark:text-white">{activeCalendar.currentEpochDay || 0}</span>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950" style={{ gridTemplateColumns: `repeat(${daysPerWeek}, minmax(0, 1fr))` }}>
+                  {Array.from({ length: daysPerWeek }).map((_, i) => (
+                    <div key={i} className="p-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest border-r last:border-r-0 border-slate-200 dark:border-slate-800">
+                      {activeCalendar.weekDays[i % activeCalendar.weekDays.length] || `Day ${i + 1}`}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid auto-rows-fr" style={{ gridTemplateColumns: `repeat(${daysPerWeek}, minmax(0, 1fr))` }}>
+                  {gridCells.map(day => {
+                    const uei = calculateUEI(activeCalendar, currentYear, currentMonthIndex, day);
+                    const isToday = uei === activeCalendar.currentEpochDay;
+                    const dayEvents = eventsByUEI.get(uei) || [];
+
+                    return (
+                      <div 
+                        key={day} 
+                        className={`min-h-[120px] p-2 border-r border-b border-slate-100 dark:border-slate-800 relative group transition-colors ${isToday ? 'bg-amber-50/50 dark:bg-amber-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+                      >
+                        <div className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isToday ? 'bg-amber-500 text-white' : 'text-slate-500'}`}>
+                          {day}
+                        </div>
+                        <div className="space-y-1">
+                          {dayEvents.map(ev => (
+                            <div key={ev.id} className="text-[10px] p-1.5 rounded bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 truncate cursor-pointer hover:border-amber-500 transition-colors shadow-sm" onClick={() => setEditingEvent(ev)}>
+                              <span className="font-bold text-amber-600 dark:text-amber-400 mr-1">•</span>
+                              {ev.title}
+                            </div>
+                          ))}
+                        </div>
+                        <button 
+                           onClick={() => onAddTimelineEvent({ id: Math.random().toString(), date: `${day} of ${currentMonth.name}`, uei, title: 'New Event', description: '', charactersInvolved: [], location: '', source: 'manual' })}
+                           className="absolute bottom-2 right-2 p-1 bg-amber-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 

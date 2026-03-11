@@ -5,7 +5,7 @@ import { getAppPrompts, generateId, getApiKey, saveApiKey } from "./storageServi
 let initializedApiKey: string | null = null;
 
 export const initializeApiKey = async () => {
-  initializedApiKey = process.env.GEMINI_API_KEY || await getApiKey('gemini_api_key');
+  initializedApiKey = (import.meta as any).env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) || await getApiKey('gemini_api_key');
 };
 
 export const isApiKeyValid = () => {
@@ -143,6 +143,20 @@ const getCurrentPrompts = async (): Promise<AppPrompts> => {
   return { ...DEFAULT_PROMPTS, ...(saved || {}) };
 };
 
+const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const msg = error.message?.toLowerCase() || "";
+    if (retries > 0 && (msg.includes("quota") || msg.includes("limit") || msg.includes("429") || msg.includes("503"))) {
+      console.warn(`AI Rate Limit hit, retrying in ${delay}ms... (${retries} retries left)`);
+      await new Promise(res => setTimeout(res, delay));
+      return withRetry(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+};
+
 export const analyzeManuscript = async (text: string, tokenLimit?: number, options?: AnalysisOptions): Promise<ManuscriptAnalysisResponse> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
@@ -178,18 +192,31 @@ export const analyzeManuscript = async (text: string, tokenLimit?: number, optio
     chunks.push(text.substring(Math.max(0, textLength - actualLimit)));
   }
 
-  const results = await Promise.all(chunks.map(async (chunk) => {
-    const res = await ai.models.generateContent({
-      model,
-      contents: [{ role: 'user', parts: [{ text: chunk }] }],
-      config: { 
-        systemInstruction,
-        responseMimeType: "application/json", 
-        responseSchema: unifiedAnalysisSchema
-      }
-    });
-    return safeJsonParse(res.text, {});
-  }));
+  const results = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    console.log(`Analyzing manuscript chunk ${i+1}/${chunks.length}...`);
+    try {
+      const res = await withRetry(() => ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts: [{ text: chunk }] }],
+        config: { 
+          systemInstruction,
+          responseMimeType: "application/json", 
+          responseSchema: unifiedAnalysisSchema
+        }
+      }));
+      results.push(safeJsonParse(res.text, {}));
+    } catch (e) {
+      console.error(`Chunk ${i+1} failed:`, e);
+      // Continue with other chunks if one fails, or throw if crucial?
+      // For manuscript extraction, partial is better than nothing.
+    }
+  }
+
+  if (results.length === 0) {
+    throw new Error("AI failed to return any valid analysis results.");
+  }
 
   // Merge Results
   const merged: ManuscriptAnalysisResponse = {
@@ -243,7 +270,7 @@ export const detectManuscriptStructure = async (snippet: string): Promise<{actPa
   const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const systemInstruction = "Identify novel structure patterns (Acts, Chapters, Scenes) from the text. Return JSON with Javascript Regex strings (using ^ for start-of-line).";
 
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model,
     contents: `Analyze this manuscript snippet and find the splitting patterns: ${snippet.substring(0, 10000)}`,
     config: {
@@ -259,7 +286,7 @@ export const detectManuscriptStructure = async (snippet: string): Promise<{actPa
         required: ["actPattern", "chapterPattern", "scenePattern"]
       }
     }
-  });
+  }));
 
   return safeJsonParse(response.text, { actPattern: "^Part\\s+[0-9]+", chapterPattern: "^Chapter\\s+[0-9]+", scenePattern: "^\\*\\*\\*" });
 };
@@ -271,7 +298,7 @@ export const getEvocativeTitles = async (scenes: {id: string, content: string}[]
 
   const payload = scenes.map(s => `ID: ${s.id}\nCONTENT: ${s.content.substring(0, 500)}`).join('\n\n---\n\n');
 
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model,
     contents: `Generate 3-5 word evocative titles for these scenes:\n\n${payload}`,
     config: {
@@ -288,7 +315,7 @@ export const getEvocativeTitles = async (scenes: {id: string, content: string}[]
         }
       }
     }
-  });
+  }));
 
   return safeJsonParse(response.text, []);
 };
@@ -298,13 +325,13 @@ export const doubleProcessNote = async (rawNote: string): Promise<{ expanded: st
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-3-flash-preview";
 
-  const expansionRes = await ai.models.generateContent({
+  const expansionRes = await withRetry(() => ai.models.generateContent({
     model,
     contents: [{ role: 'user', parts: [{ text: `${prompts.NOTE_ENHANCEMENT}\n\nNote: ${rawNote}` }] }]
-  });
+  }));
   const expandedText = expansionRes.text || rawNote;
 
-  const processingRes = await ai.models.generateContent({
+  const processingRes = await withRetry(() => ai.models.generateContent({
     model,
     contents: [{ role: 'user', parts: [{ text: `${prompts.PROCESS_RAW_NOTES}\n\nText: ${expandedText}` }] }],
     config: { 
@@ -318,7 +345,7 @@ export const doubleProcessNote = async (rawNote: string): Promise<{ expanded: st
         }
       }
     }
-  });
+  }));
 
   const meta = safeJsonParse(processingRes.text, { summary: "", tags: [] });
   return {
@@ -576,17 +603,48 @@ export const stenoResearch = async (text: string) => {
     ---
   `;
   
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-  });
-  
+  }));
+
   return response.text || "Research analysis failed.";
+
 };
 
 /**
  * Generic chat function for the AI Assistant.
  */
+export const smartExtractSources = async (text: string): Promise<{ title: string; author: string; content: string; citation: string; url?: string; type: 'text' | 'web' }[]> => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+
+  const prompt = `
+    Extract sources from the following text. 
+    1. If the text is a URL, fetch/determine the website title and provide the URL.
+    2. If the text is a title of a book, article, or resource, find/suggest a likely primary URL for it.
+    3. Extract any significant literary/scriptural verses or quotes.
+    
+    Return a JSON array of objects with { title, author, content, citation, url, type }.
+    - 'type' should be 'web' if a URL is provided or found, otherwise 'text'.
+    
+    TEXT: ${text}`;
+
+  try {
+    const response = await withRetry(() => ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json"
+      }
+    }));
+    return safeJsonParse(response.text, []);
+  } catch (error) {
+    console.error("Smart Extract Error:", error);
+    return [];
+  }
+};
 export const chatWithAssistant = async (
   message: string, 
   projectData: ProjectData | null, 
@@ -645,4 +703,150 @@ ${noteData}`,
   });
 
   return safeJsonParse(response.text, []);
+};
+
+export const extractSoftAnchors = async (
+  text: string, 
+  existingEvents: { id: string, title: string, uei: number }[]
+): Promise<{ title: string; description: string; uei: number; referenceEventId: string; date: string }[]> => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  
+  const existingContext = existingEvents.map(e => `ID: ${e.id} | Title: ${e.title} | UEI (Day Count): ${e.uei}`).join('\n');
+
+  const prompt = `
+You are Merlin, a master timeline architect.
+Analyze the following text for "relative" temporal markers (e.g., "three days after the fire", "two weeks before the coronation").
+
+Here are the existing "Hard Anchors" (known events) with their Universal Epoch Integer (UEI), which represents their raw day count:
+---
+${existingContext || 'None'}
+---
+
+Task:
+1. Find any phrase that indicates a relative date tied to one of the hard anchors above.
+2. Calculate the exact new UEI based on that reference (e.g., if the anchor is at UEI 45, "two days later" is UEI 47).
+3. Create a descriptive title and description for the new event.
+4. Estimate a natural language date string (e.g. "Year 1, Month 2").
+
+Return a JSON array of these new "Soft Anchor" events:
+[{ "title": "Event Name", "description": "What happens", "uei": 47, "referenceEventId": "the-hard-anchor-id", "date": "Estimated Date String" }]
+
+Text to analyze:
+${text}
+  `;
+
+  const response = await withRetry(() => ai.models.generateContent({
+    model,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            description: { type: Type.STRING },
+            uei: { type: Type.INTEGER },
+            referenceEventId: { type: Type.STRING },
+            date: { type: Type.STRING }
+          },
+          required: ["title", "description", "uei", "referenceEventId", "date"]
+        }
+      }
+    }
+  }));
+
+  return safeJsonParse(response.text, []);
+};
+
+export const performOCR = async (base64Image: string): Promise<string> => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+
+  const prompt = `
+    Perform high-accuracy OCR on the attached image. 
+    Extract all visible text, including handwritten notes, character sketches details, or research clippings.
+    Format the output as clean Markdown.
+  `;
+
+  try {
+    const response = await withRetry(() => ai.models.generateContent({
+      model,
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: base64Image.split(',')[1] || base64Image
+              }
+            }
+          ]
+        }
+      ]
+    }));
+    return response.text || "";
+  } catch (error) {
+    console.error("OCR Error:", error);
+    return "Failed to extract text from image.";
+  }
+};
+
+export const auditPlotThreads = async (
+  chapters: { title: string, content: string }[], 
+  timeline: TimelineEvent[]
+): Promise<{ id: string; type: 'character' | 'mystery' | 'plot-point'; content: string; message: string }[]> => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+
+  const manuscriptText = chapters.map(c => `Chapter: ${c.title}\n${c.content.substring(0, 2000)}`).join('\n\n');
+  const timelineSummary = timeline.map(e => `- ${e.title}: ${e.description}`).join('\n');
+
+  const prompt = `
+You are Merlin, a master narrative auditor.
+Analyze the following manuscript excerpts and timeline for "Dead Threads"—mysteries, characters, or plot setups introduced early on that have no resolution, appearance, or impact in the later parts of the story.
+
+MANUSCRIPT:
+${manuscriptText}
+
+TIMELINE:
+${timelineSummary}
+
+Return a JSON array of objects:
+[{ "id": "uuid", "type": "character|mystery|plot-point", "content": "Name/Subject", "message": "Why it is a dead thread" }]
+  `;
+
+  try {
+    const response = await withRetry(() => ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              type: { type: Type.STRING, enum: ["character", "mystery", "plot-point"] },
+              content: { type: Type.STRING },
+              message: { type: Type.STRING }
+            },
+            required: ["id", "type", "content", "message"]
+          }
+        }
+      }
+    }));
+    return safeJsonParse(response.text, []);
+  } catch (err) {
+    console.error("Plot Audit Error:", err);
+    return [];
+  }
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ViewType, ProjectData, ProjectMetadata, Chapter, Note } from '../../types';
-import { PenTool, Plus, Save, Sparkles, FileText, Eye, Edit3, List, BarChart2 } from 'lucide-react';
+import { PenTool, Plus, Save, Sparkles, FileText, Eye, Edit3, List, BarChart2, Users, Hash } from 'lucide-react';
 import { WikiText } from '../ui/WikiText';
 
 interface ManuscriptSystemViewProps {
@@ -12,6 +12,7 @@ interface ManuscriptSystemViewProps {
   onAddNote: (n: Note) => void;
   onAddLocation: (l: any) => void;
   onAddCharacter: (c: any) => void;
+  isAnalyzing?: boolean;
 }
 
 enum ManuscriptTab {
@@ -21,7 +22,7 @@ enum ManuscriptTab {
 }
 
 export const ManuscriptSystemView: React.FC<ManuscriptSystemViewProps> = ({
-  data, projectsMetadata, onUpdateChapters, onChangeView
+  data, projectsMetadata, onUpdateChapters, onChangeView, isAnalyzing
 }) => {
   const [activeTab, setActiveTab] = useState<ManuscriptTab>(ManuscriptTab.EDITOR);
   const [activeChapterId, setActiveChapterId] = React.useState(data.chapters?.[0]?.id || '');
@@ -180,8 +181,157 @@ export const ManuscriptSystemView: React.FC<ManuscriptSystemViewProps> = ({
         )}
 
         {activeTab === ManuscriptTab.ANALYSIS && (
-          <div className="flex-1 flex items-center justify-center text-slate-400 italic border-2 border-dashed border-slate-200 dark:border-slate-800 m-8 rounded-3xl">
-            Manuscript analysis feature coming soon.
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="max-w-6xl mx-auto space-y-12">
+              {/* Narrative Heatmaps Section */}
+              <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                    <BarChart2 size={24} className="text-indigo-600" /> Narrative Heatmaps
+                  </h2>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Density Analysis by Chapter
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 space-y-8">
+                  {/* Character Density */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Users size={14} /> Character Density (@)
+                    </h3>
+                    <div className="flex items-end gap-1 h-32">
+                      {data.chapters?.map((chapter, idx) => {
+                        const mentions = (chapter.content.match(/@\w+/g) || []).length;
+                        const height = Math.min(100, (mentions / 10) * 100);
+                        return (
+                          <div key={idx} className="flex-1 group relative">
+                            <div 
+                              className="w-full bg-indigo-500/20 group-hover:bg-indigo-500 rounded-t-sm transition-all" 
+                              style={{ height: `${height}%` }} 
+                            />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                              Ch {idx + 1}: {mentions} mentions
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Theme Density */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Hash size={14} /> Theme Density (#)
+                    </h3>
+                    <div className="flex items-end gap-1 h-32">
+                      {data.chapters?.map((chapter, idx) => {
+                        const tags = (chapter.content.match(/#\w+/g) || []).length;
+                        const height = Math.min(100, (tags / 10) * 100);
+                        return (
+                          <div key={idx} className="flex-1 group relative">
+                            <div 
+                              className="w-full bg-pink-500/20 group-hover:bg-pink-500 rounded-t-sm transition-all" 
+                              style={{ height: `${height}%` }} 
+                            />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                              Ch {idx + 1}: {tags} tags
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-center space-y-4">
+                <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto">
+                  <Sparkles size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">AI Manuscript Analysis</h2>
+                  <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                    Upload your latest draft to automatically extract characters, plot points, locations, and world details.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                  <label className={`w-full sm:w-auto px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none ${isAnalyzing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-700 cursor-pointer'}`}>
+                    <FileText size={20} />
+                    {isAnalyzing ? 'Processing Analysis...' : 'Upload Manuscript (.txt, .md)'}
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept=".txt,.md" 
+                      disabled={isAnalyzing}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const event = new CustomEvent('manuscript-upload', { detail: file });
+                          window.dispatchEvent(event);
+                        }
+                      }}
+                    />
+                  </label>
+                  <button 
+                    disabled={isAnalyzing}
+                    onClick={() => {
+                      // Logic for analyzing CURRENT editor text
+                      const fullText = data.chapters?.sort((a, b) => a.order - b.order).map(c => c.content).join('\n\n') || '';
+                      const event = new CustomEvent('manuscript-analyze-current', { detail: fullText });
+                      window.dispatchEvent(event);
+                    }}
+                    className={`w-full sm:w-auto px-8 py-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${isAnalyzing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                  >
+                    <Sparkles size={20} className={isAnalyzing ? 'animate-spin' : 'text-amber-500'} />
+                    {isAnalyzing ? 'Architecting...' : 'Analyze Current Editor'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Latest Insights</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center shrink-0">
+                        <Users size={16} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 dark:text-white">Character Consistency</div>
+                        <p className="text-xs text-slate-500">Run analysis to check if character traits remain consistent across chapters.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center shrink-0">
+                        <BarChart2 size={16} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 dark:text-white">Pacing & Flow</div>
+                        <p className="text-xs text-slate-500">Visualise the emotional arc and pacing of your narrative.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">World Sync</h3>
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Analysis automatically creates and updates Character Cards, Location Pins, and Timeline Events based on your prose.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex -space-x-2">
+                        {[1,2,3].map(i => (
+                          <div key={i} className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 bg-slate-200 dark:bg-slate-800" />
+                        ))}
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Synchronised Entities</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

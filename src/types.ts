@@ -21,7 +21,7 @@ export enum ViewType {
   SOURCE_READER = 'SourceReader',
   MATRIX = 'Matrix',
   DICTIONARY = 'Dictionary',
-  STENO_RESEARCH = 'StenoResearch',
+  RESEARCH = 'Research',
   SEMANTIC_EDITOR = 'SemanticEditor'
 }
 
@@ -32,6 +32,7 @@ export interface Scene {
   title: string;
   content: string;
   wordCount: number;
+  uei?: number;
 }
 
 /**
@@ -68,6 +69,7 @@ export interface ManuscriptStructure {
 
 export interface AppSettings {
   appName: string;
+  adminEmails?: string[];
 }
 
 export interface AppPrompts {
@@ -128,6 +130,7 @@ export interface Character {
   imageUrl?: string; 
   aliases?: string[];
   associatedLocationId?: string;
+  positionHistory?: { uei: number; locationId: string }[];
   source?: 'manual' | 'ai';
   misspellings?: CharacterMisspelling[];
   isMinor?: boolean;
@@ -175,7 +178,7 @@ export interface Source {
   title?: string;
   url?: string;
   content: string;
-  type: 'pdf' | 'web' | 'text' | 'youtube';
+  type: 'pdf' | 'web' | 'text' | 'youtube' | 'image';
   summary?: string;
   tags?: string[];
   timestamp: number;
@@ -234,11 +237,14 @@ export interface Relationship {
 export interface TimelineEvent {
   id: string;
   date: string; 
+  uei?: number;
   title: string;
   description: string;
   charactersInvolved: string[];
   location: string;
   source?: 'manual' | 'ai';
+  isSoftAnchor?: boolean;
+  referenceEventId?: string;
 }
 
 export interface Inspiration {
@@ -263,6 +269,7 @@ export interface Location {
   lng?: number; 
   mapScale?: number; 
   mapUnit?: string; 
+  ueiRange?: { start?: number; end?: number };
   inspirations?: Inspiration[];
   source?: 'manual' | 'ai';
 }
@@ -277,8 +284,8 @@ export interface Note {
   timestamp: number;
   imageUrl?: string;
   isCanon?: boolean;
-  isDead?: boolean;
   isSavedInLedger?: boolean;
+  uei?: number;
 }
 
 export interface CalendarMonth {
@@ -300,16 +307,20 @@ export interface CalendarSystem {
   name: string;
   description?: string;
   weekDays: string[]; 
+  daysPerWeek?: number;
+  hoursPerDay?: number;
   months: CalendarMonth[];
   eras: CalendarEra[];
   currentDate?: { year: number; monthIndex: number; day: number };
+  currentEpochDay?: number; // Universal Epoch Integer
 }
 
 export interface ChangeLogEntry {
   id: string;
   timestamp: number;
-  entityType: 'Character' | 'Location' | 'Timeline' | 'Note' | 'Settings' | 'Relationship' | 'Artifact' | 'Lore' | 'Chapter' | 'Plotline';
+  entityType: 'Character' | 'Location' | 'Timeline' | 'Note' | 'Settings' | 'Relationship' | 'Artifact' | 'Lore' | 'Chapter' | 'Plotline' | 'Source';
   entityName: string;
+  entityId?: string;
   action: 'Created' | 'Updated' | 'Deleted';
   details?: string;
 }
@@ -351,6 +362,27 @@ export interface Idea {
   timestamp: number;
 }
 
+export interface Commit {
+  id: string;
+  timestamp: number;
+  hash: string;
+  message: string;
+  author: string;
+  diff?: string;
+  wordCount: number;
+  snapshot?: Chapter[];
+}
+
+export interface BackupStatus {
+  id: string;
+  timestamp: number;
+  uei?: number;
+  wordCount: number;
+  hash: string;
+  status: 'pending' | 'delivered' | 'failed';
+  resendId?: string;
+}
+
 export interface ProjectData {
   id: string;
   lastModified: number;
@@ -375,6 +407,12 @@ export interface ProjectData {
   ideas?: Note[];
   themes: string[];
   ledger?: Note[];
+  sources?: Source[];
+
+  commits?: Commit[];
+  backups?: BackupStatus[];
+  integrityHash?: string;
+  aiDeadThreads?: { id: string; type: string; content: string; message: string }[];
 
   manuscriptHistory?: ManuscriptHistoryEntry[];
   latestManuscriptText?: string;
@@ -422,6 +460,8 @@ export interface ProjectMetadata {
   lastModified: number;
   characterCount: number;
   locationCount: number;
+  commitCount: number;
+  backupCount: number;
   wordCount?: number;
   portraitStyle?: string; 
   coverImage?: string; 

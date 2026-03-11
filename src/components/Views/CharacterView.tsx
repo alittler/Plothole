@@ -119,7 +119,7 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                       </div>
                     </div>
                     <div className="p-6 space-y-4">
-                      <div>
+                      <div className="break-words [overflow-wrap:anywhere]">
                         <h3 className="text-xl font-black text-slate-900 dark:text-white">{char.name}</h3>
                         <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{char.description || 'No description provided.'}</p>
                       </div>
@@ -166,7 +166,7 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                           </span>
                         ))}
                       </div>
-                      <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{note.content}</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed break-words [overflow-wrap:anywhere]">{note.content}</p>
                       <div className="mt-4 text-xs text-slate-400 font-mono">
                         {new Date(note.timestamp).toLocaleDateString()}
                       </div>
