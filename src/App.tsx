@@ -769,9 +769,8 @@ const App: React.FC = () => {
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
   }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, openBlueprint, handleQuickUpdate]);
-
   const renderAppContent = () => (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors">
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors animate-in fade-in duration-500">
       <Sidebar 
         currentView={currentView} 
         onChangeView={setCurrentView} 
