@@ -18,6 +18,7 @@ interface SidebarProps {
   activeProjectTitle?: string;
   onQuickNote?: (text: string) => void;
   appName?: string;
+  sidebarOrder?: ViewType[];
 }
 
 interface NavItem {
@@ -35,36 +36,59 @@ interface SidebarSection {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, activeProjectTitle, onQuickNote, appName = 'PLOTHOLE'
+  currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, activeProjectTitle, onQuickNote, appName = 'PLOTHOLE',
+  sidebarOrder
 }) => {
   const { signOut } = useClerk();
-  const sections: SidebarSection[] = [
-    {
-      title: 'Workspace',
-      items: [
-        { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
-        { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
-        { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
-      ]
-    },
-    {
-      title: 'Story',
-      items: [
-        { id: ViewType.RESEARCH, label: 'Research', icon: Database, projectOnly: true },
-        { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
-        { id: ViewType.MAP, label: 'World Hub', icon: Map, projectOnly: true },
-        { id: ViewType.TIMELINE, label: 'Plot & Timeline', icon: Calendar, projectOnly: true },
-      ]
-    },
-    {
-      title: 'System',
-      items: [
-        { id: ViewType.TOOLBOX, label: 'Toolbox', icon: HelpCircle, always: true },
-        { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
-        { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
-      ]
-    }
+  
+  const allNavItems: NavItem[] = [
+    { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
+    { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
+    { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
+    { id: ViewType.RESEARCH, label: 'Research', icon: Database, projectOnly: true },
+    { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
+    { id: ViewType.MAP, label: 'World Hub', icon: Map, projectOnly: true },
+    { id: ViewType.TIMELINE, label: 'Plot & Timeline', icon: Calendar, projectOnly: true },
+    { id: ViewType.TOOLBOX, label: 'Toolbox', icon: HelpCircle, always: true },
+    { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
+    { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
   ];
+
+  const sections: SidebarSection[] = React.useMemo(() => {
+    // If we have a custom order, we might want to just show one big section or grouped by original sections
+    // For now, let's keep the sections but sort items within them if they are in the order list.
+    // Or even better: if custom order is provided, use that order and group them by their original section.
+    
+    const baseSections: SidebarSection[] = [
+      {
+        title: 'Workspace',
+        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.BOOKSHELF, ViewType.DASHBOARD].includes(i.id))
+      },
+      {
+        title: 'Story',
+        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE].includes(i.id))
+      },
+      {
+        title: 'System',
+        items: allNavItems.filter(i => [ViewType.TOOLBOX, ViewType.SETTINGS, ViewType.ADMIN].includes(i.id))
+      }
+    ];
+
+    if (!sidebarOrder) return baseSections;
+
+    // Filter out sections that end up empty
+    return baseSections.map(section => ({
+      ...section,
+      items: [...section.items].sort((a, b) => {
+        const idxA = sidebarOrder.indexOf(a.id);
+        const idxB = sidebarOrder.indexOf(b.id);
+        if (idxA === -1 && idxB === -1) return 0;
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      })
+    })).filter(s => s.items.length > 0);
+  }, [sidebarOrder]);
 
   return (
     <>

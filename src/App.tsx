@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
 import { 
   ProjectData, ProjectMetadata, User, ViewType, Note, 
-  AppPrompts, ToolboxLink, Idea, Artifact, LoreEntry, ChangeLogEntry
+  AppPrompts, AppSettings, ToolboxLink, Idea, Artifact, LoreEntry, ChangeLogEntry
 } from './types';
 import { 
   getAllProjectsMetadata, loadProjectById, saveProjectData, 
@@ -93,7 +93,7 @@ const App: React.FC = () => {
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [globalResources, setGlobalResources] = useState<ToolboxLink[]>([]);
   const [appPrompts, setAppPromptsState] = useState<AppPrompts>(DEFAULT_PROMPTS);
-  const [appSettings, setAppSettings] = useState<{ appName: string }>({ appName: 'Plothole — Your Story, Decoded' });
+  const [appSettings, setAppSettings] = useState<AppSettings>({ appName: 'Plothole — Your Story, Decoded' });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
@@ -112,8 +112,6 @@ const App: React.FC = () => {
   const [aiError, setAiError] = useState<string | null>(null);
   const [hasApiKey, setHasApiKey] = useState<boolean>(true);
   const [lastBackupMilestone, setLastBackupMilestone] = useState<{ words: number, commits: number }>({ words: 0, commits: 0 });
-
-  const appTitle = "Plothole";
 
   const addTask = (id: string) => setActiveTasks(prev => [...prev, id]);
   const removeTask = (id: string) => setActiveTasks(prev => prev.filter(t => t !== id));
@@ -236,7 +234,14 @@ const App: React.FC = () => {
         setGlobalNotes(notes);
         setGlobalResources(resources);
         if (prompts) setAppPromptsState(prev => ({ ...prev, ...prompts }));
-        if (settings) setAppSettings(prev => ({ ...prev, ...settings }));
+        if (settings) {
+          const finalSettings = { ...settings };
+          if (!finalSettings.appName || finalSettings.appName.includes('Steno') || finalSettings.appName === 'Plothole AI') {
+            finalSettings.appName = 'Plothole — Your Story, Decoded';
+            await saveAppSettings(finalSettings as AppSettings);
+          }
+          setAppSettings(prev => ({ ...prev, ...finalSettings }));
+        }
 
         await checkApiKey();
 
@@ -720,7 +725,7 @@ const App: React.FC = () => {
         return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} />;
 
       case ViewType.RESEARCH:
-        return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
+        return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onOpenBlueprint={openBlueprint} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
@@ -756,7 +761,8 @@ const App: React.FC = () => {
             await saveGlobalNote(n);
           }
         }}
-        appName={appTitle}
+        appName={appSettings.appName}
+        sidebarOrder={appSettings.sidebarOrder}
       />
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
         {/* Mobile Header - Binding clamped over paper */}
@@ -766,7 +772,7 @@ const App: React.FC = () => {
               <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 -ml-2 text-white/70">
                 <Menu size={24} />
               </button>
-              <span className="font-black tracking-tighter text-white uppercase">{appTitle}</span>
+              <span className="font-black tracking-tighter text-white uppercase">{appSettings.appName}</span>
               <button onClick={() => setIsAiOpen(!isAiOpen)} className="p-2 -mr-2 text-indigo-400">
                 <Sparkles size={24} />
               </button>
@@ -824,6 +830,7 @@ const App: React.FC = () => {
           onChangeView={setCurrentView} 
           onOpenSidebar={() => setIsMobileSidebarOpen(true)}
           hasActiveProject={!!projectData}
+          bottomNavOrder={appSettings.bottomNavOrder}
         />
 
         <ActiveArchitect tasks={activeTasks} />
@@ -865,7 +872,7 @@ const App: React.FC = () => {
       ) : (
         <>
           <SignedOut>
-            <SignInPage appName={appTitle} />
+            <SignInPage appName={appSettings.appName} />
           </SignedOut>
           <SignedIn>
             {renderAppContent()}

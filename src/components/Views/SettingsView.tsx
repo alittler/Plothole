@@ -8,6 +8,7 @@ import {
 
 enum SettingsTab {
   PROFILE = 'Profile',
+  PREFERENCES = 'Preferences',
   AUDIT = 'Audit Log',
   MANIFEST = 'Manifest',
   RAW = 'Raw'
@@ -161,7 +162,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="text"
                   value={currentUser.name}
                   onChange={(e) => onUpdateUser({ name: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
                 />
               </div>
               <div className="space-y-2">
@@ -170,8 +171,117 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="email"
                   value={currentUser.email}
                   onChange={(e) => onUpdateUser({ email: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
                 />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === SettingsTab.PREFERENCES && (
+          <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
+            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
+              <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+                <Settings size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">System Preferences</h2>
+                <p className="text-xs text-slate-500">Customize your experience and workflow defaults.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Appearance */}
+              <div className="space-y-6">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">Appearance</h3>
+                
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Theme Mode</label>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                    {(['light', 'dark'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, themeMode: mode } })}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all capitalize ${currentUser.preferences?.themeMode === mode ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Font Family</label>
+                  <select 
+                    value={currentUser.preferences?.fontFamily || 'sans'}
+                    onChange={(e) => onUpdateUser({ preferences: { ...currentUser.preferences, fontFamily: e.target.value as any } })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="sans">Modern Sans</option>
+                    <option value="serif">Classic Serif</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Font Size</label>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                    {(['sm', 'md', 'lg'] as const).map(size => (
+                      <button
+                        key={size}
+                        onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, fontSize: size } })}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all uppercase ${currentUser.preferences?.fontSize === size ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Workflow */}
+              <div className="space-y-6">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">Workflow</h3>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Default Landing Page</label>
+                  <select 
+                    value={currentUser.preferences?.landingPage || ViewType.DASHBOARD}
+                    onChange={(e) => onUpdateUser({ preferences: { ...currentUser.preferences, landingPage: e.target.value as any } })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {Object.values(ViewType).map(view => (
+                      <option key={view} value={view}>{view}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">AI Architect Verbosity</label>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                    {(['concise', 'detailed'] as const).map(v => (
+                      <button
+                        key={v}
+                        onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, aiVerbosity: v } })}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all capitalize ${currentUser.preferences?.aiVerbosity === v ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 mt-4">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Reduce Motion</span>
+                    <p className="text-[10px] text-slate-500">Minimize animations and transitions.</p>
+                  </div>
+                  <button 
+                    onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, reducedMotion: !currentUser.preferences?.reducedMotion } })}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${currentUser.preferences?.reducedMotion ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                  >
+                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${currentUser.preferences?.reducedMotion ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </button>
+                </div>
               </div>
             </div>
           </section>

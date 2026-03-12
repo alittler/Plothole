@@ -69,6 +69,8 @@ export interface ManuscriptStructure {
 export interface AppSettings {
   appName: string;
   adminEmails?: string[];
+  sidebarOrder?: ViewType[];
+  bottomNavOrder?: ViewType[];
 }
 
 export interface AppPrompts {

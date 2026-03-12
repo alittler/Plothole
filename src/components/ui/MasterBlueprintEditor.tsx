@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ProjectData, Tag, Hash, Layout, X, Map, User as UserIcon, Heart, Ruler, Info } from '../../types';
+import { ProjectData } from '../../types';
 import { Shield, Sparkles as SparklesIcon, Tag as TagIcon, Hash as HashIcon, Layout as LayoutIcon, X as XIcon, Map as MapIcon, Maximize2 as Maximize2Icon, ChevronRight as ChevronRightIcon, User as UserIconLucide, Heart as HeartIcon, Ruler as RulerIcon, Info as InfoIcon, Image as ImageIcon, Trash2, Link as LinkIcon, Upload, Plus } from 'lucide-react';
 import { generateId } from '../../services/storageService';
 
