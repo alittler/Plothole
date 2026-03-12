@@ -177,14 +177,14 @@ export interface ArchetypeDefinition {
 export interface Artifact {
   id: string;
   name: string;
-  type: string; 
+  type: string;
   description: string;
-  possessorId?: string; 
+  imageUrl?: string;
+  possessorId?: string;
   history?: string;
   significance?: string;
   source?: 'manual' | 'ai';
 }
-
 export interface Source {
   id: string;
   name: string;
