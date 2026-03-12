@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType } from '../../types';
-import { Book, Search, Zap, LayoutGrid, Menu } from 'lucide-react';
+import { Book, Search, Zap, LayoutGrid, Menu, FileText } from 'lucide-react';
 
 interface BottomNavProps {
   currentView: ViewType;
@@ -38,7 +38,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           onClick={() => onChangeView(ViewType.NOTEPAD)}
           className={`flex items-center justify-center p-4 rounded-2xl transition-all shadow-xl -mt-6 ${currentView === ViewType.NOTEPAD ? 'text-white bg-indigo-500 shadow-indigo-500/30' : 'text-white bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'}`}
         >
-          <Search size={32} />
+          <FileText size={32} />
         </button>
 
         <button

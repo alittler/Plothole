@@ -6,6 +6,7 @@ interface MapViewProps {
   onLocationClick?: (id: string) => void;
   onMapClick?: (x: number, y: number) => void;
   onLocationPlace?: (id: string, x: number, y: number) => void;
+  onLocationMove?: (id: string, x: number, y: number) => void;
   onDimensionsDetected?: (width: number, height: number) => void;
   rootMapImage?: string;
   mapScale?: number;
@@ -15,12 +16,37 @@ interface MapViewProps {
 }
 
 export const MapView: React.FC<MapViewProps> = ({ 
-  locations, onLocationClick, onMapClick, onLocationPlace, onDimensionsDetected, rootMapImage, mapScale, mapUnit, zoomInRef, zoomOutRef
+  locations, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onDimensionsDetected, rootMapImage, mapScale, mapUnit, zoomInRef, zoomOutRef
 }) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapBoundsRef = useRef<L.LatLngBounds | null>(null);
+  const imgWidthRef = useRef<number>(1);
   const [isReady, setIsReady] = useState(false);
+
+  // Use refs for callbacks to prevent effect re-triggering
+  const onMapClickRef = useRef(onMapClick);
+  const onDimensionsDetectedRef = useRef(onDimensionsDetected);
+  const onLocationPlaceRef = useRef(onLocationPlace);
+  const onLocationMoveRef = useRef(onLocationMove);
+  const onLocationClickRef = useRef(onLocationClick);
+  const mapScaleRef = useRef(mapScale);
+  const mapUnitRef = useRef(mapUnit);
+
+  useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
+  useEffect(() => { onDimensionsDetectedRef.current = onDimensionsDetected; }, [onDimensionsDetected]);
+  useEffect(() => { onLocationPlaceRef.current = onLocationPlace; }, [onLocationPlace]);
+  useEffect(() => { onLocationMoveRef.current = onLocationMove; }, [onLocationMove]);
+  useEffect(() => { onLocationClickRef.current = onLocationClick; }, [onLocationClick]);
+  useEffect(() => { mapScaleRef.current = mapScale; }, [mapScale]);
+  useEffect(() => { mapUnitRef.current = mapUnit; }, [mapUnit]);
+
+  // Force scale update when props change
+  useEffect(() => {
+    if (isReady && mapRef.current) {
+      mapRef.current.fire('resize');
+    }
+  }, [mapScale, mapUnit, isReady]);
 
   // Expose zoom methods to parent
   useEffect(() => {
@@ -34,20 +60,69 @@ export const MapView: React.FC<MapViewProps> = ({
 
     const map = L.map(containerRef.current, {
       crs: L.CRS.Simple,
-      minZoom: 0,
+      minZoom: -2,
       maxZoom: 4,
       zoomControl: false,
       attributionControl: false,
-      fadeAnimation: false 
+      fadeAnimation: false,
+      maxBoundsViscosity: 1.0
     });
 
-    // Custom Scale with more padding via CSS (added later in return)
-    L.control.scale({ 
-      imperial: mapUnit !== 'km', 
-      metric: mapUnit === 'km', 
-      position: 'bottomleft' 
-    }).addTo(map);
+    // Custom Calibrated Scale Control
+    const CalibratedScale = L.Control.extend({
+      options: { position: 'bottomleft' },
+      onAdd: function(map: L.Map) {
+        const container = L.DomUtil.create('div', 'leaflet-control-scale');
+        const line = L.DomUtil.create('div', 'leaflet-control-scale-line', container);
+        
+        const updateScale = () => {
+          if (!mapBoundsRef.current || !mapScaleRef.current || imgWidthRef.current <= 1) {
+            container.style.display = 'none';
+            return;
+          }
+          
+          try {
+            // Current width of the map container in pixels
+            const containerWidth = map.getSize().x;
+            // Current width of the map view in 'projected' pixels at current zoom
+            const bounds = map.getBounds();
+            const se = map.project(bounds.getSouthEast());
+            const sw = map.project(bounds.getSouthWest());
+            const viewWidthProjected = Math.abs(se.x - sw.x);
+            
+            // We want to show a scale bar that is roughly 100px wide
+            const targetPx = 100;
+            // How many 'real world' units per projected pixel?
+            // (mapScale units / imagePixelWidth)
+            const unitsPerPx = mapScaleRef.current / imgWidthRef.current;
+            const unitsInBar = (viewWidthProjected / containerWidth) * targetPx * unitsPerPx;
+            
+            // Nice rounding
+            let displayValue = "";
+            if (unitsInBar >= 10) displayValue = Math.round(unitsInBar).toString();
+            else if (unitsInBar >= 1) displayValue = unitsInBar.toFixed(1);
+            else displayValue = unitsInBar.toFixed(2);
+            
+            line.style.width = targetPx + 'px';
+            line.innerHTML = `${displayValue} ${mapUnitRef.current || 'units'}`;
+            container.style.display = 'block';
+          } catch (e) {
+            container.style.display = 'none';
+          }
+        };
+
+        map.on('zoomend moveend resize', updateScale);
+        // Initial update after map settles
+        setTimeout(updateScale, 1000);
+        return container;
+      }
+    });
+
+    new (CalibratedScale as any)().addTo(map);
     
+    // Set a default view so the map is considered "loaded" immediately
+    map.setView([0, 0], 0);
+
     mapRef.current = map;
     setIsReady(true);
 
@@ -56,12 +131,31 @@ export const MapView: React.FC<MapViewProps> = ({
       map.remove();
       mapRef.current = null;
     };
-  }, [mapUnit]); // Recreate scale control if unit changes
+  }, []); // Remove mapUnit from deps
 
-  // 2. Image Loading & Sync
+  // 2. Handle Map Clicks (Separate from image sync)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!isReady || !map) return;
+
+    const clickHandler = (e: L.LeafletMouseEvent) => {
+      onMapClickRef.current?.(e.latlng.lng, e.latlng.lat);
+    };
+
+    map.on('click', clickHandler);
+    return () => {
+      map.off('click', clickHandler);
+    };
+  }, [isReady]);
+
+  // 3. Image Loading & Sync
+  const lastImageRef = useRef<string | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!isReady || !map || !rootMapImage) return;
+    if (lastImageRef.current === rootMapImage) return; // Already syncing this image
+    
+    lastImageRef.current = rootMapImage;
 
     const img = new Image();
     img.onload = () => {
@@ -70,35 +164,40 @@ export const MapView: React.FC<MapViewProps> = ({
       try {
         const w = img.width;
         const h = img.height;
+        imgWidthRef.current = w;
         
         // Report dimensions back to parent for scale calculation
-        if (onDimensionsDetected) onDimensionsDetected(w, h);
+        onDimensionsDetectedRef.current?.(w, h);
 
         const southWest = map.unproject([0, h], map.getMaxZoom());
         const northEast = map.unproject([w, 0], map.getMaxZoom());
         const bounds = new L.LatLngBounds(southWest, northEast);
         mapBoundsRef.current = bounds;
 
+        // Clear existing overlays
+        map.eachLayer((layer) => {
+          if (layer instanceof L.ImageOverlay) {
+            map.removeLayer(layer);
+          }
+        });
+
         L.imageOverlay(rootMapImage, bounds).addTo(map);
-        map.setMaxBounds(bounds.pad(0.1));
-        map.fitBounds(bounds);
         
+        // Tight constraints with padding
+        const paddedBounds = bounds.pad(0.5);
+        map.setMaxBounds(paddedBounds);
+        map.fitBounds(bounds, { animate: false, padding: [40, 40] });
+        
+        // Calculate min zoom such that image fits container perfectly
         const minZoom = map.getBoundsZoom(bounds, true);
-        map.setMinZoom(minZoom);
+        map.setMinZoom(minZoom - 1); // Allow zooming out a bit more
+        map.setZoom(minZoom);
       } catch (err) {
         console.warn("Leaflet image sync failed:", err);
       }
     };
     img.src = rootMapImage;
-
-    map.on('click', (e) => {
-      onMapClick?.(e.latlng.lng, e.latlng.lat);
-    });
-
-    return () => {
-      map.off('click');
-    };
-  }, [isReady, rootMapImage, onMapClick]);
+  }, [isReady, rootMapImage]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -106,7 +205,7 @@ export const MapView: React.FC<MapViewProps> = ({
     if (!isReady || !map || !containerRef.current) return;
     
     const locationId = e.dataTransfer.getData('locationId');
-    if (!locationId || !onLocationPlace) return;
+    if (!locationId || !onLocationPlaceRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -115,7 +214,7 @@ export const MapView: React.FC<MapViewProps> = ({
     const point = L.point(x, y);
     const latlng = map.containerPointToLatLng(point);
     
-    onLocationPlace(locationId, latlng.lng, latlng.lat);
+    onLocationPlaceRef.current(locationId, latlng.lng, latlng.lat);
   };
 
   useEffect(() => {
@@ -153,20 +252,26 @@ export const MapView: React.FC<MapViewProps> = ({
           }
 
           const marker = L.marker(latlng, {
+            draggable: true,
             icon: L.divIcon({
               className: 'custom-marker',
-              html: `<div class="w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-lg ${loc.type === 'Region' ? 'scale-[2.5] opacity-30 blur-[1px]' : ''}"></div>`
+              html: `<div class="w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-lg cursor-grab active:cursor-grabbing ${loc.type === 'Region' ? 'scale-[2.5] opacity-30 blur-[1px]' : ''}"></div>`
             })
           }).addTo(mapRef.current!);
 
-          marker.on('click', () => onLocationClick?.(loc.id));
+          marker.on('dragend', () => {
+            const newPos = marker.getLatLng();
+            onLocationMoveRef.current?.(loc.id, newPos.lng, newPos.lat);
+          });
+
+          marker.on('click', () => onLocationClickRef.current?.(loc.id));
           marker.bindTooltip(loc.name, { permanent: false, direction: 'top' });
         }
       });
     } catch (err) {
       console.warn("Leaflet marker update failed:", err);
     }
-  }, [locations, onLocationClick]);
+  }, [locations]);
 
   return (
     <div className="w-full h-full relative group/map">
@@ -174,10 +279,11 @@ export const MapView: React.FC<MapViewProps> = ({
         .leaflet-control-scale {
           margin-bottom: 24px !important;
           margin-left: 24px !important;
+          display: none; /* Hidden until calibrated */
         }
         .leaflet-control-scale-line {
-          background: rgba(255, 255, 255, 0.8) !important;
-          border: 2px solid #334155 !important;
+          background: rgba(255, 255, 255, 0.9) !important;
+          border: 2px solid #0f172a !important;
           border-top: none !important;
           color: #0f172a !important;
           font-weight: 900 !important;
@@ -185,6 +291,14 @@ export const MapView: React.FC<MapViewProps> = ({
           padding: 2px 8px !important;
           backdrop-filter: blur(4px);
           border-radius: 0 0 4px 4px;
+          white-space: nowrap;
+          text-align: center;
+        }
+        .dark .leaflet-control-scale-line {
+          background: rgba(15, 23, 42, 0.9) !important;
+          border: 2px solid #6366f1 !important;
+          border-top: none !important;
+          color: #e2e8f0 !important;
         }
       `}</style>
       <div 

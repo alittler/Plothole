@@ -12,6 +12,7 @@ interface StenoLedgerPanelProps {
   projectsMetadata?: ProjectMetadata[];
   onLinkClick?: (type: string, id: string) => void;
   isFullScreen?: boolean;
+  onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
 
 export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
@@ -20,11 +21,10 @@ export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
   currentUser,
   projectsMetadata,
   onLinkClick,
-  isFullScreen = false
+  isFullScreen = false,
+  onOpenBlueprint
 }) => {
   const [ledgerInput, setLedgerInput] = useState('');
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [editingContent, setEditingContent] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const ledgerEntries = projectData.ledger || [];
@@ -43,28 +43,10 @@ export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
     setLedgerInput('');
   };
 
-  const handleUpdateNote = (id: string, updates: Partial<Note>) => {
-    const updatedLedger = ledgerEntries.map(n => n.id === id ? { ...n, ...updates } : n);
-    onUpdateProject({ ledger: updatedLedger });
-  };
-
   const handleDeleteNote = (id: string) => {
     if (confirm('Delete this ledger entry permanently?')) {
       const updatedLedger = ledgerEntries.filter(n => n.id !== id);
       onUpdateProject({ ledger: updatedLedger });
-    }
-  };
-
-  const handleStartEditing = (note: Note) => {
-    setEditingNoteId(note.id);
-    setEditingContent(note.content);
-  };
-
-  const handleSaveEdit = () => {
-    if (editingNoteId) {
-      handleUpdateNote(editingNoteId, { content: editingContent });
-      setEditingNoteId(null);
-      setEditingContent('');
     }
   };
 
@@ -137,7 +119,7 @@ export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
     return (
       <>
         <button 
-          onClick={() => handleStartEditing(entry)}
+          onClick={() => onOpenBlueprint('Ledger', entry.id, entry)}
           className="p-1.5 bg-white/80 dark:bg-slate-800/80 backdrop-blur rounded-lg shadow-sm hover:text-indigo-500 transition-colors"
           title="Edit Note"
         >
@@ -164,8 +146,6 @@ export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
   }
 
   function renderEntryContent(entry: Note) {
-    const isEditing = editingNoteId === entry.id;
-
     return (
       <>
         <div className="flex items-center gap-2 mb-2">
@@ -177,34 +157,9 @@ export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
           )}
         </div>
         
-        {isEditing ? (
-          <div className="relative">
-            <textarea
-              value={editingContent}
-              onChange={(e) => setEditingContent(e.target.value)}
-              className="w-full bg-white dark:bg-slate-900 border border-indigo-500 rounded-lg p-3 text-sm font-serif leading-relaxed focus:ring-2 focus:ring-indigo-500/20 outline-none min-h-[100px]"
-              autoFocus
-            />
-            <div className="flex justify-end gap-2 mt-2">
-              <button 
-                onClick={() => setEditingNoteId(null)}
-                className="px-3 py-1 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSaveEdit}
-                className="px-3 py-1 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className={`text-sm text-slate-700 dark:text-slate-300 font-serif leading-relaxed break-words [overflow-wrap:anywhere] ${isFullScreen ? 'text-lg' : ''}`}>
-            <WikiText text={entry.content} projectData={projectData} projectsMetadata={projectsMetadata} onLinkClick={onLinkClick} />
-          </div>
-        )}
+        <div className={`text-sm text-slate-700 dark:text-slate-300 font-serif leading-relaxed break-words [overflow-wrap:anywhere] ${isFullScreen ? 'text-lg' : ''}`}>
+          <WikiText text={entry.content} projectData={projectData} projectsMetadata={projectsMetadata} onLinkClick={onLinkClick} />
+        </div>
       </>
     );
   }

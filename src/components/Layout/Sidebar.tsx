@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType, User } from '../../types';
-import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut } from 'lucide-react';
+import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText } from 'lucide-react';
 import { UserButton, useClerk } from '@clerk/clerk-react';
 
 interface SidebarProps {
@@ -42,8 +42,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'Workspace',
       items: [
+        { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
         { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
-        { id: ViewType.NOTEPAD, label: 'Notepad', icon: Search, always: true },
         { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
       ]
     },
@@ -54,7 +54,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
         { id: ViewType.MAP, label: 'World Hub', icon: Map, projectOnly: true },
         { id: ViewType.TIMELINE, label: 'Plot & Timeline', icon: Calendar, projectOnly: true },
-        { id: ViewType.MANUSCRIPT, label: 'Manuscript', icon: PenTool, projectOnly: true },
       ]
     },
     {

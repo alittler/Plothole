@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
 import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Modal } from '../ui/Modal';
 import { calculateUEI } from '../../utils/calendarUtils';
 
 interface PlotSystemViewProps {
@@ -17,6 +16,7 @@ interface PlotSystemViewProps {
   onExtractSoftAnchors: () => void;
   onUpdateProject: (updates: Partial<ProjectData>) => void;
   isAnalyzing?: boolean;
+  onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
 
 enum PlotTab {
@@ -26,10 +26,9 @@ enum PlotTab {
 }
 
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
-  data, onAddTimelineEvent, onUpdateTimelineEvent, onUpdateProject, onUpdateCalendar, onExtractSoftAnchors, isAnalyzing
+  data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, isAnalyzing, onOpenBlueprint
 }) => {
   const [activeTab, setActiveTab] = useState<PlotTab>(PlotTab.TIMELINE);
-  const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
 
   // Calendar State
   const activeCalendar = data.calendars?.find(c => c.id === data.activeCalendarId) || data.calendars?.[0] || {
@@ -46,21 +45,11 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
   const [currentYear, setCurrentYear] = useState<number>(1);
   const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(0);
 
-  const handleSave = () => {
-    if (editingEvent) {
-      onUpdateTimelineEvent(editingEvent);
-      setEditingEvent(null);
-    }
-  };
-
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this event?')) {
-      onUpdateProject({ timeline: data.timeline.filter(e => e.id !== id) });
-    }
+    onUpdateProject({ timeline: data.timeline.filter(e => e.id !== id) });
   };
 
-  // Pre-calculate UEI for events that have parsed dates (for demo purposes we assume "date" could be parsed, 
-  // or we just rely on explicitly set UEIs in the event object)
+  // Pre-calculate UEI for events
   const eventsByUEI = useMemo(() => {
     const map = new Map<number, TimelineEvent[]>();
     data.timeline.forEach(event => {
@@ -148,7 +137,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                         </div>
                         <div className="flex items-center gap-2">
                           {event.source === 'ai' && <Sparkles size={14} className={event.isSoftAnchor ? 'text-indigo-400' : 'text-amber-400'} />}
-                          <button onClick={() => setEditingEvent(event)} className="p-1 text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100">
+                          <button onClick={() => onOpenBlueprint('Timeline', event.id, event)} className="p-1 text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100">
                             <Edit2 size={14} />
                           </button>
                           <button onClick={() => handleDelete(event.id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
@@ -218,7 +207,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                         </div>
                         <div className="space-y-1">
                           {dayEvents.map(ev => (
-                            <div key={ev.id} className="text-[10px] p-1.5 rounded bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 truncate cursor-pointer hover:border-amber-500 transition-colors shadow-sm" onClick={() => setEditingEvent(ev)}>
+                            <div key={ev.id} className="text-[10px] p-1.5 rounded bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 truncate cursor-pointer hover:border-amber-500 transition-colors shadow-sm" onClick={() => onOpenBlueprint('Timeline', ev.id, ev)}>
                               <span className="font-bold text-amber-600 dark:text-amber-400 mr-1">•</span>
                               {ev.title}
                             </div>
@@ -245,59 +234,6 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
           )}
         </div>
       </div>
-
-      <Modal
-        isOpen={!!editingEvent}
-        onClose={() => setEditingEvent(null)}
-        title="Edit Event"
-        footer={
-          <button onClick={handleSave} className="px-6 py-2 bg-amber-600 text-white rounded-xl font-bold">
-            Save Event
-          </button>
-        }
-      >
-        {editingEvent && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date / Time</label>
-                <input
-                  type="text"
-                  value={editingEvent.date}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, date: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Title</label>
-                <input
-                  type="text"
-                  value={editingEvent.title}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Description</label>
-              <textarea
-                value={editingEvent.description}
-                onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
-                className="w-full h-32 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500 resize-none"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Characters Involved (comma separated)</label>
-              <input
-                type="text"
-                value={editingEvent.charactersInvolved.join(', ')}
-                onChange={(e) => setEditingEvent({ ...editingEvent, charactersInvolved: e.target.value.split(',').map(t => t.trim()) })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 };

@@ -68,41 +68,50 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, proje
         </button>
       </div>
 
-      <div className="relative h-6 z-20 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-full bg-slate-900/10 torn-paper-edge-overlay translate-y-[4px]" />
-        <div className="absolute top-0 left-0 right-0 h-full bg-slate-900/10 torn-paper-edge-overlay translate-y-[3px]" />
-        <div className="absolute top-0 left-0 right-0 h-full bg-slate-900/10 torn-paper-edge-overlay translate-y-[2px]" />
-        <div className="absolute top-0 left-0 right-0 h-full bg-slate-900/10 torn-paper-edge-overlay translate-y-[1px]" />
-        <div className="absolute top-0 left-0 right-0 h-full torn-paper-edge" />
-      </div>
+      <div className="flex-1 flex flex-col overflow-hidden paper-texture">
+        {/* Physical transition area */}
+        <div className="relative h-10 z-20 pointer-events-none overflow-hidden shrink-0">
+          {/* Layer 3 (Back) */}
+          <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-4">
+            <div className="h-8 paper-fringe-dark path-torn-2" />
+          </div>
+          {/* Layer 2 */}
+          <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-2">
+            <div className="h-8 paper-fringe-mid path-torn-3" />
+          </div>
+          {/* Layer 1 (Front) */}
+          <div className="absolute top-0 left-0 right-0 torn-layer-shadow">
+            <div className="h-8 paper-fringe-light path-torn-1" />
+          </div>
+        </div>
 
-
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-950">
-        <div className="max-w-4xl mx-auto min-h-full relative paper-texture shadow-xl rounded-2xl overflow-hidden p-4 md:pl-24 pt-10">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex gap-3 mb-4 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'}`}>
-                {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-              </div>
-              <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm text-slate-700 dark:text-slate-300 rounded-tl-none border border-black/5 dark:border-white/5'}`}>
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <ReactMarkdown>{m.text}</ReactMarkdown>
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 bg-slate-50/50 dark:bg-slate-950/50">
+          <div className="max-w-4xl mx-auto min-h-full relative shadow-xl rounded-2xl overflow-hidden p-4 md:pl-24 pt-2 bg-white/20 dark:bg-slate-800/20 backdrop-blur-sm border border-black/5 dark:border-white/5">
+            {messages.map((m, i) => (
+              <div key={i} className={`flex gap-3 mb-4 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'}`}>
+                  {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                </div>
+                <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm text-slate-700 dark:text-slate-300 rounded-tl-none border border-black/5 dark:border-white/5'}`}>
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown>{m.text}</ReactMarkdown>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex gap-3 mb-4">
-              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-                <Bot size={16} />
+            ))}
+            {isLoading && (
+              <div className="flex gap-3 mb-4">
+                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                  <Bot size={16} />
+                </div>
+                <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm p-3 rounded-2xl rounded-tl-none flex gap-1 border border-black/5 dark:border-white/5">
+                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
+                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                </div>
               </div>
-              <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm p-3 rounded-2xl rounded-tl-none flex gap-1 border border-black/5 dark:border-white/5">
-                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
-                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

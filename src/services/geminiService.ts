@@ -61,6 +61,18 @@ const unifiedAnalysisSchema = {
           role: { type: Type.STRING },
           description: { type: Type.STRING },
           traits: { type: Type.ARRAY, items: { type: Type.STRING } },
+          familyName: { type: Type.STRING },
+          nickname: { type: Type.STRING },
+          age: { type: Type.STRING },
+          birthday: { type: Type.STRING },
+          birthplace: { type: Type.STRING },
+          residence: { type: Type.STRING },
+          height: { type: Type.STRING },
+          weight: { type: Type.STRING },
+          physicalFeatures: { type: Type.STRING },
+          style: { type: Type.STRING },
+          strengths: { type: Type.STRING },
+          weaknesses: { type: Type.STRING }
         }
       }
     },
@@ -157,7 +169,7 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Pr
   }
 };
 
-export const analyzeManuscript = async (text: string, tokenLimit?: number, options?: AnalysisOptions): Promise<ManuscriptAnalysisResponse> => {
+export const analyzeStoryText = async (text: string, tokenLimit?: number, options?: AnalysisOptions): Promise<ManuscriptAnalysisResponse> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-3-flash-preview";

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { ViewType, ProjectData, Location, Artifact, LoreEntry } from '../../types';
-import { Plus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X } from 'lucide-react';
+import { Plus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save } from 'lucide-react';
 
-import { Modal } from '../ui/Modal';
 import { MapView } from '../ui/MapView';
 import { generateId } from '../../services/storageService';
 
@@ -24,6 +23,7 @@ interface WorldSystemViewProps {
   onDeleteArtifact: (id: string) => void;
   onAddLore: (l: LoreEntry) => void;
   onDeleteLore: (id: string) => void;
+  onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
 
 enum WorldTab {
@@ -36,13 +36,17 @@ enum WorldTab {
 }
 
 export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
-  data, onAddLocation, onAddArtifact, onAddLore, onUpdateLocation, onUpdateArtifact, onDeleteArtifact, onDeleteLore, onUpdateProject, currentView, onChangeView, currentMapParentId, onMapChange
+  data, onAddLocation, onAddArtifact, onAddLore, onUpdateLocation, onDeleteArtifact, onDeleteLore, onUpdateProject, currentMapParentId, onMapChange, onOpenBlueprint
 }) => {
   const [activeTab, setActiveTab] = useState<WorldTab>(WorldTab.ATLAS);
-  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-  const [editingArtifact, setEditingArtifact] = useState<Artifact | null>(null);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [isScaleOpen, setIsScaleOpen] = useState(false);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
+  
+  // Local Scale Calibration State
+  const [localScale, setLocalScale] = useState(data.mapScale || 100);
+  const [localUnit, setLocalUnit] = useState(data.mapUnit || 'km');
+
   const zoomInRef = React.useRef<(() => void) | null>(null);
   const zoomOutRef = React.useRef<(() => void) | null>(null);
 
@@ -79,20 +83,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   const filteredLocations = data.locations.filter(l => l.parentId === (currentMapParentId || undefined));
   const parentLocation = data.locations.find(l => l.id === currentMapParentId);
 
-  const handleSaveLocation = () => {
-    if (editingLocation) {
-      onUpdateLocation(editingLocation);
-      setEditingLocation(null);
-    }
-  };
-
-  const handleSaveArtifact = () => {
-    if (editingArtifact) {
-      onUpdateArtifact(editingArtifact);
-      setEditingArtifact(null);
-    }
-  };
-
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
@@ -124,6 +114,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 locations={filteredLocations} 
                 rootMapImage={parentLocation?.mapImage || data.rootMapImage || DEFAULT_MAP} 
                 mapUnit={data.mapUnit}
+                mapScale={data.mapScale}
                 zoomInRef={zoomInRef}
                 zoomOutRef={zoomOutRef}
                 onDimensionsDetected={(width, height) => setMapDimensions({ width, height })}
@@ -131,13 +122,19 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   const loc = data.locations.find(l => l.id === id);
                   if (loc) {
                     if (loc.mapImage) onMapChange(loc.id);
-                    else setEditingLocation(loc);
+                    else onOpenBlueprint('Location', loc.id, loc);
                   }
                 }}
                 onLocationPlace={(id, x, y) => {
                   const loc = data.locations.find(l => l.id === id);
                   if (loc) {
                     onUpdateLocation({ ...loc, x, y, parentId: currentMapParentId || undefined });
+                  }
+                }}
+                onLocationMove={(id, x, y) => {
+                  const loc = data.locations.find(l => l.id === id);
+                  if (loc) {
+                    onUpdateLocation({ ...loc, x, y });
                   }
                 }}
                 onMapClick={(x, y) => {
@@ -169,20 +166,13 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 <div className="flex flex-col gap-3 items-end pointer-events-auto">
                   <div className="flex gap-2 p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/20">
                     <button 
-                      onClick={() => zoomInRef.current?.()}
-                      className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
-                      title="Zoom In"
+                      onClick={() => setIsScaleOpen(!isScaleOpen)}
+                      className={`p-2 rounded-xl transition-colors ${isScaleOpen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-500 hover:text-indigo-600'}`}
+                      title="Toggle Scale Calibration"
                     >
-                      <Plus size={20} />
+                      <Search size={20} />
                     </button>
-                    <button 
-                      onClick={() => zoomOutRef.current?.()}
-                      className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
-                      title="Zoom Out"
-                    >
-                      <X size={20} className="rotate-45" /> {/* Using X as a minus or could use Minus icon */}
-                    </button>
-                    
+
                     <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center" />
 
                     <button 
@@ -202,37 +192,73 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   </div>
 
                   {/* Scale Calibration Panel */}
-                  <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/20 w-64 space-y-3">
-                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      <Search size={12} /> Scale Calibration
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-[10px] text-slate-500 uppercase font-bold">
-                        <span>Image Width:</span>
-                        <span className="font-mono">{mapDimensions.width}px</span>
+                  {isScaleOpen && (
+                    <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/20 w-64 space-y-3 relative animate-in fade-in zoom-in-95 duration-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          <Search size={12} /> Scale Calibration
+                        </div>
+                        <button onClick={() => setIsScaleOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                          <X size={14} />
+                        </button>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <input 
-                          type="number"
-                          value={data.mapScale || 100}
-                          onChange={(e) => onUpdateProject({ mapScale: parseInt(e.target.value) })}
-                          className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                          placeholder="Width value"
-                        />
-                        <select 
-                          value={data.mapUnit || 'km'}
-                          onChange={(e) => onUpdateProject({ mapUnit: e.target.value })}
-                          className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-2 py-1.5 text-[10px] font-black uppercase text-indigo-600"
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 uppercase font-bold">
+                          <span>Image Width:</span>
+                          <span className="font-mono">{mapDimensions.width}px</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="number"
+                            value={localScale}
+                            onChange={(e) => setLocalScale(parseInt(e.target.value) || 0)}
+                            className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Width value"
+                          />
+                          <select 
+                            value={localUnit}
+                            onChange={(e) => setLocalUnit(e.target.value)}
+                            className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-2 py-1.5 text-[10px] font-black uppercase text-indigo-600"
+                          >
+                            <option value="km">KM</option>
+                            <option value="mi">mi</option>
+                          </select>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            onUpdateProject({ mapScale: localScale, mapUnit: localUnit });
+                            setIsScaleOpen(false);
+                          }}
+                          className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
                         >
-                          <option value="km">KM</option>
-                          <option value="mi">Miles</option>
-                        </select>
+                          <CheckCircle size={12} /> Apply Calibration
+                        </button>
+                        <p className="text-[9px] text-slate-400 leading-tight italic text-center">
+                          Define how many {localUnit} the entire width of the image represents.
+                        </p>
                       </div>
-                      <p className="text-[9px] text-slate-400 leading-tight italic text-center">
-                        Define how many {data.mapUnit || 'km'} the entire width of the image represents.
-                      </p>
                     </div>
-                  </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Floating Zoom Controls (Bottom Right) */}
+              <div className="absolute bottom-24 right-6 flex flex-col gap-2 z-30 pointer-events-none">
+                <div className="flex flex-col bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl shadow-xl border border-white/20 overflow-hidden pointer-events-auto">
+                  <button 
+                    onClick={() => zoomInRef.current?.()}
+                    className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800"
+                    title="Zoom In"
+                  >
+                    <Plus size={20} />
+                  </button>
+                  <button 
+                    onClick={() => zoomOutRef.current?.()}
+                    className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    title="Zoom Out"
+                  >
+                    <X size={20} className="rotate-45" />
+                  </button>
                 </div>
               </div>
 
@@ -297,6 +323,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Cosmology Content Remains the Same */}
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
                     <span>Temporal Constants</span>
@@ -313,116 +340,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       <input type="number" value={activeCalendar.hoursPerDay || 24} onChange={(e) => {
                           onUpdateProject({ calendars: [{ ...activeCalendar, hoursPerDay: parseInt(e.target.value) || 24 }] });
                         }} className="w-20 bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-1 text-right font-mono" />
-                    </div>
-                  </div>
-
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mt-8 flex items-center justify-between">
-                    <span>Months</span>
-                    <button onClick={() => {
-                      const newMonth = { id: generateId(), name: `Month ${activeCalendar.months.length + 1}`, days: 30 };
-                      onUpdateProject({ calendars: [{ ...activeCalendar, months: [...activeCalendar.months, newMonth] }] });
-                    }} className="text-indigo-500 hover:text-indigo-600"><Plus size={14} /></button>
-                  </h3>
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                    {activeCalendar.months.map((m, idx) => (
-                      <div key={m.id} className="flex items-center gap-2">
-                        <input 
-                          type="text" 
-                          value={m.name} 
-                          onChange={(e) => {
-                            const updated = [...activeCalendar.months];
-                            updated[idx] = { ...m, name: e.target.value };
-                            onUpdateProject({ calendars: [{ ...activeCalendar, months: updated }] });
-                          }}
-                          className="flex-1 bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-300"
-                        />
-                        <input 
-                          type="number" 
-                          value={m.days} 
-                          onChange={(e) => {
-                            const updated = [...activeCalendar.months];
-                            updated[idx] = { ...m, days: parseInt(e.target.value) || 0 };
-                            onUpdateProject({ calendars: [{ ...activeCalendar, months: updated }] });
-                          }}
-                          className="w-16 bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-1 text-sm text-center font-mono"
-                        />
-                        <span className="text-xs text-slate-400">days</span>
-                        <button onClick={() => {
-                          const updated = activeCalendar.months.filter(month => month.id !== m.id);
-                          onUpdateProject({ calendars: [{ ...activeCalendar, months: updated }] });
-                        }} className="p-1 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-8">
-                  <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                      <span>Epochs & Eras</span>
-                      <button onClick={() => {
-                        const newEra = { id: generateId(), name: `New Era`, abbreviation: 'NE', startYear: 0 };
-                        onUpdateProject({ calendars: [{ ...activeCalendar, eras: [...activeCalendar.eras, newEra] }] });
-                      }} className="text-indigo-500 hover:text-indigo-600"><Plus size={14} /></button>
-                    </h3>
-                    <div className="space-y-4 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                      {activeCalendar.eras.map((era, idx) => (
-                        <div key={era.id} className="space-y-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                           <div className="flex items-center gap-2">
-                            <input 
-                              type="text" 
-                              value={era.name} 
-                              onChange={(e) => {
-                                const updated = [...activeCalendar.eras];
-                                updated[idx] = { ...era, name: e.target.value };
-                                onUpdateProject({ calendars: [{ ...activeCalendar, eras: updated }] });
-                              }}
-                              className="flex-1 bg-white dark:bg-slate-900 border-none rounded-lg px-3 py-1 text-sm font-bold text-slate-700 dark:text-slate-300"
-                              placeholder="Era Name"
-                            />
-                            <input 
-                              type="text" 
-                              value={era.abbreviation} 
-                              onChange={(e) => {
-                                const updated = [...activeCalendar.eras];
-                                updated[idx] = { ...era, abbreviation: e.target.value };
-                                onUpdateProject({ calendars: [{ ...activeCalendar, eras: updated }] });
-                              }}
-                              className="w-16 bg-white dark:bg-slate-900 border-none rounded-lg px-3 py-1 text-sm text-center font-mono uppercase"
-                              placeholder="Abbr."
-                            />
-                            <button onClick={() => {
-                              const updated = activeCalendar.eras.filter(e => e.id !== era.id);
-                              onUpdateProject({ calendars: [{ ...activeCalendar, eras: updated }] });
-                            }} className="p-1 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
-                           </div>
-                           <div className="flex items-center gap-2 text-xs text-slate-500">
-                             <span>Starts Year:</span>
-                             <input 
-                                type="number" 
-                                value={era.startYear} 
-                                onChange={(e) => {
-                                  const updated = [...activeCalendar.eras];
-                                  updated[idx] = { ...era, startYear: parseInt(e.target.value) || 0 };
-                                  onUpdateProject({ calendars: [{ ...activeCalendar, eras: updated }] });
-                                }}
-                                className="w-20 bg-white dark:bg-slate-900 border-none rounded px-2 py-0.5 text-center font-mono"
-                              />
-                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Global Synchronization</h3>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Current Day Count (UEI)</span>
-                      <div className="flex items-center gap-2">
-                         <button onClick={() => onUpdateProject({ calendars: [{ ...activeCalendar, currentEpochDay: Math.max(0, (activeCalendar.currentEpochDay || 0) - 1) }] })} className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white">-</button>
-                         <span className="w-16 text-center font-mono font-bold text-slate-900 dark:text-white">{activeCalendar.currentEpochDay || 0}</span>
-                         <button onClick={() => onUpdateProject({ calendars: [{ ...activeCalendar, currentEpochDay: (activeCalendar.currentEpochDay || 0) + 1 }] })} className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white">+</button>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -446,7 +363,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingLocation(loc)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={14} /></button>
+                        <button onClick={() => onOpenBlueprint('Location', loc.id, loc)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={14} /></button>
                         <button onClick={() => onUpdateProject({ locations: data.locations.filter(l => l.id !== loc.id) })} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
                       </div>
                     </div>
@@ -476,7 +393,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{art.type}</span>
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingArtifact(art)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={14} /></button>
+                        <button onClick={() => onOpenBlueprint('Artifact', art.id, art)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={14} /></button>
                         <button onClick={() => onDeleteArtifact(art.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
                       </div>
                     </div>
@@ -509,6 +426,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       <p className="text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">{entry.definition}</p>
                     </div>
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => onOpenBlueprint('Lore', entry.id, entry)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={14} /></button>
                       <button onClick={() => onDeleteLore(entry.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
                     </div>
                   </div>
@@ -532,7 +450,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   <div key={entry.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative break-words [overflow-wrap:anywhere]">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Term</span>
-                      <button onClick={() => onDeleteLore(entry.id)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => onOpenBlueprint('Lore', entry.id, entry)} className="text-slate-300 hover:text-indigo-500"><Edit2 size={14} /></button>
+                        <button onClick={() => onDeleteLore(entry.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={14} /></button>
+                      </div>
                     </div>
                     <h3 className="font-bold text-slate-900 dark:text-white text-xl font-serif italic">{entry.term}</h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">{entry.definition}</p>
@@ -543,30 +464,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
           )}
         </div>
       </div>
-
-      <Modal isOpen={!!editingLocation} onClose={() => setEditingLocation(null)} title="Edit Location" footer={<button onClick={handleSaveLocation} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold">Save</button>}>
-        {editingLocation && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Name</label><input type="text" value={editingLocation.name} onChange={e => setEditingLocation({...editingLocation, name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-slate-900 dark:text-white" /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Type</label><input type="text" value={editingLocation.type} onChange={e => setEditingLocation({...editingLocation, type: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-slate-900 dark:text-white" /></div>
-            </div>
-            <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Description</label><textarea value={editingLocation.description} onChange={e => setEditingLocation({...editingLocation, description: e.target.value})} className="w-full h-32 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 resize-none" /></div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal isOpen={!!editingArtifact} onClose={() => setEditingArtifact(null)} title="Edit Artifact" footer={<button onClick={handleSaveArtifact} className="px-6 py-2 bg-amber-600 text-white rounded-xl font-bold">Save</button>}>
-        {editingArtifact && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Name</label><input type="text" value={editingArtifact.name} onChange={e => setEditingArtifact({...editingArtifact, name: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-slate-900 dark:text-white" /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Type</label><input type="text" value={editingArtifact.type} onChange={e => setEditingArtifact({...editingArtifact, type: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-slate-900 dark:text-white" /></div>
-            </div>
-            <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Description</label><textarea value={editingArtifact.description} onChange={e => setEditingArtifact({...editingArtifact, description: e.target.value})} className="w-full h-32 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 resize-none" /></div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 };

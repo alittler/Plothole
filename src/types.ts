@@ -15,7 +15,6 @@ export enum ViewType {
   INVENTORY = 'Inventory',
   ENCYCLOPEDIA = 'Encyclopedia',
   PLOT_ANALYSIS = 'PlotAnalysis',
-  MANUSCRIPT = 'Manuscript',
   PROCESSOR = 'Processor',
   TOOLBOX = 'Toolbox',
   SOURCE_READER = 'SourceReader',
@@ -127,7 +126,7 @@ export interface Character {
   species?: string;
   family?: string;
   archetype?: string;
-  imageUrl?: string; 
+  images?: { url: string; id: string; timestamp: number }[];
   aliases?: string[];
   associatedLocationId?: string;
   positionHistory?: { uei: number; locationId: string }[];
@@ -136,6 +135,18 @@ export interface Character {
   isMinor?: boolean;
   livingStatus?: string;
   goals?: string;
+  familyName?: string;
+  nickname?: string;
+  age?: string;
+  birthday?: string;
+  birthplace?: string;
+  residence?: string;
+  height?: string;
+  weight?: string;
+  physicalFeatures?: string;
+  style?: string;
+  strengths?: string;
+  weaknesses?: string;
 }
 
 export interface LexiconEntry {

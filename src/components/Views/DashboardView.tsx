@@ -5,7 +5,7 @@ import {
   Activity, CheckCircle2, AlertTriangle, Ghost, PinOff,
   BarChart3, TrendingUp, AlertOctagon, History, ShieldCheck, 
   CloudUpload, Mail, CheckCircle, XCircle, ShieldAlert,
-  Download, Image as ImageIcon
+  Download, Image as ImageIcon, Save
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { detectTemporalParadoxes } from '../../utils/calendarUtils';
@@ -22,10 +22,6 @@ interface DashboardViewProps {
   projectData: ProjectData;
   globalNotes: Note[];
   onFileUpload: () => void;
-  onUpdateManuscript: (file: File) => void;
-  onRescanManuscript: (file: File) => void;
-  onExportManuscript: () => void;
-  onImportManuscript: (file: File) => void;
   onLoadSample: () => void;
   isAnalyzing: boolean;
   error: string | null;
@@ -65,7 +61,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (projectData.rootMapImage) images.push({ url: projectData.rootMapImage, label: 'World Map', type: 'Map' });
     
     projectData.characters.forEach(c => {
-      if (c.imageUrl) images.push({ url: c.imageUrl, label: c.name, type: 'Character' });
+      if (c.images && c.images.length > 0) images.push({ url: c.images[0].url, label: c.name, type: 'Character' });
     });
     
     projectData.locations.forEach(l => {
@@ -413,7 +409,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      <Modal isOpen={isEditingMetadata} onClose={() => setIsEditingMetadata(false)} title="Edit Project Details" footer={<button onClick={handleSaveMetadata} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold">Save Changes</button>}>
+      <Modal isOpen={isEditingMetadata} onClose={() => setIsEditingMetadata(false)} title="Edit Project Details" footer={<button onClick={handleSaveMetadata} className="px-4 sm:px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2"><Save size={18} /> <span className="hidden sm:inline">Save Changes</span></button>}>
         <div className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-400 uppercase">Project Title</label>

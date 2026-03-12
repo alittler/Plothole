@@ -25,9 +25,12 @@ interface ResearchViewProps {
   currentUser: any;
   onUpdateProject: (data: Partial<ProjectData>) => void;
   onLinkClick?: (type: string, id: string) => void;
+  onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
 
-const ResearchView: React.FC<ResearchViewProps> = ({ projectData, globalNotes, projectsMetadata, currentUser, onUpdateProject, onLinkClick }) => {
+const ResearchView: React.FC<ResearchViewProps> = ({ 
+  projectData, globalNotes, projectsMetadata, currentUser, onUpdateProject, onLinkClick, onOpenBlueprint 
+}) => {
   const [activeTab, setActiveTab] = useState<StenoTab>(StenoTab.WORKSPACE);
 
   // Shared State
@@ -52,18 +55,6 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projectData, globalNotes, p
   // UI State
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const handleConvertToSource = (content: string, name: string = 'Converted Note') => {
-    const newSource: Source = {
-      id: generateId(),
-      name: `${name} (${new Date().toLocaleTimeString()})`,
-      content,
-      type: 'text',
-      timestamp: Date.now(),
-      isAnalyzing: false
-    };
-    setSources(prev => [newSource, ...prev]);
-  };
-
   const handleCommitToLedger = (content: string) => {
     const newEntry: Note = {
       id: generateId(),
@@ -87,45 +78,50 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projectData, globalNotes, p
     setIdeas(prev => [newIdea, ...prev]);
   };
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
   const renderTabContent = () => {
     switch (activeTab) {
       case StenoTab.WORKSPACE:
         return (
-          <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 lg:p-8 overflow-hidden">
-            {/* Ledger Feed Panel */}
-            <StenoLedgerPanel 
-              projectData={projectData} 
-              onUpdateProject={onUpdateProject} 
-              currentUser={currentUser}
-              projectsMetadata={projectsMetadata}
-              onLinkClick={onLinkClick}
-            />
+          <div className="h-full p-4 lg:p-8 overflow-hidden">
+            <div className="max-w-6xl mx-auto h-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Ledger Feed Panel - Takes up 2/3 on desktop */}
+              <div className="lg:col-span-2 h-full overflow-hidden">
+                <StenoLedgerPanel 
+                  projectData={projectData} 
+                  onUpdateProject={onUpdateProject} 
+                  currentUser={currentUser}
+                  projectsMetadata={projectsMetadata}
+                  onLinkClick={onLinkClick}
+                  onOpenBlueprint={onOpenBlueprint}
+                />
+              </div>
 
-            {/* Source Directory Panel */}
-            <StenoSourcesPanel
-              sources={sources}
-              setSources={setSources}
-            />
-            
-            {/* AI Chat Panel */}
-            <StenoChatPanel 
-              chatMessages={chatMessages}
-              setChatMessages={setChatMessages}
-              chatInput={chatInput}
-              setChatInput={setChatInput}
-              isChatLoading={isChatLoading}
-              setIsChatLoading={setIsChatLoading}
-              onSaveIdea={handleSaveIdea}
-              onCommitToLedger={handleCommitToLedger}
-              sources={sources}
-              ideas={ideas}
-            />
+              {/* Combined Source & Chat Column - Takes up 1/3 on desktop */}
+              <div className="flex flex-col gap-6 h-full overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <StenoSourcesPanel
+                    sources={sources}
+                    setSources={setSources}
+                    onOpenBlueprint={onOpenBlueprint}
+                  />
+                </div>
+                
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <StenoChatPanel 
+                    chatMessages={chatMessages}
+                    setChatMessages={setChatMessages}
+                    chatInput={chatInput}
+                    setChatInput={setChatInput}
+                    isChatLoading={isChatLoading}
+                    setIsChatLoading={setIsChatLoading}
+                    onSaveIdea={handleSaveIdea}
+                    onCommitToLedger={handleCommitToLedger}
+                    sources={sources}
+                    ideas={ideas}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         );
 
@@ -139,6 +135,7 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projectData, globalNotes, p
               projectsMetadata={projectsMetadata}
               onLinkClick={onLinkClick}
               isFullScreen={true}
+              onOpenBlueprint={onOpenBlueprint}
             />
           </div>
         );
@@ -151,6 +148,7 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projectData, globalNotes, p
                 sources={sources} 
                 setSources={setSources} 
                 isFullScreen={true}
+                onOpenBlueprint={onOpenBlueprint}
               />
             </div>
           </div>

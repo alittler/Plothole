@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Upload, FileText, Trash2, Loader2, Cpu, Clipboard, Sparkles, ExternalLink, Globe, Image as ImageIcon, BookOpen, Edit2 } from 'lucide-react';
+import { Search, Upload, FileText, Trash2, Loader2, Cpu, Clipboard, Sparkles, ExternalLink, Globe, Image as ImageIcon, BookOpen, Edit2, Save } from 'lucide-react';
 import { Source } from '../../../types';
 import * as pdfjsLib from 'pdfjs-dist';
 import { generateSourceGuide as generateSourceGuideAi, smartExtractSources, performOCR } from '../../../services/geminiService';
@@ -13,17 +13,18 @@ interface StenoSourcesPanelProps {
   sources: Source[];
   setSources: React.Dispatch<React.SetStateAction<Source[]>>;
   isFullScreen?: boolean;
+  onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
 
 export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
   sources,
   setSources,
-  isFullScreen = false
+  isFullScreen = false,
+  onOpenBlueprint
 }) => {
   const [isSmartPasteOpen, setIsSmartPasteOpen] = useState(false);
   const [smartPasteInput, setSmartPasteInput] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
-  const [editingSource, setEditingSource] = useState<Source | null>(null);
 
   const getSourceIcon = (type: string) => {
     switch (type) {
@@ -121,12 +122,6 @@ export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
       generateSourceGuide(id, content);
     }
   };
-  const handleSaveEdit = () => {
-    if (editingSource) {
-      setSources(prev => prev.map(s => s.id === editingSource.id ? editingSource : s));
-      setEditingSource(null);
-    }
-  };
 
   const handleDeleteSource = (id: string) => {
     setSources(prev => prev.filter(s => s.id !== id));
@@ -191,7 +186,7 @@ export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 
-                  onClick={() => setEditingSource(source)}
+                  onClick={() => onOpenBlueprint('Source', source.id, source)}
                   className="p-1 text-slate-300 hover:text-indigo-500 transition-colors"
                 >
                   <Edit2 size={14} />
@@ -262,42 +257,6 @@ export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
             className="w-full h-48 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 resize-none"
           />
         </div>
-      </Modal>
-
-      <Modal
-        isOpen={!!editingSource}
-        onClose={() => setEditingSource(null)}
-        title="Edit Source Content"
-        footer={
-          <button 
-            onClick={handleSaveEdit}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold"
-          >
-            Save Changes
-          </button>
-        }
-      >
-        {editingSource && (
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Title / Name</label>
-              <input 
-                type="text"
-                value={editingSource.name}
-                onChange={(e) => setEditingSource({ ...editingSource, name: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Content</label>
-              <textarea
-                value={editingSource.content}
-                onChange={(e) => setEditingSource({ ...editingSource, content: e.target.value })}
-                className="w-full h-64 bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 resize-none"
-              />
-            </div>
-          </div>
-        )}
       </Modal>
     </div>
   );

@@ -1,0 +1,51 @@
+
+> react-example@0.0.0 dev
+> tsx server.ts
+
+Starting October 8, 2024, the Node SDK is entering a three-month notice period. We encourage everyone to migrate to @clerk/express. For full details, please see our changelog: https://clerk.com/changelog/2024-10-08-express-sdk
+(node:248868) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✅ Database tables initialized
+[Sentry] express is not instrumented. Please make sure to initialize Sentry in a separate file that you `--import` when running node, see: https://docs.sentry.io/platforms/javascript/guides/express/install/esm/.
+🚀 Server running on http://0.0.0.0:3000
+4:43:53 p.m. [vite] (client) hmr update /src/components/Views/ManuscriptSystemView.tsx, /src/index.css
+4:43:53 p.m. [vite] (client) page reload server_log.txt
+4:44:03 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css
+4:44:03 p.m. [vite] (client) page reload server_log.txt
+4:45:06 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css, /src/components/Views/ResearchSystemView.tsx, /src/components/Views/StenoResearchView.tsx, /src/components/ui/AiAssistant.tsx, /src/components/Views/Steno/StenoChatPanel.tsx, /src/components/Views/Steno/StenoSourcesPanel.tsx
+4:45:06 p.m. [vite] (client) page reload server_log.txt
+4:45:09 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css
+4:45:09 p.m. [vite] (client) page reload server_log.txt
+4:45:12 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css
+4:45:12 p.m. [vite] (client) page reload server_log.txt
+4:48:03 p.m. [vite] .env changed, restarting server...
+4:48:03 p.m. [vite] (client) page reload server_log.txt
+4:48:05 p.m. [vite] server restarted.
+4:51:07 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css, /src/components/ui/AiAssistant.tsx, /src/components/Views/ResearchSystemView.tsx, /src/components/Views/StenoResearchView.tsx, /src/components/Views/Steno/StenoChatPanel.tsx, /src/components/Views/Steno/StenoSourcesPanel.tsx
+4:51:07 p.m. [vite] (client) page reload server_log.txt
+4:51:11 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css, /src/components/ui/AiAssistant.tsx, /src/components/Views/ResearchSystemView.tsx, /src/components/Views/StenoResearchView.tsx, /src/components/Views/Steno/StenoChatPanel.tsx, /src/components/Views/Steno/StenoSourcesPanel.tsx
+4:51:11 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css, /src/components/ui/AiAssistant.tsx, /src/components/Views/ResearchSystemView.tsx, /src/components/Views/StenoResearchView.tsx, /src/components/Views/Steno/StenoChatPanel.tsx, /src/components/Views/Steno/StenoSourcesPanel.tsx
+4:51:11 p.m. [vite] (client) page reload server_log.txt
+4:51:11 p.m. [vite] (client) page reload server_log.txt
+4:51:12 p.m. [vite] (client) page reload server_log.txt
+4:51:12 p.m. [vite] (client) page reload server_log.txt
+4:51:12 p.m. [vite] (client) page reload server_log.txt
+4:51:21 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css, /src/components/ui/AiAssistant.tsx, /src/components/Views/ResearchSystemView.tsx, /src/components/Views/StenoResearchView.tsx, /src/components/Views/Steno/StenoChatPanel.tsx, /src/components/Views/Steno/StenoSourcesPanel.tsx
+4:51:21 p.m. [vite] (client) page reload server_log.txt
+6:20:02 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css, /src/components/ui/AiAssistant.tsx, /src/components/Views/ResearchSystemView.tsx, /src/components/Views/StenoResearchView.tsx, /src/components/Views/Steno/StenoChatPanel.tsx, /src/components/Views/Steno/StenoSourcesPanel.tsx
+6:20:02 p.m. [vite] (client) page reload server_log.txt
+6:20:13 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css
+6:20:13 p.m. [vite] (client) page reload server_log.txt
+6:20:27 p.m. [vite] (client) hmr update /src/components/Views/ManuscriptSystemView.tsx, /src/index.css
+6:20:27 p.m. [vite] (client) page reload server_log.txt
+6:20:36 p.m. [vite] (client) hmr update /src/components/Views/ManuscriptSystemView.tsx, /src/index.css
+6:20:36 p.m. [vite] (client) page reload server_log.txt
+6:20:41 p.m. [vite] (client) hmr update /src/App.tsx, /src/index.css
+6:20:41 p.m. [vite] (client) page reload server_log.txt
