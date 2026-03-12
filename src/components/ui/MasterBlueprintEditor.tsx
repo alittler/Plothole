@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProjectData } from '../../types';
-import { Shield, Sparkles as SparklesIcon, Tag as TagIcon, Hash as HashIcon, Layout as LayoutIcon, X as XIcon, Map as MapIcon, Maximize2 as Maximize2Icon, ChevronRight as ChevronRightIcon, User as UserIconLucide, Heart as HeartIcon, Ruler as RulerIcon, Info as InfoIcon, Image as ImageIcon, Trash2, Link as LinkIcon, Upload, Plus } from 'lucide-react';
+import { Shield, Sparkles as SparklesIcon, Tag as TagIcon, Hash as HashIcon, Layout as LayoutIcon, X as XIcon, Map as MapIcon, Maximize2 as Maximize2Icon, ChevronRight as ChevronRightIcon, User as UserIconLucide, Heart as HeartIcon, Ruler as RulerIcon, Info as InfoIcon, Image as ImageIcon, Trash2, Link as LinkIcon, Upload, Plus, Copy, Check, Loader2 } from 'lucide-react';
 import { generateId } from '../../services/storageService';
 
 interface MasterBlueprintEditorProps {
@@ -18,25 +18,55 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
 }) => {
   const [previewPromptKey, setPreviewPromptKey] = useState<string | null>(null);
   const [imageUrlInput, setImageUrlInput] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !editingCard) return null;
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editingCard) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      const currentImages = editingCard.data.images || [];
-      if (currentImages.length >= 5) {
-        alert("Maximum 5 images allowed.");
-        return;
-      }
-      const newImages = [...currentImages, { id: generateId(), url: base64, timestamp: Date.now() }];
+    const currentImages = editingCard.data.images || [];
+    if (currentImages.length >= 5) {
+      alert("Maximum 5 images allowed.");
+      return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+      
+      const result = await response.json();
+      const newImages = [...currentImages, { id: generateId(), url: result.url, timestamp: Date.now() }];
       onQuickUpdate(editingCard.type, editingCard.id, 'images', newImages);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to upload image to server.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleAddImageUrl = () => {
@@ -275,6 +305,7 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
                     <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Portrait Gallery (Max 5)</h4>
                   </div>
                   <div className="flex gap-2">
+                    {isUploading && <Loader2 className="animate-spin text-indigo-500 mr-2" size={18} />}
                     <div className="relative">
                       <input 
                         type="text"
@@ -299,14 +330,36 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
 
                 <div className="grid grid-cols-5 gap-4">
                   {(editingCard.data.images || []).map((img: any) => (
-                    <div key={img.id} className="aspect-square rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-900 relative group/img border border-white/10 shadow-sm">
-                      <img src={img.url} alt="Portrait" className="w-full h-full object-cover" />
-                      <button 
-                        onClick={() => handleRemoveImage(img.id)}
-                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover/img:opacity-100 transition-opacity shadow-lg"
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                    <div key={img.id} className="space-y-2">
+                      <div className="aspect-square rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-900 relative group/img border border-white/10 shadow-sm">
+                        <img src={img.url} alt="Portrait" className="w-full h-full object-cover" />
+                        <button 
+                          onClick={() => handleRemoveImage(img.id)}
+                          className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover/img:opacity-100 transition-opacity shadow-lg"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1 px-1">
+                        <div className="flex-1 min-w-0">
+                          <p 
+                            className="text-[8px] font-mono text-slate-500 truncate" 
+                            title={img.url}
+                          >
+                            {img.url.startsWith('data:') ? 'Base64 Data' : img.url}
+                          </p>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(img.url);
+                            setCopiedId(img.id);
+                            setTimeout(() => setCopiedId(null), 2000);
+                          }}
+                          className="p-1 text-slate-400 hover:text-indigo-500 transition-colors shrink-0"
+                        >
+                          {copiedId === img.id ? <Check size={8} /> : <Copy size={8} />}
+                        </button>
+                      </div>
                     </div>
                   ))}
                   {Array.from({ length: 5 - (editingCard.data.images?.length || 0) }).map((_, i) => (
@@ -314,6 +367,81 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
                       <ImageIcon size={24} />
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Single Image Fields (Map Image / Card Image) */}
+            {(editingCard.data.mapImage !== undefined || editingCard.data.imageUrl !== undefined) && (
+              <div className="mb-12 p-6 bg-emerald-500/5 rounded-3xl border border-emerald-500/10">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <ImageIcon size={18} className="text-emerald-500" />
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600/70">Master Visual Asset</h4>
+                  </div>
+                  <div className="flex gap-2">
+                    {isUploading && <Loader2 className="animate-spin text-emerald-500 mr-2" size={18} />}
+                    <label className="flex items-center gap-2 px-4 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors cursor-pointer shadow-md text-[10px] font-bold uppercase tracking-widest">
+                      <Upload size={14} /> Upload New
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setIsUploading(true);
+                          const formData = new FormData();
+                          formData.append('image', file);
+                          try {
+                            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                            const result = await res.json();
+                            const field = editingCard.data.mapImage !== undefined ? 'mapImage' : 'imageUrl';
+                            onQuickUpdate(editingCard.type, editingCard.id, field, result.url);
+                          } catch (err) { alert("Upload failed"); }
+                          finally { setIsUploading(false); }
+                        }} 
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-6 items-start">
+                  <div className="w-32 h-32 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-900 border border-emerald-500/20 shadow-inner flex-shrink-0">
+                    {(editingCard.data.mapImage || editingCard.data.imageUrl) ? (
+                      <img 
+                        src={editingCard.data.mapImage || editingCard.data.imageUrl} 
+                        className="w-full h-full object-cover" 
+                        alt="Preview" 
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 italic text-[10px]">No Asset</div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-500 uppercase px-1">Asset URL Reference</label>
+                      <input 
+                        type="text"
+                        value={editingCard.data.mapImage || editingCard.data.imageUrl || ''}
+                        onChange={(e) => {
+                          const field = editingCard.data.mapImage !== undefined ? 'mapImage' : 'imageUrl';
+                          onQuickUpdate(editingCard.type, editingCard.id, field, e.target.value);
+                        }}
+                        className="w-full bg-white dark:bg-slate-900 border-none rounded-xl p-3 font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                        placeholder="Paste or upload to generate URL..."
+                      />
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const field = editingCard.data.mapImage !== undefined ? 'mapImage' : 'imageUrl';
+                        onQuickUpdate(editingCard.type, editingCard.id, field, '');
+                      }}
+                      className="text-[9px] font-bold text-red-500 uppercase px-1 hover:text-red-600 transition-colors"
+                    >
+                      Remove Asset
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

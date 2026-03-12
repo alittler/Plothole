@@ -155,7 +155,42 @@ const App: React.FC = () => {
     setProjectData(updated);
     await saveProjectData(updated);
     await refreshMetadata();
+
+    // Trigger cleanup occasionally
+    if (Math.random() < 0.2) {
+      performImageCleanup();
+    }
   }, [projectData, refreshMetadata]);
+
+  const performImageCleanup = useCallback(async () => {
+    // Collect all active image URLs across all projects
+    const allProjectsMeta = await getAllProjectsMetadata();
+    const activeUrls = new Set<string>();
+
+    // 1. Current Project (most detailed)
+    if (projectData) {
+      if (projectData.rootMapImage?.startsWith('/uploads/')) activeUrls.add(projectData.rootMapImage);
+      if (projectData.coverImage?.startsWith('/uploads/')) activeUrls.add(projectData.coverImage);
+      projectData.characters?.forEach(c => c.images?.forEach(img => { if (img.url?.startsWith('/uploads/')) activeUrls.add(img.url); }));
+      projectData.locations?.forEach(l => { if (l.mapImage?.startsWith('/uploads/')) activeUrls.add(l.mapImage); });
+      projectData.artifacts?.forEach(a => { if (a.imageUrl?.startsWith('/uploads/')) activeUrls.add(a.imageUrl); });
+    }
+
+    // 2. Scan other projects (less detailed metadata but covers basic fields)
+    allProjectsMeta.forEach(p => {
+      if (p.coverImage?.startsWith('/uploads/')) activeUrls.add(p.coverImage);
+    });
+
+    try {
+      await fetch('/api/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activeImageUrls: Array.from(activeUrls) })
+      });
+    } catch (err) {
+      console.warn("Cleanup call failed", err);
+    }
+  }, [projectData]);
 
   const openBlueprint = useCallback((type: string, id: string, dataObj: any) => {
     setEditingCard({ id, type, data: dataObj });

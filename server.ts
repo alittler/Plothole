@@ -8,6 +8,7 @@ import { initDb, getPool } from './src/db.js';
 import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
 import { Resend } from 'resend';
 import * as Sentry from "@sentry/node";
+import multer from 'multer';
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({
@@ -21,6 +22,27 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Configure Multer for local storage
+const uploadDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -29,7 +51,49 @@ async function startServer() {
   await initDb();
 
   app.use(express.json({ limit: '50mb' }));
+  app.use('/uploads', express.static(uploadDir));
   
+  // Local File Upload API
+  app.post('/api/upload', upload.single('image'), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const imageUrl = `/uploads/${req.file.filename}`;
+    res.json({ url: imageUrl });
+  });
+
+  app.post('/api/cleanup', async (req: any, res) => {
+    const { activeImageUrls } = req.body; // List of all URLs currently in use by any project
+    if (!activeImageUrls || !Array.isArray(activeImageUrls)) {
+      return res.status(400).json({ error: 'Invalid activeImageUrls list' });
+    }
+
+    try {
+      const files = fs.readdirSync(uploadDir);
+      let deletedCount = 0;
+      
+      files.forEach(file => {
+        const filePath = path.join(uploadDir, file);
+        const fileUrl = `/uploads/${file}`;
+        
+        // If file is not in active list AND is older than 1 hour (buffer)
+        if (!activeImageUrls.includes(fileUrl)) {
+          const stats = fs.statSync(filePath);
+          const ageInHours = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60);
+          
+          if (ageInHours > 1) {
+            fs.unlinkSync(filePath);
+            deletedCount++;
+          }
+        }
+      });
+      
+      res.json({ success: true, deletedCount });
+    } catch (err) {
+      res.status(500).json({ error: 'Cleanup failed' });
+    }
+  });
+
   // Clerk Middleware
   if (process.env.CLERK_SECRET_KEY) {
     app.use(ClerkExpressWithAuth());

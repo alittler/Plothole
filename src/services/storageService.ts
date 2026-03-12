@@ -290,6 +290,30 @@ export const exportProjectPlothole = async (project: ProjectData, globalNotes?: 
     // ledger.db - simulated relational store
     zip.file("ledger.db", JSON.stringify(project.ledger || [], null, 2));
 
+    // --- INCLUDE LOCAL UPLOADS ---
+    const localUploadUrls: string[] = [];
+    if (project.rootMapImage?.startsWith('/uploads/')) localUploadUrls.push(project.rootMapImage);
+    if (project.coverImage?.startsWith('/uploads/')) localUploadUrls.push(project.coverImage);
+    project.characters?.forEach(c => {
+      c.images?.forEach(img => { if (img.url?.startsWith('/uploads/')) localUploadUrls.push(img.url); });
+    });
+    project.locations?.forEach(l => { if (l.mapImage?.startsWith('/uploads/')) localUploadUrls.push(l.mapImage); });
+    project.artifacts?.forEach(a => { if (a.imageUrl?.startsWith('/uploads/')) localUploadUrls.push(a.imageUrl); });
+
+    const uniqueUploads = Array.from(new Set(localUploadUrls));
+    for (const urlPath of uniqueUploads) {
+      try {
+        const response = await fetch(urlPath);
+        if (response.ok) {
+          const blob = await response.blob();
+          const fileName = urlPath.split('/').pop() || "unknown_asset";
+          assetsFolder?.file(fileName, blob);
+        }
+      } catch (err) {
+        console.warn(`Failed to include asset ${urlPath} in export`, err);
+      }
+    }
+
     const blob = await zip.generateAsync({type:"blob"});
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

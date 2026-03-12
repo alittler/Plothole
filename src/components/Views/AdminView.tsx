@@ -11,7 +11,15 @@ enum AdminTab {
   SYSTEM = 'System',
   NAVIGATION = 'Navigation',
   USERS = 'Users',
-  CARDS = 'Master Card Feed'
+  CARDS = 'UNIFIED DATA FEED'
+}
+
+enum CardCategory {
+  ALL = 'All Cards',
+  RESEARCH = 'Research',
+  CHARACTERS = 'Characters',
+  WORLD = 'World Hub',
+  PLOT = 'Plot & Timeline'
 }
 
 interface AdminViewProps {
@@ -44,10 +52,11 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [newUserEmail, setNewUserEmail] = useState('');
   const [copiedCardId, setCopiedCardId] = useState<string | null>(null);
   
-  // Master Card Feed States
+  // UNIFIED DATA FEED States
   const [cardSearch, setCardSearch] = useState('');
   const [cardSort, setCardSort] = useState<'name' | 'type' | 'id'>('name');
   const [isQuickEdit, setIsQuickEdit] = useState(false);
+  const [activeCardCategory, setActiveCardCategory] = useState<CardCategory>(CardCategory.ALL);
 
   // Blueprint Editor States
   const [previewPromptKey, setPreviewPromptKey] = useState<string | null>(null);
@@ -107,6 +116,24 @@ export const AdminView: React.FC<AdminViewProps> = ({
     data.artifacts?.forEach(a => cards.push({ id: a.id, type: 'Artifact', name: a.name, data: a }));
     data.lore?.forEach(l => cards.push({ id: l.id, type: 'Lore', name: l.term, data: l }));
 
+    // Apply Category Filter
+    if (activeCardCategory !== CardCategory.ALL) {
+      cards = cards.filter(c => {
+        switch (activeCardCategory) {
+          case CardCategory.RESEARCH:
+            return c.type === 'Source' || c.type === 'Ledger';
+          case CardCategory.CHARACTERS:
+            return c.type === 'Character';
+          case CardCategory.WORLD:
+            return c.type === 'Location' || c.type === 'Artifact' || c.type === 'Lore';
+          case CardCategory.PLOT:
+            return c.type === 'Timeline';
+          default:
+            return true;
+        }
+      });
+    }
+
     // Apply Filter
     if (cardSearch.trim()) {
       const q = cardSearch.toLowerCase();
@@ -126,7 +153,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
     });
     
     return cards;
-  }, [data, cardSearch, cardSort]);
+  }, [data, cardSearch, cardSort, activeCardCategory]);
 
   const handleAddAdmin = () => {
     if (!newUserEmail.trim()) return;
@@ -512,7 +539,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   <Archive size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Master Card Feed</h2>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">UNIFIED DATA FEED</h2>
                   <p className="text-xs text-slate-500">Inspect and quick-edit project metadata objects.</p>
                 </div>
               </div>
@@ -551,6 +578,18 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   {allCards.length} Total
                 </div>
               </div>
+            </div>
+
+            <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar w-fit">
+              {Object.values(CardCategory).map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCardCategory(cat)}
+                  className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeCardCategory === cat ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                >
+                  {cat}
+                </button>
+              ))}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

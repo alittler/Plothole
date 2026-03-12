@@ -30,6 +30,19 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, proje
     }
   }, [messages]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 

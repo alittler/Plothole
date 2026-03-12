@@ -63,21 +63,33 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
   const locationQueue = data.locations.filter(l => l.x === undefined || l.y === undefined);
 
-  const handleMapUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMapUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
+    
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+      
+      const result = await response.json();
       if (currentMapParentId) {
         onUpdateProject({ 
-          locations: data.locations.map(l => l.id === currentMapParentId ? { ...l, mapImage: base64 } : l) 
+          locations: data.locations.map(l => l.id === currentMapParentId ? { ...l, mapImage: result.url } : l) 
         });
       } else {
-        onUpdateProject({ rootMapImage: base64 });
+        onUpdateProject({ rootMapImage: result.url });
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to upload map to server.");
+    }
   };
 
   const filteredLocations = data.locations.filter(l => l.parentId === (currentMapParentId || undefined));
