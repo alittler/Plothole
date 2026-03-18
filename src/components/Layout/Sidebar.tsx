@@ -109,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       `}>
         <div className="p-6 flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white uppercase">{appName}</span>}
+            {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white uppercase">{appName.replace(' — Your Story, Decoded', '')}</span>}
             <div className="flex items-center gap-2">
               <button onClick={onToggleCollapse} className="hidden lg:block p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white">
                 {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
