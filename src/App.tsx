@@ -881,33 +881,16 @@ const App: React.FC = () => {
         />
       </div>
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
-        {/* Mobile Header - Binding clamped over paper */}
-        <div className={`flex lg:hidden flex-col shrink-0 z-[1000] bg-slate-50 dark:bg-slate-950 transition-all duration-700 ease-in-out ${isMapFullscreen ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-28 p-2 pb-0 md:p-8 md:pb-0'}`}>
-          <div className="relative paper-texture rounded-t-2xl overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between p-3 px-6 binding-texture border-b border-black/20 dark:border-slate-800 relative z-30 shadow-xl">
-              <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 -ml-2 text-white/70">
-                <Menu size={20} />
-              </button>
-              <span className="font-black tracking-tighter text-white uppercase text-xs">{appSettings.appName}</span>
-              <button onClick={() => setIsAiOpen(!isAiOpen)} className="p-2 -mr-2 text-indigo-400">
-                <Sparkles size={20} />
-              </button>
-            </div>
-            
-            <div className="relative h-6 pointer-events-none overflow-hidden">
-              {/* Layer 3 (Back) */}
-              <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-4">
-                <div className="h-8 paper-fringe-dark path-torn-2" />
-              </div>
-              {/* Layer 2 */}
-              <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-2">
-                <div className="h-8 paper-fringe-mid path-torn-3" />
-              </div>
-              {/* Layer 1 (Front) */}
-              <div className="absolute top-0 left-0 right-0 torn-layer-shadow">
-                <div className="h-8 paper-fringe-light path-torn-1" />
-              </div>
-            </div>
+        {/* Mobile Header */}
+        <div className={`flex lg:hidden flex-col shrink-0 z-[1000] bg-slate-50 dark:bg-slate-950 transition-all duration-700 ease-in-out ${isMapFullscreen ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-20'}`}>
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 relative z-30 shadow-sm">
+            <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 dark:text-slate-400">
+              <Menu size={20} />
+            </button>
+            <span className="font-black tracking-tighter text-slate-900 dark:text-white uppercase text-sm">{appSettings.appName}</span>
+            <button onClick={() => setIsAiOpen(!isAiOpen)} className="p-2 -mr-2 text-indigo-500">
+              <Sparkles size={20} />
+            </button>
           </div>
         </div>
 
