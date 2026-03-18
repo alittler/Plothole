@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ProjectData } from '../../types';
-import { X, Send, Sparkles, User, Bot } from 'lucide-react';
+import { X, Send, Sparkles, User, Bot, Download } from 'lucide-react';
 import { chatWithAssistant } from '../../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 
@@ -67,60 +67,72 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, proje
     }
   };
 
+  const handleExportDiscussion = () => {
+    const chatText = messages.map(m => `### ${m.role === 'user' ? 'Lead Architect' : 'Story Assistant'}\n\n${m.text}\n\n---\n`).join('\n');
+    const blob = new Blob([chatText], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `story_discussion_${new Date().toISOString().split('T')[0]}.md`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-96 bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col z-[2000] animate-in slide-in-from-right duration-300">
+    <div className="fixed right-0 top-0 bottom-0 w-[500px] bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col z-[2000] animate-in slide-in-from-right duration-300">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
-        <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+        <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white text-sm uppercase tracking-tighter">
           <Sparkles size={18} className="text-indigo-500" />
           <span>Story Assistant</span>
         </div>
-        <button onClick={onClose} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded">
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleExportDiscussion}
+            className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors"
+            title="Export Discussion"
+          >
+            <Download size={18} />
+          </button>
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors">
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden paper-texture">
-        {/* Physical transition area */}
-        <div className="relative h-10 z-20 pointer-events-none overflow-hidden shrink-0">
-          {/* Layer 3 (Back) */}
-          <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-4">
-            <div className="h-8 paper-fringe-dark path-torn-2" />
-          </div>
-          {/* Layer 2 */}
-          <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-2">
-            <div className="h-8 paper-fringe-mid path-torn-3" />
-          </div>
-          {/* Layer 1 (Front) */}
-          <div className="absolute top-0 left-0 right-0 torn-layer-shadow">
-            <div className="h-8 paper-fringe-light path-torn-1" />
-          </div>
-        </div>
-
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 bg-slate-50/50 dark:bg-slate-950/50">
-          <div className="max-w-4xl mx-auto min-h-full relative shadow-xl rounded-2xl overflow-hidden p-4 md:pl-24 pt-2 bg-white/20 dark:bg-slate-800/20 backdrop-blur-sm border border-black/5 dark:border-white/5">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-white dark:bg-slate-900">
+          <div className="flex flex-col min-h-full">
             {messages.map((m, i) => (
-              <div key={i} className={`flex gap-3 mb-4 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600'}`}>
-                  {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-                </div>
-                <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm text-slate-700 dark:text-slate-300 rounded-tl-none border border-black/5 dark:border-white/5'}`}>
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{m.text}</ReactMarkdown>
+              <div key={i} className={`p-8 border-b border-slate-100 dark:border-slate-800/50 ${m.role === 'user' ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/30'}`}>
+                <div className="max-w-2xl mx-auto flex gap-6 items-start">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border border-slate-200 dark:border-slate-800 ${m.role === 'user' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' : 'bg-white dark:bg-slate-800 text-slate-600'}`}>
+                    {m.role === 'user' ? <User size={20} /> : <Bot size={20} />}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${m.role === 'user' ? 'text-indigo-600' : 'text-slate-400'}`}>
+                        {m.role === 'user' ? 'Lead Architect' : 'Story Assistant'}
+                      </span>
+                    </div>
+                    <div className="prose prose-slate dark:prose-invert max-w-none prose-sm leading-relaxed">
+                      <ReactMarkdown>{m.text}</ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
             {isLoading && (
-              <div className="flex gap-3 mb-4">
-                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-                  <Bot size={16} />
-                </div>
-                <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm p-3 rounded-2xl rounded-tl-none flex gap-1 border border-black/5 dark:border-white/5">
-                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
-                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+              <div className="p-8 bg-slate-50/50 dark:bg-slate-800/30">
+                <div className="max-w-2xl mx-auto flex gap-6 items-start animate-pulse">
+                  <div className="w-10 h-10 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-800">
+                    <Bot size={20} className="text-slate-400" />
+                  </div>
+                  <div className="flex-1 space-y-4 pt-2">
+                    <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full w-3/4" />
+                    <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full w-1/2" />
+                  </div>
                 </div>
               </div>
             )}

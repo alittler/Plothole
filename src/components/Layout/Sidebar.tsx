@@ -43,6 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   
   const allNavItems: NavItem[] = [
     { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
+    { id: ViewType.STORY_ARCHITECT, label: 'Story Architect', icon: Zap, always: true },
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
     { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: Database, projectOnly: true },
@@ -62,7 +63,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const baseSections: SidebarSection[] = [
       {
         title: 'Workspace',
-        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.BOOKSHELF, ViewType.DASHBOARD].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.STORY_ARCHITECT, ViewType.BOOKSHELF, ViewType.DASHBOARD].includes(i.id))
       },
       {
         title: 'Story',

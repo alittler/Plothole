@@ -41,6 +41,7 @@ import { ToolboxView } from './components/Views/ToolboxView';
 import { BlueprintRescueView } from './components/Views/BlueprintRescueView';
 import ResearchView from './components/Views/ResearchView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
+import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { AlertCircle, X, Sparkles, Menu } from 'lucide-react';
 import { SignedIn, SignedOut, useUser } from '@clerk/clerk-react';
@@ -618,6 +619,67 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUploadProject = async (file: File) => {
+    setIsAnalyzing(true);
+    addTask('uploading-project');
+    try {
+      const text = await file.text();
+      let data: any;
+      
+      if (file.name.endsWith('.json')) {
+        data = JSON.parse(text);
+      } else if (file.name.endsWith('.plothole')) {
+        // .plothole files are JSON (for now)
+        data = JSON.parse(text);
+      } else {
+        // It's a manuscript text file
+        const analysis = await analyzeStoryText(text, undefined, { 
+          extractCharacters: true, 
+          extractTimeline: true, 
+          extractLocations: true,
+          extractArtifacts: true,
+          extractLore: true
+        });
+        
+        data = {
+          id: generateId(),
+          title: analysis.title || file.name.replace(/\.[^/.]+$/, ""),
+          author: currentUser.name,
+          summary: analysis.summary,
+          lastModified: Date.now(),
+          characters: analysis.characters.map(c => ({ ...c, id: generateId(), source: 'ai' as const })),
+          locations: analysis.locations.map(l => ({ ...l, id: generateId(), source: 'ai' as const })),
+          timeline: analysis.timeline.map(e => ({ ...e, id: generateId(), source: 'ai' as const })),
+          themes: analysis.themes,
+          artifacts: analysis.artifacts.map(a => ({ ...a, id: generateId(), source: 'ai' as const })),
+          lore: analysis.lore.map(l => ({ ...l, id: generateId(), source: 'ai' as const })),
+          chapters: [{ 
+            id: generateId(), 
+            title: 'Imported Chapter', 
+            content: text, 
+            order: 0, 
+            status: 'Draft' as const, 
+            lastModified: Date.now(),
+            wordCount: text.split(/\s+/).length 
+          }]
+        };
+      }
+      
+      if (data) {
+        if (!data.id) data.id = generateId();
+        await saveProjectData(data);
+        setProjectData(data);
+        await refreshMetadata();
+        setCurrentView(ViewType.DASHBOARD);
+      }
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsAnalyzing(false);
+      removeTask('uploading-project');
+    }
+  };
+
   const viewContent = useMemo(() => {
     if (!isLoaded || !isClerkLoaded) return <div className="h-full flex items-center justify-center text-primary animate-pulse font-bold uppercase tracking-widest">Initialising Core Engines...</div>;
 
@@ -627,7 +689,7 @@ const App: React.FC = () => {
 
     switch (currentView) {
       case ViewType.BOOKSHELF: 
-        return <BookshelfView projects={projectsMetadata} activeProjectId={projectData?.id || ''} currentUser={currentUser} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); setCurrentView(ViewType.DASHBOARD); } }} onCreateProject={handleCreateProject} onUploadProject={async () => {}} onDeleteProject={async id => { await deleteProject(id); await refreshMetadata(); if (projectData?.id === id) setProjectData(null); }} onOpenDashboard={() => setCurrentView(ViewType.DASHBOARD)} isAnalyzing={isAnalyzing} />;
+        return <BookshelfView projects={projectsMetadata} activeProjectId={projectData?.id || ''} currentUser={currentUser} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); setCurrentView(ViewType.DASHBOARD); } }} onCreateProject={handleCreateProject} onUploadProject={handleUploadProject} onDeleteProject={async id => { await deleteProject(id); await refreshMetadata(); if (projectData?.id === id) setProjectData(null); }} onOpenDashboard={() => setCurrentView(ViewType.DASHBOARD)} isAnalyzing={isAnalyzing} />;
 
       case ViewType.NOTEPAD: 
         return <ResearchSystemView currentView={currentView} onChangeView={setCurrentView} data={{...projectData, notes: globalNotes} as any} projectsMetadata={projectsMetadata} currentUser={currentUser} onAddNote={async n => { 
@@ -764,6 +826,9 @@ const App: React.FC = () => {
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
+
+      case ViewType.STORY_ARCHITECT:
+        return <StoryArchitectView projectsMetadata={projectsMetadata} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); await refreshMetadata(); setCurrentView(ViewType.DASHBOARD); } }} onUpdateProject={updateProjectData} currentUser={currentUser} />;
 
       default: 
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;

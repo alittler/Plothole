@@ -1,11 +1,18 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { ManuscriptAnalysisResponse, Note, ProjectData, Character, Relationship, Artifact, LoreEntry, TimelineEvent, AnalysisOptions, Language, Plotline, MatrixCell, AppPrompts } from "../types";
-import { getAppPrompts, generateId, getApiKey, saveApiKey } from "./storageService";
+import { getAppPrompts, generateId, getApiKey, saveApiKey, getAppSettings } from "./storageService";
 
 let initializedApiKey: string | null = null;
 
 export const initializeApiKey = async () => {
-  initializedApiKey = (import.meta as any).env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) || await getApiKey('gemini_api_key');
+  const metaEnv = (import.meta as any).env || {};
+  const windowEnv = (window as any)._env_ || {};
+  
+  initializedApiKey = metaEnv.VITE_GEMINI_API_KEY || 
+                      (window as any).GEMINI_API_KEY || 
+                      windowEnv.VITE_GEMINI_API_KEY ||
+                      (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) || 
+                      await getApiKey('gemini_api_key');
 };
 
 export const isApiKeyValid = () => {
@@ -172,42 +179,52 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Pr
 export const analyzeStoryText = async (text: string, tokenLimit?: number, options?: AnalysisOptions): Promise<ManuscriptAnalysisResponse> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
+  const appSettings = await getAppSettings();
   const model = prompts.AI_MODEL || "gemini-3-flash-preview";
 
   // Determine intelligent chunk size based on model
-  let maxChars = 150000; // Default safe limit
-  if (model.includes('1.5') || model.includes('3.1')) {
-    maxChars = 800000; // Models with huge context
-  } else if (model.includes('3-flash')) {
-    maxChars = 400000;
+  let maxChars = appSettings?.aiCharacterLimit || 400000; 
+  if (!appSettings?.aiCharacterLimit) {
+    if (model.includes('1.5') || model.includes('3.1')) {
+      maxChars = 800000; // Models with huge context
+    } else if (model.includes('3-flash')) {
+      maxChars = 400000;
+    }
   }
 
   const actualLimit = tokenLimit || maxChars;
   const textLength = text.length;
 
+  // For massive files, be more aggressive with sampling to avoid hanging
+  const isMassive = textLength > (actualLimit * 3); 
+  const sampleSize = actualLimit;
+
   const systemInstruction = `You are a world-class story architect. Perform a scan of the provided manuscript snippet and extract a structured living encyclopedia. Return strictly JSON.`;
 
-  // Intelligent Chunking Strategy:
-  // If text is within limits, process normally.
-  // If text is significantly larger, take Start, Middle, and End chunks to get a full narrative overview.
   const chunks: string[] = [];
-  if (textLength <= actualLimit) {
+  if (textLength <= sampleSize) {
     chunks.push(text);
+  } else if (isMassive) {
+    // For massive files, take 5 smaller samples to get a better overview without hitting timeouts
+    console.log(`Massive file detected (${(textLength/1024/1024).toFixed(2)}MB). Using sparse sampling...`);
+    chunks.push(text.substring(0, sampleSize)); // Start
+    chunks.push(text.substring(Math.floor(textLength * 0.25), Math.floor(textLength * 0.25) + sampleSize)); // 25%
+    chunks.push(text.substring(Math.floor(textLength * 0.5), Math.floor(textLength * 0.5) + sampleSize)); // 50%
+    chunks.push(text.substring(Math.floor(textLength * 0.75), Math.floor(textLength * 0.75) + sampleSize)); // 75%
+    chunks.push(text.substring(Math.max(0, textLength - sampleSize))); // End
   } else {
-    // Take Start
-    chunks.push(text.substring(0, actualLimit));
-    // Take Middle
+    // Take Start, Middle, and End
+    chunks.push(text.substring(0, sampleSize));
     const mid = Math.floor(textLength / 2);
-    const midStart = Math.max(0, mid - Math.floor(actualLimit / 2));
-    chunks.push(text.substring(midStart, midStart + actualLimit));
-    // Take End
-    chunks.push(text.substring(Math.max(0, textLength - actualLimit)));
+    const midStart = Math.max(0, mid - Math.floor(sampleSize / 2));
+    chunks.push(text.substring(midStart, midStart + sampleSize));
+    chunks.push(text.substring(Math.max(0, textLength - sampleSize)));
   }
 
   const results = [];
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
-    console.log(`Analyzing manuscript chunk ${i+1}/${chunks.length}...`);
+    console.log(`Analyzing manuscript chunk ${i+1}/${chunks.length}... (${chunk.length} chars)`);
     try {
       const res = await withRetry(() => ai.models.generateContent({
         model,
@@ -218,11 +235,12 @@ export const analyzeStoryText = async (text: string, tokenLimit?: number, option
           responseSchema: unifiedAnalysisSchema
         }
       }));
-      results.push(safeJsonParse(res.text, {}));
+      const parsed = safeJsonParse(res.text, {});
+      if (Object.keys(parsed).length > 0) {
+        results.push(parsed);
+      }
     } catch (e) {
       console.error(`Chunk ${i+1} failed:`, e);
-      // Continue with other chunks if one fails, or throw if crucial?
-      // For manuscript extraction, partial is better than nothing.
     }
   }
 

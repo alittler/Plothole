@@ -5,7 +5,7 @@ const DB_NAME = 'NovelNexusDB';
 const STORE_NAME = 'projects';
 const NOTEBOOK_STORE = 'notebook';
 const GLOBALS_STORE = 'app_globals';
-const DB_VERSION = 4;
+const DB_VERSION = 10;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 

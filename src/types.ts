@@ -21,7 +21,8 @@ export enum ViewType {
   MATRIX = 'Matrix',
   DICTIONARY = 'Dictionary',
   RESEARCH = 'Research',
-  SEMANTIC_EDITOR = 'SemanticEditor'
+  SEMANTIC_EDITOR = 'SemanticEditor',
+  STORY_ARCHITECT = 'StoryArchitect'
 }
 
 export const APP_DATA_VERSION = 11;
@@ -71,6 +72,7 @@ export interface AppSettings {
   adminEmails?: string[];
   sidebarOrder?: ViewType[];
   bottomNavOrder?: ViewType[];
+  aiCharacterLimit?: number;
 }
 
 export interface AppPrompts {

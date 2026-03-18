@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
@@ -95,7 +96,11 @@ async function startServer() {
   });
 
   // Clerk Middleware
-  if (process.env.CLERK_SECRET_KEY) {
+  if (process.env.CLERK_SECRET_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY) {
+    // Ensure the SDK picks up the keys correctly
+    process.env.CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+    process.env.CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
+    
     app.use(ClerkExpressWithAuth());
   }
 
@@ -272,12 +277,23 @@ async function startServer() {
         }
       }
 
-      // Inject the Clerk Publishable Key into the HTML
+      // Inject the Clerk and Gemini Publishable Keys into the HTML
       const clerkKey = process.env.VITE_CLERK_PUBLISHABLE_KEY || 
                        process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 
                        process.env.VITE_CLERK_PUBLISH || 
                        '';
-      const injection = `<script>window.CLERK_PUBLISHABLE_KEY = ${JSON.stringify(clerkKey)};</script>`;
+      const geminiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
+      
+      const injection = `
+        <script>
+          window.CLERK_PUBLISHABLE_KEY = ${JSON.stringify(clerkKey)};
+          window.GEMINI_API_KEY = ${JSON.stringify(geminiKey)};
+          window._env_ = {
+            VITE_CLERK_PUBLISHABLE_KEY: ${JSON.stringify(clerkKey)},
+            VITE_GEMINI_API_KEY: ${JSON.stringify(geminiKey)}
+          };
+        </script>
+      `;
       template = template.replace('</head>', `${injection}</head>`);
 
       res.status(200).set({ 'Content-Type': 'text/html' }).end(template);

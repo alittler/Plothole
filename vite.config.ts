@@ -8,10 +8,12 @@ const commitHash = execSync('git rev-parse --short HEAD').toString().trim();
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  console.log('Loaded ENV keys:', Object.keys(env).filter(k => k.includes('GEMINI') || k.includes('CLERK')));
   return {
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY),
       'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(env.VITE_CLERK_PUBLISHABLE_KEY || env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || env.VITE_CLERK_PUBLISH || ''),
       'import.meta.env.VITE_GIT_COMMIT_HASH': JSON.stringify(commitHash),
     },

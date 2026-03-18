@@ -334,6 +334,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     <option value="gemini-2.0-pro-exp-02-05">Gemini 2.0 Pro Experimental</option>
                   </select>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Character Limit (per chunk/analysis)</label>
+                  <input 
+                    type="number" 
+                    value={settings.aiCharacterLimit || 400000} 
+                    onChange={(e) => setSettings({ ...settings, aiCharacterLimit: parseInt(e.target.value) })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="e.g. 400000"
+                  />
+                  <p className="text-[9px] text-slate-500 font-medium">Controls the amount of text sent to the AI in a single request. Higher values capture more context but take longer to process.</p>
+                </div>
               </div>
             </section>
           </div>
@@ -371,7 +382,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 
                 <div className="space-y-2">
                   {(settings.sidebarOrder || [
-                    ViewType.NOTEPAD, ViewType.BOOKSHELF, ViewType.DASHBOARD,
+                    ViewType.NOTEPAD, ViewType.STORY_ARCHITECT, ViewType.BOOKSHELF, ViewType.DASHBOARD,
                     ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE,
                     ViewType.TOOLBOX, ViewType.SETTINGS, ViewType.ADMIN
                   ]).map((view, index, arr) => (
