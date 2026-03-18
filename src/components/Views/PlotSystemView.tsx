@@ -102,18 +102,18 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="space-y-1 text-center md:text-left">
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">PLOT & TIMELINE</h1>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">The sequence of events that define your story.</p>
+            <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">PLOT & TIMELINE</h1>
+            <p className="hidden md:block text-xs md:text-sm text-slate-500 dark:text-slate-400">The sequence of events that define your story.</p>
           </div>
-          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-full md:w-auto overflow-x-auto no-scrollbar">
             {[PlotTab.TIMELINE, PlotTab.CALENDAR].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                className={`flex-1 md:flex-none px-3 md:px-4 py-2 rounded-xl font-bold text-[10px] md:text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                {tab === PlotTab.TIMELINE && <List size={16} />}
-                {tab === PlotTab.CALENDAR && <Calendar size={16} />}
+                {tab === PlotTab.TIMELINE && <List size={14} />}
+                {tab === PlotTab.CALENDAR && <Calendar size={14} />}
                 {tab}
               </button>
             ))}
@@ -121,29 +121,29 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           {activeTab === PlotTab.TIMELINE && (
             <>
-              <div className="flex justify-end gap-4 mb-8">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 md:gap-4 mb-8">
                 <button 
                   onClick={onExtractSoftAnchors} 
                   disabled={isAnalyzing}
-                  className="px-6 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold hover:bg-indigo-100 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <Sparkles size={18} /> Sync Soft Anchors
+                  <Sparkles size={16} /> Sync Anchors
                 </button>
-                <button onClick={() => onAddTimelineEvent({ id: Math.random().toString(), date: 'Year 1', title: 'New Event', description: '', charactersInvolved: [], location: '', source: 'manual' })} className="px-6 py-2 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition-colors flex items-center gap-2">
-                  <Plus size={18} /> Add Event
+                <button onClick={() => onAddTimelineEvent({ id: Math.random().toString(), date: 'Year 1', title: 'New Event', description: '', charactersInvolved: [], location: '', source: 'manual' })} className="w-full sm:w-auto px-4 py-2 bg-amber-600 text-white rounded-xl font-bold text-sm hover:bg-amber-700 transition-colors flex items-center justify-center gap-2">
+                  <Plus size={16} /> Add Event
                 </button>
               </div>
-              <div className="relative border-l-2 border-slate-200 dark:border-slate-800 pl-8 space-y-12">
+              <div className="relative border-l-2 border-slate-200 dark:border-slate-800 pl-4 md:pl-8 space-y-8 md:space-y-12">
                 {data.timeline.sort((a,b) => (a.uei || 0) - (b.uei || 0)).map((event, idx) => (
                   <div key={event.id} className="relative group">
-                    <div className={`absolute -left-[41px] top-0 w-4 h-4 rounded-full border-4 border-white dark:border-slate-950 shadow-sm ${event.isSoftAnchor ? 'bg-indigo-400 border-dashed' : 'bg-amber-500'}`} />
+                    <div className={`absolute -left-[17px] md:-left-[41px] top-0 w-3 md:h-4 md:w-4 h-3 rounded-full border-2 md:border-4 border-white dark:border-slate-950 shadow-sm ${event.isSoftAnchor ? 'bg-indigo-400 border-dashed' : 'bg-amber-500'}`} />
                     <div 
                       onClick={() => handleSelectEvent(event)}
-                      className={`p-6 rounded-2xl shadow-sm border hover:shadow-md transition-all cursor-pointer ${event.isSoftAnchor ? 'bg-indigo-50/30 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
+                      className={`p-4 md:p-6 rounded-2xl shadow-sm border hover:shadow-md transition-all cursor-pointer ${event.isSoftAnchor ? 'bg-indigo-50/30 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">

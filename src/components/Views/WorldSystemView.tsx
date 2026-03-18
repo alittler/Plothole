@@ -107,15 +107,15 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
         <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-center md:text-left">
-              <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">WORLD HUB</h1>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Geography, artifacts, and the lore of your universe.</p>
+              <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">WORLD HUB</h1>
+              <p className="hidden md:block text-xs md:text-sm text-slate-500 dark:text-slate-400">Geography, artifacts, and the lore of your universe.</p>
             </div>
-            <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar">
+            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar w-full md:w-auto">
               {Object.values(WorldTab).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                  className={`flex-1 md:flex-none px-3 md:px-4 py-2 rounded-xl font-bold text-[10px] md:text-sm transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
                 >
                   {tab}
                 </button>
@@ -184,37 +184,37 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
               )}
 
               {/* Floating Header Controls (Google Maps Style) */}
-              <div className="absolute top-6 left-6 right-6 flex items-start justify-between pointer-events-none z-30">
-                <div className="flex flex-col gap-3 pointer-events-auto">
+              <div className="absolute top-3 md:top-6 left-3 md:left-6 right-3 md:right-6 flex items-start justify-between pointer-events-none z-30">
+                <div className="flex flex-col gap-2 md:gap-3 pointer-events-auto">
                   {/* Breadcrumbs */}
-                  <div className="flex items-center gap-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-white/20">
-                    <button onClick={() => onMapChange(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-emerald-600">
-                      <MapIcon size={20} />
+                  <div className="flex items-center gap-2 md:gap-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2 md:px-4 py-1.5 md:py-2 rounded-xl md:rounded-2xl shadow-xl border border-white/20">
+                    <button onClick={() => onMapChange(null)} className="p-1.5 md:p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg md:rounded-xl transition-colors text-emerald-600">
+                      <MapIcon size={16} className="md:w-5 md:h-5" />
                     </button>
-                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
-                    <div className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
+                    <div className="h-4 md:h-6 w-px bg-slate-200 dark:bg-slate-800" />
+                    <div className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-sm font-bold text-slate-600 dark:text-slate-300">
                       <button onClick={() => onMapChange(null)} className="hover:text-emerald-500">World</button>
                       {parentLocation && (
                         <>
-                          <ChevronRight size={14} className="text-slate-400" />
-                          <span className="text-slate-900 dark:text-white font-black uppercase tracking-tight">{parentLocation.name}</span>
+                          <ChevronRight size={12} className="text-slate-400" />
+                          <span className="text-slate-900 dark:text-white font-black uppercase tracking-tight truncate max-w-[80px] md:max-w-none">{parentLocation.name}</span>
                         </>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 items-end pointer-events-auto">
-                  <div className="flex gap-2 p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/20">
+                <div className="flex flex-col gap-2 md:gap-3 items-end pointer-events-auto">
+                  <div className="flex gap-1 md:gap-2 p-1 md:p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl md:rounded-2xl shadow-xl border border-white/20">
                     <button 
                       onClick={onToggleFullscreen}
-                      className={`p-2 rounded-xl transition-colors ${isFullscreen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-500 hover:text-indigo-600'}`}
+                      className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-colors ${isFullscreen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-500 hover:text-indigo-600'}`}
                       title="Toggle Fullscreen"
                     >
-                      <Maximize2 size={20} />
+                      <Maximize2 size={16} className="md:w-5 md:h-5" />
                     </button>
 
-                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+                    <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
 
                     <button 
                       onClick={() => {
@@ -227,36 +227,36 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                           }
                         }
                       }}
-                      className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-colors"
+                      className="p-1.5 md:p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg md:rounded-xl transition-colors"
                       title="Save current view as default center"
                     >
-                      <Target size={20} />
+                      <Target size={16} className="md:w-5 md:h-5" />
                     </button>
 
-                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+                    <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
 
                     <button 
                       onClick={() => setIsScaleOpen(!isScaleOpen)}
-                      className={`p-2 rounded-xl transition-colors ${isScaleOpen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-500 hover:text-indigo-600'}`}
+                      className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-colors ${isScaleOpen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-500 hover:text-indigo-600'}`}
                       title="Toggle Scale Calibration"
                     >
-                      <Search size={20} />
+                      <Search size={16} className="md:w-5 md:h-5" />
                     </button>
 
-                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+                    <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
 
                     <button 
                       onClick={() => setIsQueueOpen(!isQueueOpen)}
-                      className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all ${isQueueOpen ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'}`}
+                      className={`px-2 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl font-black text-[8px] md:text-[10px] uppercase tracking-widest flex items-center gap-1.5 md:gap-2 transition-all ${isQueueOpen ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'}`}
                     >
-                      <Layout size={14} /> {isQueueOpen ? 'Close Queue' : 'Open Queue'}
+                      <Layout size={12} className="md:w-3.5 md:h-3.5" /> <span className="hidden sm:inline">{isQueueOpen ? 'Close Queue' : 'Open Queue'}</span>
                       {locationQueue.length > 0 && <span className={`px-1.5 rounded-full ${isQueueOpen ? 'bg-white/20' : 'bg-indigo-100 text-indigo-600'}`}>{locationQueue.length}</span>}
                     </button>
                     
-                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+                    <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
                     
-                    <label className="p-2 text-slate-500 hover:text-indigo-600 cursor-pointer transition-colors" title="Upload Map">
-                      <Upload size={20} />
+                    <label className="p-1.5 md:p-2 text-slate-500 hover:text-indigo-600 cursor-pointer transition-colors" title="Upload Map">
+                      <Upload size={16} className="md:w-5 md:h-5" />
                       <input type="file" className="hidden" accept="image/*" onChange={handleMapUpload} />
                     </label>
                   </div>

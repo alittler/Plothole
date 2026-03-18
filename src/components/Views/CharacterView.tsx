@@ -43,19 +43,19 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="space-y-1 text-center md:text-left">
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">CHARACTERS & CAST</h1>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Manage the souls that inhabit your story.</p>
+            <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">CHARACTERS</h1>
+            <p className="hidden md:block text-xs md:text-sm text-slate-500 dark:text-slate-400">Manage the souls that inhabit your story.</p>
           </div>
-          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-full md:w-auto overflow-x-auto no-scrollbar">
             {[CharacterTab.ROSTER, CharacterTab.RELATIONSHIPS, CharacterTab.NOTES].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                className={`flex-1 md:flex-none px-3 md:px-4 py-2 rounded-xl font-bold text-[10px] md:text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                {tab === CharacterTab.ROSTER && <Users size={16} />}
-                {tab === CharacterTab.RELATIONSHIPS && <Network size={16} />}
-                {tab === CharacterTab.NOTES && <FileText size={16} />}
+                {tab === CharacterTab.ROSTER && <Users size={14} />}
+                {tab === CharacterTab.RELATIONSHIPS && <Network size={14} />}
+                {tab === CharacterTab.NOTES && <FileText size={14} />}
                 {tab}
               </button>
             ))}
@@ -63,31 +63,31 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
           {activeTab === CharacterTab.ROSTER && (
             <>
-              <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
+              <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 md:mb-8">
                 <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
                     type="text"
-                    placeholder="Find a character..."
+                    placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
                 <button
                   onClick={() => onAddCharacter({ id: Math.random().toString(), name: 'New Character', role: 'Protagonist', description: '', traits: [], source: 'manual' })}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors ml-auto"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors sm:ml-auto"
                 >
-                  <Plus size={18} />
-                  Add Character
+                  <Plus size={16} />
+                  Add
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {filteredCharacters.map(char => (
                   <div key={char.id} className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden group hover:shadow-md transition-all">
                     <div className="aspect-[4/5] bg-slate-100 dark:bg-slate-800 relative">

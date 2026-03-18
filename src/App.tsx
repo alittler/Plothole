@@ -853,7 +853,7 @@ const App: React.FC = () => {
   }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, openBlueprint, handleQuickUpdate]);
   const renderAppContent = () => (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors animate-in fade-in duration-500">
-      <div className={`transition-all duration-700 ease-in-out flex shrink-0 overflow-hidden ${isMapFullscreen ? 'w-0 opacity-0 pointer-events-none' : 'w-64 md:w-80'}`}>
+      <div className={`transition-all duration-700 ease-in-out hidden lg:flex shrink-0 overflow-hidden ${isMapFullscreen ? 'w-0 opacity-0 pointer-events-none' : isSidebarCollapsed ? 'w-20' : 'w-64 md:w-80'}`}>
         <Sidebar 
           currentView={currentView} 
           onChangeView={setCurrentView} 
@@ -882,19 +882,19 @@ const App: React.FC = () => {
       </div>
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
         {/* Mobile Header - Binding clamped over paper */}
-        <div className={`flex lg:hidden flex-col shrink-0 z-[1000] bg-slate-50 dark:bg-slate-950 transition-all duration-700 ease-in-out ${isMapFullscreen ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-40 p-4 pb-0 md:p-8 md:pb-0'}`}>
-          <div className="relative paper-texture rounded-t-3xl overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between p-4 px-6 binding-texture border-b border-black/20 dark:border-slate-800 relative z-30 shadow-xl">
+        <div className={`flex lg:hidden flex-col shrink-0 z-[1000] bg-slate-50 dark:bg-slate-950 transition-all duration-700 ease-in-out ${isMapFullscreen ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-28 p-2 pb-0 md:p-8 md:pb-0'}`}>
+          <div className="relative paper-texture rounded-t-2xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between p-3 px-6 binding-texture border-b border-black/20 dark:border-slate-800 relative z-30 shadow-xl">
               <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 -ml-2 text-white/70">
-                <Menu size={24} />
+                <Menu size={20} />
               </button>
-              <span className="font-black tracking-tighter text-white uppercase">{appSettings.appName}</span>
+              <span className="font-black tracking-tighter text-white uppercase text-xs">{appSettings.appName}</span>
               <button onClick={() => setIsAiOpen(!isAiOpen)} className="p-2 -mr-2 text-indigo-400">
-                <Sparkles size={24} />
+                <Sparkles size={20} />
               </button>
             </div>
             
-            <div className="relative h-10 pointer-events-none overflow-hidden">
+            <div className="relative h-6 pointer-events-none overflow-hidden">
               {/* Layer 3 (Back) */}
               <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-4">
                 <div className="h-8 paper-fringe-dark path-torn-2" />

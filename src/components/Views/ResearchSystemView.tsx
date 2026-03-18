@@ -227,17 +227,17 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 relative pt-2 pb-32 lg:pb-8 px-4 md:pl-24 lg:pl-32">
+          <div className="flex-1 relative pt-2 pb-32 lg:pb-8 px-4 md:pl-16 lg:pl-32">
             <div className="space-y-0 relative z-10">
               <StackedPaper className="space-y-4" transparent>
-                <div className="p-6 relative z-20">
+                <div className="p-4 md:p-6 relative z-20">
                   <div className="relative">
                     <textarea
                       value={newNote}
                       onChange={handleTextChange}
                       onKeyDown={handleKeyDown}
-                      placeholder="Jot down a thought, a name, or a plot point... (Enter to Save)"
-                      className="w-full h-32 bg-transparent border-none focus:ring-0 text-lg resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400/50"
+                      placeholder="Jot down a thought... (Enter to Save)"
+                      className="w-full h-32 bg-transparent border-none focus:ring-0 text-base md:text-lg resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400/50"
                     />
                     {showTagSuggestion && (
                       <button

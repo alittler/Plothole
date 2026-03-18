@@ -81,7 +81,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, proje
   if (!isOpen) return null;
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-[500px] bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col z-[2000] animate-in slide-in-from-right duration-300">
+    <div className="fixed right-0 top-0 bottom-0 w-full md:w-[500px] bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col z-[2000] animate-in slide-in-from-right duration-300">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
         <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white text-sm uppercase tracking-tighter">
           <Sparkles size={18} className="text-indigo-500" />

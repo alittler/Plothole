@@ -41,21 +41,21 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
 
   return (
     <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950">
-      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-8 md:mb-12">
-        <div className="max-w-6xl mx-auto flex items-center gap-6">
-          <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg">
-            <BookOpen size={32} />
+      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-6 md:mb-12">
+        <div className="max-w-6xl mx-auto flex items-center gap-4 md:gap-6">
+          <div className="p-3 md:p-4 bg-slate-900 text-white rounded-2xl shadow-lg shrink-0">
+            <BookOpen size={24} className="md:w-8 md:h-8" />
           </div>
-          <div className="space-y-1">
-            <h1 className="text-2xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white uppercase">MY LIBRARY</h1>
-            <p className="text-xs md:text-base text-slate-500 dark:text-slate-400">Manage your story worlds and manuscripts.</p>
+          <div className="space-y-0.5 md:space-y-1">
+            <h1 className="text-xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white uppercase">MY LIBRARY</h1>
+            <p className="text-[10px] md:text-base text-slate-500 dark:text-slate-400">Manage your story worlds.</p>
           </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 pb-12">
+      <div className="max-w-6xl mx-auto px-4 pb-20 md:pb-12">
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {projects.map(project => (
             <div
               key={project.id}
