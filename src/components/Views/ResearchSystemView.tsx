@@ -212,7 +212,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
       <div className="flex-1 overflow-y-auto relative p-4 pt-0 md:pt-8 md:p-8 bg-slate-50 dark:bg-slate-950">
         <div className="max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-b-3xl md:rounded-3xl overflow-hidden flex flex-col paper-texture">
           {/* Transition Zone - paper texture continues underneath */}
-          <div className="hidden lg:block relative h-10 z-20 pointer-events-none overflow-hidden shrink-0">
+          <div className="hidden lg:block relative h-14 z-20 pointer-events-none overflow-hidden shrink-0">
             {/* Layer 3 (Back) */}
             <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-4">
               <div className="h-8 paper-fringe-dark path-torn-2" />

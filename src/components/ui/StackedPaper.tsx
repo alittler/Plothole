@@ -34,7 +34,7 @@ export const StackedPaper: React.FC<StackedPaperProps> = ({
           </>
         )}
         
-        <div className={`flex flex-col h-full ${noPadding ? '' : 'pt-6'} ${transparent ? '' : 'paper-texture'} ${paperClassName}`}>
+        <div className={`flex flex-col h-full ${noPadding ? '' : 'pt-10'} ${transparent ? '' : 'paper-texture'} ${paperClassName}`}>
           {children}
         </div>
       </div>
