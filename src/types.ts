@@ -33,6 +33,7 @@ export interface Scene {
   content: string;
   wordCount: number;
   uei?: number;
+  referenceUrls?: string[];
 }
 
 /**
@@ -48,6 +49,7 @@ export interface Chapter {
   lastModified: number;
   scenes: Scene[];
   wordCount: number;
+  referenceUrls?: string[];
 }
 
 export interface Act {
@@ -151,6 +153,7 @@ export interface Character {
   style?: string;
   strengths?: string;
   weaknesses?: string;
+  referenceUrls?: string[];
 }
 
 export interface LexiconEntry {
@@ -186,6 +189,7 @@ export interface Artifact {
   history?: string;
   significance?: string;
   source?: 'manual' | 'ai';
+  referenceUrls?: string[];
 }
 export interface Source {
   id: string;
@@ -218,14 +222,7 @@ export interface LoreEntry {
   relatedIds?: string[]; 
   source?: 'manual' | 'ai';
   metadata?: Record<string, string>; 
-}
-
-export interface PlotBeat {
-  id: string;
-  beatName: string; 
-  description: string;
-  timelineEventId?: string; 
-  confidence?: number; 
+  referenceUrls?: string[];
 }
 
 export interface PlotHole {
@@ -253,6 +250,20 @@ export interface TimelineEvent {
   id: string;
   date: string; 
   uei?: number;
+  
+  // Advanced Historical Context
+  absoluteTime?: {
+    julianDate: number;
+    iso8601Utc?: string;
+    precision: 'millisecond' | 'second' | 'minute' | 'hour' | 'day' | 'month' | 'year';
+  };
+  recordedContext?: {
+    originalInput: string;
+    calendarSystem: string;
+    timeZone?: string;
+    coordinates?: { lat: number; lon: number };
+  };
+
   title: string;
   description: string;
   charactersInvolved: string[];
@@ -260,6 +271,7 @@ export interface TimelineEvent {
   source?: 'manual' | 'ai';
   isSoftAnchor?: boolean;
   referenceEventId?: string;
+  referenceUrls?: string[];
 }
 
 export interface Inspiration {
@@ -282,11 +294,13 @@ export interface Location {
   y?: number; 
   lat?: number; 
   lng?: number; 
+  icon?: string;
   mapScale?: number; 
   mapUnit?: string; 
   ueiRange?: { start?: number; end?: number };
   inspirations?: Inspiration[];
   source?: 'manual' | 'ai';
+  referenceUrls?: string[];
 }
 
 export interface Note {
@@ -415,7 +429,6 @@ export interface ProjectData {
   artifacts?: Artifact[];
   lore?: LoreEntry[];
   chapters?: Chapter[];
-  plotBeats?: PlotBeat[];
   plotHoles?: PlotHole[]; 
   sentimentArc?: SentimentPoint[];
   notes: Note[];
@@ -442,6 +455,7 @@ export interface ProjectData {
   rootMapImage?: string; 
   mapScale?: number;
   mapUnit?: string;
+  mapDefaultView?: { x: number, y: number, zoom: number };
   mapTabOrder?: string[]; 
   navOrder?: ViewType[];
 
@@ -529,5 +543,5 @@ export interface ManuscriptAnalysisResponse {
   themes: string[];
   artifacts: Artifact[];
   lore: LoreEntry[];
-  urls: string[];
+  referenceUrls: string[];
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ViewType, ProjectData, Location, Artifact, LoreEntry } from '../../types';
-import { Plus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save } from 'lucide-react';
+import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target } from 'lucide-react';
 
 import { MapView } from '../ui/MapView';
 import { generateId } from '../../services/storageService';
@@ -24,6 +24,8 @@ interface WorldSystemViewProps {
   onAddLore: (l: LoreEntry) => void;
   onDeleteLore: (id: string) => void;
   onOpenBlueprint: (type: string, id: string, data: any) => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 enum WorldTab {
@@ -36,9 +38,11 @@ enum WorldTab {
 }
 
 export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
-  data, onAddLocation, onAddArtifact, onAddLore, onUpdateLocation, onDeleteArtifact, onDeleteLore, onUpdateProject, currentMapParentId, onMapChange, onOpenBlueprint
+  data, onAddLocation, onAddArtifact, onAddLore, onUpdateLocation, onDeleteArtifact, onDeleteLore, onUpdateProject, currentMapParentId, onMapChange, onOpenBlueprint, isFullscreen, onToggleFullscreen
 }) => {
   const [activeTab, setActiveTab] = useState<WorldTab>(WorldTab.ATLAS);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [showOriginPulse, setShowOriginPulse] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isScaleOpen, setIsScaleOpen] = useState(false);
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
@@ -49,6 +53,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
   const zoomInRef = React.useRef<(() => void) | null>(null);
   const zoomOutRef = React.useRef<(() => void) | null>(null);
+  const centerMapRef = React.useRef<((coords?: { x: number, y: number }) => void) | null>(null);
+  const getViewStateRef = React.useRef<(() => { x: number, y: number, zoom: number } | null) | null>(null);
 
   const activeCalendar = data.calendars?.[0] || {
     id: 'default',
@@ -96,41 +102,48 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   const parentLocation = data.locations.find(l => l.id === currentMapParentId);
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
-      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="space-y-1 text-center md:text-left">
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">WORLD HUB</h1>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Geography, artifacts, and the lore of your universe.</p>
+    <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
+      <div className={`transition-all duration-700 ease-in-out overflow-hidden shrink-0 ${isFullscreen ? 'max-h-0 opacity-0' : 'max-h-64 opacity-100'}`}>
+        <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 text-center md:text-left">
+              <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">WORLD HUB</h1>
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Geography, artifacts, and the lore of your universe.</p>
+            </div>
+            <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar">
+              {Object.values(WorldTab).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar">
-            {Object.values(WorldTab).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
+        </header>
+      </div>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="max-w-6xl mx-auto h-full flex flex-col space-y-12">
-          {activeTab === WorldTab.ATLAS && (
-            <div className="flex-1 min-h-[600px] relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-100 dark:bg-slate-900 max-w-full">
+      <div className="flex-1 min-h-0 w-full p-4 md:p-8 transition-all duration-700 overflow-hidden">
+        <div className="h-full w-full flex justify-center">
+          <div className={`h-full w-full flex flex-col ${isFullscreen ? 'max-w-none' : 'max-w-6xl'} ${activeTab !== WorldTab.ATLAS ? 'space-y-12 overflow-y-auto pb-12' : ''}`}>
+            {activeTab === WorldTab.ATLAS && (
+            <div className="flex-1 min-h-0 relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-100 dark:bg-slate-900 w-full">
               {/* Map Component */}
               <MapView 
                 locations={filteredLocations} 
                 rootMapImage={parentLocation?.mapImage || data.rootMapImage || DEFAULT_MAP} 
                 mapUnit={data.mapUnit}
                 mapScale={data.mapScale}
+                defaultView={data.mapDefaultView}
                 zoomInRef={zoomInRef}
                 zoomOutRef={zoomOutRef}
+                centerMapRef={centerMapRef}
+                getViewStateRef={getViewStateRef}
                 onDimensionsDetected={(width, height) => setMapDimensions({ width, height })}
                 onLocationClick={(id) => {
+                  setSelectedLocationId(id);
                   const loc = data.locations.find(l => l.id === id);
                   if (loc) {
                     if (loc.mapImage) onMapChange(loc.id);
@@ -149,10 +162,26 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     onUpdateLocation({ ...loc, x, y });
                   }
                 }}
+                onLocationUnplace={(id) => {
+                  const loc = data.locations.find(l => l.id === id);
+                  if (loc) {
+                    onUpdateLocation({ ...loc, x: undefined, y: undefined, parentId: undefined });
+                  }
+                }}
                 onMapClick={(x, y) => {
                   console.log("Map Clicked", x, y);
                 }}
               />
+
+              {/* Origin Pulse Animation Overlay */}
+              {showOriginPulse && (
+                <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center">
+                  <div className="w-32 h-32 border-4 border-indigo-500 rounded-full animate-ping opacity-75" />
+                  <div className="absolute bg-indigo-600 text-white px-4 py-2 rounded-full font-black text-xs uppercase tracking-widest animate-bounce shadow-2xl">
+                    View Saved as Default
+                  </div>
+                </div>
+              )}
 
               {/* Floating Header Controls (Google Maps Style) */}
               <div className="absolute top-6 left-6 right-6 flex items-start justify-between pointer-events-none z-30">
@@ -177,6 +206,35 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
                 <div className="flex flex-col gap-3 items-end pointer-events-auto">
                   <div className="flex gap-2 p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/20">
+                    <button 
+                      onClick={onToggleFullscreen}
+                      className={`p-2 rounded-xl transition-colors ${isFullscreen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-500 hover:text-indigo-600'}`}
+                      title="Toggle Fullscreen"
+                    >
+                      <Maximize2 size={20} />
+                    </button>
+
+                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+
+                    <button 
+                      onClick={() => {
+                        if (getViewStateRef.current) {
+                          const view = getViewStateRef.current();
+                          if (view) {
+                            onUpdateProject({ mapDefaultView: view });
+                            setShowOriginPulse(true);
+                            setTimeout(() => setShowOriginPulse(false), 2000);
+                          }
+                        }
+                      }}
+                      className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-colors"
+                      title="Save current view as default center"
+                    >
+                      <Target size={20} />
+                    </button>
+
+                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+
                     <button 
                       onClick={() => setIsScaleOpen(!isScaleOpen)}
                       className={`p-2 rounded-xl transition-colors ${isScaleOpen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-500 hover:text-indigo-600'}`}
@@ -269,7 +327,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     title="Zoom Out"
                   >
-                    <X size={20} className="rotate-45" />
+                    <Minus size={20} />
                   </button>
                 </div>
               </div>
@@ -327,34 +385,37 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
           {activeTab === WorldTab.COSMOLOGY && (
             <section className="space-y-8">
                <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                  <Clock size={20} className="text-indigo-500" /> Cosmology Engine
-                </h2>
-                <div className="px-4 py-2 bg-slate-900 text-white rounded-xl font-mono text-xs">
-                  Day Count: {activeCalendar.currentEpochDay || 0}
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                    <Clock size={20} className="text-indigo-500" /> Cosmology Engine
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1 uppercase font-black tracking-widest">Temporal Physics Configuration</p>
+                </div>
+                <button 
+                  onClick={() => onOpenBlueprint('Calendar', activeCalendar.id, activeCalendar)}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
+                >
+                  <Edit2 size={18} /> Edit Calendar Blueprint
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 opacity-60">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Planetary Spin</h3>
+                  <div className="text-2xl font-black text-slate-900 dark:text-white">{activeCalendar.hoursPerDay || 24}h <span className="text-xs text-slate-400 font-bold uppercase">Day</span></div>
+                </div>
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 opacity-60">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Orbital Period</h3>
+                  <div className="text-2xl font-black text-slate-900 dark:text-white">{activeCalendar.months.reduce((acc, m) => acc + m.days, 0)}d <span className="text-xs text-slate-400 font-bold uppercase">Year</span></div>
+                </div>
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 opacity-60">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Week Rotation</h3>
+                  <div className="text-2xl font-black text-slate-900 dark:text-white">{activeCalendar.daysPerWeek || 7}d <span className="text-xs text-slate-400 font-bold uppercase">Week</span></div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Cosmology Content Remains the Same */}
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                    <span>Temporal Constants</span>
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Days per Week</span>
-                      <input type="number" value={activeCalendar.daysPerWeek || 7} onChange={(e) => {
-                          onUpdateProject({ calendars: [{ ...activeCalendar, daysPerWeek: parseInt(e.target.value) || 7 }] });
-                        }} className="w-20 bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-1 text-right font-mono" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Hours per Day (Ticks)</span>
-                      <input type="number" value={activeCalendar.hoursPerDay || 24} onChange={(e) => {
-                          onUpdateProject({ calendars: [{ ...activeCalendar, hoursPerDay: parseInt(e.target.value) || 24 }] });
-                        }} className="w-20 bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-3 py-1 text-right font-mono" />
-                    </div>
-                  </div>
-                </div>
+              <div className="p-6 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                <p className="text-xs text-amber-700 dark:text-indigo-400 leading-relaxed font-medium italic">
+                  Direct temporal editing is locked to maintain physics consistency. Use the <strong>Blueprint Editor</strong> to modify the planetary and orbital constants.
+                </p>
               </div>
             </section>
           )}
@@ -477,5 +538,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };

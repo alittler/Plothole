@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ProjectMetadata, User } from '../../types';
-import { Plus, Upload, Trash2, BookOpen } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Zap } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
 interface BookshelfViewProps {

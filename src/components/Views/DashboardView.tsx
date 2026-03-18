@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ProjectData, Note, Commit, BackupStatus } from '../../types';
 import { 
   Sparkles, FileText, Users, Map, Calendar, Clock, Edit3, 
-  Activity, CheckCircle2, AlertTriangle, Ghost, PinOff,
+  Activity, Ghost, PinOff,
   BarChart3, TrendingUp, AlertOctagon, History, ShieldCheck, 
   CloudUpload, Mail, CheckCircle, XCircle, ShieldAlert,
   Download, Image as ImageIcon, Save
@@ -25,7 +25,6 @@ interface DashboardViewProps {
   onLoadSample: () => void;
   isAnalyzing: boolean;
   error: string | null;
-  onUpdateMetadata: (title: string, author: string) => void;
   onExport: () => void;
   onExportProject: (project: ProjectData, globalNotes: Note[]) => void;
   onAnalyzeText: (text: string) => void;
@@ -35,25 +34,18 @@ interface DashboardViewProps {
   onAuditThreads: () => void;
   isGeneratingCover: boolean;
   isExporting?: boolean;
+  onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  projectData, globalNotes, onGenerateCover, isGeneratingCover, onUpdateMetadata, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, isExporting
+  projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, isExporting, onOpenBlueprint
 }) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>(DashboardTab.HEALTH);
-  const [isEditingMetadata, setIsEditingMetadata] = useState(false);
-  const [editTitle, setEditTitle] = useState(projectData.title);
-  const [editAuthor, setEditAuthor] = useState(projectData.author || '');
   const [isIntegrityValid, setIsIntegrityValid] = useState<boolean | null>(null);
 
   useEffect(() => {
     validateIntegrity(projectData).then(valid => setIsIntegrityValid(valid));
   }, [projectData]);
-
-  const handleSaveMetadata = () => {
-    onUpdateMetadata(editTitle, editAuthor);
-    setIsEditingMetadata(false);
-  };
 
   const projectImages = useMemo(() => {
     const images: { url: string; label: string; type: string }[] = [];
@@ -78,14 +70,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const stats = useMemo(() => {
     const totalWords = (projectData.chapters || []).reduce((acc, c) => acc + (c.wordCount || 0), 0);
-    const completedChapters = (projectData.chapters || []).filter(c => c.status === 'Final').length;
-    const totalChapters = (projectData.chapters || []).length;
-    const completeness = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
     
     const unplacedPins = (projectData.locations || []).filter(l => !l.x && !l.y);
     const paradoxes = detectTemporalParadoxes(projectData);
     
-    return { totalWords, completeness, unplacedPins, paradoxes };
+    return { totalWords, unplacedPins, paradoxes };
   }, [projectData]);
 
   return (
@@ -112,7 +101,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="space-y-1 group relative">
               <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase flex flex-col md:flex-row items-center gap-2 md:gap-4">
                 {projectData.title}
-                <button onClick={() => setIsEditingMetadata(true)} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors md:opacity-0 md:group-hover:opacity-100">
+                <button onClick={() => onOpenBlueprint('Project', projectData.id, projectData)} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors md:opacity-0 md:group-hover:opacity-100">
                   <Edit3 size={24} />
                 </button>
                 {isIntegrityValid === false && (
@@ -158,15 +147,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </header>
 
         {/* Health Dashboard & Stats */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <StatCard icon={TrendingUp} label="Total Word Count" value={stats.totalWords.toLocaleString()} color="text-indigo-500" />
-          <StatCard icon={CheckCircle2} label="Completeness" value={`${stats.completeness}%`} color="text-emerald-500" />
           <StatCard icon={Users} label="Characters" value={projectData.characters.length} color="text-blue-500" />
           <StatCard icon={FileText} label="Chapters" value={projectData.chapters?.length || 0} color="text-pink-500" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
+        <div className="grid grid-cols-1 gap-8">
+          <div className="space-y-8">
             {activeTab === DashboardTab.HEALTH && (
               <>
                 {/* Control Center / Health Dashboard */}
@@ -365,62 +353,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </section>
             )}
           </div>
-
-          <div className="space-y-8">
-            <section className="bg-indigo-600 rounded-3xl p-8 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform">
-                <Sparkles size={120} />
-              </div>
-              <h2 className="text-xl font-black mb-4 uppercase tracking-tight relative z-10">AI Insights</h2>
-              <p className="text-indigo-100 text-sm leading-relaxed mb-6 relative z-10 font-medium">
-                {projectData.themes.length > 0 
-                  ? `Your narrative has a strong focus on ${projectData.themes[0].toLowerCase()}. Consider expanding the role of ${projectData.characters[0]?.name || 'your protagonist'} to deepen this theme.`
-                  : "Start drafting to allow Merlin to identify themes and narrative pacing insights."}
-              </p>
-              <button className="w-full py-4 bg-white text-indigo-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-all active:scale-95 shadow-lg relative z-10">
-                Run Deep Analysis
-              </button>
-            </section>
-
-            <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800">
-               <h2 className="text-sm font-black text-slate-900 dark:text-white mb-4 uppercase tracking-widest">Project Progress</h2>
-               <div className="space-y-6">
-                 <div>
-                   <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                     <span>World Building</span>
-                     <span>{Math.round(((projectData.locations.length + (projectData.artifacts?.length || 0)) / 20) * 100)}%</span>
-                   </div>
-                   <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, (projectData.locations.length / 10) * 100)}%` }} />
-                   </div>
-                 </div>
-                 <div>
-                   <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                     <span>Character Web</span>
-                     <span>{Math.round((projectData.characters.length / 15) * 100)}%</span>
-                   </div>
-                   <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-pink-500 rounded-full" style={{ width: `${Math.min(100, (projectData.characters.length / 12) * 100)}%` }} />
-                   </div>
-                 </div>
-               </div>
-            </section>
-          </div>
         </div>
       </div>
-
-      <Modal isOpen={isEditingMetadata} onClose={() => setIsEditingMetadata(false)} title="Edit Project Details" footer={<button onClick={handleSaveMetadata} className="px-4 sm:px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2"><Save size={18} /> <span className="hidden sm:inline">Save Changes</span></button>}>
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-400 uppercase">Project Title</label>
-            <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-slate-900 dark:text-white" />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-400 uppercase">Author Name</label>
-            <input type="text" value={editAuthor} onChange={e => setEditAuthor(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-slate-900 dark:text-white" />
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };

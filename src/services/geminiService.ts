@@ -260,7 +260,7 @@ export const analyzeStoryText = async (text: string, tokenLimit?: number, option
     locations: [],
     artifacts: [],
     lore: [],
-    urls: []
+    referenceUrls: []
   };
 
   // Deduplicate and merge entities by name
@@ -559,7 +559,7 @@ export const analyzePlotMatrix = async (events: TimelineEvent[]): Promise<{ plot
   const eventData = events.map(e => e.title).join(', ');
   const response = await ai.models.generateContent({
     model,
-    contents: `Identify major subplots and development beats: ${eventData}`,
+    contents: `Identify major subplots and development plotlines: ${eventData}`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {

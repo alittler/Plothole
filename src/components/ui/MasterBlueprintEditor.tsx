@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ProjectData } from '../../types';
-import { Shield, Sparkles as SparklesIcon, Tag as TagIcon, Hash as HashIcon, Layout as LayoutIcon, X as XIcon, Map as MapIcon, Maximize2 as Maximize2Icon, ChevronRight as ChevronRightIcon, User as UserIconLucide, Heart as HeartIcon, Ruler as RulerIcon, Info as InfoIcon, Image as ImageIcon, Trash2, Link as LinkIcon, Upload, Plus, Copy, Check, Loader2 } from 'lucide-react';
+import { Shield, Sparkles as SparklesIcon, Tag as TagIcon, Hash as HashIcon, Layout as LayoutIcon, X as XIcon, Map as MapIcon, Maximize2 as Maximize2Icon, ChevronRight as ChevronRightIcon, User as UserIconLucide, Heart as HeartIcon, Ruler as RulerIcon, Info as InfoIcon, Image as ImageIcon, Trash2, Link as LinkIcon, Upload, Plus, Copy, Check, Loader2, Clock, Book, PenTool, FileText, Settings } from 'lucide-react';
 import { generateId } from '../../services/storageService';
 
 interface MasterBlueprintEditorProps {
@@ -109,7 +109,8 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
       .replace(/{lore}/g, loreList)
       .replace(/{themes}/g, themeList)
       .replace(/{user_context}/g, 'Lead Architect')
-      .replace(/{tasks}/g, 'No active tasks.');
+      .replace(/{tasks}/g, 'No active tasks.')
+      .replace(/{referenceUrls}/g, itemData?.referenceUrls?.join(', ') || 'No Reference URLs.');
 
     if (itemData) {
       compiled = compiled
@@ -129,68 +130,150 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
         .replace(/{physicalFeatures}/g, itemData.physicalFeatures || '')
         .replace(/{style}/g, itemData.style || '')
         .replace(/{strengths}/g, itemData.strengths || '')
-        .replace(/{weaknesses}/g, itemData.weaknesses || '');
+        .replace(/{weaknesses}/g, itemData.weaknesses || '')
+        .replace(/{referenceUrls}/g, itemData.referenceUrls?.join(', ') || '');
     }
 
     return compiled;
   };
 
-  const variables = [
-    { title: "Project Title", var: "{title}" },
-    { title: "Author Name", var: "{author}" },
-    { title: "Full Summary", var: "{summary}" },
-    { title: "Character List", var: "{characters}" },
-    { title: "World Locations", var: "{locations}" },
-    { title: "Timeline Events", var: "{timeline}" },
-    { title: "Project Ledger", var: "{ledger}" },
-    { title: "Lore & Mythos", var: "{lore}" },
-    { title: "Core Themes", var: "{themes}" },
-    { title: "User Context", var: "{user_context}" },
-    { title: "Active Tasks", var: "{tasks}" },
-    { title: "Item Name", var: "{name}" },
-    { title: "Item Type", var: "{type}" },
-    { title: "Coordinate X", var: "{x}" },
-    { title: "Coordinate Y", var: "{y}" },
-    { title: "Item Data", var: "{description}" },
-    { title: "Family Name", var: "{familyName}" },
-    { title: "Nickname", var: "{nickname}" },
-    { title: "Age", var: "{age}" },
-    { title: "Birthday", var: "{birthday}" },
-    { title: "Birthplace", var: "{birthplace}" },
-    { title: "Residence", var: "{residence}" },
-    { title: "Height", var: "{height}" },
-    { title: "Weight", var: "{weight}" },
-    { title: "Physical Features", var: "{physicalFeatures}" },
-    { title: "Style", var: "{style}" },
-    { title: "Strengths", var: "{strengths}" },
-    { title: "Weaknesses", var: "{weaknesses}" }
-  ];
-
-  const characterCategories = [
+  // ==========================================
+  // THE UNIVERSAL SCHEMA
+  // Every entity sees every variable, always.
+  // ==========================================
+  const universalCategories = [
     {
-      name: 'Identity',
-      icon: <UserIconLucide size={14} />,
-      fields: ['name', 'familyName', 'nickname', 'role', 'species', 'archetype']
-    },
-    {
-      name: 'Life & Origin',
-      icon: <HeartIcon size={14} />,
-      fields: ['age', 'birthday', 'birthplace', 'residence', 'livingStatus']
-    },
-    {
-      name: 'Physicality',
-      icon: <RulerIcon size={14} />,
-      fields: ['height', 'weight', 'physicalFeatures', 'style']
-    },
-    {
-      name: 'Psychology',
+      name: 'Core Identity',
       icon: <InfoIcon size={14} />,
-      fields: ['description', 'goals', 'strengths', 'weaknesses']
+      fields: ['id', 'name', 'title', 'term', 'type', 'category', 'source', 'order', 'status'],
+      bg: 'bg-indigo-500/5',
+      border: 'border-indigo-500/10'
+    },
+    {
+      name: 'Content & Description',
+      icon: <FileText size={14} />,
+      fields: ['description', 'definition', 'summary', 'content', 'history', 'significance'],
+      bg: 'bg-slate-500/5',
+      border: 'border-slate-500/10'
+    },
+    {
+      name: 'Character Details',
+      icon: <UserIconLucide size={14} />,
+      fields: ['familyName', 'nickname', 'role', 'species', 'archetype', 'age', 'birthday', 'birthplace', 'residence', 'livingStatus'],
+      bg: 'bg-blue-500/5',
+      border: 'border-blue-500/10'
+    },
+    {
+      name: 'Physical Traits',
+      icon: <RulerIcon size={14} />,
+      fields: ['height', 'weight', 'physicalFeatures', 'style', 'strengths', 'weaknesses'],
+      bg: 'bg-pink-500/5',
+      border: 'border-pink-500/10'
+    },
+    {
+      name: 'Spatial Data',
+      icon: <MapIcon size={14} />,
+      fields: ['x', 'y', 'lat', 'lng', 'location', 'parentId', 'icon'],
+      bg: 'bg-emerald-500/5',
+      border: 'border-emerald-500/10'
+    },
+    {
+      name: 'Temporal Data',
+      icon: <Clock size={14} />,
+      fields: ['date', 'uei', 'lastModified', 'isSoftAnchor', 'referenceEventId', 'timelineEventId'],
+      bg: 'bg-amber-500/5',
+      border: 'border-amber-500/10'
+    },
+    {
+      name: 'Metrics & System',
+      icon: <HashIcon size={14} />,
+      fields: ['wordCount', 'score', 'label', 'charactersInvolved', 'relatedIds'],
+      bg: 'bg-slate-500/5',
+      border: 'border-slate-500/10'
+    },
+    {
+      name: 'Assets & Links',
+      icon: <LinkIcon size={14} />,
+      fields: ['imageUrl', 'mapImage', 'referenceUrls', 'metadata'],
+      bg: 'bg-indigo-500/5',
+      border: 'border-indigo-500/10'
     }
   ];
 
   const renderField = (key: string, value: any) => {
-    if (typeof value === 'object' || Array.isArray(value) || key === 'id' || key === 'timestamp' || key === 'lastModified' || key === 'parentId' || key === 'mapImage' || key === 'imageUrl' || key === 'x' || key === 'y') return null;
+    // Handle arrays (specifically string arrays like referenceUrls)
+    if (Array.isArray(value)) {
+      if (key === 'referenceUrls' || value.every(v => typeof v === 'string')) {
+        const stringArray = value as string[];
+        return (
+          <div key={key} className="space-y-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{key === 'referenceUrls' ? 'Reference URLs' : key}</label>
+              <button 
+                onClick={() => {
+                  const newItem = window.prompt(`Add new value to ${key === 'referenceUrls' ? 'Reference URLs' : key}:`);
+                  if (newItem) onQuickUpdate(editingCard.type, editingCard.id, key, [...stringArray, newItem]);
+                }}
+                className="p-1 text-indigo-500 hover:text-indigo-600"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+            <div className="space-y-1">
+              {stringArray.map((item, idx) => (
+                <div key={idx} className="flex gap-2 items-center group">
+                  <input 
+                    type="text" 
+                    value={item}
+                    onChange={(e) => {
+                      const newArr = [...stringArray];
+                      newArr[idx] = e.target.value;
+                      onQuickUpdate(editingCard.type, editingCard.id, key, newArr);
+                    }}
+                    className="flex-1 bg-white dark:bg-slate-900 border-none rounded-lg px-2 py-1 text-[10px] font-mono shadow-sm"
+                  />
+                  <button 
+                    onClick={() => {
+                      const newArr = stringArray.filter((_, i) => i !== idx);
+                      onQuickUpdate(editingCard.type, editingCard.id, key, newArr);
+                    }}
+                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+              {stringArray.length === 0 && <p className="text-[9px] text-slate-400 italic">No entries yet.</p>}
+            </div>
+          </div>
+        );
+      }
+      // If it's a complex array and not handled above, fall through to object rendering
+    }
+
+    // Render complex objects/arrays as JSON
+    if (typeof value === 'object' && value !== null) {
+      return (
+        <div key={key} className="space-y-1 col-span-1 md:col-span-2">
+          <div className="flex justify-between items-center px-1">
+            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')}</label>
+            <code className="text-amber-500 text-[9px] font-mono">{`{${key}}`} (JSON)</code>
+          </div>
+          <textarea 
+            value={JSON.stringify(value, null, 2)}
+            onChange={(e) => {
+              try {
+                const parsed = JSON.parse(e.target.value);
+                onQuickUpdate(editingCard.type, editingCard.id, key, parsed);
+              } catch (err) {
+                // Ignore parse errors while typing, but this means it only updates when valid JSON
+              }
+            }}
+            className="w-full h-32 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-[10px] font-mono leading-relaxed focus:ring-2 focus:ring-amber-500 resize-y shadow-inner outline-none"
+          />
+        </div>
+      );
+    }
 
     return (
       <div key={key} className="space-y-1">
@@ -198,21 +281,30 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
           <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')}</label>
           <code className="text-emerald-500 text-[9px] font-mono">{`{${key}}`}</code>
         </div>
-        {key === 'description' || key === 'content' || key === 'definition' || key === 'summary' || key === 'physicalFeatures' || key === 'style' || key === 'strengths' || key === 'weaknesses' || key === 'goals' ? (
+        
+        {typeof value === 'boolean' ? (
+          <button 
+            onClick={() => onQuickUpdate(editingCard.type, editingCard.id, key, !value)}
+            className={`w-full p-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}
+          >
+            {value ? 'Active / True' : 'Inactive / False'}
+          </button>
+        ) : (key === 'description' || key === 'content' || key === 'definition' || key === 'summary' || key === 'physicalFeatures' || key === 'style' || key === 'strengths' || key === 'weaknesses' || key === 'goals') ? (
           <textarea 
-            value={String(value || '')}
+            value={String(value === undefined ? '' : value)}
             onChange={(e) => onQuickUpdate(editingCard.type, editingCard.id, key, e.target.value)}
             className="w-full h-24 bg-slate-50 dark:bg-slate-800 border-none rounded-xl p-3 text-xs leading-relaxed focus:ring-2 focus:ring-emerald-500 resize-none shadow-inner outline-none"
           />
         ) : (
           <input 
             type={typeof value === 'number' ? 'number' : 'text'}
-            value={String(value || '')}
+            value={String(value === undefined ? '' : value)}
+            readOnly={key === 'id'}
             onChange={(e) => {
               const val = typeof value === 'number' ? parseFloat(e.target.value) || 0 : e.target.value;
               onQuickUpdate(editingCard.type, editingCard.id, key, val);
             }}
-            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl p-3 text-xs font-mono shadow-inner focus:ring-2 focus:ring-emerald-500 outline-none"
+            className={`w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl p-3 text-xs font-mono shadow-inner focus:ring-2 focus:ring-emerald-500 outline-none ${key === 'id' ? 'opacity-50 grayscale' : ''}`}
           />
         )}
       </div>
@@ -249,257 +341,49 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
         </div>
 
         {/* Editor Body */}
-        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-          {/* Left Column: Context & Global Edits */}
-          <div className="w-full lg:w-80 p-6 border-r border-slate-100 dark:border-slate-800 overflow-y-auto bg-slate-50/50 dark:bg-slate-950/20 shrink-0">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-              <LayoutIcon size={12} /> Global Blueprint Context
-            </h3>
-            
-            <div className="space-y-6">
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Project Title</label>
-                <input 
-                  type="text" 
-                  value={projectData.title}
-                  onChange={(e) => onUpdateProject({ title: e.target.value })}
-                  className="w-full bg-white dark:bg-slate-800 border-none rounded-xl p-3 text-xs font-bold shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Full Summary</label>
-                <textarea 
-                  value={projectData.summary || ''}
-                  onChange={(e) => onUpdateProject({ summary: e.target.value })}
-                  className="w-full h-32 bg-white dark:bg-slate-800 border-none rounded-xl p-3 text-xs leading-relaxed shadow-sm focus:ring-2 focus:ring-indigo-500 resize-none outline-none"
-                />
-              </div>
-
-              {/* Variable Reference Grid */}
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
-                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Variable Registry</h4>
-                <div className="grid grid-cols-1 gap-2">
-                  {variables.map(v => (
-                    <div key={v.var} className="p-2 bg-slate-100 dark:bg-slate-800/50 rounded-lg flex items-center justify-between group/var hover:bg-white dark:hover:bg-slate-800 transition-colors">
-                      <span className="text-[9px] font-bold text-slate-500">{v.title}</span>
-                      <code className="text-indigo-500 text-[9px] font-mono">{v.var}</code>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Item Specific Edits */}
-          <div className="flex-1 p-6 overflow-y-auto">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-              <TagIcon size={12} /> Item Blueprint Variables
+        <div className="flex-1 overflow-y-auto p-6 md:p-12">
+          <div className="max-w-5xl mx-auto">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
+              <TagIcon size={12} /> Master Variable Blueprint
             </h3>
 
-            {editingCard.type === 'Character' && (
-              <div className="mb-12 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <ImageIcon size={18} className="text-indigo-500" />
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Portrait Gallery (Max 5)</h4>
-                  </div>
-                  <div className="flex gap-2">
-                    {isUploading && <Loader2 className="animate-spin text-indigo-500 mr-2" size={18} />}
-                    <div className="relative">
-                      <input 
-                        type="text"
-                        value={imageUrlInput}
-                        onChange={(e) => setImageUrlInput(e.target.value)}
-                        placeholder="Paste image URL..."
-                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-[10px] w-48 focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                      <button 
-                        onClick={handleAddImageUrl}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-indigo-500 hover:text-indigo-600"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                    <label className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer shadow-md">
-                      <Upload size={14} />
-                      <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-                    </label>
-                  </div>
-                </div>
+            {(() => {
+              const itemKeys = Object.keys(editingCard.data);
+              const handledKeys = new Set(universalCategories.flatMap(c => c.fields));
+              const unhandledKeys = itemKeys.filter(k => !handledKeys.has(k));
 
-                <div className="grid grid-cols-5 gap-4">
-                  {(editingCard.data.images || []).map((img: any) => (
-                    <div key={img.id} className="space-y-2">
-                      <div className="aspect-square rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-900 relative group/img border border-white/10 shadow-sm">
-                        <img src={img.url} alt="Portrait" className="w-full h-full object-cover" />
-                        <button 
-                          onClick={() => handleRemoveImage(img.id)}
-                          className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover/img:opacity-100 transition-opacity shadow-lg"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-1 px-1">
-                        <div className="flex-1 min-w-0">
-                          <p 
-                            className="text-[8px] font-mono text-slate-500 truncate" 
-                            title={img.url}
-                          >
-                            {img.url.startsWith('data:') ? 'Base64 Data' : img.url}
-                          </p>
+              const finalCategories = [...universalCategories];
+              
+              if (unhandledKeys.length > 0) {
+                finalCategories.push({
+                  name: 'Custom Variables',
+                  icon: <TagIcon size={14} />,
+                  fields: unhandledKeys,
+                  bg: 'bg-slate-500/5',
+                  border: 'border-slate-500/10'
+                });
+              }
+
+              return (
+                <div className="space-y-12">
+                  {finalCategories.map(cat => {
+                    return (
+                      <div key={cat.name} className={`p-6 rounded-3xl border ${cat.bg} ${cat.border} space-y-6`}>
+                        <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-2">
+                          <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                            {cat.icon}
+                          </div>
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">{cat.name}</h4>
                         </div>
-                        <button 
-                          onClick={() => {
-                            navigator.clipboard.writeText(img.url);
-                            setCopiedId(img.id);
-                            setTimeout(() => setCopiedId(null), 2000);
-                          }}
-                          className="p-1 text-slate-400 hover:text-indigo-500 transition-colors shrink-0"
-                        >
-                          {copiedId === img.id ? <Check size={8} /> : <Copy size={8} />}
-                        </button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          {cat.fields.map(field => renderField(field, editingCard.data[field]))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {Array.from({ length: 5 - (editingCard.data.images?.length || 0) }).map((_, i) => (
-                    <div key={i} className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-700">
-                      <ImageIcon size={24} />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
-            )}
-
-            {/* Single Image Fields (Map Image / Card Image) */}
-            {(editingCard.data.mapImage !== undefined || editingCard.data.imageUrl !== undefined) && (
-              <div className="mb-12 p-6 bg-emerald-500/5 rounded-3xl border border-emerald-500/10">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <ImageIcon size={18} className="text-emerald-500" />
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600/70">Master Visual Asset</h4>
-                  </div>
-                  <div className="flex gap-2">
-                    {isUploading && <Loader2 className="animate-spin text-emerald-500 mr-2" size={18} />}
-                    <label className="flex items-center gap-2 px-4 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors cursor-pointer shadow-md text-[10px] font-bold uppercase tracking-widest">
-                      <Upload size={14} /> Upload New
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        accept="image/*" 
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setIsUploading(true);
-                          const formData = new FormData();
-                          formData.append('image', file);
-                          try {
-                            const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                            const result = await res.json();
-                            const field = editingCard.data.mapImage !== undefined ? 'mapImage' : 'imageUrl';
-                            onQuickUpdate(editingCard.type, editingCard.id, field, result.url);
-                          } catch (err) { alert("Upload failed"); }
-                          finally { setIsUploading(false); }
-                        }} 
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex gap-6 items-start">
-                  <div className="w-32 h-32 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-900 border border-emerald-500/20 shadow-inner flex-shrink-0">
-                    {(editingCard.data.mapImage || editingCard.data.imageUrl) ? (
-                      <img 
-                        src={editingCard.data.mapImage || editingCard.data.imageUrl} 
-                        className="w-full h-full object-cover" 
-                        alt="Preview" 
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-400 italic text-[10px]">No Asset</div>
-                    )}
-                  </div>
-                  <div className="flex-1 space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-500 uppercase px-1">Asset URL Reference</label>
-                      <input 
-                        type="text"
-                        value={editingCard.data.mapImage || editingCard.data.imageUrl || ''}
-                        onChange={(e) => {
-                          const field = editingCard.data.mapImage !== undefined ? 'mapImage' : 'imageUrl';
-                          onQuickUpdate(editingCard.type, editingCard.id, field, e.target.value);
-                        }}
-                        className="w-full bg-white dark:bg-slate-900 border-none rounded-xl p-3 font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                        placeholder="Paste or upload to generate URL..."
-                      />
-                    </div>
-                    <button 
-                      onClick={() => {
-                        const field = editingCard.data.mapImage !== undefined ? 'mapImage' : 'imageUrl';
-                        onQuickUpdate(editingCard.type, editingCard.id, field, '');
-                      }}
-                      className="text-[9px] font-bold text-red-500 uppercase px-1 hover:text-red-600 transition-colors"
-                    >
-                      Remove Asset
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {editingCard.type === 'Character' ? (
-              <div className="space-y-10">
-                {characterCategories.map(cat => (
-                  <div key={cat.name} className="space-y-4">
-                    <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                      <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500">
-                        {cat.icon}
-                      </div>
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">{cat.name}</h4>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {cat.fields.map(field => {
-                        const value = editingCard.data[field];
-                        return renderField(field, value !== undefined ? value : '');
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.entries(editingCard.data).map(([key, value]) => {
-                  return renderField(key, value);
-                })}
-              </div>
-            )}
-
-            {/* Special Coordinate Grid - ALWAYS SHOW */}
-            <div className="mt-8 p-6 bg-emerald-500/5 rounded-3xl border border-emerald-500/20">
-              <div className="flex items-center gap-3 mb-4">
-                <MapIcon size={16} className="text-emerald-500" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Spatial Blueprinting</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-emerald-600/70 uppercase px-1">X Coordinate {`{x}`}</label>
-                  <input 
-                    type="number" 
-                    value={editingCard.data.x || 0}
-                    onChange={(e) => onQuickUpdate(editingCard.type, editingCard.id, 'x', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-white dark:bg-slate-900 border-none rounded-xl p-3 font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-emerald-600/70 uppercase px-1">Y Coordinate {`{y}`}</label>
-                  <input 
-                    type="number" 
-                    value={editingCard.data.y || 0}
-                    onChange={(e) => onQuickUpdate(editingCard.type, editingCard.id, 'y', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-white dark:bg-slate-900 border-none rounded-xl p-3 font-mono text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                  />
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
 

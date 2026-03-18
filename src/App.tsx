@@ -98,7 +98,19 @@ const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [activeTasks, setActiveTasks] = useState<string[]>([]);
+
+  // Listen for Escape key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMapFullscreen) {
+        setIsMapFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMapFullscreen]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
   // Global Blueprint Editor State
@@ -200,7 +212,14 @@ const App: React.FC = () => {
 
   const handleQuickUpdate = useCallback((type: string, id: string, key: string, value: any) => {
     if (!projectData) return;
-    const update: any = {};
+
+    // Handle Top-Level Project variables
+    if (type === 'Project') {
+      updateProjectData({ [key]: value });
+      setEditingCard(prev => prev && prev.type === 'Project' ? { ...prev, data: { ...prev.data, [key]: value } } : prev);
+      return;
+    }
+
     const mapTypeToKey: Record<string, string> = {
       'Character': 'characters',
       'Location': 'locations',
@@ -208,20 +227,22 @@ const App: React.FC = () => {
       'Source': 'sources',
       'Ledger': 'ledger',
       'Artifact': 'artifacts',
-      'Lore': 'lore'
+      'Lore': 'lore',
+      'Chapter': 'chapters',
+      'Calendar': 'calendars',
+      'Plotline': 'plotlines',
+      'MatrixCell': 'matrixCells',
+      'Language': 'languages'
     };
 
     const projectKey = mapTypeToKey[type];
     if (!projectKey) return;
 
-    const list = [...(projectData as any)[projectKey]];
+    const list = [...(projectData as any)[projectKey] || []];
     const index = list.findIndex((item: any) => item.id === id);
     if (index !== -1) {
       list[index] = { ...list[index], [key]: value };
-      update[projectKey] = list;
-      
-      // Update persistent storage and local state
-      updateProjectData(update);
+      updateProjectData({ [projectKey]: list });
       
       // Sync local editing card if it's the one being modified
       setEditingCard(prev => prev && prev.id === id ? { ...prev, data: { ...prev.data, [key]: value } } : prev);
@@ -760,7 +781,7 @@ const App: React.FC = () => {
           onOpenBlueprint={openBlueprint}
         />;
       case ViewType.DASHBOARD:
-        return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => {}} onLoadSample={() => {}} isAnalyzing={isAnalyzing} error={null} onUpdateMetadata={(t, a) => updateProjectData({ title: t, author: a })} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={(t) => {
+        return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => {}} onLoadSample={() => {}} isAnalyzing={isAnalyzing} error={null} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={(t) => {
             setIsAnalyzing(true);
             addTask('Analyzing Project');
             analyzeStoryText(t, undefined, { extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true })
@@ -770,7 +791,7 @@ const App: React.FC = () => {
               setIsAnalyzing(false);
               removeTask('Analyzing Project');
             });
-        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p, globalNotes)} isGeneratingCover={isGeneratingCover} /> : null;
+        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p, globalNotes)} isGeneratingCover={isGeneratingCover} onOpenBlueprint={openBlueprint} /> : null;
 
       case ViewType.TIMELINE:
       case ViewType.BOARD:
@@ -785,11 +806,7 @@ const App: React.FC = () => {
       case ViewType.INVENTORY:
       case ViewType.DICTIONARY:
       case ViewType.GALLERY:
-        return projectData ? <WorldSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })} onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })} onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })} onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); }} onUpdateMapOrder={() => {}} currentMapParentId={currentMapParentId} onMapChange={setCurrentMapParentId} onUpdateProject={updateProjectData} onAddArtifact={(a) => updateProjectData({ artifacts: [...(projectData.artifacts || []), a] })} onUpdateArtifact={(a) => updateProjectData({ artifacts: projectData.artifacts?.map(ar => ar.id === a.id ? a : ar) })} onDeleteArtifact={(id) => updateProjectData({ artifacts: projectData.artifacts?.filter(ar => ar.id !== id) })} onAddLore={(l) => updateProjectData({ lore: [...(projectData.lore || []), l] })} onDeleteLore={(id) => updateProjectData({ lore: projectData.lore?.filter(lo => lo.id !== id) })} onOpenBlueprint={openBlueprint} /> : null;
-
-      case ViewType.PROCESSOR:
-      case ViewType.SOURCE_READER:
-
+        return projectData ? <WorldSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })} onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })} onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })} onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); }} onUpdateMapOrder={() => {}} currentMapParentId={currentMapParentId} onMapChange={setCurrentMapParentId} onUpdateProject={updateProjectData} onAddArtifact={(a) => updateProjectData({ artifacts: [...(projectData.artifacts || []), a] })} onUpdateArtifact={(a) => updateProjectData({ artifacts: projectData.artifacts?.map(ar => ar.id === a.id ? a : ar) })} onDeleteArtifact={(id) => updateProjectData({ artifacts: projectData.artifacts?.filter(ar => ar.id !== id) })} onAddLore={(l) => updateProjectData({ lore: [...(projectData.lore || []), l] })} onDeleteLore={(id) => updateProjectData({ lore: projectData.lore?.filter(lo => lo.id !== id) })} onOpenBlueprint={openBlueprint} isFullscreen={isMapFullscreen} onToggleFullscreen={() => setIsMapFullscreen(!isMapFullscreen)} /> : null;
 
       case ViewType.TOOLBOX:
         return <ToolboxView bakedResources={globalResources} onAddResource={async (l) => { setGlobalResources(prev => [...prev, l]); await saveGlobalResource(l); }} onDeleteResource={async (id) => { setGlobalResources(prev => prev.filter(r => r.id !== id)); await deleteGlobalResource(id); }} />;
@@ -836,36 +853,36 @@ const App: React.FC = () => {
   }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, openBlueprint, handleQuickUpdate]);
   const renderAppContent = () => (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors animate-in fade-in duration-500">
-      <Sidebar 
-        currentView={currentView} 
-        onChangeView={setCurrentView} 
-        isOpen={isMobileSidebarOpen} 
-        isCollapsed={isSidebarCollapsed} 
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
-        onClose={() => setIsMobileSidebarOpen(false)} 
-        hasActiveProject={!!projectData} 
-        onToggleAi={() => setIsAiOpen(!isAiOpen)} 
-        isAiOpen={isAiOpen} 
-        currentUser={currentUser} 
-        isProcessing={activeTasks.length > 0} 
-        activeProjectTitle={projectData?.title}
-        onQuickNote={async (text) => {
-          const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
-          if (projectData) {
-            // If inside a project, save to project ideas
-            await updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
-          } else {
-            // Otherwise save as global note
-            setGlobalNotes(prev => [n, ...prev]);
-            await saveGlobalNote(n);
-          }
-        }}
-        appName={appSettings.appName}
-        sidebarOrder={appSettings.sidebarOrder}
-      />
+      <div className={`transition-all duration-700 ease-in-out flex shrink-0 overflow-hidden ${isMapFullscreen ? 'w-0 opacity-0 pointer-events-none' : 'w-64 md:w-80'}`}>
+        <Sidebar 
+          currentView={currentView} 
+          onChangeView={setCurrentView} 
+          isOpen={isMobileSidebarOpen} 
+          isCollapsed={isSidebarCollapsed} 
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+          onClose={() => setIsMobileSidebarOpen(false)} 
+          hasActiveProject={!!projectData} 
+          onToggleAi={() => setIsAiOpen(!isAiOpen)} 
+          isAiOpen={isAiOpen} 
+          currentUser={currentUser} 
+          isProcessing={activeTasks.length > 0} 
+          activeProjectTitle={projectData?.title}
+          onQuickNote={async (text) => {
+            const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
+            if (projectData) {
+              await updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
+            } else {
+              setGlobalNotes(prev => [n, ...prev]);
+              await saveGlobalNote(n);
+            }
+          }}
+          appName={appSettings.appName}
+          sidebarOrder={appSettings.sidebarOrder}
+        />
+      </div>
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
         {/* Mobile Header - Binding clamped over paper */}
-        <div className="lg:hidden flex flex-col shrink-0 z-[1000] bg-slate-50 dark:bg-slate-950 p-4 pb-0 md:p-8 md:pb-0">
+        <div className={`flex lg:hidden flex-col shrink-0 z-[1000] bg-slate-50 dark:bg-slate-950 transition-all duration-700 ease-in-out ${isMapFullscreen ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-40 p-4 pb-0 md:p-8 md:pb-0'}`}>
           <div className="relative paper-texture rounded-t-3xl overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between p-4 px-6 binding-texture border-b border-black/20 dark:border-slate-800 relative z-30 shadow-xl">
               <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 -ml-2 text-white/70">

@@ -7,28 +7,67 @@ interface MapViewProps {
   onMapClick?: (x: number, y: number) => void;
   onLocationPlace?: (id: string, x: number, y: number) => void;
   onLocationMove?: (id: string, x: number, y: number) => void;
+  onLocationUnplace?: (id: string) => void;
   onDimensionsDetected?: (width: number, height: number) => void;
   rootMapImage?: string;
   mapScale?: number;
   mapUnit?: string;
+  defaultView?: { x: number, y: number, zoom: number };
   zoomInRef?: React.MutableRefObject<(() => void) | null>;
   zoomOutRef?: React.MutableRefObject<(() => void) | null>;
-}
-
-export const MapView: React.FC<MapViewProps> = ({ 
-  locations, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onDimensionsDetected, rootMapImage, mapScale, mapUnit, zoomInRef, zoomOutRef
-}) => {
+  centerMapRef?: React.MutableRefObject<((coords?: { x: number, y: number }) => void) | null>;
+  getViewStateRef?: React.MutableRefObject<(() => { x: number, y: number, zoom: number } | null) | null>;
+  }  export const MapView: React.FC<MapViewProps> = ({ 
+  locations, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onLocationUnplace, onDimensionsDetected, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, getViewStateRef
+  }) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapBoundsRef = useRef<L.LatLngBounds | null>(null);
   const imgWidthRef = useRef<number>(1);
   const [isReady, setIsReady] = useState(false);
 
+  // Map-style SVG Icons (Lucide-inspired raw paths)
+  const MAP_ICONS: Record<string, string> = {
+    castle: '<path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6"/><path d="M21 11v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V11"/><path d="M15 11V8a3 3 0 0 0-6 0v3"/><path d="M9 11h6"/><path d="M7 11V8"/><path d="M17 11V8"/><path d="M12 3v2"/>',
+    city: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+    town: '<path d="M3 10v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10L12 3Z"/><path d="M9 22v-4h6v4"/>',
+    seaport: '<path d="M12 22V2"/><path d="M5 12h14"/><path d="M19 12a7 7 0 0 1-7 7 7 7 0 0 1-7-7"/>',
+    ruins: '<path d="M3 21h18"/><path d="M3 7v14"/><path d="M21 7v14"/><path d="M6 3h12"/><path d="M6 3v4"/><path d="M18 3v4"/><path d="M10 7v4"/><path d="M14 7v4"/>',
+    mountain: '<path d="m8 3 4 8 5-5 5 15H2L8 3Z"/>',
+    forest: '<path d="M12 22v-5"/><path d="m8 13 4-5 4 5H8Z"/><path d="m5 18 7-7 7 7H5Z"/>',
+    cave: '<path d="M22 21v-4a2 2 0 0 0-2-2h-3.17a2 2 0 0 1-1.41-.59l-2.83-2.82a2 2 0 0 0-1.41-.59H7a2 2 0 0 0-2 2v6"/><path d="M2 21h20"/><path d="M12 3v2"/>',
+    landmark: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>'
+  };
+
+  // Helper to get icon color/style based on type or explicit icon name
+  const getMarkerStyle = (loc: Location) => {
+    const type = loc.type.toLowerCase();
+    const iconName = (loc.icon || type).toLowerCase();
+    
+    let iconKey = 'landmark';
+    let color = 'bg-emerald-500';
+
+    if (iconName.includes('castle') || iconName.includes('fort')) { iconKey = 'castle'; color = 'bg-slate-700'; }
+    else if (iconName.includes('city')) { iconKey = 'city'; color = 'bg-indigo-600'; }
+    else if (iconName.includes('town') || iconName.includes('village')) { iconKey = 'town'; color = 'bg-amber-600'; }
+    else if (iconName.includes('port') || iconName.includes('dock') || iconName.includes('seaport')) { iconKey = 'seaport'; color = 'bg-blue-500'; }
+    else if (iconName.includes('ruin')) { iconKey = 'ruins'; color = 'bg-stone-500'; }
+    else if (iconName.includes('forest') || iconName.includes('wood')) { iconKey = 'forest'; color = 'bg-green-700'; }
+    else if (iconName.includes('mountain')) { iconKey = 'mountain'; color = 'bg-slate-400'; }
+    else if (iconName.includes('cave')) { iconKey = 'cave'; color = 'bg-orange-900'; }
+
+    return { 
+      color, 
+      svg: MAP_ICONS[iconKey] || MAP_ICONS['landmark']
+    };
+  };
+
   // Use refs for callbacks to prevent effect re-triggering
   const onMapClickRef = useRef(onMapClick);
   const onDimensionsDetectedRef = useRef(onDimensionsDetected);
   const onLocationPlaceRef = useRef(onLocationPlace);
   const onLocationMoveRef = useRef(onLocationMove);
+  const onLocationUnplaceRef = useRef(onLocationUnplace);
   const onLocationClickRef = useRef(onLocationClick);
   const mapScaleRef = useRef(mapScale);
   const mapUnitRef = useRef(mapUnit);
@@ -37,6 +76,7 @@ export const MapView: React.FC<MapViewProps> = ({
   useEffect(() => { onDimensionsDetectedRef.current = onDimensionsDetected; }, [onDimensionsDetected]);
   useEffect(() => { onLocationPlaceRef.current = onLocationPlace; }, [onLocationPlace]);
   useEffect(() => { onLocationMoveRef.current = onLocationMove; }, [onLocationMove]);
+  useEffect(() => { onLocationUnplaceRef.current = onLocationUnplace; }, [onLocationUnplace]);
   useEffect(() => { onLocationClickRef.current = onLocationClick; }, [onLocationClick]);
   useEffect(() => { mapScaleRef.current = mapScale; }, [mapScale]);
   useEffect(() => { mapUnitRef.current = mapUnit; }, [mapUnit]);
@@ -48,11 +88,26 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [mapScale, mapUnit, isReady]);
 
-  // Expose zoom methods to parent
+  // Expose methods to parent
   useEffect(() => {
     if (zoomInRef) zoomInRef.current = () => mapRef.current?.zoomIn();
     if (zoomOutRef) zoomOutRef.current = () => mapRef.current?.zoomOut();
-  }, [zoomInRef, zoomOutRef]);
+    if (getViewStateRef) getViewStateRef.current = () => {
+      if (!mapRef.current) return null;
+      const center = mapRef.current.getCenter();
+      return { x: center.lng, y: center.lat, zoom: mapRef.current.getZoom() };
+    };
+    if (centerMapRef) centerMapRef.current = (coords?: { x: number, y: number }) => {
+      if (!mapRef.current) return;
+      if (coords) {
+        mapRef.current.setView([coords.y, coords.x], mapRef.current.getZoom(), { animate: true, duration: 1.5 });
+      } else if (defaultView) {
+        mapRef.current.setView([defaultView.y, defaultView.x], defaultView.zoom, { animate: true, duration: 1.5 });
+      } else if (mapBoundsRef.current) {
+        mapRef.current.fitBounds(mapBoundsRef.current, { animate: true, padding: [20, 20], duration: 1.5 });
+      }
+    };
+  }, [zoomInRef, zoomOutRef, centerMapRef, getViewStateRef, defaultView]);
 
   // 1. Initial Map Creation & Cleanup
   useEffect(() => {
@@ -133,7 +188,6 @@ export const MapView: React.FC<MapViewProps> = ({
     };
   }, []); // Remove mapUnit from deps
 
-  // 2. Handle Map Clicks (Separate from image sync)
   useEffect(() => {
     const map = mapRef.current;
     if (!isReady || !map) return;
@@ -169,8 +223,11 @@ export const MapView: React.FC<MapViewProps> = ({
         // Report dimensions back to parent for scale calculation
         onDimensionsDetectedRef.current?.(w, h);
 
-        const southWest = map.unproject([0, h], map.getMaxZoom());
-        const northEast = map.unproject([w, 0], map.getMaxZoom());
+        // Coordinate System: 0,0 is the center of the image
+        // Top Left: -w/2, h/2
+        // Bottom Right: w/2, -h/2
+        const southWest = L.latLng(-h/2, -w/2);
+        const northEast = L.latLng(h/2, w/2);
         const bounds = new L.LatLngBounds(southWest, northEast);
         mapBoundsRef.current = bounds;
 
@@ -184,14 +241,19 @@ export const MapView: React.FC<MapViewProps> = ({
         L.imageOverlay(rootMapImage, bounds).addTo(map);
         
         // Tight constraints with padding
-        const paddedBounds = bounds.pad(0.5);
+        const paddedBounds = bounds.pad(0.1);
         map.setMaxBounds(paddedBounds);
-        map.fitBounds(bounds, { animate: false, padding: [40, 40] });
         
-        // Calculate min zoom such that image fits container perfectly
+        if (defaultView) {
+          map.setView([defaultView.y, defaultView.x], defaultView.zoom, { animate: false });
+        } else {
+          // Calculate the zoom level that fits the bounds exactly within the container
+          map.fitBounds(bounds, { animate: false, padding: [20, 20] });
+        }
+        
         const minZoom = map.getBoundsZoom(bounds, true);
-        map.setMinZoom(minZoom - 1); // Allow zooming out a bit more
-        map.setZoom(minZoom);
+        map.setMinZoom(minZoom); 
+        if (!defaultView) map.setZoom(minZoom);
       } catch (err) {
         console.warn("Leaflet image sync failed:", err);
       }
@@ -251,11 +313,38 @@ export const MapView: React.FC<MapViewProps> = ({
             return;
           }
 
+          const style = getMarkerStyle(loc);
+
           const marker = L.marker(latlng, {
             draggable: true,
             icon: L.divIcon({
               className: 'custom-marker',
-              html: `<div class="w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-lg cursor-grab active:cursor-grabbing ${loc.type === 'Region' ? 'scale-[2.5] opacity-30 blur-[1px]' : ''}"></div>`
+              html: `
+                <div class="group/marker relative">
+                  <div class="w-10 h-10 ${style.color} border-2 border-white rounded-xl shadow-xl cursor-grab active:cursor-grabbing flex items-center justify-center transform transition-all hover:scale-125 hover:z-50 ${loc.type === 'Region' ? 'scale-[2.5] opacity-30 blur-[1px]' : ''}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                      ${style.svg}
+                    </svg>
+                  </div>
+                  
+                  <!-- Hover Label -->
+                  <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full opacity-0 group-hover/marker:opacity-100 pointer-events-none transition-all pb-2 z-[100] group-hover/marker:-translate-y-[110%]">
+                    <div class="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl whitespace-nowrap border border-white/20">
+                      ${loc.name}
+                    </div>
+                  </div>
+
+                  <!-- Hover Actions -->
+                  <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 translate-y-full opacity-0 group-hover/marker:opacity-100 transition-all z-[100] flex gap-1 group-hover/marker:translate-y-[10%]">
+                    <button class="edit-marker-btn p-1.5 bg-white dark:bg-slate-800 text-indigo-600 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors">
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                    </button>
+                    <button class="remove-marker-btn p-1.5 bg-white dark:bg-slate-800 text-red-500 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors">
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                </div>
+              `
             })
           }).addTo(mapRef.current!);
 
@@ -264,8 +353,33 @@ export const MapView: React.FC<MapViewProps> = ({
             onLocationMoveRef.current?.(loc.id, newPos.lng, newPos.lat);
           });
 
-          marker.on('click', () => onLocationClickRef.current?.(loc.id));
-          marker.bindTooltip(loc.name, { permanent: false, direction: 'top' });
+          marker.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            onLocationClickRef.current?.(loc.id);
+          });
+
+          // Attach listeners to custom buttons
+          marker.on('add', () => {
+            const element = marker.getElement();
+            if (element) {
+              const editBtn = element.querySelector('.edit-marker-btn');
+              const removeBtn = element.querySelector('.remove-marker-btn');
+              
+              if (editBtn) {
+                L.DomEvent.on(editBtn as HTMLElement, 'click', (e) => {
+                  L.DomEvent.stopPropagation(e);
+                  onLocationClickRef.current?.(loc.id);
+                });
+              }
+              
+              if (removeBtn) {
+                L.DomEvent.on(removeBtn as HTMLElement, 'click', (e) => {
+                  L.DomEvent.stopPropagation(e);
+                  onLocationUnplaceRef.current?.(loc.id);
+                });
+              }
+            }
+          });
         }
       });
     } catch (err) {

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
-import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react';
-import { calculateUEI } from '../../utils/calendarUtils';
+import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { calculateUEI, getDateFromUEI } from '../../utils/calendarUtils';
 
 interface PlotSystemViewProps {
   currentView: ViewType;
@@ -21,8 +21,7 @@ interface PlotSystemViewProps {
 
 enum PlotTab {
   TIMELINE = 'Timeline',
-  CALENDAR = 'Calendar',
-  BEATS = 'Beats'
+  CALENDAR = 'Calendar'
 }
 
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
@@ -44,6 +43,20 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
 
   const [currentYear, setCurrentYear] = useState<number>(1);
   const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(0);
+
+  const handleSelectEvent = (event: TimelineEvent) => {
+    // Always find the latest version of this event from data.timeline to ensure sync
+    const latestEvent = data.timeline.find(e => e.id === event.id) || event;
+    
+    if (latestEvent.uei !== undefined) {
+      const { year, monthIndex } = getDateFromUEI(activeCalendar, latestEvent.uei);
+      setCurrentYear(year);
+      setCurrentMonthIndex(monthIndex);
+      setActiveTab(PlotTab.CALENDAR);
+    } else {
+      onOpenBlueprint('Timeline', latestEvent.id, latestEvent);
+    }
+  };
 
   const handleDelete = (id: string) => {
     onUpdateProject({ timeline: data.timeline.filter(e => e.id !== id) });
@@ -93,7 +106,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
             <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">The sequence of events that define your story.</p>
           </div>
           <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
-            {[PlotTab.TIMELINE, PlotTab.CALENDAR, PlotTab.BEATS].map(tab => (
+            {[PlotTab.TIMELINE, PlotTab.CALENDAR].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -101,7 +114,6 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
               >
                 {tab === PlotTab.TIMELINE && <List size={16} />}
                 {tab === PlotTab.CALENDAR && <Calendar size={16} />}
-                {tab === PlotTab.BEATS && <LayoutGrid size={16} />}
                 {tab}
               </button>
             ))}
@@ -129,7 +141,10 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                 {data.timeline.sort((a,b) => (a.uei || 0) - (b.uei || 0)).map((event, idx) => (
                   <div key={event.id} className="relative group">
                     <div className={`absolute -left-[41px] top-0 w-4 h-4 rounded-full border-4 border-white dark:border-slate-950 shadow-sm ${event.isSoftAnchor ? 'bg-indigo-400 border-dashed' : 'bg-amber-500'}`} />
-                    <div className={`p-6 rounded-2xl shadow-sm border hover:shadow-md transition-all ${event.isSoftAnchor ? 'bg-indigo-50/30 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}>
+                    <div 
+                      onClick={() => handleSelectEvent(event)}
+                      className={`p-6 rounded-2xl shadow-sm border hover:shadow-md transition-all cursor-pointer ${event.isSoftAnchor ? 'bg-indigo-50/30 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
+                    >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className={`text-xs font-black uppercase tracking-widest ${event.isSoftAnchor ? 'text-indigo-500' : 'text-amber-600'}`}>{event.date}</span>
@@ -137,10 +152,23 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                         </div>
                         <div className="flex items-center gap-2">
                           {event.source === 'ai' && <Sparkles size={14} className={event.isSoftAnchor ? 'text-indigo-400' : 'text-amber-400'} />}
-                          <button onClick={() => onOpenBlueprint('Timeline', event.id, event)} className="p-1 text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const latest = data.timeline.find(ev => ev.id === event.id) || event;
+                              onOpenBlueprint('Timeline', event.id, latest);
+                            }} 
+                            className="p-1 text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100"
+                          >
                             <Edit2 size={14} />
                           </button>
-                          <button onClick={() => handleDelete(event.id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(event.id);
+                            }} 
+                            className="p-1 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                          >
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -148,7 +176,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                       <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">{event.title}</h3>
                       <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{event.description}</p>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {event.charactersInvolved.map(char => (
+                        {event.charactersInvolved?.map(char => (
                           <span key={char} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded text-[10px] font-bold">
                             {char}
                           </span>
@@ -207,7 +235,14 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                         </div>
                         <div className="space-y-1">
                           {dayEvents.map(ev => (
-                            <div key={ev.id} className="text-[10px] p-1.5 rounded bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 truncate cursor-pointer hover:border-amber-500 transition-colors shadow-sm" onClick={() => onOpenBlueprint('Timeline', ev.id, ev)}>
+                            <div 
+                              key={ev.id} 
+                              className="text-[10px] p-1.5 rounded bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 truncate cursor-pointer hover:border-amber-500 transition-colors shadow-sm" 
+                              onClick={() => {
+                                const latest = data.timeline.find(latestEv => latestEv.id === ev.id) || ev;
+                                onOpenBlueprint('Timeline', ev.id, latest);
+                              }}
+                            >
                               <span className="font-bold text-amber-600 dark:text-amber-400 mr-1">•</span>
                               {ev.title}
                             </div>
@@ -224,12 +259,6 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                   })}
                 </div>
               </div>
-            </div>
-          )}
-
-          {activeTab === PlotTab.BEATS && (
-            <div className="h-96 flex items-center justify-center text-slate-400 italic border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
-              Beat board feature coming soon.
             </div>
           )}
         </div>
