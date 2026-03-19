@@ -119,6 +119,28 @@ const App: React.FC = () => {
   
   const [isGeneratingCover, setIsGeneratingCover] = useState(false);
   const [isExtractingThemes, setIsExtractingThemes] = useState(false);
+  const [isExtractingRelationships, setIsExtractingRelationships] = useState(false);
+
+  const handleExtractRelationships = async () => {
+    if (!projectData) return;
+    setIsExtractingRelationships(true);
+    addTask('Analyzing Relationships');
+    try {
+      const text = (projectData.chapters || []).map(c => c.content).join('\n\n') + '\n\n' + projectData.notes.map(n => n.content).join('\n\n');
+      const rels = await analyzeRelationships(text, projectData.characters);
+      if (rels.length > 0) {
+        // Merge unique relationships
+        const existing = projectData.relationships || [];
+        const newRels = rels.filter(nr => !existing.some(er => er.sourceId === nr.sourceId && er.targetId === nr.targetId && er.type === nr.type));
+        if (newRels.length > 0) {
+          await updateProjectData({ relationships: [...existing, ...newRels] });
+        }
+      }
+    } catch (e) { handleError(e); } finally { 
+      setIsExtractingRelationships(false); 
+      removeTask('Analyzing Relationships');
+    }
+  };
   const [currentMapParentId, setCurrentMapParentId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [rescueData, setRescueData] = useState<any | null>(null);
@@ -780,6 +802,8 @@ const App: React.FC = () => {
             }
           }}
           isExtractingThemes={isExtractingThemes}
+          onExtractRelationships={handleExtractRelationships}
+          isExtractingRelationships={isExtractingRelationships}
           onOpenBlueprint={openBlueprint}
         />;
       case ViewType.DASHBOARD:
@@ -856,7 +880,7 @@ const App: React.FC = () => {
       default: 
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
-  }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, openBlueprint, handleQuickUpdate]);
+  }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, isExtractingRelationships, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, openBlueprint, handleQuickUpdate]);
   const renderAppContent = () => (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors animate-in fade-in duration-500">
       <div className={`transition-all duration-700 ease-in-out hidden lg:flex shrink-0 overflow-hidden ${isMapFullscreen ? 'w-0 opacity-0 pointer-events-none' : isSidebarCollapsed ? 'w-20' : 'w-64 md:w-80'}`}>

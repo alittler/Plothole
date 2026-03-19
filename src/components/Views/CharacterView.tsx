@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Character, Location, TimelineEvent, Artifact, Note, ManuscriptHistoryEntry, ViewType, Relationship, ProjectData } from '../../types';
-import { Plus, Search, Sparkles, Edit2, Trash2, Camera, Users, User, FileText, Network, Heart, Zap, Shield, ArrowRight, X } from 'lucide-react';
+import { Plus, Search, Sparkles, Edit2, Trash2, Camera, Users, User, FileText, Network, Heart, Zap, Shield, ArrowRight, X, Loader2 } from 'lucide-react';
 import { generateId } from '../../services/storageService';
 
 interface CharacterViewProps {
@@ -20,7 +20,11 @@ interface CharacterViewProps {
   characterLimit?: number;
   onChangeView: (view: ViewType) => void;
   onExtractThemesFromNotes: () => void;
+  onExtractRelationships: () => void;
   isExtractingThemes: boolean;
+  isExtractingRelationships?: boolean;
+  onOpenBlueprint: (type: string, id: string, data: any) => void;
+}
   onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
 
@@ -31,7 +35,7 @@ enum CharacterTab {
 }
 
 export const CharacterView: React.FC<CharacterViewProps> = ({
-  characters, relationships = [], onAddCharacter, onOpenBlueprint, onUpdateProject
+  characters, relationships = [], onAddCharacter, onOpenBlueprint, onUpdateProject, onExtractRelationships, isExtractingRelationships = false
 }) => {
   const [activeTab, setActiveTab] = useState<CharacterTab>(CharacterTab.ROSTER);
   const [searchQuery, setSearchQuery] = useState('');
@@ -198,13 +202,23 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                   </h2>
                   <p className="text-xs text-slate-500 mt-1">Map the social web and emotional ties of your cast.</p>
                 </div>
-                <button 
-                  onClick={() => setIsAddingRel(!isAddingRel)}
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
-                >
-                  {isAddingRel ? <X size={18} /> : <Plus size={18} />}
-                  {isAddingRel ? 'Cancel' : 'New Connection'}
-                </button>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={onExtractRelationships}
+                    disabled={isExtractingRelationships || characters.length < 2}
+                    className="px-6 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                  >
+                    {isExtractingRelationships ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                    Scan Manuscript
+                  </button>
+                  <button 
+                    onClick={() => setIsAddingRel(!isAddingRel)}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
+                  >
+                    {isAddingRel ? <X size={18} /> : <Plus size={18} />}
+                    {isAddingRel ? 'Cancel' : 'New Connection'}
+                  </button>
+                </div>
               </div>
 
               {isAddingRel && (
