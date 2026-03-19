@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Character, Location, TimelineEvent, Artifact, Note, ManuscriptHistoryEntry, ViewType } from '../../types';
-import { Plus, Search, Sparkles, Edit2, Trash2, Camera, Users, User, FileText, Network } from 'lucide-react';
+import { Character, Location, TimelineEvent, Artifact, Note, ManuscriptHistoryEntry, ViewType, Relationship, ProjectData } from '../../types';
+import { Plus, Search, Sparkles, Edit2, Trash2, Camera, Users, User, FileText, Network, Heart, Zap, Shield, ArrowRight, X } from 'lucide-react';
+import { generateId } from '../../services/storageService';
 
 interface CharacterViewProps {
   projectTitle: string;
   characters: Character[];
+  relationships: Relationship[];
   locations: Location[];
   timeline: TimelineEvent[];
   artifacts: Artifact[];
@@ -13,6 +15,7 @@ interface CharacterViewProps {
   manuscriptHistory: ManuscriptHistoryEntry[];
   onUpdateCharacter: (c: Character) => void;
   onAddCharacter: (c: Character) => void;
+  onUpdateProject: (updates: Partial<ProjectData>) => void;
   onLinkClick: (type: string, id: string) => void;
   characterLimit?: number;
   onChangeView: (view: ViewType) => void;
@@ -28,15 +31,39 @@ enum CharacterTab {
 }
 
 export const CharacterView: React.FC<CharacterViewProps> = ({
-  characters, onAddCharacter, onOpenBlueprint
+  characters, relationships = [], onAddCharacter, onOpenBlueprint, onUpdateProject
 }) => {
   const [activeTab, setActiveTab] = useState<CharacterTab>(CharacterTab.ROSTER);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAddingRel, setIsAddingRel] = useState(false);
+  const [newRel, setNewRel] = useState({ sourceId: '', targetId: '', type: '', description: '' });
 
   const filteredCharacters = characters.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleAddRelationship = () => {
+    if (!newRel.sourceId || !newRel.targetId || !newRel.type) return;
+    
+    const rel: Relationship = {
+      id: generateId(),
+      sourceId: newRel.sourceId,
+      targetId: newRel.targetId,
+      type: newRel.type,
+      description: newRel.description
+    };
+
+    onUpdateProject({ relationships: [...relationships, rel] });
+    setIsAddingRel(false);
+    setNewRel({ sourceId: '', targetId: '', type: '', description: '' });
+  };
+
+  const handleDeleteRelationship = (id: string) => {
+    onUpdateProject({ relationships: relationships.filter(r => r.id !== id) });
+  };
+
+  const getCharacterName = (id: string) => characters.find(c => c.id === id)?.name || 'Unknown Character';
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
@@ -163,9 +190,132 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
           )}
 
           {activeTab === CharacterTab.RELATIONSHIPS && (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-4">
-              <Network size={48} className="opacity-20" />
-              <p className="font-serif italic text-lg">Relationship mapper coming soon...</p>
+            <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                    <Network size={20} className="text-indigo-600" /> Relationship Mapper
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">Map the social web and emotional ties of your cast.</p>
+                </div>
+                <button 
+                  onClick={() => setIsAddingRel(!isAddingRel)}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
+                >
+                  {isAddingRel ? <X size={18} /> : <Plus size={18} />}
+                  {isAddingRel ? 'Cancel' : 'New Connection'}
+                </button>
+              </div>
+
+              {isAddingRel && (
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-indigo-500 shadow-xl space-y-6 animate-in slide-in-from-top-4 duration-300">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Source Character</label>
+                      <select 
+                        value={newRel.sourceId}
+                        onChange={(e) => setNewRel({...newRel, sourceId: e.target.value})}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">Select...</option>
+                        {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex items-end justify-center py-2 text-slate-300">
+                      <ArrowRight size={24} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Target Character</label>
+                      <select 
+                        value={newRel.targetId}
+                        onChange={(e) => setNewRel({...newRel, targetId: e.target.value})}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">Select...</option>
+                        {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Connection Type</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. Rival, Spouse, Mentor..."
+                        value={newRel.type}
+                        onChange={(e) => setNewRel({...newRel, type: e.target.value})}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</label>
+                      <input 
+                        type="text"
+                        placeholder="Details about their bond..."
+                        value={newRel.description}
+                        onChange={(e) => setNewRel({...newRel, description: e.target.value})}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button 
+                      onClick={handleAddRelationship}
+                      disabled={!newRel.sourceId || !newRel.targetId || !newRel.type}
+                      className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg disabled:opacity-50"
+                    >
+                      Establish Connection
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {relationships.length > 0 ? relationships.map(rel => (
+                  <div key={rel.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest">
+                        {rel.type}
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteRelationship(rel.id)}
+                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 text-center">
+                        <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2 text-slate-400">
+                          <User size={20} />
+                        </div>
+                        <div className="text-xs font-black text-slate-900 dark:text-white uppercase truncate">{getCharacterName(rel.sourceId)}</div>
+                      </div>
+                      <div className="text-indigo-300 flex flex-col items-center">
+                        <ArrowRight size={16} />
+                      </div>
+                      <div className="flex-1 text-center">
+                        <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2 text-slate-400">
+                          <User size={20} />
+                        </div>
+                        <div className="text-xs font-black text-slate-900 dark:text-white uppercase truncate">{getCharacterName(rel.targetId)}</div>
+                      </div>
+                    </div>
+                    {rel.description && (
+                      <p className="mt-4 text-[11px] text-slate-500 dark:text-slate-400 italic text-center border-t border-slate-50 dark:border-slate-800 pt-4">
+                        "{rel.description}"
+                      </p>
+                    )}
+                  </div>
+                )) : (
+                  <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 space-y-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
+                    <Network size={48} className="opacity-20" />
+                    <p className="font-serif italic text-lg text-center px-8">No character connections mapped yet. <br /> Use the "New Connection" button to define how your cast is linked.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

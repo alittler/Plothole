@@ -754,6 +754,7 @@ const App: React.FC = () => {
         return <CharacterView 
           projectTitle={projectData?.title || ''} 
           characters={projectData?.characters || []} 
+          relationships={projectData?.relationships || []}
           locations={projectData?.locations || []} 
           timeline={projectData?.timeline || []} 
           artifacts={projectData?.artifacts || []} 
@@ -762,6 +763,7 @@ const App: React.FC = () => {
           manuscriptHistory={projectData?.manuscriptHistory || []} 
           onUpdateCharacter={(c) => updateProjectData({ characters: projectData?.characters.map(ch => ch.id === c.id ? c : ch) })} 
           onAddCharacter={(c) => updateProjectData({ characters: [...(projectData?.characters || []), c] })} 
+          onUpdateProject={updateProjectData}
           onLinkClick={(type, id) => { if (type === 'location') { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} 
           characterLimit={projectData?.characterLimit} 
           onChangeView={setCurrentView} 
