@@ -25,8 +25,6 @@ interface CharacterViewProps {
   isExtractingRelationships?: boolean;
   onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
-  onOpenBlueprint: (type: string, id: string, data: any) => void;
-}
 
 enum CharacterTab {
   ROSTER = 'Roster',
