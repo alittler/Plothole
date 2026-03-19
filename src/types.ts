@@ -447,6 +447,8 @@ export interface ProjectData {
   manuscriptLastUploaded?: number;
   manuscriptOriginalFilename?: string;
   manuscriptFileCreated?: number;
+  lastProcessedManuscriptSha?: string;
+  lastProcessedPromptSha?: string;
 
   archetypeDefinitions?: ArchetypeDefinition[];
   aiContextLimit?: number; 

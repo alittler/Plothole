@@ -5,7 +5,7 @@ import {
   Activity, Ghost, PinOff,
   BarChart3, TrendingUp, AlertOctagon, History, ShieldCheck, 
   CloudUpload, Mail, CheckCircle, XCircle, ShieldAlert,
-  Download, Image as ImageIcon, Save
+  Download, Image as ImageIcon, Save, Cpu, Loader2
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { detectTemporalParadoxes } from '../../utils/calendarUtils';
@@ -35,10 +35,13 @@ interface DashboardViewProps {
   isGeneratingCover: boolean;
   isExporting?: boolean;
   onOpenBlueprint: (type: string, id: string, data: any) => void;
+  onUpdateProcessedFiles: () => void;
+  isUpdatingProcessed?: boolean;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, isExporting, onOpenBlueprint
+  projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, isExporting, onOpenBlueprint,
+  onUpdateProcessedFiles, isUpdatingProcessed = false
 }) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>(DashboardTab.HEALTH);
   const [isIntegrityValid, setIsIntegrityValid] = useState<boolean | null>(null);
@@ -127,6 +130,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               
               <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl self-stretch overflow-x-auto no-scrollbar shrink-0">
+                <button
+                  onClick={onUpdateProcessedFiles}
+                  disabled={isUpdatingProcessed || isAnalyzing}
+                  className="px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 flex items-center gap-2 disabled:opacity-50"
+                  title="Smart-sync extracted data with current manuscript and blueprint schemas"
+                >
+                  {isUpdatingProcessed ? <Loader2 size={12} className="animate-spin" /> : <Cpu size={12} />} Sync Processor
+                </button>
                 <button
                   onClick={() => onExportProject(projectData, globalNotes)}
                   className="px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 flex items-center gap-2"

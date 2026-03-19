@@ -52,7 +52,7 @@ const safeJsonParse = (jsonString: string | undefined, defaultValue: any) => {
   }
 };
 
-const unifiedAnalysisSchema = {
+export const unifiedAnalysisSchema = {
   type: Type.OBJECT,
   properties: {
     title: { type: Type.STRING },

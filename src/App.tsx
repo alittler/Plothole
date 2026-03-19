@@ -15,12 +15,13 @@ import {
   getAppSettings,
   saveAppSettings,
   generateId,
-  exportProjectPlothole
-} from './services/storageService';
-import { 
+  exportProjectPlothole,
+  generateSHA256
+  } from './services/storageService';
+  import { 
   analyzeStoryText, generateBookCover, doubleProcessNote, extractThemesFromNotes, extractSoftAnchors, auditPlotThreads,
-  DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid
-} from './services/geminiService';
+  DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid, analyzeRelationships, unifiedAnalysisSchema
+  } from './services/geminiService';
 import { createCommit, updateIntegrityHash } from './services/versioningService';
 import { Commit, BackupStatus } from './types';
 
@@ -139,6 +140,67 @@ const App: React.FC = () => {
     } catch (e) { handleError(e); } finally { 
       setIsExtractingRelationships(false); 
       removeTask('Analyzing Relationships');
+    }
+  };
+
+  const [isUpdatingProcessed, setIsUpdatingProcessed] = useState(false);
+
+  const handleUpdateProcessedFiles = async () => {
+    if (!projectData) return;
+    setIsUpdatingProcessed(true);
+    addTask('Syncing Processor');
+    try {
+      const manuscriptText = projectData.latestManuscriptText || '';
+      const promptText = JSON.stringify(appPrompts) + JSON.stringify(unifiedAnalysisSchema);
+      
+      const [currentManuscriptSha, currentPromptSha] = await Promise.all([
+        generateSHA256(manuscriptText),
+        generateSHA256(promptText)
+      ]);
+
+      const manuscriptChanged = currentManuscriptSha !== projectData.lastProcessedManuscriptSha;
+      const promptsChanged = currentPromptSha !== projectData.lastProcessedPromptSha;
+
+      if (!manuscriptChanged && !promptsChanged) {
+        alert("Manuscript and Blueprint schemas are already up to date.");
+        return;
+      }
+
+      console.log(`Smart Sync: Manuscript changed: ${manuscriptChanged}, Prompts changed: ${promptsChanged}`);
+
+      // Perform re-scan
+      const analysis = await analyzeStoryText(manuscriptText, projectData.aiContextLimit);
+      
+      // Smart Merge logic
+      const updates: Partial<ProjectData> = {
+        lastProcessedManuscriptSha: currentManuscriptSha,
+        lastProcessedPromptSha: currentPromptSha,
+        summary: analysis.summary,
+        themes: Array.from(new Set([...projectData.themes, ...analysis.themes]))
+      };
+
+      if (analysis.characters.length > 0) {
+        const existingChars = [...projectData.characters];
+        analysis.characters.forEach(nc => {
+          const idx = existingChars.findIndex(ec => ec.name.toLowerCase() === nc.name.toLowerCase());
+          if (idx >= 0) existingChars[idx] = { ...nc, ...existingChars[idx], id: existingChars[idx].id }; // Preserve existing data
+          else existingChars.push(nc);
+        });
+        updates.characters = existingChars;
+      }
+
+      // Add new timeline events if manuscript changed
+      if (manuscriptChanged && analysis.timeline.length > 0) {
+        updates.timeline = [...projectData.timeline, ...analysis.timeline.filter(ne => !projectData.timeline.some(ee => ee.title === ne.title))];
+      }
+
+      await updateProjectData(updates);
+      alert("Processor synced successfully.");
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setIsUpdatingProcessed(false);
+      removeTask('Syncing Processor');
     }
   };
   const [currentMapParentId, setCurrentMapParentId] = useState<string | null>(null);
@@ -455,7 +517,8 @@ const App: React.FC = () => {
   const handleCreateProject = async (title: string, author: string, useSample: boolean, shortName?: string) => {
     const id = generateId();
     let newProject: ProjectData = {
-      id, title, shortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: [], sources: []
+      id, title, shortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: [], sources: [],
+      lastProcessedManuscriptSha: '', lastProcessedPromptSha: ''
     };
 
     if (useSample) {
@@ -817,7 +880,7 @@ const App: React.FC = () => {
               setIsAnalyzing(false);
               removeTask('Analyzing Project');
             });
-        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p, globalNotes)} isGeneratingCover={isGeneratingCover} onOpenBlueprint={openBlueprint} /> : null;
+        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p, globalNotes)} isGeneratingCover={isGeneratingCover} onOpenBlueprint={openBlueprint} onUpdateProcessedFiles={handleUpdateProcessedFiles} isUpdatingProcessed={isUpdatingProcessed} /> : null;
 
       case ViewType.TIMELINE:
       case ViewType.BOARD:
@@ -880,7 +943,7 @@ const App: React.FC = () => {
       default: 
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
-  }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, isExtractingRelationships, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, openBlueprint, handleQuickUpdate]);
+  }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, isExtractingRelationships, isUpdatingProcessed, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, openBlueprint, handleQuickUpdate]);
   const renderAppContent = () => (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors animate-in fade-in duration-500">
       <div className={`transition-all duration-700 ease-in-out hidden lg:flex shrink-0 overflow-hidden ${isMapFullscreen ? 'w-0 opacity-0 pointer-events-none' : isSidebarCollapsed ? 'w-20' : 'w-64 md:w-80'}`}>
