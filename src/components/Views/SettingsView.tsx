@@ -3,8 +3,9 @@ import { ProjectData, Note, User, LedgerEntry, ViewType, ChangeLogEntry } from '
 import { 
   Settings, User as UserIcon, Database, Shield, Code, Check, 
   ChevronRight, History, Activity, Hash, Archive, FileCode,
-  Link as LinkIcon, Sparkles, Copy
+  Link as LinkIcon, Sparkles, Copy, Trash2
 } from 'lucide-react';
+import { Modal } from '../ui/Modal';
 
 enum SettingsTab {
   PROFILE = 'Profile',
@@ -19,6 +20,7 @@ interface SettingsViewProps {
   globalNotes: Note[];
   onImportProject: (d: ProjectData) => void;
   onFactoryReset: () => void;
+  onClearGlobalNotes?: () => void;
   currentUser: User;
   onUpdateUser: (u: Partial<User>) => void;
   onUpdateProject: (d: Partial<ProjectData>) => void;
@@ -27,12 +29,13 @@ interface SettingsViewProps {
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
-  currentUser, onUpdateUser, onFactoryReset, projectData, onUpdateProject, onChangeView, onLinkClick, globalNotes
+  currentUser, onUpdateUser, onFactoryReset, projectData, onUpdateProject, onChangeView, onLinkClick, globalNotes, onClearGlobalNotes
 }) => {
   const [activeTab, setActiveTab] = React.useState<SettingsTab>(SettingsTab.PROFILE);
   const [rawText, setRawText] = React.useState('');
   const [isSaved, setIsSaved] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
   const allTextEntries = React.useMemo(() => {
     const entries: { id: string; type: string; content: string; timestamp: number }[] = [];
@@ -112,6 +115,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     onUpdateProject({ ledger: newLedger });
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
+  };
+
+  const handleDeleteFeed = () => {
+    if (projectData) {
+      onUpdateProject({
+        ledger: [],
+        sources: projectData.sources?.filter(s => s.type === 'image') || [], // Keep image assets, clear text sources
+        notes: [],
+        ideas: []
+      });
+    }
+    if (onClearGlobalNotes) {
+      onClearGlobalNotes();
+    }
+    setShowDeleteConfirm(false);
   };
 
   return (
@@ -399,16 +417,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <p className="text-xs text-slate-500">A continuous Markdown export of all project notes.</p>
                 </div>
               </div>
-              <button 
-                onClick={() => {
-                  navigator.clipboard.writeText(rawMarkdownDump);
-                  setIsSaved(true);
-                  setTimeout(() => setIsSaved(false), 2000);
-                }}
-                className={`px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${isSaved ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-              >
-                {isSaved ? <><Check size={16} /> Copied</> : <><Copy size={16} /> Copy All</>}
-              </button>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
+                  title="Clear All Text Entries"
+                >
+                  <Trash2 size={20} />
+                </button>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(rawMarkdownDump);
+                    setIsSaved(true);
+                    setTimeout(() => setIsSaved(false), 2000);
+                  }}
+                  className={`px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${isSaved ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                >
+                  {isSaved ? <><Check size={16} /> Copied</> : <><Copy size={16} /> Copy All</>}
+                </button>
+              </div>
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 p-4">
@@ -447,6 +474,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </section>
         )}
       </div>
+
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Clear Raw Text Feed?"
+        footer={
+          <>
+            <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-slate-600 font-bold hover:text-slate-900 transition-colors">Cancel</button>
+            <button onClick={handleDeleteFeed} className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors">Clear All Feed Data</button>
+          </>
+        }
+      >
+        <p className="text-slate-600 dark:text-slate-400 font-serif text-lg leading-relaxed">
+          This will permanently delete all text entries in the current project (Ledger, Notes, Ideas, and non-image Sources) as well as all global notebook entries. 
+          <br /><br />
+          <span className="font-bold text-red-500">This action cannot be undone and will empty the Raw Text Feed entirely.</span>
+        </p>
+      </Modal>
     </div>
   );
 };

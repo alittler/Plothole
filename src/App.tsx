@@ -7,7 +7,7 @@ import {
 import { 
   getAllProjectsMetadata, loadProjectById, saveProjectData, 
   deleteProject, getAllGlobalNotes, saveGlobalNote, 
-  deleteGlobalNote, clearDatabase,
+  deleteGlobalNote, clearDatabase, clearAllGlobalNotes,
   getAllGlobalResources, saveGlobalResource, deleteGlobalResource,
   exportFullArchive,
   getAppPrompts,
@@ -836,7 +836,11 @@ const App: React.FC = () => {
           onQuickUpdate={handleQuickUpdate}
           />;
       case ViewType.SETTINGS:
-        return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} />;
+        const handleClearGlobalNotes = async () => {
+          await clearAllGlobalNotes();
+          setGlobalNotes([]);
+        };
+        return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} onClearGlobalNotes={handleClearGlobalNotes} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} />;
 
       case ViewType.RESEARCH:
         return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onOpenBlueprint={openBlueprint} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;

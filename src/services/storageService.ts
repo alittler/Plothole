@@ -220,6 +220,16 @@ export const deleteGlobalNote = async (id: string): Promise<void> => {
     });
 };
 
+export const clearAllGlobalNotes = async (): Promise<void> => {
+    const db = await getDB();
+    return new Promise((resolve, reject) => { 
+      const tx = db.transaction(NOTEBOOK_STORE, 'readwrite');
+      tx.objectStore(NOTEBOOK_STORE).clear(); 
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+};
+
 export const clearDatabase = async (): Promise<void> => {
     const db = await getDB();
     return new Promise((resolve, reject) => {
