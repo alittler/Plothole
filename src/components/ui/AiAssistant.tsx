@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ProjectData } from '../../types';
+import { ProjectData, User as AppUser } from '../../types';
 import { X, Send, Sparkles, User, Bot, Download } from 'lucide-react';
 import { chatWithAssistant } from '../../services/geminiService';
 import ReactMarkdown from 'react-markdown';
@@ -14,11 +14,12 @@ interface AiAssistantProps {
   isOpen: boolean;
   onClose: () => void;
   onToggle: () => void;
+  currentUser: AppUser;
 }
 
-export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, projectData }) => {
+export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, projectData, currentUser }) => {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: "Hello! I'm your story architect. How can I help you with your narrative today?" }
+    { role: 'model', text: `Hello ${currentUser.name}! I'm your story architect. How can I help you with your narrative today?` }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -68,7 +69,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, proje
   };
 
   const handleExportDiscussion = () => {
-    const chatText = messages.map(m => `### ${m.role === 'user' ? 'Lead Architect' : 'Story Assistant'}\n\n${m.text}\n\n---\n`).join('\n');
+    const chatText = messages.map(m => `### ${m.role === 'user' ? currentUser.name : 'Story Assistant'}\n\n${m.text}\n\n---\n`).join('\n');
     const blob = new Blob([chatText], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -113,7 +114,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, proje
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-3">
                       <span className={`text-[10px] font-black uppercase tracking-widest ${m.role === 'user' ? 'text-indigo-600' : 'text-slate-400'}`}>
-                        {m.role === 'user' ? 'Lead Architect' : 'Story Assistant'}
+                        {m.role === 'user' ? currentUser.name : 'Story Assistant'}
                       </span>
                     </div>
                     <div className="prose prose-slate dark:prose-invert max-w-none prose-sm leading-relaxed">

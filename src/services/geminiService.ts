@@ -66,6 +66,7 @@ export const unifiedAnalysisSchema = {
         properties: {
           name: { type: Type.STRING },
           role: { type: Type.STRING },
+          job: { type: Type.STRING },
           description: { type: Type.STRING },
           traits: { type: Type.ARRAY, items: { type: Type.STRING } },
           familyName: { type: Type.STRING },
@@ -74,12 +75,12 @@ export const unifiedAnalysisSchema = {
           birthday: { type: Type.STRING },
           birthplace: { type: Type.STRING },
           residence: { type: Type.STRING },
-          height: { type: Type.STRING },
-          weight: { type: Type.STRING },
-          physicalFeatures: { type: Type.STRING },
+          physicalFeatures: { type: Type.STRING, description: "Detailed physical description including height, weight, build, and distinctive marks." },
           style: { type: Type.STRING },
           strengths: { type: Type.STRING },
-          weaknesses: { type: Type.STRING }
+          weaknesses: { type: Type.STRING },
+          firstMentionOffset: { type: Type.NUMBER, description: "The character index of their first appearance or mention in this text block." },
+          lastMentionOffset: { type: Type.NUMBER, description: "The character index of their final appearance or mention in this text block." }
         }
       }
     },
@@ -176,7 +177,7 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 2000): Pr
   }
 };
 
-export const analyzeStoryText = async (text: string, tokenLimit?: number, options?: AnalysisOptions): Promise<ManuscriptAnalysisResponse> => {
+export const analyzeStoryText = async (text: string, tokenLimit?: number, options?: AnalysisOptions, onProgress?: (msg: string) => void): Promise<ManuscriptAnalysisResponse> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const appSettings = await getAppSettings();
@@ -224,7 +225,10 @@ export const analyzeStoryText = async (text: string, tokenLimit?: number, option
   const results = [];
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
-    console.log(`Analyzing manuscript chunk ${i+1}/${chunks.length}... (${chunk.length} chars)`);
+    const progressMsg = `Analyzing manuscript chunk ${i+1}/${chunks.length}...`;
+    console.log(`${progressMsg} (${chunk.length} chars)`);
+    if (onProgress) onProgress(progressMsg);
+    
     try {
       const res = await withRetry(() => ai.models.generateContent({
         model,

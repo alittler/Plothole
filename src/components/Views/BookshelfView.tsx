@@ -26,7 +26,7 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
 
   const handleCreate = () => {
     if (!newTitle.trim()) return;
-    onCreateProject(newTitle, newAuthor || 'Unknown Author', false, newShortName);
+    onCreateProject(newTitle, newAuthor || currentUser.name, false, newShortName);
     setIsCreating(false);
     setNewTitle('');
     setNewShortName('');
@@ -70,11 +70,12 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400">
                     <span>{project.characterCount} Characters</span>
-                    <span>{project.locationCount} Locations</span>
+                    <span>{project.wordCount || 0} Words</span>
+                    <span>{project.charCount || 0} Chars</span>
                   </div>
                   <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-indigo-500/60">
                     <span>{project.commitCount} Commits</span>
-                    <span>{project.backupCount} Redundancies</span>
+                    <span>{project.locationCount} Locations</span>
                   </div>
                 </div>
               </div>
@@ -109,7 +110,7 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                 <Zap size={20} className="text-slate-400 group-hover:text-indigo-600" />
               </div>
               <span className="font-bold text-xs text-slate-500 group-hover:text-indigo-600 uppercase tracking-widest">
-                {isAnalyzing ? 'Architecting...' : 'Architect New World'}
+                {isAnalyzing ? 'Analyzing Manuscript...' : 'Analyze Manuscript'}
               </span>
             </label>
 

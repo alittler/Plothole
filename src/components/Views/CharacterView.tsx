@@ -23,7 +23,6 @@ interface CharacterViewProps {
   onExtractRelationships: () => void;
   isExtractingThemes: boolean;
   isExtractingRelationships?: boolean;
-  onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
 
 enum CharacterTab {
@@ -33,7 +32,7 @@ enum CharacterTab {
 }
 
 export const CharacterView: React.FC<CharacterViewProps> = ({
-  characters, relationships = [], onAddCharacter, onOpenBlueprint, onUpdateProject, onExtractRelationships, isExtractingRelationships = false
+  characters, relationships = [], onAddCharacter, onUpdateProject, onExtractRelationships, isExtractingRelationships = false
 }) => {
   const [activeTab, setActiveTab] = useState<CharacterTab>(CharacterTab.ROSTER);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,7 +41,8 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
 
   const filteredCharacters = characters.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.role.toLowerCase().includes(searchQuery.toLowerCase())
+    c.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.job && c.job.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleAddRelationship = () => {
@@ -108,7 +108,7 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                   />
                 </div>
                 <button
-                  onClick={() => onAddCharacter({ id: Math.random().toString(), name: 'New Character', role: 'Protagonist', description: '', traits: [], source: 'manual' })}
+                  onClick={() => onAddCharacter({ id: Math.random().toString(), name: 'New Character', role: 'Supporting', job: '', description: '', traits: [], source: 'manual' })}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors sm:ml-auto"
                 >
                   <Plus size={16} />
@@ -130,13 +130,21 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                       <div className="absolute top-4 right-4 px-3 py-1 bg-black/50 backdrop-blur-md text-white rounded-full text-[10px] font-black uppercase tracking-widest">
                         {char.role}
                       </div>
+                      
+                      {/* Character Lifespan Bar */}
+                      {char.firstMentionOffset !== undefined && char.lastMentionOffset !== undefined && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
+                          <div 
+                            className="absolute h-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"
+                            style={{ 
+                              left: `${(char.firstMentionOffset / 1000000) * 100}%`, 
+                              right: `${100 - (char.lastMentionOffset / 1000000) * 100}%` 
+                            }}
+                          />
+                        </div>
+                      )}
+
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                        <button 
-                          onClick={() => onOpenBlueprint('Character', char.id, char)}
-                          className="p-3 bg-white text-slate-900 rounded-full hover:scale-110 transition-transform"
-                        >
-                          <Edit2 size={20} />
-                        </button>
                       </div>
                     </div>
                     <div className="p-6 space-y-4 flex-1 flex flex-col">
@@ -145,7 +153,12 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                           <h3 className="text-xl font-black text-slate-900 dark:text-white">{char.name}</h3>
                           {char.nickname && <span className="text-[10px] font-bold text-slate-400 italic">"{char.nickname}"</span>}
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">{char.description || 'No description provided.'}</p>
+                        {char.job && (
+                          <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">
+                            {char.job}
+                          </div>
+                        )}
+                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-2">{char.description || 'No description provided.'}</p>
                       </div>
 
                       {(char.age || char.birthplace || char.residence) && (

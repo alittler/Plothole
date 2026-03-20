@@ -179,6 +179,8 @@ export const getAllProjectsMetadata = async (): Promise<ProjectMetadata[]> => {
         locationCount: p.locations?.length || 0,
         commitCount: p.commits?.length || 0,
         backupCount: p.backups?.length || 0,
+        wordCount: p.wordCount || 0,
+        charCount: p.charCount || 0,
         coverImage: p.coverImage
       })));
     };

@@ -126,7 +126,8 @@ export interface CharacterMisspelling {
 export interface Character {
   id: string;
   name: string;
-  role: string;
+  role: 'Protagonist' | 'Antagonist' | 'Supporting' | 'Minor';
+  job: string;
   description: string;
   traits: string[];
   species?: string;
@@ -147,13 +148,13 @@ export interface Character {
   birthday?: string;
   birthplace?: string;
   residence?: string;
-  height?: string;
-  weight?: string;
   physicalFeatures?: string;
   style?: string;
   strengths?: string;
   weaknesses?: string;
   referenceUrls?: string[];
+  firstMentionOffset?: number;
+  lastMentionOffset?: number;
 }
 
 export interface LexiconEntry {
@@ -450,6 +451,9 @@ export interface ProjectData {
   lastProcessedManuscriptSha?: string;
   lastProcessedPromptSha?: string;
 
+  wordCount?: number;
+  charCount?: number;
+
   archetypeDefinitions?: ArchetypeDefinition[];
   aiContextLimit?: number; 
   characterLimit?: number; // threshold for full cards
@@ -494,9 +498,9 @@ export interface ProjectMetadata {
   commitCount: number;
   backupCount: number;
   wordCount?: number;
-  portraitStyle?: string; 
-  coverImage?: string; 
-  characters?: { id: string; name: string; role: string; description?: string }[];
+  charCount?: number;
+  portraitStyle?: string;
+  coverImage?: string;  characters?: { id: string; name: string; role: string; description?: string }[];
   locations?: { id: string; name: string; type: string; description?: string }[];
 }
 

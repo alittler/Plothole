@@ -15,6 +15,7 @@ interface SidebarProps {
   isAiOpen: boolean;
   currentUser: User;
   isProcessing: boolean;
+  processingStatus: string | null;
   activeProjectTitle?: string;
   onQuickNote?: (text: string) => void;
   appName?: string;
@@ -43,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   
   const allNavItems: NavItem[] = [
     { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
-    { id: ViewType.STORY_ARCHITECT, label: 'Story Architect', icon: Zap, always: true },
+    // { id: ViewType.STORY_ARCHITECT, label: 'Story Architect', icon: Zap, always: true },
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
     { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: Database, projectOnly: true },
@@ -203,6 +204,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Sparkles size={18} className={isProcessing ? 'animate-spin' : ''} />
             {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">AI Architect</span>}
           </button>
+          
+          {isProcessing && processingStatus && !isCollapsed && (
+            <div className="px-4 py-2 bg-slate-900/50 border border-slate-800 rounded-xl animate-pulse">
+              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block leading-tight">
+                {processingStatus}
+              </span>
+            </div>
+          )}
           {currentUser.role === 'admin' && onQuickNote && (
             <button
               onClick={() => {

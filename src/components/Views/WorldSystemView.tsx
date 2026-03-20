@@ -23,7 +23,7 @@ interface WorldSystemViewProps {
   onDeleteArtifact: (id: string) => void;
   onAddLore: (l: LoreEntry) => void;
   onDeleteLore: (id: string) => void;
-  onOpenBlueprint: (type: string, id: string, data: any) => void;
+  onOpenBlueprint?: (type: string, id: string, data: any) => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
 }
@@ -147,7 +147,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   const loc = data.locations.find(l => l.id === id);
                   if (loc) {
                     if (loc.mapImage) onMapChange(loc.id);
-                    else onOpenBlueprint('Location', loc.id, loc);
+                    else onOpenBlueprint && onOpenBlueprint('Location', loc.id, loc);
                   }
                 }}
                 onLocationPlace={(id, x, y) => {
@@ -255,8 +255,9 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     
                     <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
                     
-                    <label className="p-1.5 md:p-2 text-slate-500 hover:text-indigo-600 cursor-pointer transition-colors" title="Upload Map">
-                      <Upload size={16} className="md:w-5 md:h-5" />
+                    <label className="px-2 md:px-4 py-1.5 md:py-2 bg-indigo-600 text-white rounded-lg md:rounded-xl font-black text-[8px] md:text-[10px] uppercase tracking-widest flex items-center gap-1.5 md:gap-2 transition-all cursor-pointer hover:bg-indigo-700 shadow-lg shadow-indigo-600/20" title="Upload Map">
+                      <Upload size={12} className="md:w-3.5 md:h-3.5" />
+                      <span>{currentMapParentId ? 'Change Sub-Map' : 'Change Map'}</span>
                       <input type="file" className="hidden" accept="image/*" onChange={handleMapUpload} />
                     </label>
                   </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ProjectData } from '../../types';
+import { ProjectData, User as AppUser } from '../../types';
 import { Shield, Sparkles as SparklesIcon, Tag as TagIcon, Hash as HashIcon, Layout as LayoutIcon, X as XIcon, Map as MapIcon, Maximize2 as Maximize2Icon, ChevronRight as ChevronRightIcon, User as UserIconLucide, Heart as HeartIcon, Ruler as RulerIcon, Info as InfoIcon, Image as ImageIcon, Trash2, Link as LinkIcon, Upload, Plus, Copy, Check, Loader2, Clock, Book, PenTool, FileText, Settings } from 'lucide-react';
 import { generateId } from '../../services/storageService';
 
@@ -11,10 +11,11 @@ interface MasterBlueprintEditorProps {
   onUpdateProject: (updates: Partial<ProjectData>) => void;
   onQuickUpdate: (type: string, id: string, key: string, value: any) => void;
   appPrompts: any;
+  currentUser: AppUser;
 }
 
 export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
-  isOpen, onClose, projectData, editingCard, onUpdateProject, onQuickUpdate, appPrompts
+  isOpen, onClose, projectData, editingCard, onUpdateProject, onQuickUpdate, appPrompts, currentUser
 }) => {
   const [previewPromptKey, setPreviewPromptKey] = useState<string | null>(null);
   const [imageUrlInput, setImageUrlInput] = useState('');
@@ -91,7 +92,7 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
   const compilePrompt = (template: string, itemData?: any) => {
     if (!projectData) return template;
     
-    const charList = projectData.characters?.map(c => `- ${c.name} (${c.role}): ${c.description}`).join('\n') || 'No characters defined.';
+    const charList = projectData.characters?.map(c => `- ${c.name} (${c.role}${c.job ? `, ${c.job}` : ''}): ${c.description}`).join('\n') || 'No characters defined.';
     const locList = projectData.locations?.map(l => `- ${l.name} [${l.type}] (X: ${l.x?.toFixed(1) || '0.0'}, Y: ${l.y?.toFixed(1) || '0.0' }): ${l.description}`).join('\n') || 'No locations defined.';
     const timeList = projectData.timeline?.map(e => `- ${e.date}: ${e.title} - ${e.description}`).join('\n') || 'No timeline events.';
     const loreList = projectData.lore?.map(l => `- ${l.term} [${l.category}]: ${l.definition}`).join('\n') || 'No lore defined.';
@@ -108,7 +109,7 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
       .replace(/{ledger}/g, ledgerList)
       .replace(/{lore}/g, loreList)
       .replace(/{themes}/g, themeList)
-      .replace(/{user_context}/g, 'Lead Architect')
+      .replace(/{user_context}/g, currentUser.name)
       .replace(/{tasks}/g, 'No active tasks.')
       .replace(/{referenceUrls}/g, itemData?.referenceUrls?.join(', ') || 'No Reference URLs.');
 
@@ -116,6 +117,8 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
       compiled = compiled
         .replace(/{name}/g, itemData.name || itemData.title || itemData.term || 'Untitled')
         .replace(/{type}/g, itemData.type || 'Object')
+        .replace(/{role}/g, itemData.role || '')
+        .replace(/{job}/g, itemData.job || '')
         .replace(/{x}/g, String(itemData.x || '0.0'))
         .replace(/{y}/g, String(itemData.y || '0.0'))
         .replace(/{description}/g, itemData.description || itemData.definition || itemData.content || '')
@@ -159,7 +162,7 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
     {
       name: 'Character Details',
       icon: <UserIconLucide size={14} />,
-      fields: ['familyName', 'nickname', 'role', 'species', 'archetype', 'age', 'birthday', 'birthplace', 'residence', 'livingStatus'],
+      fields: ['familyName', 'nickname', 'role', 'job', 'species', 'archetype', 'age', 'birthday', 'birthplace', 'residence', 'livingStatus'],
       bg: 'bg-blue-500/5',
       border: 'border-blue-500/10'
     },
@@ -282,7 +285,18 @@ export const MasterBlueprintEditor: React.FC<MasterBlueprintEditorProps> = ({
           <code className="text-emerald-500 text-[9px] font-mono">{`{${key}}`}</code>
         </div>
         
-        {typeof value === 'boolean' ? (
+        {key === 'role' && editingCard.type === 'Character' ? (
+          <select 
+            value={value}
+            onChange={(e) => onQuickUpdate(editingCard.type, editingCard.id, key, e.target.value)}
+            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl p-3 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+          >
+            <option value="Protagonist">Protagonist</option>
+            <option value="Antagonist">Antagonist</option>
+            <option value="Supporting">Supporting</option>
+            <option value="Minor">Minor</option>
+          </select>
+        ) : typeof value === 'boolean' ? (
           <button 
             onClick={() => onQuickUpdate(editingCard.type, editingCard.id, key, !value)}
             className={`w-full p-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}

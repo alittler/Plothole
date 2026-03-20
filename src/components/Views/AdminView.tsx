@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ProjectData, AppPrompts, ToolboxLink, ProjectMetadata, Note, AppSettings, ViewType } from '../../types';
+import { ProjectData, AppPrompts, ToolboxLink, ProjectMetadata, Note, AppSettings, ViewType, User as AppUser } from '../../types';
 import { 
   Shield, Sparkles, Save, Database, Trash2, Clock, Tag, 
   Type, Users, Layout, Search, Filter, Hash, Archive,
@@ -39,12 +39,12 @@ interface AdminViewProps {
   onDeleteGlobalNote: (id: string) => void;
   onLinkClick?: (type: string, id: string) => void;
   onChangeView?: (v: any) => void;
-  onOpenBlueprint: (type: string, id: string, data: any) => void;
   onQuickUpdate: (type: string, id: string, key: string, value: any) => void;
+  currentUser: AppUser;
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
-  data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote, onLinkClick, onChangeView, onOpenBlueprint, onQuickUpdate
+  data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote, onLinkClick, onChangeView, onQuickUpdate, currentUser
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>(AdminTab.SYSTEM);
   const [prompts, setPrompts] = useState(appPrompts);
@@ -57,14 +57,69 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [cardSort, setCardSort] = useState<'name' | 'type' | 'id'>('name');
   const [isQuickEdit, setIsQuickEdit] = useState(false);
   const [activeCardCategory, setActiveCardCategory] = useState<CardCategory>(CardCategory.ALL);
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+  const [isMergeOpen, setIsMergeOpen] = useState(false);
+  const [mergedData, setMergedData] = useState<any>(null);
 
-  // Blueprint Editor States
-  const [previewPromptKey, setPreviewPromptKey] = useState<string | null>(null);
+  const handleOpenMerge = () => {
+    if (selectedCards.length !== 2) return;
+    if (selectedCards[0].type !== selectedCards[1].type) {
+      alert("You can only merge objects of the same type.");
+      return;
+    }
+    
+    // Initialize merged data with the first card's data
+    setMergedData({ ...selectedCards[0].data });
+    setIsMergeOpen(true);
+  };
+
+  const handleConfirmMerge = () => {
+    if (!mergedData) return;
+    
+    const type = selectedCards[0].type;
+    const sourceId = selectedCards[0].id;
+    const targetId = selectedCards[1].id;
+
+    // Logic: Update the "target" (2nd) card with mergedData, and delete the "source" (1st) card.
+    // We'll simulate this by updating the target and filtering out the source.
+    const mapTypeToKey: Record<string, string> = {
+      'Character': 'characters',
+      'Location': 'locations',
+      'Timeline': 'timeline',
+      'Source': 'sources',
+      'Ledger': 'ledger',
+      'Artifact': 'artifacts',
+      'Lore': 'lore'
+    };
+
+    const projectKey = mapTypeToKey[type];
+    if (!projectKey || !data) return;
+
+    const list = [...(data as any)[projectKey] || []];
+    const targetIdx = list.findIndex((item: any) => item.id === targetId);
+    
+    if (targetIdx !== -1) {
+      list[targetIdx] = { ...list[targetIdx], ...mergedData, id: targetId };
+      const filteredList = list.filter((item: any) => item.id !== sourceId);
+      onUpdateProject({ [projectKey]: filteredList });
+    }
+
+    setIsMergeOpen(false);
+    setSelectedCardIds([]);
+    setMergedData(null);
+    alert(`Successfully merged ${selectedCards[0].name} and ${selectedCards[1].name}`);
+  };
+
+  const toggleCardSelection = (id: string) => {
+    setSelectedCardIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
 
   const compilePrompt = (template: string, itemData?: any) => {
     if (!data) return template;
     
-    const charList = data.characters?.map(c => `- ${c.name} (${c.role}): ${c.description}`).join('\n') || 'No characters defined.';
+    const charList = data.characters?.map(c => `- ${c.name} (${c.role}${c.job ? `, ${c.job}` : ''}): ${c.description}`).join('\n') || 'No characters defined.';
     const locList = data.locations?.map(l => `- ${l.name} [${l.type}] (X: ${l.x?.toFixed(1) || '0.0'}, Y: ${l.y?.toFixed(1) || '0.0' }): ${l.description}`).join('\n') || 'No locations defined.';
     const timeList = data.timeline?.map(e => `- ${e.date}: ${e.title} - ${e.description}`).join('\n') || 'No timeline events.';
     const loreList = data.lore?.map(l => `- ${l.term} [${l.category}]: ${l.definition}`).join('\n') || 'No lore defined.';
@@ -81,7 +136,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       .replace(/{ledger}/g, ledgerList)
       .replace(/{lore}/g, loreList)
       .replace(/{themes}/g, themeList)
-      .replace(/{user_context}/g, 'Lead Architect')
+      .replace(/{user_context}/g, currentUser.name)
       .replace(/{tasks}/g, 'No active tasks.');
 
     // Item-level resolution if context provided
@@ -89,6 +144,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
       compiled = compiled
         .replace(/{name}/g, itemData.name || itemData.title || itemData.term || 'Untitled')
         .replace(/{type}/g, itemData.type || 'Object')
+        .replace(/{role}/g, itemData.role || '')
+        .replace(/{job}/g, itemData.job || '')
         .replace(/{x}/g, String(itemData.x || '0.0'))
         .replace(/{y}/g, String(itemData.y || '0.0'))
         .replace(/{description}/g, itemData.description || itemData.definition || itemData.content || '');
@@ -155,6 +212,10 @@ export const AdminView: React.FC<AdminViewProps> = ({
     return cards;
   }, [data, cardSearch, cardSort, activeCardCategory]);
 
+  const selectedCards = useMemo(() => 
+    allCards.filter(c => selectedCardIds.includes(c.id)),
+  [allCards, selectedCardIds]);
+
   const handleAddAdmin = () => {
     if (!newUserEmail.trim()) return;
     const currentAdmins = settings.adminEmails || [];
@@ -185,96 +246,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
       case AdminTab.SYSTEM:
         return (
           <div className="space-y-12">
-            {/* Blank Variable Card */}
-            <section className="bg-slate-900 rounded-3xl p-8 shadow-2xl border-4 border-dashed border-slate-800 space-y-10 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <Sparkles size={240} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-2xl">
-                      <Hash size={24} />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-white tracking-tight">The Architect's Blueprint</h2>
-                      <p className="text-xs text-slate-400 uppercase font-black tracking-widest mt-1">Prompt Variable Reference</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
-                  {[
-                    { title: "Project Title", var: "{title}" },
-                    { title: "Author Name", var: "{author}" },
-                    { title: "Full Summary", var: "{summary}" },
-                    { title: "Character List", var: "{characters}" },
-                    { title: "World Locations", var: "{locations}" },
-                    { title: "Timeline Events", var: "{timeline}" },
-                    { title: "Project Ledger", var: "{ledger}" },
-                    { title: "Lore & Mythos", var: "{lore}" },
-                    { title: "Core Themes", var: "{themes}" },
-                    { title: "User Context", var: "{user_context}" },
-                    { title: "Active Tasks", var: "{tasks}" },
-                    { title: "Item Name", var: "{name}" },
-                    { title: "Item Type", var: "{type}" },
-                    { title: "Coordinate X", var: "{x}" },
-                    { title: "Coordinate Y", var: "{y}" },
-                    { title: "Item Data", var: "{description}" }
-                  ].map(v => (
-                    <div key={v.var} className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700/50 flex flex-col gap-1 hover:bg-slate-800 transition-colors group/var">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{v.title}</span>
-                        <ChevronRight size={10} className="text-slate-600 group-hover/var:text-indigo-400 transition-colors" />
-                      </div>
-                      <code className="text-indigo-400 font-mono text-xs">{v.var}</code>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Prompt Preview Sub-Section */}
-                <div className="bg-slate-950/50 rounded-3xl p-6 border border-slate-800 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400">
-                        <Maximize2 size={16} />
-                      </div>
-                      <h3 className="text-sm font-bold text-white uppercase tracking-tight">Live Prompt Compiler</h3>
-                    </div>
-                    
-                    <div className="flex items-center gap-3">
-                      <select 
-                        value={previewPromptKey || ''} 
-                        onChange={(e) => setPreviewPromptKey(e.target.value)}
-                        className="bg-slate-900 border border-slate-800 text-slate-300 text-xs rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
-                      >
-                        <option value="">Select a prompt to preview...</option>
-                        {Object.keys(prompts).filter(k => k !== 'AI_MODEL').map(key => (
-                          <option key={key} value={key}>{key.replace(/_/g, ' ')}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {previewPromptKey ? (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <div className="p-6 bg-slate-900/80 rounded-2xl border border-slate-800 font-serif text-slate-300 text-sm leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto custom-scrollbar">
-                        {compilePrompt(prompts[previewPromptKey as keyof AppPrompts])}
-                      </div>
-                      <div className="flex items-center justify-between px-2">
-                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Compiled Output</span>
-                        <span className="text-[10px] text-slate-500 font-mono">Variables Injected: { (prompts[previewPromptKey as keyof AppPrompts].match(/{.*?}/g) || []).length }</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="py-12 text-center border-2 border-dashed border-slate-800 rounded-2xl">
-                      <p className="text-xs text-slate-500 italic font-serif">Select a system prompt above to see how your project data resolves into the blueprint.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-
             {/* AI Parameter Cards */}
             <div className="grid grid-cols-1 gap-8">
               {Object.entries(prompts).map(([key, value]) => {
@@ -585,6 +556,16 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   {isQuickEdit ? 'Exit Quick Edit' : 'Edit All'}
                 </button>
 
+                {selectedCardIds.length === 2 && (
+                  <button 
+                    onClick={handleOpenMerge}
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 hover:bg-emerald-700 animate-in zoom-in duration-200"
+                  >
+                    <Users size={14} />
+                    Merge Selected
+                  </button>
+                )}
+
                 <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-widest">
                   {allCards.length} Total
                 </div>
@@ -604,26 +585,41 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {allCards.map(card => (
-                <div key={card.id} className="flex flex-col p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 group hover:border-indigo-500/30 transition-all hover:shadow-xl hover:shadow-indigo-500/5">
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="space-y-1">
-                      <div className="inline-block px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded text-[8px] font-black uppercase tracking-widest">
-                        {card.type}
+              {allCards.map(card => {
+                const isSelected = selectedCardIds.includes(card.id);
+                return (
+                  <div 
+                    key={card.id} 
+                    onClick={() => toggleCardSelection(card.id)}
+                    className={`flex flex-col p-6 rounded-3xl border transition-all cursor-pointer ${isSelected ? 'bg-indigo-500/10 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 hover:border-indigo-500/30'} group hover:shadow-xl hover:shadow-indigo-500/5`}
+                  >
+                    <div className="flex items-start justify-between mb-6">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700'}`}>
+                            {isSelected && <Check size={10} />}
+                          </div>
+                          <div className="inline-block px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded text-[8px] font-black uppercase tracking-widest">
+                            {card.type}
+                          </div>
+                        </div>
+                        <h3 className="font-bold text-slate-900 dark:text-white truncate max-w-[180px]">{card.name}</h3>
+                        <span className="text-[10px] font-mono text-slate-400 block">#{card.id}</span>
                       </div>
-                      <h3 className="font-bold text-slate-900 dark:text-white truncate max-w-[180px]">{card.name}</h3>
-                      <span className="text-[10px] font-mono text-slate-400 block">#{card.id}</span>
-                    </div>
                     <div className="flex items-center gap-1">
                       <button 
-                        onClick={() => onOpenBlueprint(card.type, card.id, card.data)}
-                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all flex items-center gap-1"
-                        title="Open Blueprint Editor"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsQuickEdit(!isQuickEdit);
+                        }}
+                        className={`p-2 rounded-xl transition-all flex items-center gap-1 ${isQuickEdit ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}
+                        title="Toggle Edit Mode"
                       >
                         <PenTool size={16} />
                       </button>
                       <button 
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           const tag = `[[#${card.id}]]`;
                           navigator.clipboard.writeText(tag);
                           setCopiedCardId(card.id);
@@ -647,6 +643,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                             <input 
                               type="text"
                               value={String(value || '')}
+                              onClick={(e) => e.stopPropagation()}
                               onChange={(e) => onQuickUpdate(card.type, card.id, key, e.target.value)}
                               className="text-[11px] font-mono bg-white dark:bg-slate-900 border-none rounded px-2 py-1 focus:ring-1 focus:ring-indigo-500 w-full outline-none"
                             />
@@ -661,15 +658,29 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   </div>
                   
                   <div className="mt-4 pt-4 border-t border-slate-200/50 dark:border-slate-700/30 flex justify-between items-center opacity-40 group-hover:opacity-100 transition-opacity">
-                    <div className="flex gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
-                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Delete this ${card.type}?`)) {
+                          const mapTypeToKey: Record<string, string> = {
+                            'Character': 'characters', 'Location': 'locations', 'Timeline': 'timeline',
+                            'Source': 'sources', 'Ledger': 'ledger', 'Artifact': 'artifacts', 'Lore': 'lore'
+                          };
+                          const projectKey = mapTypeToKey[card.type];
+                          if (projectKey && data) {
+                            onUpdateProject({ [projectKey]: (data as any)[projectKey].filter((i: any) => i.id !== card.id) });
+                          }
+                        }
+                      }}
+                      className="p-1.5 hover:text-red-500 transition-colors"
+                      title="Delete Item"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{isQuickEdit ? 'Editing Mode' : 'Metadata Object'}</span>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </section>
         );
@@ -710,6 +721,100 @@ export const AdminView: React.FC<AdminViewProps> = ({
       <div className="max-w-6xl mx-auto px-4 pb-12">
         {renderTabContent()}
       </div>
+
+      {isMergeOpen && selectedCards.length === 2 && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-[40px] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
+            <header className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-2xl">
+                  <Users size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Unified Merge</h2>
+                  <p className="text-xs text-slate-500 uppercase font-black tracking-widest mt-1">Resolving {selectedCards[0].type} Conflicts</p>
+                </div>
+              </div>
+              <button onClick={() => setIsMergeOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                <X size={24} />
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+              <div className="grid grid-cols-1 gap-8">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4 px-4">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Field</div>
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">Option A: {selectedCards[0].name}</div>
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">Option B: {selectedCards[1].name}</div>
+                  </div>
+
+                  {Object.keys({ ...selectedCards[0].data, ...selectedCards[1].data }).map(key => {
+                    if (key === 'id') return null;
+                    const valA = selectedCards[0].data[key];
+                    const valB = selectedCards[1].data[key];
+                    const currentVal = mergedData ? mergedData[key] : '';
+
+                    return (
+                      <div key={key} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight">{key.replace(/([A-Z])/g, ' $1')}</span>
+                          <span className="text-[10px] font-mono text-indigo-500">Conflict Resolution</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <button 
+                            onClick={() => setMergedData({...mergedData, [key]: valA})}
+                            className={`p-3 rounded-xl border text-left transition-all ${mergedData && mergedData[key] === valA ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
+                          >
+                            <div className="text-[10px] font-black uppercase opacity-50 mb-1">Use A</div>
+                            <div className="text-xs truncate">{String(valA || '(Empty)')}</div>
+                          </button>
+                          <button 
+                            onClick={() => setMergedData({...mergedData, [key]: valB})}
+                            className={`p-3 rounded-xl border text-left transition-all ${mergedData && mergedData[key] === valB ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
+                          >
+                            <div className="text-[10px] font-black uppercase opacity-50 mb-1">Use B</div>
+                            <div className="text-xs truncate">{String(valB || '(Empty)')}</div>
+                          </button>
+                        </div>
+
+                        <input 
+                          type="text"
+                          value={String(currentVal || '')}
+                          onChange={(e) => setMergedData({...mergedData, [key]: e.target.value})}
+                          placeholder="Manual entry..."
+                          className="w-full px-4 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <footer className="p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-between shrink-0">
+              <p className="text-xs text-slate-500 italic max-w-md">
+                <strong>Warning:</strong> Merging will update "{selectedCards[1].name}" and permanently delete "{selectedCards[0].name}".
+              </p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setIsMergeOpen(false)}
+                  className="px-6 py-2 text-slate-500 font-bold text-sm"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleConfirmMerge}
+                  className="px-8 py-2 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-emerald-700 shadow-lg shadow-emerald-600/20"
+                >
+                  Confirm Merge
+                </button>
+              </div>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
