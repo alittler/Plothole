@@ -12,7 +12,6 @@ interface StenoLedgerPanelProps {
   projectsMetadata?: ProjectMetadata[];
   onLinkClick?: (type: string, id: string) => void;
   isFullScreen?: boolean;
-  onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
 
 export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
@@ -21,8 +20,7 @@ export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
   currentUser,
   projectsMetadata,
   onLinkClick,
-  isFullScreen = false,
-  onOpenBlueprint
+  isFullScreen = false
 }) => {
   const [ledgerInput, setLedgerInput] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -118,14 +116,16 @@ export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
   function renderActions(entry: Note) {
     return (
       <>
-        <button 
-          onClick={() => onOpenBlueprint('Ledger', entry.id, entry)}
-          className="p-1.5 bg-white/80 dark:bg-slate-800/80 backdrop-blur rounded-lg shadow-sm hover:text-indigo-500 transition-colors"
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onLinkClick?.('admin', entry.id);
+          }}
+          className="p-1.5 bg-white/80 dark:bg-slate-800/80 backdrop-blur rounded-lg shadow-sm hover:text-indigo-600 transition-colors"
           title="Edit Note"
         >
           <Edit3 size={14} />
-        </button>
-        
+        </button>        
         <button 
           onClick={() => handleDeleteNote(entry.id)}
           className="p-1.5 bg-white/80 dark:bg-slate-800/80 backdrop-blur rounded-lg shadow-sm hover:text-red-500 transition-colors"

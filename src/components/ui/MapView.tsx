@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { Location, TimelineEvent, Character } from '../../types';
+
 interface MapViewProps {
   locations: Location[];
   onLocationClick?: (id: string) => void;
@@ -8,6 +9,9 @@ interface MapViewProps {
   onLocationPlace?: (id: string, x: number, y: number) => void;
   onLocationMove?: (id: string, x: number, y: number) => void;
   onLocationUnplace?: (id: string) => void;
+  onLocationUndo?: (id: string) => void;
+  onLocationReset?: (id: string) => void;
+  onLocationLock?: (id: string, isLocked: boolean) => void;
   onDimensionsDetected?: (width: number, height: number) => void;
   rootMapImage?: string;
   mapScale?: number;
@@ -17,12 +21,17 @@ interface MapViewProps {
   zoomOutRef?: React.MutableRefObject<(() => void) | null>;
   centerMapRef?: React.MutableRefObject<((coords?: { x: number, y: number }) => void) | null>;
   getViewStateRef?: React.MutableRefObject<(() => { x: number, y: number, zoom: number } | null) | null>;
-  }  export const MapView: React.FC<MapViewProps> = ({ 
-  locations, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onLocationUnplace, onDimensionsDetected, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, getViewStateRef
-  }) => {
+  isRealWorld?: boolean;
+}
+
+export const MapView: React.FC<MapViewProps> = ({ 
+  locations, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onLocationUnplace, onLocationUndo, onLocationReset, onLocationLock, onDimensionsDetected, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, getViewStateRef,
+  isRealWorld = false
+}) => {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapBoundsRef = useRef<L.LatLngBounds | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const imgWidthRef = useRef<number>(1);
   const [isReady, setIsReady] = useState(false);
 
@@ -39,14 +48,11 @@ interface MapViewProps {
     landmark: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>'
   };
 
-  // Helper to get icon color/style based on type or explicit icon name
   const getMarkerStyle = (loc: Location) => {
     const type = loc.type.toLowerCase();
     const iconName = (loc.icon || type).toLowerCase();
-    
     let iconKey = 'landmark';
     let color = 'bg-emerald-500';
-
     if (iconName.includes('castle') || iconName.includes('fort')) { iconKey = 'castle'; color = 'bg-slate-700'; }
     else if (iconName.includes('city')) { iconKey = 'city'; color = 'bg-indigo-600'; }
     else if (iconName.includes('town') || iconName.includes('village')) { iconKey = 'town'; color = 'bg-amber-600'; }
@@ -55,19 +61,17 @@ interface MapViewProps {
     else if (iconName.includes('forest') || iconName.includes('wood')) { iconKey = 'forest'; color = 'bg-green-700'; }
     else if (iconName.includes('mountain')) { iconKey = 'mountain'; color = 'bg-slate-400'; }
     else if (iconName.includes('cave')) { iconKey = 'cave'; color = 'bg-orange-900'; }
-
-    return { 
-      color, 
-      svg: MAP_ICONS[iconKey] || MAP_ICONS['landmark']
-    };
+    return { color, svg: MAP_ICONS[iconKey] || MAP_ICONS['landmark'] };
   };
 
-  // Use refs for callbacks to prevent effect re-triggering
   const onMapClickRef = useRef(onMapClick);
   const onDimensionsDetectedRef = useRef(onDimensionsDetected);
   const onLocationPlaceRef = useRef(onLocationPlace);
   const onLocationMoveRef = useRef(onLocationMove);
   const onLocationUnplaceRef = useRef(onLocationUnplace);
+  const onLocationUndoRef = useRef(onLocationUndo);
+  const onLocationResetRef = useRef(onLocationReset);
+  const onLocationLockRef = useRef(onLocationLock);
   const onLocationClickRef = useRef(onLocationClick);
   const mapScaleRef = useRef(mapScale);
   const mapUnitRef = useRef(mapUnit);
@@ -77,186 +81,114 @@ interface MapViewProps {
   useEffect(() => { onLocationPlaceRef.current = onLocationPlace; }, [onLocationPlace]);
   useEffect(() => { onLocationMoveRef.current = onLocationMove; }, [onLocationMove]);
   useEffect(() => { onLocationUnplaceRef.current = onLocationUnplace; }, [onLocationUnplace]);
+  useEffect(() => { onLocationUndoRef.current = onLocationUndo; }, [onLocationUndo]);
+  useEffect(() => { onLocationResetRef.current = onLocationReset; }, [onLocationReset]);
+  useEffect(() => { onLocationLockRef.current = onLocationLock; }, [onLocationLock]);
   useEffect(() => { onLocationClickRef.current = onLocationClick; }, [onLocationClick]);
   useEffect(() => { mapScaleRef.current = mapScale; }, [mapScale]);
   useEffect(() => { mapUnitRef.current = mapUnit; }, [mapUnit]);
 
-  // Force scale update when props change
-  useEffect(() => {
-    if (isReady && mapRef.current) {
-      mapRef.current.fire('resize');
-    }
-  }, [mapScale, mapUnit, isReady]);
-
-  // Expose methods to parent
-  useEffect(() => {
-    if (zoomInRef) zoomInRef.current = () => mapRef.current?.zoomIn();
-    if (zoomOutRef) zoomOutRef.current = () => mapRef.current?.zoomOut();
-    if (getViewStateRef) getViewStateRef.current = () => {
-      if (!mapRef.current) return null;
-      const center = mapRef.current.getCenter();
-      return { x: center.lng, y: center.lat, zoom: mapRef.current.getZoom() };
-    };
-    if (centerMapRef) centerMapRef.current = (coords?: { x: number, y: number }) => {
-      if (!mapRef.current) return;
-      if (coords) {
-        mapRef.current.setView([coords.y, coords.x], mapRef.current.getZoom(), { animate: true, duration: 1.5 });
-      } else if (defaultView) {
-        mapRef.current.setView([defaultView.y, defaultView.x], defaultView.zoom, { animate: true, duration: 1.5 });
-      } else if (mapBoundsRef.current) {
-        mapRef.current.fitBounds(mapBoundsRef.current, { animate: true, padding: [20, 20], duration: 1.5 });
-      }
-    };
-  }, [zoomInRef, zoomOutRef, centerMapRef, getViewStateRef, defaultView]);
-
-  // 1. Initial Map Creation & Cleanup
   useEffect(() => {
     if (!containerRef.current) return;
-
     const map = L.map(containerRef.current, {
-      crs: L.CRS.Simple,
-      minZoom: -2,
-      maxZoom: 4,
+      crs: isRealWorld ? L.CRS.EPSG3857 : L.CRS.Simple,
+      minZoom: isRealWorld ? 2 : -2,
+      maxZoom: isRealWorld ? 19 : 4,
       zoomControl: false,
-      attributionControl: false,
+      attributionControl: isRealWorld,
       fadeAnimation: false,
-      maxBoundsViscosity: 1.0
+      maxBoundsViscosity: 1.0,
+      worldCopyJump: false
     });
 
-    // Custom Calibrated Scale Control
+    if (isRealWorld) {
+      tileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        noWrap: true
+      }).addTo(map);
+      const worldBounds = L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180));
+      map.setMaxBounds(worldBounds);
+      const minZoom = map.getBoundsZoom(worldBounds, true);
+      map.setMinZoom(minZoom);
+      map.setView([20, 0], Math.max(minZoom, 2));
+    } else {
+      map.setView([0, 0], 0);
+    }
+
     const CalibratedScale = L.Control.extend({
       options: { position: 'bottomleft' },
       onAdd: function(map: L.Map) {
         const container = L.DomUtil.create('div', 'leaflet-control-scale');
         const line = L.DomUtil.create('div', 'leaflet-control-scale-line', container);
-        
         const updateScale = () => {
-          if (!mapBoundsRef.current || !mapScaleRef.current || imgWidthRef.current <= 1) {
-            container.style.display = 'none';
-            return;
-          }
-          
+          if (isRealWorld) { container.style.display = 'none'; return; }
+          const currentScale = mapScaleRef.current || 1000;
+          const currentUnit = mapUnitRef.current || 'km';
+          const imgWidth = imgWidthRef.current || 1000;
           try {
-            // Current width of the map container in pixels
             const containerWidth = map.getSize().x;
-            // Current width of the map view in 'projected' pixels at current zoom
             const bounds = map.getBounds();
-            const se = map.project(bounds.getSouthEast());
-            const sw = map.project(bounds.getSouthWest());
-            const viewWidthProjected = Math.abs(se.x - sw.x);
-            
-            // We want to show a scale bar that is roughly 100px wide
+            const viewWidthProjected = Math.abs(map.project(bounds.getSouthEast()).x - map.project(bounds.getSouthWest()).x);
             const targetPx = 100;
-            // How many 'real world' units per projected pixel?
-            // (mapScale units / imagePixelWidth)
-            const unitsPerPx = mapScaleRef.current / imgWidthRef.current;
-            const unitsInBar = (viewWidthProjected / containerWidth) * targetPx * unitsPerPx;
-            
-            // Nice rounding
-            let displayValue = "";
-            if (unitsInBar >= 10) displayValue = Math.round(unitsInBar).toString();
-            else if (unitsInBar >= 1) displayValue = unitsInBar.toFixed(1);
-            else displayValue = unitsInBar.toFixed(2);
-            
+            const unitsInBar = (viewWidthProjected / containerWidth) * targetPx * (currentScale / imgWidth);
+            let displayValue = unitsInBar >= 10 ? Math.round(unitsInBar).toString() : unitsInBar.toFixed(unitsInBar >= 1 ? 1 : 2);
             line.style.width = targetPx + 'px';
-            line.innerHTML = `${displayValue} ${mapUnitRef.current || 'units'}`;
+            line.style.borderLeft = '2px solid white';
+            line.style.borderRight = '2px solid white';
+            line.style.borderBottom = '2px solid white';
+            line.style.height = '8px';
+            line.innerHTML = `<span style="position: absolute; left: calc(100% + 8px); white-space: nowrap; font-weight: 900; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: white !important; text-shadow: 0 0 1px rgba(0,0,0,0.5);">${displayValue}${currentUnit}${!mapScaleRef.current ? '*' : ''}</span>`;
             container.style.display = 'block';
-          } catch (e) {
-            container.style.display = 'none';
-          }
+          } catch (e) { container.style.display = 'none'; }
         };
-
         map.on('zoomend moveend resize', updateScale);
-        // Initial update after map settles
-        setTimeout(updateScale, 1000);
+        setTimeout(updateScale, 100);
         return container;
       }
     });
-
     new (CalibratedScale as any)().addTo(map);
-    
-    // Set a default view so the map is considered "loaded" immediately
-    map.setView([0, 0], 0);
-
     mapRef.current = map;
-    setIsReady(true);
+    
+    if (zoomInRef) zoomInRef.current = () => map.zoomIn();
+    if (zoomOutRef) zoomOutRef.current = () => map.zoomOut();
+    if (getViewStateRef) getViewStateRef.current = () => {
+      const center = map.getCenter();
+      return { x: center.lng, y: center.lat, zoom: map.getZoom() };
+    };
+    if (centerMapRef) centerMapRef.current = (coords?: { x: number, y: number }) => {
+      if (coords) map.setView([coords.y, coords.x], map.getZoom(), { animate: true, duration: 1.5 });
+      else if (defaultView) map.setView([defaultView.y, defaultView.x], defaultView.zoom, { animate: true, duration: 1.5 });
+      else map.fitBounds(map.options.maxBounds as L.LatLngBounds, { animate: true, padding: [20, 20], duration: 1.5 });
+    };
 
+    setIsReady(true);
     return () => {
       setIsReady(false);
       map.remove();
       mapRef.current = null;
     };
-  }, []); // Remove mapUnit from deps
+  }, [isRealWorld]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!isReady || !map) return;
-
-    const clickHandler = (e: L.LeafletMouseEvent) => {
-      onMapClickRef.current?.(e.latlng.lng, e.latlng.lat);
-    };
-
-    map.on('click', clickHandler);
-    return () => {
-      map.off('click', clickHandler);
-    };
-  }, [isReady]);
-
-  // 3. Image Loading & Sync
-  const lastImageRef = useRef<string | null>(null);
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!isReady || !map || !rootMapImage) return;
-    if (lastImageRef.current === rootMapImage) return; // Already syncing this image
-    
-    lastImageRef.current = rootMapImage;
-
+    if (!isReady || !map || !rootMapImage || isRealWorld) return;
     const img = new Image();
     img.onload = () => {
-      if (!mapRef.current || !containerRef.current) return;
-      
-      try {
-        const w = img.width;
-        const h = img.height;
-        imgWidthRef.current = w;
-        
-        // Report dimensions back to parent for scale calculation
-        onDimensionsDetectedRef.current?.(w, h);
-
-        // Coordinate System: 0,0 is the center of the image
-        // Top Left: -w/2, h/2
-        // Bottom Right: w/2, -h/2
-        const southWest = L.latLng(-h/2, -w/2);
-        const northEast = L.latLng(h/2, w/2);
-        const bounds = new L.LatLngBounds(southWest, northEast);
-        mapBoundsRef.current = bounds;
-
-        // Clear existing overlays
-        map.eachLayer((layer) => {
-          if (layer instanceof L.ImageOverlay) {
-            map.removeLayer(layer);
-          }
-        });
-
-        L.imageOverlay(rootMapImage, bounds).addTo(map);
-        
-        // Tight constraints with padding
-        const paddedBounds = bounds.pad(0.1);
-        map.setMaxBounds(paddedBounds);
-        
-        if (defaultView) {
-          map.setView([defaultView.y, defaultView.x], defaultView.zoom, { animate: false });
-        } else {
-          // Calculate the zoom level that fits the bounds exactly within the container
-          map.fitBounds(bounds, { animate: false, padding: [20, 20] });
-        }
-        
-        const minZoom = map.getBoundsZoom(bounds, true);
-        map.setMinZoom(minZoom); 
-        if (!defaultView) map.setZoom(minZoom);
-      } catch (err) {
-        console.warn("Leaflet image sync failed:", err);
-      }
+      if (!mapRef.current) return;
+      const w = img.width; const h = img.height;
+      imgWidthRef.current = w;
+      onDimensionsDetectedRef.current?.(w, h);
+      const bounds = new L.LatLngBounds(L.latLng(-h/2, -w/2), L.latLng(h/2, w/2));
+      mapBoundsRef.current = bounds;
+      map.eachLayer(l => { if (l instanceof L.ImageOverlay) map.removeLayer(l); });
+      L.imageOverlay(rootMapImage, bounds).addTo(map);
+      map.setMaxBounds(bounds);
+      map.options.maxBoundsViscosity = 1.0;
+      if (defaultView) map.setView([defaultView.y, defaultView.x], defaultView.zoom, { animate: false });
+      else map.fitBounds(bounds, { animate: false });
+      const minZoom = map.getBoundsZoom(bounds, true);
+      map.setMinZoom(minZoom);
+      if (!defaultView || map.getZoom() < minZoom) map.setZoom(minZoom);
     };
     img.src = rootMapImage;
   }, [isReady, rootMapImage]);
@@ -265,162 +197,89 @@ interface MapViewProps {
     e.preventDefault();
     const map = mapRef.current;
     if (!isReady || !map || !containerRef.current) return;
-    
     const locationId = e.dataTransfer.getData('locationId');
     if (!locationId || !onLocationPlaceRef.current) return;
-
     const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const point = L.point(x, y);
-    const latlng = map.containerPointToLatLng(point);
-    
+    const latlng = map.containerPointToLatLng(L.point(e.clientX - rect.left, e.clientY - rect.top));
     onLocationPlaceRef.current(locationId, latlng.lng, latlng.lat);
   };
 
   useEffect(() => {
     if (!isReady || !mapRef.current || !containerRef.current) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      if (mapRef.current) {
-        mapRef.current.invalidateSize();
-      }
-    });
-
+    const resizeObserver = new ResizeObserver(() => { mapRef.current?.invalidateSize(); });
     resizeObserver.observe(containerRef.current);
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [isReady]);
 
   useEffect(() => {
-    if (!isReady || !mapRef.current || !containerRef.current) return;
-
+    const map = mapRef.current;
+    if (!isReady || !map) return;
     try {
-      // Clear existing markers
-      mapRef.current.eachLayer((layer) => {
-        if (layer instanceof L.Marker) {
-          mapRef.current?.removeLayer(layer);
-        }
-      });
-
-      // 1. Add static Location markers
+      map.eachLayer(l => { if (l instanceof L.Marker) map.removeLayer(l); });
       locations.forEach(loc => {
         if (loc.x !== undefined && loc.y !== undefined) {
           const latlng = L.latLng(loc.y, loc.x);
-          
-          // Only add marker if it falls within the image bounds (if bounds are set)
-          if (mapBoundsRef.current && !mapBoundsRef.current.contains(latlng)) {
-            return;
-          }
-
+          const isLocked = loc.isLocked ?? (loc.matchedX !== undefined);
+          if (!isRealWorld && mapBoundsRef.current && !mapBoundsRef.current.contains(latlng)) return;
           const style = getMarkerStyle(loc);
-
           const marker = L.marker(latlng, {
-            draggable: true,
+            draggable: !isLocked,
             icon: L.divIcon({
               className: 'custom-marker',
-              html: `
-                <div class="group/marker relative">
-                  <div class="w-10 h-10 ${style.color} border-2 border-white rounded-xl shadow-xl cursor-grab active:cursor-grabbing flex items-center justify-center transform transition-all hover:scale-125 hover:z-50 ${loc.type === 'Region' ? 'scale-[2.5] opacity-30 blur-[1px]' : ''}">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-                      ${style.svg}
-                    </svg>
+              html: `<div class="group/marker relative">
+                <div class="relative flex flex-col items-center group-hover/marker:scale-110 transition-transform duration-300 ${loc.type === 'Region' ? 'scale-[2.5] opacity-30' : ''}">
+                  <!-- Teardrop Bulb -->
+                  <div class="w-10 h-10 ${style.color} rounded-full border-2 border-white shadow-xl flex items-center justify-center relative z-10">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">${style.svg}</svg>
                   </div>
+                  <!-- Teardrop Point -->
+                  <div class="w-4 h-4 ${style.color} border-r-2 border-b-2 border-white rotate-45 -mt-2 shadow-lg relative z-0"></div>
                   
-                  <!-- Hover Label -->
-                  <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full opacity-0 group-hover/marker:opacity-100 pointer-events-none transition-all pb-2 z-[100] group-hover/marker:-translate-y-[110%]">
-                    <div class="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl whitespace-nowrap border border-white/20">
-                      ${loc.name}
-                    </div>
-                  </div>
-
-                  <!-- Hover Actions -->
-                  <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 translate-y-full opacity-0 group-hover/marker:opacity-100 transition-all z-[100] flex gap-1 group-hover/marker:translate-y-[10%]">
-                    <button class="edit-marker-btn p-1.5 bg-white dark:bg-slate-800 text-indigo-600 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors">
-                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                  <!-- Clickable Padlock -->
+                  ${isLocked ? `
+                    <button class="lock-toggle-indicator absolute -top-1 -right-1 bg-slate-900 rounded-full p-1 border-2 border-white shadow-lg pointer-events-auto hover:bg-rose-600 transition-colors z-20" title="Click to Unlock">
+                      <svg viewBox="0 0 24 24" width="8" height="8" fill="none" stroke="white" stroke-width="3">
+                        <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
                     </button>
-                    <button class="remove-marker-btn p-1.5 bg-white dark:bg-slate-800 text-red-500 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors">
-                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                    </button>
-                  </div>
+                  ` : ''}
                 </div>
-              `
+                <!-- Label (Always visible on hover) -->
+                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl pointer-events-none opacity-0 group-hover/marker:opacity-100 transition-opacity whitespace-nowrap border border-white/20 z-[100]">
+                  ${loc.name}
+                </div>
+              </div>`
             })
-          }).addTo(mapRef.current!);
-
-          marker.on('dragend', () => {
-            const newPos = marker.getLatLng();
-            onLocationMoveRef.current?.(loc.id, newPos.lng, newPos.lat);
-          });
-
-          marker.on('click', (e) => {
-            L.DomEvent.stopPropagation(e);
-            onLocationClickRef.current?.(loc.id);
-          });
-
-          // Attach listeners to custom buttons
+          }).addTo(map);
+          
           marker.on('add', () => {
-            const element = marker.getElement();
-            if (element) {
-              const editBtn = element.querySelector('.edit-marker-btn');
-              const removeBtn = element.querySelector('.remove-marker-btn');
-              
-              if (editBtn) {
-                L.DomEvent.on(editBtn as HTMLElement, 'click', (e) => {
+            const el = marker.getElement();
+            if (el) {
+              const lockBtn = el.querySelector('.lock-toggle-indicator');
+              if (lockBtn) {
+                L.DomEvent.on(lockBtn as HTMLElement, 'click', (e) => {
                   L.DomEvent.stopPropagation(e);
-                  onLocationClickRef.current?.(loc.id);
-                });
-              }
-              
-              if (removeBtn) {
-                L.DomEvent.on(removeBtn as HTMLElement, 'click', (e) => {
-                  L.DomEvent.stopPropagation(e);
-                  onLocationUnplaceRef.current?.(loc.id);
+                  onLocationLockRef.current?.(loc.id, false);
                 });
               }
             }
           });
+
+          marker.on('click', (e) => { L.DomEvent.stopPropagation(e); onLocationClickRef.current?.(loc.id); });
+          marker.on('dragend', (e) => { const newPos = e.target.getLatLng(); onLocationMoveRef.current?.(loc.id, newPos.lng, newPos.lat); });
         }
       });
-    } catch (err) {
-      console.warn("Leaflet marker update failed:", err);
-    }
-  }, [locations]);
+    } catch (err) { console.warn("Marker update error:", err); }
+  }, [locations, isRealWorld, isReady]);
 
   return (
     <div className="w-full h-full relative group/map">
       <style>{`
-        .leaflet-control-scale {
-          margin-bottom: 24px !important;
-          margin-left: 24px !important;
-          display: none; /* Hidden until calibrated */
-        }
-        .leaflet-control-scale-line {
-          background: rgba(255, 255, 255, 0.9) !important;
-          border: 2px solid #0f172a !important;
-          border-top: none !important;
-          color: #0f172a !important;
-          font-weight: 900 !important;
-          font-size: 10px !important;
-          padding: 2px 8px !important;
-          backdrop-filter: blur(4px);
-          border-radius: 0 0 4px 4px;
-          white-space: nowrap;
-          text-align: center;
-        }
-        .dark .leaflet-control-scale-line {
-          background: rgba(15, 23, 42, 0.9) !important;
-          border: 2px solid #6366f1 !important;
-          border-top: none !important;
-          color: #e2e8f0 !important;
-        }
+        .leaflet-control-scale { margin-bottom: 24px !important; margin-left: 24px !important; display: none; background: none !important; border: none !important; pointer-events: none; }
+        .leaflet-control-scale-line { background: none !important; color: white !important; mix-blend-mode: difference !important; margin-bottom: 8px !important; margin-left: 8px !important; display: flex; align-items: center; justify-content: center; position: relative; }
+        .dark .leaflet-control-scale-line { color: white !important; mix-blend-mode: difference !important; }
       `}</style>
-      <div 
-        ref={containerRef} 
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleDrop}
-        className="w-full h-full rounded-3xl overflow-hidden shadow-inner bg-slate-100 dark:bg-slate-900 z-0 relative" 
-      />
+      <div ref={containerRef} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} className="w-full h-full rounded-3xl overflow-hidden shadow-inner bg-slate-100 dark:bg-slate-900 z-0 relative" />
     </div>
   );
 };

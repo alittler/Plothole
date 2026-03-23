@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ProjectData, Note, Commit, BackupStatus } from '../../types';
 import { 
   Sparkles, FileText, Users, Map, Calendar, Clock, Edit3, 
-  Activity, Ghost, PinOff,
+  Activity, Ghost, PinOff, Edit2,
   BarChart3, TrendingUp, AlertOctagon, History, ShieldCheck, 
   CloudUpload, Mail, CheckCircle, XCircle, ShieldAlert,
   Download, Image as ImageIcon, Save, Cpu, Loader2
@@ -34,14 +34,14 @@ interface DashboardViewProps {
   onAuditThreads: () => void;
   isGeneratingCover: boolean;
   isExporting?: boolean;
-  onOpenBlueprint: (type: string, id: string, data: any) => void;
   onUpdateProcessedFiles: () => void;
   isUpdatingProcessed?: boolean;
+  onLinkClick: (type: string, id: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, isExporting, onOpenBlueprint,
-  onUpdateProcessedFiles, isUpdatingProcessed = false
+  projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, isExporting,
+  onUpdateProcessedFiles, isUpdatingProcessed = false, onLinkClick
 }) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>(DashboardTab.HEALTH);
   const [isIntegrityValid, setIsIntegrityValid] = useState<boolean | null>(null);
@@ -51,21 +51,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [projectData]);
 
   const projectImages = useMemo(() => {
-    const images: { url: string; label: string; type: string }[] = [];
-    if (projectData.coverImage) images.push({ url: projectData.coverImage, label: 'Project Cover', type: 'Cover' });
-    if (projectData.rootMapImage) images.push({ url: projectData.rootMapImage, label: 'World Map', type: 'Map' });
+    const images: { id: string; url: string; label: string; type: string; entityType: string }[] = [];
+    if (projectData.coverImage) images.push({ id: 'cover', url: projectData.coverImage, label: 'Project Cover', type: 'Cover', entityType: 'project' });
+    if (projectData.rootMapImage) images.push({ id: 'rootMap', url: projectData.rootMapImage, label: 'World Map', type: 'Map', entityType: 'project' });
     
     projectData.characters.forEach(c => {
-      if (c.images && c.images.length > 0) images.push({ url: c.images[0].url, label: c.name, type: 'Character' });
+      if (c.images && c.images.length > 0) images.push({ id: c.id, url: c.images[0].url, label: c.name, type: 'Character', entityType: 'character' });
     });
     
     projectData.locations.forEach(l => {
-      if (l.mapImage) images.push({ url: l.mapImage, label: l.name, type: 'Map' });
+      if (l.mapImage) images.push({ id: l.id, url: l.mapImage, label: l.name, type: 'Map', entityType: 'location' });
     });
 
     projectData.sources?.forEach(s => {
       if (s.type === 'image' && s.content.startsWith('data:image')) {
-        images.push({ url: s.content, label: s.name, type: 'Source' });
+        images.push({ id: s.id, url: s.content, label: s.name, type: 'Source', entityType: 'source' });
       }
     });
     return images;
@@ -101,63 +101,61 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
           <div className="flex-1 space-y-4 w-full">
-            <div className="space-y-1 group relative">
-              <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase flex flex-col md:flex-row items-center gap-2 md:gap-4">
-                {projectData.title}
-                <button onClick={() => onOpenBlueprint('Project', projectData.id, projectData)} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors md:opacity-0 md:group-hover:opacity-100">
-                  <Edit3 size={20} />
-                </button>
-                <div className="flex flex-wrap justify-center md:justify-start gap-2">
-                  {isIntegrityValid === false && (
-                    <div className="flex items-center gap-1 px-2 py-1 bg-red-500 text-white rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest animate-pulse">
-                      <ShieldAlert size={10} /> Corruption
-                    </div>
-                  )}
-                  {isIntegrityValid === true && (
-                    <div className="flex items-center gap-1 px-2 py-1 bg-emerald-500 text-white rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest">
-                      <ShieldCheck size={10} /> Verified
-                    </div>
-                  )}
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase flex flex-col md:flex-row items-center gap-2 md:gap-4">
+              {projectData.title}
+              <button onClick={() => {}} className="hidden">
+                <Edit3 size={20} />
+              </button>
+            </h1>
+            <div className="flex flex-wrap justify-center md:justify-start gap-2">
+              {isIntegrityValid === false && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-red-500 text-white rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest animate-pulse">
+                  <ShieldAlert size={10} /> Corruption
                 </div>
-              </h1>
-              <p className="text-base md:text-xl text-slate-500 dark:text-slate-400 italic">by {projectData.author}</p>
+              )}
+              {isIntegrityValid === true && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-emerald-500 text-white rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest">
+                  <ShieldCheck size={10} /> Verified
+                </div>
+              )}
             </div>
-            
-            <div className="flex flex-col md:flex-row items-center gap-4">
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex-1 w-full text-left">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Story Summary</span>
-                <p className="text-slate-700 dark:text-slate-300 line-clamp-3 text-xs md:text-base leading-relaxed">{projectData.summary || 'No summary generated yet.'}</p>
-              </div>
-              
-              <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl self-stretch overflow-x-auto no-scrollbar shrink-0">
-                <button
-                  onClick={onUpdateProcessedFiles}
-                  disabled={isUpdatingProcessed || isAnalyzing}
-                  className="px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 flex items-center gap-2 disabled:opacity-50"
-                  title="Smart-sync extracted data with current manuscript and blueprint schemas"
-                >
-                  {isUpdatingProcessed ? <Loader2 size={12} className="animate-spin" /> : <Cpu size={12} />} Sync Processor
-                </button>
-                <button
-                  onClick={() => onExportProject(projectData, globalNotes)}
-                  className="px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 flex items-center gap-2"
-                >
-                  <Download size={12} /> Backup
-                </button>
-                <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-700 mx-1 self-center" />
-                {Object.values(DashboardTab).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="text-base md:text-xl text-slate-500 dark:text-slate-400 italic">by {projectData.author}</p>
           </div>
         </header>
+
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex-1 w-full text-left">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Story Summary</span>
+            <p className="text-slate-700 dark:text-slate-300 line-clamp-3 text-xs md:text-base leading-relaxed">{projectData.summary || 'No summary generated yet.'}</p>
+          </div>
+          
+          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl self-stretch overflow-x-auto no-scrollbar shrink-0">
+            <button
+              onClick={onUpdateProcessedFiles}
+              disabled={isUpdatingProcessed || isAnalyzing}
+              className="px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 flex items-center gap-2 disabled:opacity-50"
+              title="Smart-sync extracted data with current manuscript and blueprint schemas"
+            >
+              {isUpdatingProcessed ? <Loader2 size={12} className="animate-spin" /> : <Cpu size={12} />} Sync Processor
+            </button>
+            <button
+              onClick={() => onExportProject(projectData, globalNotes)}
+              className="px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 flex items-center gap-2"
+            >
+              <Download size={12} /> Backup
+            </button>
+            <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-700 mx-1 self-center" />
+            {Object.values(DashboardTab).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Health Dashboard & Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
@@ -248,7 +246,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {projectImages.length === 0 ? (
                     <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl">
                       <ImageIcon size={32} className="mx-auto text-slate-200 mb-4 opacity-20" />
@@ -256,17 +254,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                   ) : (
                     projectImages.map((img, idx) => (
-                      <div key={idx} className="space-y-2 group">
-                        <div className="aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative shadow-sm transition-all group-hover:shadow-xl group-hover:-translate-y-1">
-                          <img src={img.url} alt={img.label} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                             <div className="text-white">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-60 mb-0.5">{img.type}</p>
-                                <p className="text-[10px] font-bold leading-tight truncate">{img.label}</p>
-                             </div>
-                          </div>
-                        </div>
-                      </div>
+                      <BlueprintCard key={idx} img={img} onEdit={() => onLinkClick('admin', img.id)} />
                     ))
                   )}
                 </div>
@@ -374,6 +362,59 @@ const StatCard = ({ icon: Icon, label, value, color }: any) => (
     <div className="min-w-0">
       <span className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5 md:mb-1 truncate">{label}</span>
       <span className="text-base md:text-2xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight truncate">{value}</span>
+    </div>
+  </div>
+);
+
+const BlueprintCard = ({ img, onEdit }: { img: { id: string; url: string; label: string; type: string; entityType: string }, onEdit: () => void }) => (
+  <div className="relative group p-4 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-3xl border border-indigo-200/50 dark:border-indigo-800/30 overflow-hidden">
+    {/* Architectural Grid Overlay */}
+    <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.07] pointer-events-none" 
+         style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+    
+    {/* Technical Markers */}
+    <div className="absolute top-2 left-2 w-3 h-3 border-l border-t border-indigo-500/50" />
+    <div className="absolute top-2 right-2 w-3 h-3 border-r border-t border-indigo-500/50" />
+    <div className="absolute bottom-2 left-2 w-3 h-3 border-l border-b border-indigo-500/50" />
+    <div className="absolute bottom-2 right-2 w-3 h-3 border-r border-b border-indigo-500/50" />
+
+    {/* Edit Button Overlay */}
+    <button 
+      onClick={(e) => { e.stopPropagation(); onEdit(); }}
+      className="absolute top-4 right-4 z-20 p-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl shadow-lg border border-indigo-500/20 text-indigo-600 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-95"
+      title="Edit Source Entity"
+    >
+      <Edit2 size={14} />
+    </button>
+
+    <div className="aspect-square rounded-2xl overflow-hidden bg-white dark:bg-slate-800 relative shadow-inner mb-4 transition-transform group-hover:scale-[1.02]">
+      <img 
+        src={img.url} 
+        alt={img.label} 
+        className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" 
+        referrerPolicy="no-referrer" 
+      />
+      
+      {/* Blueprint Scanline */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-500/5 to-transparent h-1/2 w-full animate-pulse pointer-events-none" />
+    </div>
+
+    <div className="space-y-1.5 px-1">
+      <div className="flex items-center justify-between">
+        <span className="text-[8px] font-mono font-black text-indigo-500 uppercase tracking-tighter">Asset_Type::{img.type.toUpperCase()}</span>
+        <span className="text-[8px] font-mono text-slate-400">v3.0.4</span>
+      </div>
+      <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">{img.label}</h4>
+      <div className="flex items-center gap-4 pt-2 border-t border-indigo-200/30 dark:border-indigo-800/20">
+        <div className="flex flex-col">
+          <span className="text-[7px] font-black text-slate-400 uppercase">Res</span>
+          <span className="text-[9px] font-mono text-slate-600 dark:text-slate-400">1024x1024</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[7px] font-black text-slate-400 uppercase">Enc</span>
+          <span className="text-[9px] font-mono text-slate-600 dark:text-slate-400">UTF-8</span>
+        </div>
+      </div>
     </div>
   </div>
 );

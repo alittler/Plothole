@@ -13,14 +13,14 @@ interface StenoSourcesPanelProps {
   sources: Source[];
   setSources: React.Dispatch<React.SetStateAction<Source[]>>;
   isFullScreen?: boolean;
-  onOpenBlueprint: (type: string, id: string, data: any) => void;
+  onLinkClick?: (type: string, id: string) => void;
 }
 
 export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
   sources,
   setSources,
   isFullScreen = false,
-  onOpenBlueprint
+  onLinkClick
 }) => {
   const [isSmartPasteOpen, setIsSmartPasteOpen] = useState(false);
   const [smartPasteInput, setSmartPasteInput] = useState('');
@@ -185,9 +185,13 @@ export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button 
-                  onClick={() => onOpenBlueprint('Source', source.id, source)}
-                  className="p-1 text-slate-300 hover:text-indigo-500 transition-colors"
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onLinkClick?.('admin', source.id);
+                  }}
+                  className="p-1 text-slate-300 hover:text-indigo-600 transition-colors"
+                  title="Edit Source"
                 >
                   <Edit2 size={14} />
                 </button>

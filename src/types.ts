@@ -291,8 +291,16 @@ export interface Location {
   parentId?: string; 
   mapImage?: string; 
   isRealWorld?: boolean; 
+  isLocked?: boolean;
+  shortId?: string;
+  mapId?: string; // ID of the map this location belongs to (root or another location's ID)
   x?: number; 
   y?: number; 
+  prevX?: number;
+  prevY?: number;
+  matchedX?: number;
+  matchedY?: number;
+  plusCode?: string;
   lat?: number; 
   lng?: number; 
   icon?: string;
@@ -461,6 +469,7 @@ export interface ProjectData {
   rootMapImage?: string; 
   mapScale?: number;
   mapUnit?: string;
+  isRealWorldMap?: boolean;
   mapDefaultView?: { x: number, y: number, zoom: number };
   mapTabOrder?: string[]; 
   navOrder?: ViewType[];

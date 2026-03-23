@@ -37,7 +37,7 @@ interface SidebarSection {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, activeProjectTitle, onQuickNote, appName = 'PLOTHOLE',
+  currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, appName = 'PLOTHOLE',
   sidebarOrder
 }) => {
   const { signOut } = useClerk();
@@ -47,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     // { id: ViewType.STORY_ARCHITECT, label: 'Story Architect', icon: Zap, always: true },
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
     { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
-    { id: ViewType.RESEARCH, label: 'Research', icon: Database, projectOnly: true },
+    { id: ViewType.RESEARCH, label: 'Research', icon: Search, projectOnly: true },
     { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
     { id: ViewType.MAP, label: 'World Hub', icon: Map, projectOnly: true },
     { id: ViewType.TIMELINE, label: 'Plot & Timeline', icon: Calendar, projectOnly: true },

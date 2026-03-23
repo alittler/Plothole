@@ -25,13 +25,11 @@ interface ResearchViewProps {
   currentUser: any;
   onUpdateProject: (data: Partial<ProjectData>) => void;
   onLinkClick?: (type: string, id: string) => void;
-  onOpenBlueprint: (type: string, id: string, data: any) => void;
-}
+  }
 
-const ResearchView: React.FC<ResearchViewProps> = ({ 
-  projectData, globalNotes, projectsMetadata, currentUser, onUpdateProject, onLinkClick, onOpenBlueprint 
-}) => {
-  const [activeTab, setActiveTab] = useState<StenoTab>(StenoTab.WORKSPACE);
+  const ResearchView: React.FC<ResearchViewProps> = ({
+  projectData, globalNotes, projectsMetadata, currentUser, onUpdateProject, onLinkClick
+  }) => {  const [activeTab, setActiveTab] = useState<StenoTab>(StenoTab.WORKSPACE);
 
   // Shared State
   const ideas = projectData.ideas || [];
@@ -92,7 +90,7 @@ const ResearchView: React.FC<ResearchViewProps> = ({
                   currentUser={currentUser}
                   projectsMetadata={projectsMetadata}
                   onLinkClick={onLinkClick}
-                  onOpenBlueprint={onOpenBlueprint}
+                  
                 />
               </div>
 
@@ -102,7 +100,7 @@ const ResearchView: React.FC<ResearchViewProps> = ({
                   <StenoSourcesPanel
                     sources={sources}
                     setSources={setSources}
-                    onOpenBlueprint={onOpenBlueprint}
+                    
                   />
                 </div>
                 
@@ -135,7 +133,7 @@ const ResearchView: React.FC<ResearchViewProps> = ({
               projectsMetadata={projectsMetadata}
               onLinkClick={onLinkClick}
               isFullScreen={true}
-              onOpenBlueprint={onOpenBlueprint}
+              
             />
           </div>
         );
@@ -148,7 +146,7 @@ const ResearchView: React.FC<ResearchViewProps> = ({
                 sources={sources} 
                 setSources={setSources} 
                 isFullScreen={true}
-                onOpenBlueprint={onOpenBlueprint}
+                
               />
             </div>
           </div>

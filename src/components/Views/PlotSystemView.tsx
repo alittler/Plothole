@@ -16,7 +16,6 @@ interface PlotSystemViewProps {
   onExtractSoftAnchors: () => void;
   onUpdateProject: (updates: Partial<ProjectData>) => void;
   isAnalyzing?: boolean;
-  onOpenBlueprint: (type: string, id: string, data: any) => void;
 }
 
 enum PlotTab {
@@ -25,7 +24,7 @@ enum PlotTab {
 }
 
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
-  data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, isAnalyzing, onOpenBlueprint
+  data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, isAnalyzing, onLinkClick
 }) => {
   const [activeTab, setActiveTab] = useState<PlotTab>(PlotTab.TIMELINE);
 
@@ -53,8 +52,6 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
       setCurrentYear(year);
       setCurrentMonthIndex(monthIndex);
       setActiveTab(PlotTab.CALENDAR);
-    } else {
-      onOpenBlueprint('Timeline', latestEvent.id, latestEvent);
     }
   };
 
@@ -155,10 +152,10 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              const latest = data.timeline.find(ev => ev.id === event.id) || event;
-                              onOpenBlueprint('Timeline', event.id, latest);
-                            }} 
-                            className="p-1 text-slate-300 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100"
+                              onLinkClick('admin', event.id);
+                            }}
+                            className="p-1 text-slate-300 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Edit Event"
                           >
                             <Edit2 size={14} />
                           </button>
@@ -238,10 +235,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                             <div 
                               key={ev.id} 
                               className="text-[10px] p-1.5 rounded bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 truncate cursor-pointer hover:border-amber-500 transition-colors shadow-sm" 
-                              onClick={() => {
-                                const latest = data.timeline.find(latestEv => latestEv.id === ev.id) || ev;
-                                onOpenBlueprint('Timeline', ev.id, latest);
-                              }}
+                              onClick={() => {}}
                             >
                               <span className="font-bold text-amber-600 dark:text-amber-400 mr-1">•</span>
                               {ev.title}

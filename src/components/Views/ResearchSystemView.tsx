@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType, Note, ProjectData, ProjectMetadata, User } from '../../types';
-import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2 } from 'lucide-react';
 import { StackedPaper } from '../ui/StackedPaper';
 import { WikiText } from '../ui/WikiText';
 import { semanticSearchNotes } from '../../services/geminiService';
@@ -299,6 +299,13 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                             })}
                           </div>
                           <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => onLinkClick('admin', note.id)}
+                              className="p-1 text-slate-300 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Edit Note"
+                            >
+                              <Edit2 size={18} />
+                            </button>
                             {onToggleCanon && (
                               <button 
                                 onClick={() => onToggleCanon(note.id, !note.isCanon)}

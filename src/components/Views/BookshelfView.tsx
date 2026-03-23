@@ -16,7 +16,7 @@ interface BookshelfViewProps {
 }
 
 export const BookshelfView: React.FC<BookshelfViewProps> = ({
-  projects, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, isAnalyzing
+  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, isAnalyzing, currentUser
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -56,46 +56,50 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
       <div className="max-w-6xl mx-auto px-4 pb-20 md:pb-12">
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {projects.map(project => (
-            <div
-              key={project.id}
-              onClick={() => onSelectProject(project.id)}
-              className="h-64 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col group hover:shadow-md transition-all cursor-pointer hover:border-indigo-500/50"
-            >
-              <div className="flex-1 p-6 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-black text-xl text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 transition-colors">{project.title}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 italic">by {project.author}</p>
+          {projects.map(project => {
+            const isActive = project.id === activeProjectId;
+            return (
+              <div
+                key={project.id}
+                onClick={() => onSelectProject(project.id)}
+                className={`h-64 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border overflow-hidden flex flex-col group hover:shadow-md transition-all cursor-pointer ${isActive ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-500/50'}`}
+              >
+                <div className="flex-1 p-6 flex flex-col justify-between relative">
+                  <div>
+                    <h3 className={`font-black text-xl line-clamp-1 group-hover:text-indigo-600 transition-colors ${isActive ? 'text-indigo-600' : 'text-slate-900 dark:text-white'}`}>{project.title}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 italic">by {project.author}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400">
+                      <span>{project.characterCount} Characters</span>
+                      <span>{project.wordCount || 0} Words</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-indigo-500/60">
+                      <span>{project.commitCount} Commits</span>
+                      <span>{project.locationCount} Locations</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400">
-                    <span>{project.characterCount} Characters</span>
-                    <span>{project.wordCount || 0} Words</span>
-                    <span>{project.charCount || 0} Chars</span>
+                <div className={`p-4 border-t flex items-center justify-between ${isActive ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800'}`}>
+                  <div className={`flex items-center gap-2 font-bold text-sm ${isActive ? 'text-indigo-700 dark:text-indigo-400' : 'text-indigo-600'}`}>
+                    <BookOpen size={16} />
+                    {isActive ? 'Active World' : 'Open World'}
                   </div>
-                  <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-indigo-500/60">
-                    <span>{project.commitCount} Commits</span>
-                    <span>{project.locationCount} Locations</span>
-                  </div>
+                  {!isActive && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProjectToDelete(project.id);
+                      }}
+                      className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-indigo-600 font-bold text-sm">
-                  <BookOpen size={16} />
-                  Open World
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setProjectToDelete(project.id);
-                  }}
-                  className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div className="flex flex-col gap-4 h-64">
             <label className="flex-1 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 transition-all group cursor-pointer">

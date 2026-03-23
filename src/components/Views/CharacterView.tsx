@@ -32,7 +32,7 @@ enum CharacterTab {
 }
 
 export const CharacterView: React.FC<CharacterViewProps> = ({
-  characters, relationships = [], onAddCharacter, onUpdateProject, onExtractRelationships, isExtractingRelationships = false
+  characters, relationships = [], onAddCharacter, onUpdateProject, onExtractRelationships, isExtractingRelationships = false, onLinkClick
 }) => {
   const [activeTab, setActiveTab] = useState<CharacterTab>(CharacterTab.ROSTER);
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,6 +145,13 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                       )}
 
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                        <button 
+                          onClick={() => onLinkClick('admin', char.id)}
+                          className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all transform scale-90 group-hover:scale-100 shadow-2xl border border-white/20 flex flex-col items-center gap-2"
+                        >
+                          <Edit2 size={24} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
+                        </button>
                       </div>
                     </div>
                     <div className="p-6 space-y-4 flex-1 flex flex-col">

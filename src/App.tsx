@@ -20,7 +20,7 @@ import {
   } from './services/storageService';
   import { 
   analyzeStoryText, generateBookCover, doubleProcessNote, extractThemesFromNotes, extractSoftAnchors, auditPlotThreads,
-  DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid, analyzeRelationships, unifiedAnalysisSchema
+  DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid, analyzeRelationships, unifiedAnalysisSchema, detectManuscriptStructure
   } from './services/geminiService';
 import { createCommit, updateIntegrityHash } from './services/versioningService';
 import { Commit, BackupStatus } from './types';
@@ -39,7 +39,6 @@ import { PlotSystemView } from './components/Views/PlotSystemView';
 import { SettingsView } from './components/Views/SettingsView';
 import { AdminView } from './components/Views/AdminView';
 import { ToolboxView } from './components/Views/ToolboxView';
-import { BlueprintRescueView } from './components/Views/BlueprintRescueView';
 import ResearchView from './components/Views/ResearchView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
@@ -58,7 +57,7 @@ const DEMO_USER: User = {
   preferences: { themeMode: 'light', fontSize: 'md', fontFamily: 'sans', landingPage: ViewType.BOOKSHELF, aiVerbosity: 'detailed', colorfulIcons: true, semanticSearchEnabled: false }
 };
 
-import { MasterBlueprintEditor } from './components/ui/MasterBlueprintEditor';
+
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -144,6 +143,7 @@ const App: React.FC = () => {
 
   const updateProjectData = useCallback(async (updates: Partial<ProjectData>) => {
     if (!projectData) return;
+    console.log("Project update requested:", updates);
 
     // Auto-generate change log entry for notable entities
     let newLog: ChangeLogEntry | null = null;
@@ -173,6 +173,7 @@ const App: React.FC = () => {
       lastModified: Date.now() 
     };
 
+    console.log("Setting project data. New character count:", updated.characters.length, "New location count:", updated.locations.length);
     setProjectData(updated);
     await saveProjectData(updated);
     await refreshMetadata();
@@ -259,8 +260,23 @@ const App: React.FC = () => {
   };
 
   const [currentMapParentId, setCurrentMapParentId] = useState<string | null>(null);
+  const [adminTargetId, setAdminTargetId] = useState<string | null>(null);
+
+  const handleLinkClick = useCallback((type: string, id: string) => {
+    if (type === 'admin') {
+      setAdminTargetId(id);
+      setCurrentView(ViewType.ADMIN);
+    } else if (type === 'character') {
+      setCurrentView(ViewType.CHARACTERS);
+    } else if (type === 'location') {
+      setCurrentMapParentId(id);
+      setCurrentView(ViewType.MAP);
+    } else if (type === 'dashboard') {
+      setCurrentView(ViewType.DASHBOARD);
+    }
+  }, []);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [rescueData, setRescueData] = useState<any | null>(null);
+
   const [aiError, setAiError] = useState<string | null>(null);
   const [hasApiKey, setHasApiKey] = useState<boolean>(true);
   const [lastBackupMilestone, setLastBackupMilestone] = useState<{ words: number, commits: number }>({ words: 0, commits: 0 });
@@ -303,37 +319,28 @@ const App: React.FC = () => {
   const handleQuickUpdate = useCallback((type: string, id: string, key: string, value: any) => {
     if (!projectData) return;
 
-    // Handle Top-Level Project variables
-    if (type === 'Project') {
-      updateProjectData({ [key]: value });
-      return;
-    }
-
     const mapTypeToKey: Record<string, string> = {
-      'Character': 'characters',
-      'Location': 'locations',
-      'Timeline': 'timeline',
-      'Source': 'sources',
-      'Ledger': 'ledger',
-      'Artifact': 'artifacts',
-      'Lore': 'lore',
-      'Chapter': 'chapters',
-      'Calendar': 'calendars',
-      'Plotline': 'plotlines',
-      'MatrixCell': 'matrixCells',
-      'Language': 'languages'
+      'Character': 'characters', 'Location': 'locations', 'Timeline': 'timeline',
+      'Source': 'sources', 'Ledger': 'ledger', 'Artifact': 'artifacts', 'Lore': 'lore'
     };
 
     const projectKey = mapTypeToKey[type];
     if (!projectKey) return;
 
-    const list = [...(projectData as any)[projectKey] || []];
-    const index = list.findIndex((item: any) => item.id === id);
-    if (index !== -1) {
-      list[index] = { ...list[index], [key]: value };
-      updateProjectData({ [projectKey]: list });
-    }
-  }, [projectData, updateProjectData]);
+    setProjectData(prev => {
+      if (!prev) return null;
+      const list = [...(prev as any)[projectKey] || []];
+      const index = list.findIndex((item: any) => item.id === id);
+      if (index !== -1) {
+        list[index] = { ...list[index], [key]: value };
+        const updated = { ...prev, [projectKey]: list, lastModified: Date.now() };
+        // Save to IndexedDB immediately, but skip full commit generation for speed
+        saveProjectData(updated); 
+        return updated;
+      }
+      return prev;
+    });
+  }, [projectData]);
 
   const checkApiKey = useCallback(async () => {
     await initializeApiKey();
@@ -757,6 +764,63 @@ const App: React.FC = () => {
           extractLore: true
         }, (msg) => setProcessingStatus(msg));
 
+        setProcessingStatus("Detecting Manuscript Structure...");
+        const structure = await detectManuscriptStructure(text);
+        let generatedChapters: any[] = [];
+        
+        try {
+          const regex = new RegExp(`(${structure.chapterPattern})`, 'gim');
+          const parts = text.split(regex);
+          
+          if (parts.length > 1) {
+            // First part is prologue/front-matter
+            if (parts[0].trim().length > 0) {
+              generatedChapters.push({
+                id: generateId(),
+                title: 'Prologue / Front Matter',
+                content: parts[0].trim(),
+                order: 0,
+                status: 'Draft',
+                lastModified: Date.now(),
+                scenes: [],
+                wordCount: parts[0].trim().split(/\s+/).filter(w => w.length > 0).length
+              });
+            }
+            
+            for (let i = 1; i < parts.length; i += 2) {
+              const header = parts[i].trim();
+              const body = (parts[i+1] || '').trim();
+              const combined = header + '\n\n' + body;
+              
+              generatedChapters.push({
+                id: generateId(),
+                title: header.substring(0, 50), // keep title reasonable
+                content: combined,
+                order: generatedChapters.length,
+                status: 'Draft',
+                lastModified: Date.now(),
+                scenes: [],
+                wordCount: combined.split(/\s+/).filter(w => w.length > 0).length
+              });
+            }
+          }
+        } catch (e) {
+          console.warn("Regex parsing failed", e);
+        }
+
+        if (generatedChapters.length === 0) {
+          generatedChapters = [{ 
+            id: generateId(), 
+            title: 'Imported Chapter', 
+            content: text, 
+            order: 0, 
+            status: 'Draft', 
+            lastModified: Date.now(),
+            scenes: [],
+            wordCount: text.trim().split(/\s+/).filter(w => w.length > 0).length 
+          }];
+        }
+
         setProcessingStatus("Architecting World...");
         data = {          id: generateId(),
           title: analysis.title || file.name.replace(/\.[^/.]+$/, ""),
@@ -771,15 +835,7 @@ const App: React.FC = () => {
           themes: analysis.themes,
           artifacts: analysis.artifacts.map(a => ({ ...a, id: generateId(), source: 'ai' as const })),
           lore: analysis.lore.map(l => ({ ...l, id: generateId(), source: 'ai' as const })),
-          chapters: [{ 
-            id: generateId(), 
-            title: 'Imported Chapter', 
-            content: text, 
-            order: 0, 
-            status: 'Draft' as const, 
-            lastModified: Date.now(),
-            wordCount: text.split(/\s+/).length 
-          }]
+          chapters: generatedChapters
         };
       }
       
@@ -861,7 +917,7 @@ const App: React.FC = () => {
           setGlobalNotes([]);
           for (const note of globalNotes) await deleteGlobalNote(note.id);
           if (projectData?.ideas) await updateProjectData({ ideas: [] });
-        }} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onAddDoubleProcessedNote={handleDoubleProcessNote} activeTasks={activeTasks} onUpdateProject={updateProjectData} semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled} />;
+        }} onLinkClick={handleLinkClick} onAddDoubleProcessedNote={handleDoubleProcessNote} activeTasks={activeTasks} onUpdateProject={updateProjectData} semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled} />;
 
       case ViewType.CHARACTERS: 
         return <CharacterView 
@@ -907,14 +963,14 @@ const App: React.FC = () => {
               setIsAnalyzing(false);
               removeTask('Analyzing Project');
             });
-        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p, globalNotes)} isGeneratingCover={isGeneratingCover} onUpdateProcessedFiles={handleUpdateProcessedFiles} isUpdatingProcessed={isUpdatingProcessed} /> : null;
+        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p, globalNotes)} isGeneratingCover={isGeneratingCover} onUpdateProcessedFiles={handleUpdateProcessedFiles} isUpdatingProcessed={isUpdatingProcessed} onLinkClick={handleLinkClick} /> : null;
 
       case ViewType.TIMELINE:
       case ViewType.BOARD:
       case ViewType.MATRIX:
       case ViewType.PLOT_ANALYSIS:
       case ViewType.CALENDAR:
-        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={(c) => updateProjectData({ calendars: projectData.calendars.map(cal => cal.id === c.id ? c : cal) })} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => {}} onExtractSoftAnchors={handleExtractSoftAnchors} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
+        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={(c) => updateProjectData({ calendars: projectData.calendars.map(cal => cal.id === c.id ? c : cal) })} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => {}} onExtractSoftAnchors={handleExtractSoftAnchors} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
 
       case ViewType.MAP:
       case ViewType.LOCATIONS:
@@ -922,7 +978,39 @@ const App: React.FC = () => {
       case ViewType.INVENTORY:
       case ViewType.DICTIONARY:
       case ViewType.GALLERY:
-        return projectData ? <WorldSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })} onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })} onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })} onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); }} onUpdateMapOrder={() => {}} currentMapParentId={currentMapParentId} onMapChange={setCurrentMapParentId} onUpdateProject={updateProjectData} onAddArtifact={(a) => updateProjectData({ artifacts: [...(projectData.artifacts || []), a] })} onUpdateArtifact={(a) => updateProjectData({ artifacts: projectData.artifacts?.map(ar => ar.id === a.id ? a : ar) })} onDeleteArtifact={(id) => updateProjectData({ artifacts: projectData.artifacts?.filter(ar => ar.id !== id) })} onAddLore={(l) => updateProjectData({ lore: [...(projectData.lore || []), l] })} onDeleteLore={(id) => updateProjectData({ lore: projectData.lore?.filter(lo => lo.id !== id) })} isFullscreen={isMapFullscreen} onToggleFullscreen={() => setIsMapFullscreen(!isMapFullscreen)} /> : null;
+        return projectData ? <WorldSystemView 
+          currentView={currentView} 
+          onChangeView={setCurrentView} 
+          data={projectData} 
+          onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })} 
+          onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })} 
+          onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })} 
+          onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })} 
+          onLinkClick={handleLinkClick} 
+          onUpdateMapOrder={() => {}} 
+          currentMapParentId={currentMapParentId} 
+          onMapChange={setCurrentMapParentId} 
+          onUpdateProject={updateProjectData} 
+          onAddArtifact={(a) => updateProjectData({ artifacts: [...(projectData.artifacts || []), a] })} 
+          onUpdateArtifact={(a) => updateProjectData({ artifacts: projectData.artifacts?.map(ar => ar.id === a.id ? a : ar) })} 
+          onDeleteArtifact={(id) => updateProjectData({ artifacts: projectData.artifacts?.filter(ar => ar.id !== id) })} 
+          onAddLore={(l) => updateProjectData({ lore: [...(projectData.lore || []), l] })} 
+          onDeleteLore={(id) => updateProjectData({ lore: projectData.lore?.filter(lo => lo.id !== id) })} 
+          isFullscreen={isMapFullscreen} 
+          onToggleFullscreen={() => setIsMapFullscreen(!isMapFullscreen)}
+          onLocationUndo={(id) => {
+            const loc = projectData.locations.find(l => l.id === id);
+            if (loc && loc.prevX !== undefined && loc.prevY !== undefined) {
+              updateProjectData({ locations: projectData.locations.map(l => l.id === id ? { ...l, x: loc.prevX, y: loc.prevY, prevX: undefined, prevY: undefined } : l) });
+            }
+          }}
+          onLocationReset={(id) => {
+            const loc = projectData.locations.find(l => l.id === id);
+            if (loc && loc.matchedX !== undefined && loc.matchedY !== undefined) {
+              updateProjectData({ locations: projectData.locations.map(l => l.id === id ? { ...l, x: loc.matchedX, y: loc.matchedY } : l) });
+            }
+          }}
+        /> : null;
 
       case ViewType.TOOLBOX:
         return <ToolboxView bakedResources={globalResources} onAddResource={async (l) => { setGlobalResources(prev => [...prev, l]); await saveGlobalResource(l); }} onDeleteResource={async (id) => { setGlobalResources(prev => prev.filter(r => r.id !== id)); await deleteGlobalResource(id); }} />;
@@ -946,20 +1034,22 @@ const App: React.FC = () => {
             setGlobalNotes(prev => prev.filter(n => n.id !== id));
             await deleteGlobalNote(id);
           }}
-          onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }}
+          onLinkClick={handleLinkClick}
           onChangeView={setCurrentView}
           onQuickUpdate={handleQuickUpdate}
           currentUser={currentUser}
+          adminTargetId={adminTargetId}
+          onClearAdminTarget={() => setAdminTargetId(null)}
           />;
       case ViewType.SETTINGS:
         const handleClearGlobalNotes = async () => {
           await clearAllGlobalNotes();
           setGlobalNotes([]);
         };
-        return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} onClearGlobalNotes={handleClearGlobalNotes} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} />;
+        return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} onClearGlobalNotes={handleClearGlobalNotes} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} onLinkClick={handleLinkClick} />;
 
       case ViewType.RESEARCH:
-        return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onLinkClick={(type, id) => { if (type === 'character') setCurrentView(ViewType.CHARACTERS); else if (type === 'dashboard') setCurrentView(ViewType.DASHBOARD); else { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
+        return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
@@ -1057,20 +1147,6 @@ const App: React.FC = () => {
         />
 
         <ActiveArchitect tasks={activeTasks} />
-
-        {rescueData && (
-          <BlueprintRescueView 
-            rawData={rescueData} 
-            onCommit={async (migrated) => {
-              await saveProjectData(migrated);
-              setProjectData(migrated);
-              await refreshMetadata();
-              setRescueData(null);
-              setCurrentView(ViewType.DASHBOARD);
-            }} 
-            onCancel={() => setRescueData(null)} 
-          />
-        )}
       </main>
       <AiAssistant projectData={projectData} isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} onToggle={() => setIsAiOpen(!isAiOpen)} currentUser={currentUser} />
     </div>

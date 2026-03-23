@@ -200,7 +200,7 @@ export const analyzeStoryText = async (text: string, tokenLimit?: number, option
   const isMassive = textLength > (actualLimit * 3); 
   const sampleSize = actualLimit;
 
-  const systemInstruction = `You are a world-class story architect. Perform a scan of the provided manuscript snippet and extract a structured living encyclopedia. Return strictly JSON.`;
+  const systemInstruction = `You are a world-class story architect. Perform a scan of the provided manuscript snippet and extract a structured living encyclopedia. Return strictly JSON, and ensure all extracted text and descriptions are strictly in English.`;
 
   const chunks: string[] = [];
   if (textLength <= sampleSize) {
