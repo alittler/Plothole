@@ -111,6 +111,21 @@ const App: React.FC = () => {
     setProjectsMetadata(meta);
   }, []);
 
+  const handleDeleteProject = useCallback(async (id: string) => {
+    console.log(`[App] Requesting deletion of project: ${id}`);
+    try {
+      await deleteProject(id);
+      await refreshMetadata();
+      
+      if (projectData?.id === id) {
+        setProjectData(null);
+      }
+      console.log(`[App] Deletion of project ${id} complete`);
+    } catch (err) {
+      console.error(`[App] Failed to delete project ${id}:`, err);
+    }
+  }, [projectData, refreshMetadata]);
+
   const performImageCleanup = useCallback(async () => {
     // Collect all active image URLs across all projects
     const allProjectsMeta = await getAllProjectsMetadata();
@@ -879,7 +894,23 @@ const App: React.FC = () => {
 
     switch (currentView) {
       case ViewType.BOOKSHELF: 
-        return <BookshelfView projects={projectsMetadata} activeProjectId={projectData?.id || ''} currentUser={currentUser} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); setCurrentView(ViewType.DASHBOARD); } }} onCreateProject={handleCreateProject} onUploadProject={handleUploadProject} onDeleteProject={async id => { await deleteProject(id); await refreshMetadata(); if (projectData?.id === id) setProjectData(null); }} onOpenDashboard={() => setCurrentView(ViewType.DASHBOARD)} isAnalyzing={isAnalyzing} />;
+        return <BookshelfView 
+          projects={projectsMetadata} 
+          activeProjectId={projectData?.id || ''} 
+          currentUser={currentUser} 
+          onSelectProject={async (id) => { 
+            const d = await loadProjectById(id); 
+            if (d) { 
+              setProjectData(d); 
+              setCurrentView(ViewType.DASHBOARD); 
+            } 
+          }} 
+          onCreateProject={handleCreateProject} 
+          onUploadProject={handleUploadProject} 
+          onDeleteProject={handleDeleteProject} 
+          onOpenDashboard={() => setCurrentView(ViewType.DASHBOARD)} 
+          isAnalyzing={isAnalyzing} 
+        />;
 
       case ViewType.NOTEPAD: 
         return <ResearchSystemView currentView={currentView} onChangeView={setCurrentView} data={{...projectData, notes: globalNotes} as any} projectsMetadata={projectsMetadata} currentUser={currentUser} onAddNote={async n => { 
@@ -1060,24 +1091,34 @@ const App: React.FC = () => {
       default: 
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
-  }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, isExtractingRelationships, isUpdatingProcessed, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, handleQuickUpdate]);
+  }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, isExtractingRelationships, isUpdatingProcessed, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleDeleteProject, handleUploadProject, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, handleQuickUpdate]);
+  // Auto-collapse sidebar when entering/exiting Admin view
+  useEffect(() => {
+    if (currentView === ViewType.ADMIN) {
+      setIsSidebarCollapsed(true);
+    } else {
+      setIsSidebarCollapsed(false);
+    }
+  }, [currentView]);
+
   const renderAppContent = () => (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors animate-in fade-in duration-500">
-      <div className={`transition-all duration-700 ease-in-out hidden lg:flex shrink-0 overflow-hidden ${isMapFullscreen ? 'w-0 opacity-0 pointer-events-none' : isSidebarCollapsed ? 'w-20' : 'w-64 md:w-80'}`}>
+    <div className="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors animate-in fade-in duration-500">
+      <div className={`transition-all duration-700 ease-in-out hidden lg:flex shrink-0 overflow-hidden ${isMapFullscreen ? 'w-0 opacity-0 pointer-events-none' : isSidebarCollapsed ? 'w-20' : 'w-64 md:w-72'}`}>
         <Sidebar 
           currentView={currentView} 
           onChangeView={setCurrentView} 
           isOpen={isMobileSidebarOpen} 
           isCollapsed={isSidebarCollapsed} 
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
-          onClose={() => setIsMobileSidebarOpen(false)} 
-          hasActiveProject={!!projectData} 
-          onToggleAi={() => setIsAiOpen(!isAiOpen)} 
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          hasActiveProject={!!projectData}
+          onToggleAi={() => setIsAiOpen(!isAiOpen)}
           isAiOpen={isAiOpen}
           currentUser={currentUser}
           isProcessing={activeTasks.length > 0}
           processingStatus={processingStatus}
-          activeProjectTitle={projectData?.title}          onQuickNote={async (text) => {
+          activeProjectTitle={projectData?.title}
+          onQuickNote={async (text) => {
             const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
             if (projectData) {
               await updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
@@ -1091,6 +1132,7 @@ const App: React.FC = () => {
         />
       </div>
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
+
         {/* Mobile Header */}
         <div className={`flex lg:hidden flex-col shrink-0 z-[1000] bg-slate-50 dark:bg-slate-950 transition-all duration-700 ease-in-out ${isMapFullscreen ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-20'}`}>
           <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 relative z-30 shadow-sm">

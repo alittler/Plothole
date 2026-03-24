@@ -153,12 +153,22 @@ export const loadProjectById = async (id: string): Promise<ProjectData | null> =
 };
 
 export const deleteProject = async (id: string): Promise<void> => {
+  console.log(`[Storage] Deleting project: ${id}`);
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).delete(id);
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.delete(id);
+    
+    request.onsuccess = () => {
+      console.log(`[Storage] Successfully deleted project: ${id}`);
+    };
+    
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () => {
+      console.error(`[Storage] Error deleting project ${id}:`, tx.error);
+      reject(tx.error);
+    };
   });
 };
 
