@@ -105,7 +105,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
             <p className="hidden md:block text-xs md:text-sm text-slate-500 dark:text-slate-400">The sequence of events that define your story.</p>
           </div>
           <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-full md:w-auto overflow-x-auto no-scrollbar">
-            {[PlotTab.TIMELINE, PlotTab.CALENDAR].map(tab => (
+            {[PlotTab.TIMELINE, PlotTab.CALENDAR, PlotTab.MANUSCRIPT].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -113,6 +113,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
               >
                 {tab === PlotTab.TIMELINE && <List size={14} />}
                 {tab === PlotTab.CALENDAR && <Calendar size={14} />}
+                {tab === PlotTab.MANUSCRIPT && <FileText size={14} />}
                 {tab}
               </button>
             ))}
