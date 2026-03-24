@@ -478,6 +478,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <Modal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteFeed}
         title="Clear Raw Text Feed?"
         footer={
           <>

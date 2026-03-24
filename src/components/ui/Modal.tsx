@@ -5,19 +5,26 @@ import { motion, AnimatePresence } from 'motion/react';
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onConfirm?: () => void;
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
   maxWidth?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-2xl' }) => {
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, onConfirm, title, children, footer, maxWidth = 'max-w-2xl' }) => {
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
+      } else if (e.key === 'Enter' && onConfirm) {
+        // Don't trigger if we're in a textarea (where Enter is for new lines)
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'TEXTAREA') return;
+        
+        onConfirm();
       }
     };
 

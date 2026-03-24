@@ -33,12 +33,6 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
     setNewAuthor('');
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleCreate();
-    }
-  };
-
   return (
     <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950">
       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-6 md:mb-12">
@@ -129,28 +123,38 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
         </div>
       </div>
 
-      <div onKeyDown={handleKeyDown}>
-        <Modal isOpen={isCreating} onClose={() => setIsCreating(false)} title="New Story World" footer={<button onClick={handleCreate} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold">Create World</button>}>
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 uppercase">Story Title</label>
-              <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. The Last Archivist" className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" autoFocus />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 uppercase">Short Name (for tagging)</label>
-              <input type="text" value={newShortName} onChange={e => setNewShortName(e.target.value)} placeholder="e.g. Archivist" className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 uppercase">Author</label>
-              <input type="text" value={newAuthor} onChange={e => setNewAuthor(e.target.value)} placeholder="Your Name" className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" />
-            </div>
+      <Modal 
+        isOpen={isCreating} 
+        onClose={() => setIsCreating(false)} 
+        onConfirm={handleCreate}
+        title="New Story World" 
+        footer={<button onClick={handleCreate} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold">Create World</button>}
+      >
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-400 uppercase">Story Title</label>
+            <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. The Last Archivist" className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" autoFocus />
           </div>
-        </Modal>
-      </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-400 uppercase">Short Name (for tagging)</label>
+            <input type="text" value={newShortName} onChange={e => setNewShortName(e.target.value)} placeholder="e.g. Archivist" className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-400 uppercase">Author</label>
+            <input type="text" value={newAuthor} onChange={e => setNewAuthor(e.target.value)} placeholder="Your Name" className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2" />
+          </div>
+        </div>
+      </Modal>
 
       <Modal 
         isOpen={!!projectToDelete} 
         onClose={() => setProjectToDelete(null)} 
+        onConfirm={() => {
+          if (projectToDelete) {
+            onDeleteProject(projectToDelete);
+            setProjectToDelete(null);
+          }
+        }}
         title="Confirm Deletion" 
         footer={
           <div className="flex gap-4">
