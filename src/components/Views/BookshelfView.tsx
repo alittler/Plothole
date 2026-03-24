@@ -21,7 +21,7 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newShortName, setNewShortName] = useState('');
-  const [newAuthor, setNewAuthor] = useState('');
+  const [newAuthor, setNewAuthor] = useState(currentUser.name);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
   const handleCreate = () => {
@@ -30,7 +30,7 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
     setIsCreating(false);
     setNewTitle('');
     setNewShortName('');
-    setNewAuthor('');
+    setNewAuthor(currentUser.name);
   };
 
   return (
@@ -113,7 +113,10 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
             </label>
 
             <button
-              onClick={() => setIsCreating(true)}
+              onClick={() => {
+                setNewAuthor(currentUser.name);
+                setIsCreating(true);
+              }}
               className="h-16 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-2 hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group"
             >
               <Plus size={16} className="text-slate-400 group-hover:text-slate-600" />
@@ -167,6 +170,7 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                 }
               }} 
               className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold"
+              autoFocus
             >
               Delete Forever
             </button>
