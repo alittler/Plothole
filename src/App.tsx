@@ -969,7 +969,7 @@ const App: React.FC = () => {
           onUpdateCharacter={(c) => updateProjectData({ characters: projectData?.characters.map(ch => ch.id === c.id ? c : ch) })} 
           onAddCharacter={(c) => updateProjectData({ characters: [...(projectData?.characters || []), c] })} 
           onUpdateProject={updateProjectData}
-          onLinkClick={(type, id) => { if (type === 'location') { setCurrentMapParentId(id); setCurrentView(ViewType.MAP); } }} 
+          onLinkClick={handleLinkClick} 
           characterLimit={projectData?.characterLimit} 
           onChangeView={setCurrentView} 
           onExtractThemesFromNotes={async () => {
