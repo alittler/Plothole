@@ -110,24 +110,26 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
               </span>
             </label>
 
-            <button
-              onClick={() => onCreateProject('The Obsidian Citadel', currentUser.name, true, 'Citadel')}
-              className="h-14 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-2 hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-500/5 transition-all group"
-            >
-              <Sparkles size={14} className="text-slate-400 group-hover:text-amber-600" />
-              <span className="font-bold text-[10px] text-slate-500 group-hover:text-amber-600 uppercase tracking-widest">Load Sample World</span>
-            </button>
+            <div className="flex gap-3 h-14">
+              <button
+                onClick={() => onCreateProject('The Obsidian Citadel', currentUser.name, true, 'Citadel')}
+                className="flex-1 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-2 hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-500/5 transition-all group"
+              >
+                <Sparkles size={14} className="text-slate-400 group-hover:text-amber-600" />
+                <span className="font-bold text-[10px] text-slate-500 group-hover:text-amber-600 uppercase tracking-widest">Sample</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setNewAuthor(currentUser.name);
-                setIsCreating(true);
-              }}
-              className="h-14 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-2 hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group"
-            >
-              <Plus size={14} className="text-slate-400 group-hover:text-slate-600" />
-              <span className="font-bold text-[10px] text-slate-500 group-hover:text-slate-600 uppercase tracking-widest">Manual Setup</span>
-            </button>
+              <button
+                onClick={() => {
+                  setNewAuthor(currentUser.name);
+                  setIsCreating(true);
+                }}
+                className="flex-1 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-2 hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group"
+              >
+                <Plus size={14} className="text-slate-400 group-hover:text-slate-600" />
+                <span className="font-bold text-[10px] text-slate-500 group-hover:text-slate-600 uppercase tracking-widest">Manual</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
