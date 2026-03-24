@@ -66,7 +66,7 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                   <div className="space-y-2">
                     <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400">
                       <span>{project.characterCount} Characters</span>
-                      <span>{project.wordCount || 0} Words</span>
+                      <span>{(project.wordCount || 0).toLocaleString()} Words</span>
                     </div>
                     <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-indigo-500/60">
                       <span>{project.commitCount} Commits</span>
@@ -79,17 +79,15 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                     <BookOpen size={16} />
                     {isActive ? 'Active World' : 'Open World'}
                   </div>
-                  {!isActive && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setProjectToDelete(project.id);
-                      }}
-                      className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setProjectToDelete(project.id);
+                    }}
+                    className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               </div>
             );
