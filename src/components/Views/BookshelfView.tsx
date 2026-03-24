@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ProjectMetadata, User } from '../../types';
-import { Plus, Trash2, BookOpen, Zap } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Zap, Sparkles } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
 interface BookshelfViewProps {
@@ -93,8 +93,8 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
             );
           })}
 
-          <div className="flex flex-col gap-4 h-64">
-            <label className="flex-1 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 transition-all group cursor-pointer">
+          <div className="flex flex-col gap-3 h-64">
+            <label className="flex-1 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 transition-all group cursor-pointer">
               <input
                 type="file"
                 className="hidden"
@@ -102,22 +102,30 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                 onChange={(e) => e.target.files?.[0] && onUploadProject(e.target.files[0])}
                 disabled={isAnalyzing}
               />
-              <div className="p-2 bg-slate-100 dark:bg-slate-900 rounded-full group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900 transition-colors">
-                <Zap size={20} className="text-slate-400 group-hover:text-indigo-600" />
+              <div className="p-1.5 bg-slate-100 dark:bg-slate-900 rounded-full group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900 transition-colors">
+                <Zap size={16} className="text-slate-400 group-hover:text-indigo-600" />
               </div>
-              <span className="font-bold text-xs text-slate-500 group-hover:text-indigo-600 uppercase tracking-widest">
-                {isAnalyzing ? 'Analyzing Manuscript...' : 'Analyze Manuscript'}
+              <span className="font-bold text-[10px] text-slate-500 group-hover:text-indigo-600 uppercase tracking-widest">
+                {isAnalyzing ? 'Analyzing...' : 'Analyze Manuscript'}
               </span>
             </label>
+
+            <button
+              onClick={() => onCreateProject('The Obsidian Citadel', currentUser.name, true, 'Citadel')}
+              className="h-14 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-2 hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-500/5 transition-all group"
+            >
+              <Sparkles size={14} className="text-slate-400 group-hover:text-amber-600" />
+              <span className="font-bold text-[10px] text-slate-500 group-hover:text-amber-600 uppercase tracking-widest">Load Sample World</span>
+            </button>
 
             <button
               onClick={() => {
                 setNewAuthor(currentUser.name);
                 setIsCreating(true);
               }}
-              className="h-16 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-2 hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group"
+              className="h-14 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-2 hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group"
             >
-              <Plus size={16} className="text-slate-400 group-hover:text-slate-600" />
+              <Plus size={14} className="text-slate-400 group-hover:text-slate-600" />
               <span className="font-bold text-[10px] text-slate-500 group-hover:text-slate-600 uppercase tracking-widest">Manual Setup</span>
             </button>
           </div>

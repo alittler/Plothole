@@ -553,15 +553,67 @@ const App: React.FC = () => {
     };
 
     if (useSample) {
+      const char1Id = generateId();
+      const char2Id = generateId();
+      const char3Id = generateId();
+      const char4Id = generateId();
+      const char5Id = generateId();
+      const loc1Id = generateId();
+      const loc2Id = generateId();
+
       const sampleText = "The archivist Arthur held the final key to the hidden library of Alexandria. The air was thick with the scent of old parchment and mystery.";
       newProject = {
         ...newProject,
-        summary: 'A story about a hidden archive.',
-        themes: ['Mystery'],
-        characters: [{ id: generateId(), name: 'Arthur', role: 'Supporting', job: 'Archivist', description: 'keeper of secrets.', traits: ['Diligent'], source: 'manual' }],
-        locations: [{ id: generateId(), name: 'Archives', description: 'Underground library.', type: 'Library', source: 'manual' }],
-        wordCount: sampleText.trim().split(/\s+/).length,
-        charCount: sampleText.length
+        title: title || 'The Obsidian Citadel',
+        shortName: shortName || 'Citadel',
+        summary: 'In a world where memories are currency, a young archivist discovers a forgotten vault that could rewrite history—or erase it entirely.',
+        themes: ['Memory', 'Power', 'Legacy', 'Sacrifice'],
+        characters: [
+          { id: char1Id, name: 'Arthur Penhaligon', role: 'Protagonist', job: 'Junior Archivist', description: 'A curious and determined young man with an uncanny ability to read ancient scripts.', traits: ['Diligent', 'Curious', 'Loyal'], source: 'manual' },
+          { id: char2Id, name: 'High Architect Vaelen', role: 'Antagonist', job: 'Ruler of the Citadel', description: 'A cold, calculating ruler who believes order is maintained only through the control of information.', traits: ['Ambitious', 'Cold', 'Strategic'], source: 'manual' },
+          { id: char3Id, name: 'Elara Vane', role: 'Supporting', job: 'Information Broker', description: 'A sharp-witted survivor from the Lower Wards who knows more about the Citadel than she lets on.', traits: ['Resourceful', 'Cynical', 'Brave'], source: 'manual' },
+          { id: char4Id, name: 'Master Silas', role: 'Supporting', job: 'Head Librarian', description: 'Arthur\'s mentor, a man who has seen too much and said too little.', traits: ['Wise', 'Secretive', 'Tired'], source: 'manual' },
+          { id: char5Id, name: 'The Echo', role: 'Minor', job: 'Ghost of the Vault', description: 'A spectral entity that haunts the Forbidden Wing, speaking only in riddles of the past.', traits: ['Mysterious', 'Vague', 'Ancient'], source: 'manual' }
+        ],
+        locations: [
+          { id: loc1Id, name: 'The Great Archive', type: 'Library', description: 'The heart of the Obsidian Citadel, housing millions of memory scrolls.', source: 'manual' },
+          { id: loc2Id, name: 'The Lower Wards', type: 'District', description: 'The crowded, smog-filled streets where those without memories struggle to survive.', source: 'manual' },
+          { id: generateId(), name: 'The Obsidian Spire', type: 'Tower', description: 'Vaelen\'s seat of power, overlooking the entire city.', source: 'manual' }
+        ],
+        relationships: [
+          { id: generateId(), sourceId: char1Id, targetId: char4Id, type: 'Mentor', description: 'Silas has trained Arthur since he was a boy.' },
+          { id: generateId(), sourceId: char1Id, targetId: char3Id, type: 'Ally', description: 'Elara provides Arthur with intel from the streets.' },
+          { id: generateId(), sourceId: char2Id, targetId: char4Id, type: 'Rival', description: 'Former colleagues who diverged on the ethics of memory control.' }
+        ],
+        artifacts: [
+          { id: generateId(), name: 'The Chronos Key', type: 'Relic', description: 'An ancient device said to be able to unlock the physical manifestations of memories.', significance: 'Crucial for accessing the Forbidden Vault.', source: 'manual' },
+          { id: generateId(), name: 'Memory Vial', type: 'Consumable', description: 'A shimmering liquid containing the extracted experiences of a person.', significance: 'The primary currency of the Obsidian Citadel.', source: 'manual' }
+        ],
+        lore: [
+          { id: generateId(), term: 'The Mnemonic Plague', definition: 'A catastrophic event 300 years ago that wiped out the collective memory of the world.', category: 'General', source: 'manual' },
+          { id: generateId(), term: 'Echo-Walking', definition: 'The rare ability to enter and interact with someone else\'s memories.', category: 'Magic', source: 'manual' },
+          { id: generateId(), term: 'The Void', definition: 'The state of complete memory loss, feared by all citizens.', category: 'Cosmology', source: 'manual' },
+          { id: generateId(), term: 'Mnemos', definition: 'The unit of measurement for memory strength.', category: 'Dictionary', source: 'manual' },
+          { id: generateId(), term: 'The Great Weaver', definition: 'The mythological figure believed to have created the first memory strings.', category: 'Religion', source: 'manual' }
+        ],
+        timeline: [
+          { id: generateId(), date: 'Year 0 (Post-Plague)', title: 'The Founding of the Citadel', description: 'Vaelen\'s ancestors established the Citadel to preserve what was left of humanity.', charactersInvolved: ['The Founders'], location: 'Obsidian Citadel', source: 'manual' },
+          { id: generateId(), date: 'Ten Years Ago', title: 'The Great Fire', description: 'A massive fire destroyed the West Wing of the Archive, erasing decades of records.', charactersInvolved: ['Master Silas'], location: 'The Great Archive', source: 'manual' }
+        ],
+        chapters: [
+          { 
+            id: generateId(), 
+            title: 'Chapter 1: The Weight of Ink', 
+            content: 'The Great Archive was always cold. Arthur pulled his cloak tighter as he navigated the towering shelves of the Forbidden Wing. The Chronos Key hummed in his pocket, a steady, rhythmic vibration that felt like a heartbeat.', 
+            order: 1, 
+            status: 'Draft', 
+            lastModified: Date.now(),
+            scenes: [],
+            wordCount: 42 
+          }
+        ],
+        wordCount: 42,
+        charCount: 250
       };
     }
 
