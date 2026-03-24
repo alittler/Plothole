@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
-import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight, FileText, Search } from 'lucide-react';
 import { calculateUEI, getDateFromUEI } from '../../utils/calendarUtils';
 
 interface PlotSystemViewProps {
@@ -20,13 +20,15 @@ interface PlotSystemViewProps {
 
 enum PlotTab {
   TIMELINE = 'Timeline',
-  CALENDAR = 'Calendar'
+  CALENDAR = 'Calendar',
+  MANUSCRIPT = 'Manuscript'
 }
 
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
   data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, isAnalyzing, onLinkClick
 }) => {
   const [activeTab, setActiveTab] = useState<PlotTab>(PlotTab.TIMELINE);
+  const [manuscriptSearch, setManuscriptSearch] = useState('');
 
   // Calendar State
   const activeCalendar = data.calendars?.find(c => c.id === data.activeCalendarId) || data.calendars?.[0] || {
@@ -252,6 +254,67 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === PlotTab.MANUSCRIPT && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <div className="flex items-center justify-between gap-4 flex-col sm:flex-row">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search manuscript..."
+                    value={manuscriptSearch}
+                    onChange={(e) => setManuscriptSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                </div>
+                <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                   <span>{(data.wordCount || 0).toLocaleString()} Words</span>
+                   <span>{(data.chapters?.length || 0)} Chapters</span>
+                </div>
+              </div>
+
+              <div className="space-y-12 pb-20">
+                {data.chapters && data.chapters.length > 0 ? (
+                  data.chapters.map((chapter) => {
+                    const content = chapter.content || '';
+                    if (manuscriptSearch && !content.toLowerCase().includes(manuscriptSearch.toLowerCase()) && !chapter.title.toLowerCase().includes(manuscriptSearch.toLowerCase())) return null;
+
+                    return (
+                      <div key={chapter.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-slate-100 dark:border-slate-800 space-y-8">
+                        <div className="flex items-center justify-between border-b border-slate-50 dark:border-slate-800 pb-6">
+                           <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">{chapter.title}</h2>
+                           <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{chapter.wordCount} Words</span>
+                        </div>
+                        <div className="font-serif text-lg leading-relaxed text-slate-700 dark:text-slate-300 space-y-6 max-w-none prose dark:prose-invert">
+                          {content.split('\n\n').map((para, i) => (
+                            <p key={i}>{para}</p>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : data.latestManuscriptText ? (
+                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-slate-100 dark:border-slate-800 space-y-8">
+                    <div className="flex items-center justify-between border-b border-slate-50 dark:border-slate-800 pb-6">
+                       <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Full Manuscript</h2>
+                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Single Stream</span>
+                    </div>
+                    <div className="font-serif text-lg leading-relaxed text-slate-700 dark:text-slate-300 space-y-6 max-w-none prose dark:prose-invert">
+                      {data.latestManuscriptText.split('\n\n').map((para, i) => (
+                        <p key={i}>{para}</p>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+                    <FileText size={48} className="mx-auto text-slate-200 mb-4" />
+                    <p className="text-slate-400 font-serif italic text-lg">No manuscript text found. <br /> Upload a file in the Bookshelf to begin.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
