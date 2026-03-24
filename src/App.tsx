@@ -107,7 +107,9 @@ const App: React.FC = () => {
   const removeTask = (id: string) => setActiveTasks(prev => prev.filter(t => t !== id));
 
   const refreshMetadata = useCallback(async () => {
+    console.log('[App] Refreshing metadata...');
     const meta = await getAllProjectsMetadata();
+    console.log(`[App] Received ${meta.length} projects from storage`);
     setProjectsMetadata(meta);
   }, []);
 
@@ -115,16 +117,19 @@ const App: React.FC = () => {
     console.log(`[App] Requesting deletion of project: ${id}`);
     try {
       await deleteProject(id);
+      console.log(`[App] storageService.deleteProject(${id}) resolved`);
       await refreshMetadata();
+      console.log('[App] refreshMetadata() resolved');
       
       if (projectData?.id === id) {
+        console.log(`[App] Deleting active project, clearing projectData`);
         setProjectData(null);
       }
-      console.log(`[App] Deletion of project ${id} complete`);
+      console.log(`[App] Deletion of project ${id} complete. Current projectData.id: ${projectData?.id}`);
     } catch (err) {
       console.error(`[App] Failed to delete project ${id}:`, err);
     }
-  }, [projectData, refreshMetadata]);
+  }, [projectData?.id, refreshMetadata]);
 
   const performImageCleanup = useCallback(async () => {
     // Collect all active image URLs across all projects

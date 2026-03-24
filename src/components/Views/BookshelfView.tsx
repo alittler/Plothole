@@ -150,10 +150,11 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
       </Modal>
 
       <Modal 
-        isOpen={!!projectToDelete} 
+        isOpen={projectToDelete !== null} 
         onClose={() => setProjectToDelete(null)} 
         onConfirm={() => {
           if (projectToDelete) {
+            console.log(`[BookshelfView] Confirming deletion of ${projectToDelete}`);
             onDeleteProject(projectToDelete);
             setProjectToDelete(null);
           }
@@ -165,6 +166,7 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
             <button 
               onClick={() => {
                 if (projectToDelete) {
+                  console.log(`[BookshelfView] Delete Forever clicked for ${projectToDelete}`);
                   onDeleteProject(projectToDelete);
                   setProjectToDelete(null);
                 }
