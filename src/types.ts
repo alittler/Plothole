@@ -553,6 +553,7 @@ export interface ManuscriptAnalysisResponse {
   coverDescription: string;
   characters: Character[];
   minorCharacters: string[];
+  relationships: Relationship[];
   timeline: TimelineEvent[];
   locations: Location[];
   themes: string[];

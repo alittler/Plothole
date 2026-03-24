@@ -85,6 +85,19 @@ export const unifiedAnalysisSchema = {
       }
     },
     minorCharacters: { type: Type.ARRAY, items: { type: Type.STRING } },
+    relationships: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          sourceId: { type: Type.STRING, description: "The NAME of the first character." },
+          targetId: { type: Type.STRING, description: "The NAME of the second character." },
+          type: { type: Type.STRING, description: "The type of bond, e.g. Rival, Spouse, Mentor." },
+          description: { type: Type.STRING, description: "Brief details about their interaction or dynamic." }
+        },
+        required: ["sourceId", "targetId", "type"]
+      }
+    },
     timeline: {
       type: Type.ARRAY,
       items: {
@@ -139,7 +152,7 @@ export const unifiedAnalysisSchema = {
 };
 
 export const DEFAULT_PROMPTS: AppPrompts = {
-  GENERAL_AND_CHARACTERS: "Extract title, summary, characters, and themes.",
+  GENERAL_AND_CHARACTERS: "Extract title, summary, characters (including roles, jobs, physical descriptions, traits, and aliases), character relationships (bonds between characters), and themes.",
   PLOT_MATRIX_ANALYSIS: "Identify major subplots from these events.",
   TIMELINE: "Construct a chronological timeline.",
   LOCATIONS: "Extract key locations.",

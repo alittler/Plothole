@@ -842,14 +842,28 @@ const App: React.FC = () => {
         }
 
         setProcessingStatus("Architecting World...");
-        data = {          id: generateId(),
+        const finalCharacters = analysis.characters.map(c => ({ ...c, id: generateId(), source: 'ai' as const }));
+        
+        // Map relationship names to character IDs
+        const finalRelationships = (analysis.relationships || []).map(rel => {
+          const src = finalCharacters.find(c => c.name.toLowerCase() === (rel.sourceId || '').toLowerCase());
+          const tgt = finalCharacters.find(c => c.name.toLowerCase() === (rel.targetId || '').toLowerCase());
+          if (src && tgt) {
+            return { ...rel, id: generateId(), sourceId: src.id, targetId: tgt.id };
+          }
+          return null;
+        }).filter(Boolean) as Relationship[];
+
+        data = {
+          id: generateId(),
           title: analysis.title || file.name.replace(/\.[^/.]+$/, ""),
           author: currentUser.name,
           summary: analysis.summary,
           lastModified: Date.now(),
           wordCount: text.trim().split(/\s+/).filter(w => w.length > 0).length,
           charCount: text.length,
-          characters: analysis.characters.map(c => ({ ...c, id: generateId(), source: 'ai' as const })),
+          characters: finalCharacters,
+          relationships: finalRelationships,
           locations: analysis.locations.map(l => ({ ...l, id: generateId(), source: 'ai' as const })),
           timeline: analysis.timeline.map(e => ({ ...e, id: generateId(), source: 'ai' as const })),
           themes: analysis.themes,
