@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Character, Location, TimelineEvent, Artifact, Note, ManuscriptHistoryEntry, ViewType, Relationship, ProjectData } from '../../types';
 import { Plus, Search, Sparkles, Edit2, Trash2, Camera, Users, User, FileText, Network, Heart, Zap, Shield, ArrowRight, X, Loader2 } from 'lucide-react';
 import { generateId } from '../../services/storageService';
@@ -34,7 +35,10 @@ enum CharacterTab {
 export const CharacterView: React.FC<CharacterViewProps> = ({
   characters, relationships = [], onAddCharacter, onUpdateProject, onExtractRelationships, isExtractingRelationships = false, onLinkClick
 }) => {
-  const [activeTab, setActiveTab] = useState<CharacterTab>(CharacterTab.ROSTER);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get('tab') as CharacterTab) || CharacterTab.ROSTER;
+  const setActiveTab = (tab: CharacterTab) => setSearchParams({ tab });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingRel, setIsAddingRel] = useState(false);
   const [newRel, setNewRel] = useState({ sourceId: '', targetId: '', type: '', description: '' });

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Search, Zap, Loader2, Send, Trash2, Layout, BookOpen, 
   FileText, MessageSquare, Cpu, Code, Plus, ArrowRight,
@@ -29,7 +30,10 @@ interface ResearchViewProps {
 
   const ResearchView: React.FC<ResearchViewProps> = ({
   projectData, globalNotes, projectsMetadata, currentUser, onUpdateProject, onLinkClick
-  }) => {  const [activeTab, setActiveTab] = useState<StenoTab>(StenoTab.WORKSPACE);
+  }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get('tab') as StenoTab) || StenoTab.WORKSPACE;
+  const setActiveTab = (tab: StenoTab) => setSearchParams({ tab });
 
   // Shared State
   const ideas = projectData.ideas || [];

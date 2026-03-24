@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ViewType, ProjectData, Location, Artifact, LoreEntry } from '../../types';
 import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw } from 'lucide-react';
 
@@ -42,7 +43,10 @@ enum WorldTab {
 export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   currentView, onChangeView, data, onAddLocation, onAddArtifact, onUpdateArtifact, onAddLore, onUpdateLocation, onLocationUndo, onLocationReset, onUpdateRootMap, onUpdateRootMapData, onUpdateMapOrder, onDeleteArtifact, onDeleteLore, onUpdateProject, currentMapParentId, onMapChange, isFullscreen, onToggleFullscreen, onLinkClick
 }) => {
-  const [activeTab, setActiveTab] = useState<WorldTab>(WorldTab.ATLAS);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get('tab') as WorldTab) || WorldTab.ATLAS;
+  const setActiveTab = (tab: WorldTab) => setSearchParams({ tab });
+
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [showOriginPulse, setShowOriginPulse] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);

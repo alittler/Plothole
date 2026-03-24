@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ProjectData, Note, Commit, BackupStatus } from '../../types';
 import { 
   Sparkles, FileText, Users, Map, Calendar, Clock, Edit3, 
@@ -30,6 +31,7 @@ interface DashboardViewProps {
   onAnalyzeText: (text: string) => void;
   onRestoreHistory: () => void;
   onRestoreCommit: (commit: Commit) => void;
+  onRestoreCommit: (commit: Commit) => void;
   onGenerateCover: () => void;
   onAuditThreads: () => void;
   isGeneratingCover: boolean;
@@ -43,7 +45,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, isExporting,
   onUpdateProcessedFiles, isUpdatingProcessed = false, onLinkClick
 }) => {
-  const [activeTab, setActiveTab] = useState<DashboardTab>(DashboardTab.HEALTH);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get('tab') as DashboardTab) || DashboardTab.HEALTH;
+  const setActiveTab = (tab: DashboardTab) => setSearchParams({ tab });
+
   const [isIntegrityValid, setIsIntegrityValid] = useState<boolean | null>(null);
 
   useEffect(() => {

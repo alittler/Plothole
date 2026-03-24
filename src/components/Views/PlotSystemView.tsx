@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
 import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight, FileText, Search } from 'lucide-react';
 import { calculateUEI, getDateFromUEI } from '../../utils/calendarUtils';
@@ -27,7 +28,10 @@ enum PlotTab {
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
   data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, isAnalyzing, onLinkClick
 }) => {
-  const [activeTab, setActiveTab] = useState<PlotTab>(PlotTab.TIMELINE);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get('tab') as PlotTab) || PlotTab.TIMELINE;
+  const setActiveTab = (tab: PlotTab) => setSearchParams({ tab });
+
   const [manuscriptSearch, setManuscriptSearch] = useState('');
 
   // Calendar State
