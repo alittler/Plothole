@@ -25,21 +25,103 @@ export enum ViewType {
   STORY_ARCHITECT = 'StoryArchitect'
 }
 
-export const APP_DATA_VERSION = 11;
+export const APP_DATA_VERSION = 12;
 
+// ==========================================
+// MODULAR TIERED ARCHITECTURE TYPES
+// ==========================================
+
+export type EntityTier = 1 | 2 | 3;
+
+export interface HierarchicalEntity {
+  id: string;
+  name: string;
+  tier: EntityTier;
+  species: string;
+  type: 'Character' | 'Location' | 'Item' | 'Event' | 'Lore' | string;
+  
+  // Tier 1 (Core)
+  motivation?: string;
+  conflict?: string;
+  aliases?: string[];
+  
+  // Tier 2 (Supporting)
+  primary_trait?: string;
+  location_id?: string;
+  
+  // Generic / Tier 3
+  description?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface AssetMetadata {
+  filename: string;
+  description: string;
+  entity_id?: string;
+}
+
+export interface ProjectManifest {
+  id: string;
+  title: string;
+  author: string;
+  version: string;
+  created_at: string;
+  last_modified: string;
+  summary: string;
+  counts: {
+    entities: number;
+    tier1: number;
+    tier2: number;
+    tier3: number;
+    assets: number;
+    word_count: number;
+  };
+}
+
+export interface ProjectData {
+  id: string;
+  title: string;
+  author: string;
+  summary: string;
+  lastModified: number;
+  
+  // Legacy fields (kept for migration/UI compatibility)
+  characters: Character[];
+  locations: Location[];
+  artifacts?: Artifact[];
+  timeline: TimelineEvent[];
+  relationships: Relationship[];
+  chapters?: Chapter[];
+  notes: Note[];
+  themes: string[];
+  
+  // Modular Tiered Architecture fields
+  entities: HierarchicalEntity[];
+  manuscript: string; // The baseline text
+  history_diff: string; // The diff ledger
+  assets: AssetMetadata[];
+  manifest?: ProjectManifest;
+
+  // System fields
+  wordCount?: number;
+  charCount?: number;
+  activeCalendarId?: string;
+  calendars: CalendarSystem[];
+  commits?: Commit[];
+  backups?: BackupStatus[];
+  integrityHash?: string;
+  latestManuscriptText?: string;
+}
+
+// Keep existing helper interfaces for now
 export interface Scene {
   id: string;
   title: string;
   content: string;
   wordCount: number;
   uei?: number;
-  referenceUrls?: string[];
 }
 
-/**
- * Consolidated Chapter interface to support both hierarchical structure (NovelSplitter)
- * and flat drafting content (ManuscriptView).
- */
 export interface Chapter {
   id: string;
   title: string;
@@ -49,238 +131,25 @@ export interface Chapter {
   lastModified: number;
   scenes: Scene[];
   wordCount: number;
-  referenceUrls?: string[];
-}
-
-export interface Act {
-  id: string;
-  title: string;
-  chapters: Chapter[];
-  wordCount: number;
-}
-
-export interface ManuscriptStructure {
-  acts: Act[];
-  totalWords: number;
-  config: {
-    actPattern: string;
-    chapterPattern: string;
-    scenePattern: string;
-  };
-}
-
-export interface AppSettings {
-  appName: string;
-  adminEmails?: string[];
-  sidebarOrder?: ViewType[];
-  bottomNavOrder?: ViewType[];
-  aiCharacterLimit?: number;
-}
-
-export interface AppPrompts {
-  GENERAL_AND_CHARACTERS: string;
-  PLOT_MATRIX_ANALYSIS: string;
-  TIMELINE: string;
-  LOCATIONS: string;
-  ARTIFACTS: string;
-  LORE: string;
-  NOTE_ENHANCEMENT: string;
-  PROCESS_RAW_NOTES: string;
-  STRUCTURAL_ANALYSIS: string;
-  SENTIMENT: string;
-  RELATIONSHIPS: string;
-  PROJECT_QA: string;
-  MISSPELLINGS_SCAN: string;
-  TOOLBOX_URL_ANALYSIS: string;
-  GENERATE_CONLANG_WORD: string;
-  CONNECT_NOTES: string;
-  AI_MODEL: string;
-}
-
-export interface Plotline {
-  id: string;
-  title: string;
-  color: string;
-  description?: string;
-}
-
-export interface MatrixCell {
-  eventId: string;
-  plotlineId: string;
-  content: string;
-}
-
-export interface ToolboxLink {
-  id: string;
-  label: string;
-  url: string;
-  category: string;
-  description?: string;
-}
-
-export interface CharacterMisspelling {
-  word: string;
-  context: string;
 }
 
 export interface Character {
   id: string;
   name: string;
-  role: 'Protagonist' | 'Antagonist' | 'Supporting' | 'Minor';
+  role: string;
   job: string;
   description: string;
   traits: string[];
   species?: string;
-  family?: string;
-  archetype?: string;
-  images?: { url: string; id: string; timestamp: number }[];
+  goals?: string;
   aliases?: string[];
   associatedLocationId?: string;
-  positionHistory?: { uei: number; locationId: string }[];
-  source?: 'manual' | 'ai';
-  misspellings?: CharacterMisspelling[];
-  isMinor?: boolean;
-  livingStatus?: string;
-  goals?: string;
-  familyName?: string;
-  nickname?: string;
-  age?: string;
-  birthday?: string;
-  birthplace?: string;
-  residence?: string;
-  physicalFeatures?: string;
-  style?: string;
-  strengths?: string;
-  weaknesses?: string;
-  referenceUrls?: string[];
   firstMentionOffset?: number;
   lastMentionOffset?: number;
-}
-
-export interface LexiconEntry {
-  id: string;
-  original: string;
-  translation: string;
-  partOfSpeech?: string;
-  definition?: string;
-  notes?: string;
-}
-
-export interface Language {
-  id: string;
-  name: string;
-  description: string;
-  phonology?: string;
-  aiParameters?: string;
-  lexicon: LexiconEntry[];
-}
-
-export interface ArchetypeDefinition {
-  name: string;
-  description: string;
-}
-
-export interface Artifact {
-  id: string;
-  name: string;
-  type: string;
-  description: string;
-  imageUrl?: string;
-  possessorId?: string;
-  history?: string;
-  significance?: string;
   source?: 'manual' | 'ai';
-  referenceUrls?: string[];
-}
-export interface Source {
-  id: string;
-  name: string;
-  title?: string;
-  url?: string;
-  content: string;
-  type: 'pdf' | 'web' | 'text' | 'youtube' | 'image';
-  summary?: string;
-  tags?: string[];
-  timestamp: number;
-  dateAdded?: number;
-  author?: string;
-  citation?: string;
-  isAnalyzing?: boolean;
-  guide?: {
-    summary: string;
-    topics: string[];
-    questions: string[];
-  };
-}
-
-export type LoreCategory = 'General' | 'Faction' | 'Religion' | 'Magic' | 'Species' | 'Language' | 'Tradition' | 'Culture' | 'Dictionary' | 'Encyclopedia';
-
-export interface LoreEntry {
-  id: string;
-  term: string;
-  definition: string;
-  category: LoreCategory; 
-  relatedIds?: string[]; 
-  source?: 'manual' | 'ai';
-  metadata?: Record<string, string>; 
-  referenceUrls?: string[];
-}
-
-export interface PlotHole {
-  id: string;
-  description: string;
-  severity: 'Minor' | 'Major' | 'Critical';
-  suggestion?: string;
-}
-
-export interface SentimentPoint {
-  timelineEventId: string;
-  score: number; 
-  label: string; 
-}
-
-export interface Relationship {
-  id: string;
-  sourceId: string;
-  targetId: string;
-  type: string; 
-  description?: string;
-}
-
-export interface TimelineEvent {
-  id: string;
-  date: string; 
-  uei?: number;
-  
-  // Advanced Historical Context
-  absoluteTime?: {
-    julianDate: number;
-    iso8601Utc?: string;
-    precision: 'millisecond' | 'second' | 'minute' | 'hour' | 'day' | 'month' | 'year';
-  };
-  recordedContext?: {
-    originalInput: string;
-    calendarSystem: string;
-    timeZone?: string;
-    coordinates?: { lat: number; lon: number };
-  };
-
-  title: string;
-  description: string;
-  charactersInvolved: string[];
-  location: string;
-  source?: 'manual' | 'ai';
-  isSoftAnchor?: boolean;
-  referenceEventId?: string;
-  referenceUrls?: string[];
-}
-
-export interface Inspiration {
-  id: string;
-  type: 'image' | 'link' | 'note';
-  content: string; 
-  title?: string;
-  timestamp: number;
+  motivation?: string;
+  conflict?: string;
+  primary_trait?: string;
 }
 
 export interface Location {
@@ -288,116 +157,49 @@ export interface Location {
   name: string;
   description: string;
   type: string;
-  parentId?: string; 
-  mapImage?: string; 
-  isRealWorld?: boolean; 
-  isLocked?: boolean;
-  shortId?: string;
-  mapId?: string; // ID of the map this location belongs to (root or another location's ID)
-  x?: number; 
-  y?: number; 
-  prevX?: number;
-  prevY?: number;
-  matchedX?: number;
-  matchedY?: number;
-  plusCode?: string;
-  lat?: number; 
-  lng?: number; 
-  icon?: string;
-  mapScale?: number; 
-  mapUnit?: string; 
-  ueiRange?: { start?: number; end?: number };
-  inspirations?: Inspiration[];
+  mapImage?: string;
   source?: 'manual' | 'ai';
-  referenceUrls?: string[];
+}
+
+export interface Artifact {
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  source?: 'manual' | 'ai';
+}
+
+export interface TimelineEvent {
+  id: string;
+  date: string;
+  uei?: number;
+  title: string;
+  description: string;
+  charactersInvolved: string[];
+  location: string;
+  source?: 'manual' | 'ai';
 }
 
 export interface Note {
   id: string;
   content: string;
   tags: string[];
-  expandedContent?: string;
-  metaSummary?: string;
-  aiAnalysis?: string;
   timestamp: number;
-  imageUrl?: string;
-  isCanon?: boolean;
-  isSavedInLedger?: boolean;
-  uei?: number;
 }
 
-export interface CalendarMonth {
+export interface Relationship {
   id: string;
-  name: string;
-  days: number;
-}
-
-export interface CalendarEra {
-  id: string;
-  name: string;
-  abbreviation: string; 
-  startYear: number;
-  endYear?: number;
+  sourceId: string;
+  targetId: string;
+  type: string;
+  description?: string;
 }
 
 export interface CalendarSystem {
   id: string;
   name: string;
-  description?: string;
-  weekDays: string[]; 
-  daysPerWeek?: number;
-  hoursPerDay?: number;
-  months: CalendarMonth[];
-  eras: CalendarEra[];
-  currentDate?: { year: number; monthIndex: number; day: number };
-  currentEpochDay?: number; // Universal Epoch Integer
-}
-
-export interface ChangeLogEntry {
-  id: string;
-  timestamp: number;
-  entityType: 'Character' | 'Location' | 'Timeline' | 'Note' | 'Settings' | 'Relationship' | 'Artifact' | 'Lore' | 'Chapter' | 'Plotline' | 'Source';
-  entityName: string;
-  entityId?: string;
-  action: 'Created' | 'Updated' | 'Deleted';
-  details?: string;
-}
-
-export interface ManuscriptHistoryEntry {
-  id: string;
-  filename: string;
-  timestamp: number;
-  content: string;
-}
-
-export interface AnalysisOptions {
-  extractCharacters: boolean;
-  extractTimeline: boolean;
-  extractLocations: boolean;
-  extractArtifacts: boolean;
-  extractLore: boolean;
-}
-
-export interface LedgerEntry {
-  id: string;
-  content: string;
-  timestamp: number;
-  tags: string[];
-}
-
-export interface SemanticDocument {
-  id: string;
-  title: string;
-  content: string;
-  lastModified: number;
-}
-
-export interface Idea {
-  id: string;
-  content: string;
-  tags: string[];
-  isCanon: boolean;
-  timestamp: number;
+  months: any[];
+  eras: any[];
 }
 
 export interface Commit {
@@ -405,159 +207,47 @@ export interface Commit {
   timestamp: number;
   hash: string;
   message: string;
-  author: string;
-  diff?: string;
-  wordCount: number;
-  snapshot?: Chapter[];
 }
 
 export interface BackupStatus {
   id: string;
   timestamp: number;
-  uei?: number;
-  wordCount: number;
-  hash: string;
   status: 'pending' | 'delivered' | 'failed';
-  resendId?: string;
-}
-
-export interface ProjectData {
-  id: string;
-  lastModified: number;
-  title: string;
-  shortName?: string;
-  author?: string;
-  version?: string; 
-  summary: string;
-  coverDescription?: string;
-  characters: Character[];
-  minorCharacters?: string[];
-  relationships: Relationship[];
-  timeline: TimelineEvent[];
-  locations: Location[];
-  artifacts?: Artifact[];
-  lore?: LoreEntry[];
-  chapters?: Chapter[];
-  plotHoles?: PlotHole[]; 
-  sentimentArc?: SentimentPoint[];
-  notes: Note[];
-  ideas?: Note[];
-  themes: string[];
-  ledger?: Note[];
-  sources?: Source[];
-
-  commits?: Commit[];
-  backups?: BackupStatus[];
-  integrityHash?: string;
-  aiDeadThreads?: { id: string; type: string; content: string; message: string }[];
-
-  manuscriptHistory?: ManuscriptHistoryEntry[];
-  latestManuscriptText?: string;
-  manuscriptLastUploaded?: number;
-  manuscriptOriginalFilename?: string;
-  manuscriptFileCreated?: number;
-  lastProcessedManuscriptSha?: string;
-  lastProcessedPromptSha?: string;
-
-  wordCount?: number;
-  charCount?: number;
-
-  archetypeDefinitions?: ArchetypeDefinition[];
-  aiContextLimit?: number; 
-  characterLimit?: number; // threshold for full cards
-
-  rootMapImage?: string; 
-  mapScale?: number;
-  mapUnit?: string;
-  isRealWorldMap?: boolean;
-  mapDefaultView?: { x: number, y: number, zoom: number };
-  mapTabOrder?: string[]; 
-  navOrder?: ViewType[];
-
-  calendars: CalendarSystem[];
-  activeCalendarId?: string;
-
-  portraitStyle?: string;
-  coverImage?: string; 
-
-  changeLog?: ChangeLogEntry[];
-  hiddenViews?: ViewType[];
-  adminToolboxLinks?: ToolboxLink[];
-
-  plotlines?: Plotline[];
-  matrixCells?: MatrixCell[];
-
-  languages?: Language[];
-
-  semanticDocuments?: SemanticDocument[];
-
-  isSampleProject?: boolean;
 }
 
 export interface ProjectMetadata {
   id: string;
   title: string;
-  shortName?: string;
-  author?: string;
+  author: string;
   summary: string;
-  coverDescription?: string;
   lastModified: number;
   characterCount: number;
   locationCount: number;
   commitCount: number;
   backupCount: number;
-  wordCount?: number;
-  charCount?: number;
-  portraitStyle?: string;
-  coverImage?: string;  characters?: { id: string; name: string; role: string; description?: string }[];
-  locations?: { id: string; name: string; type: string; description?: string }[];
+  wordCount: number;
 }
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  backupEmail?: string;
   role: 'admin' | 'editor';
-  lastActive: number;
   themeColor: string;
-  avatarUrl?: string;
-  preferences?: {
-    themeMode?: 'light' | 'dark';
-    fontSize?: 'sm' | 'md' | 'lg';
-    fontFamily?: 'sans' | 'serif';
-    landingPage?: ViewType;
-    aiVerbosity?: 'concise' | 'detailed';
-    colorfulIcons?: boolean;
-    reducedMotion?: boolean;
-    showAutoSaveIndicator?: boolean;
-    semanticSearchEnabled?: boolean;
-  };
 }
 
-export interface BackupFile {
-  version: number;
-  timestamp: number;
-  source: string;
-  projectData?: ProjectData;
-  allProjects?: ProjectData[];
-  globalNotes?: Note[];
+export interface AppSettings {
+  appName: string;
+  aiCharacterLimit: number;
 }
 
-/**
- * Fix: Use full types for properties that include IDs generated by the AI service.
- */
-export interface ManuscriptAnalysisResponse {
-  title: string;
-  summary: string;
-  coverDescription: string;
-  characters: Character[];
-  minorCharacters: string[];
-  relationships: Relationship[];
-  timeline: TimelineEvent[];
-  locations: Location[];
-  themes: string[];
-  artifacts: Artifact[];
-  lore: LoreEntry[];
-  referenceUrls: string[];
+export interface AppPrompts {
+  GENERAL_AND_CHARACTERS: string;
+}
+
+export interface ToolboxLink {
+  id: string;
+  label: string;
+  url: string;
+  category: string;
 }
