@@ -1,53 +1,107 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Character, Location, TimelineEvent, Artifact, Note, ManuscriptHistoryEntry, ViewType, Relationship, ProjectData } from '../../types';
+import { ViewType, Relationship, ProjectData, HierarchicalEntity } from '../../types';
 import { Plus, Search, Sparkles, Edit2, Trash2, Camera, Users, User, FileText, Network, Heart, Zap, Shield, ArrowRight, X, Loader2 } from 'lucide-react';
 import { generateId } from '../../services/storageService';
 
 interface CharacterViewProps {
-  projectTitle: string;
-  characters: Character[];
-  relationships: Relationship[];
-  locations: Location[];
-  timeline: TimelineEvent[];
-  artifacts: Artifact[];
-  themes: string[];
-  notes: Note[];
-  manuscriptHistory: ManuscriptHistoryEntry[];
-  onUpdateCharacter: (c: Character) => void;
-  onAddCharacter: (c: Character) => void;
+  data: ProjectData;
   onUpdateProject: (updates: Partial<ProjectData>) => void;
   onLinkClick: (type: string, id: string) => void;
-  characterLimit?: number;
-  onChangeView: (view: ViewType) => void;
-  onExtractThemesFromNotes: () => void;
   onExtractRelationships: () => void;
-  isExtractingThemes: boolean;
   isExtractingRelationships?: boolean;
 }
 
 enum CharacterTab {
-  ROSTER = 'Roster',
-  RELATIONSHIPS = 'Relationships',
-  NOTES = 'Notes'
+  ACTIVE_CAST = 'Active Cast',
+  BACKGROUND = 'Background',
+  GROUPS = 'Groups',
+  RELATIONSHIPS = 'Relationships'
 }
 
 export const CharacterView: React.FC<CharacterViewProps> = ({
-  characters, relationships = [], onAddCharacter, onUpdateProject, onExtractRelationships, isExtractingRelationships = false, onLinkClick
+  data, 
+  onUpdateProject, 
+  onLinkClick,
+  onExtractRelationships,
+  isExtractingRelationships
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get('tab') as CharacterTab) || CharacterTab.ROSTER;
+  const activeTab = (searchParams.get('tab') as CharacterTab) || CharacterTab.ACTIVE_CAST;
   const setActiveTab = (tab: CharacterTab) => setSearchParams({ tab });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingRel, setIsAddingRel] = useState(false);
   const [newRel, setNewRel] = useState({ sourceId: '', targetId: '', type: '', description: '' });
 
-  const filteredCharacters = characters.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.job && c.job.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const entities = data.entities || [];
+  const legacyCharacters = (data.characters || []).map(c => ({ 
+    ...c, 
+    type: 'Character', 
+    tier: (c as any).tier || 3 
+  })) as HierarchicalEntity[];
+
+  // Merge entities, avoiding duplicates by ID
+  const allEntities = [...entities];
+  legacyCharacters.forEach(lc => {
+    if (!allEntities.some(e => e.id === lc.id)) {
+      allEntities.push(lc);
+    }
+  });
+
+  const characters = allEntities.filter(e => e.type === 'Character');
+  const groups = allEntities.filter(e => e.type === 'Group' || e.type === 'Faction' || e.type === 'Family');
+  const relationships = data.relationships || [];
+
+  const getFilteredEntities = () => {
+    let base: HierarchicalEntity[] = [];
+    if (activeTab === CharacterTab.ACTIVE_CAST) {
+      base = characters.filter(c => c.tier === 1 || c.tier === 2);
+    } else if (activeTab === CharacterTab.BACKGROUND) {
+      base = characters.filter(c => c.tier === 3);
+    } else if (activeTab === CharacterTab.GROUPS) {
+      base = groups;
+    } else {
+      return [];
+    }
+
+    return base.filter(e => 
+      e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.species?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  const filteredEntities = getFilteredEntities();
+
+  const handleAddCharacter = () => {
+    const tier = activeTab === CharacterTab.ACTIVE_CAST ? 1 : 3;
+    const newChar = { 
+      id: generateId(), 
+      name: 'New Character', 
+      type: 'Character', 
+      tier: tier as any, 
+      species: 'Human', 
+      description: '',
+      role: tier === 1 ? 'Protagonist' : 'Supporting',
+      traits: [],
+      source: 'manual'
+    };
+    onUpdateProject({ entities: [...entities, newChar] });
+  };
+
+  const handleAddGroup = () => {
+    const newGroup = { 
+      id: generateId(), 
+      name: 'New Group', 
+      type: 'Group', 
+      tier: 2 as any, 
+      species: 'Faction', 
+      description: '',
+      source: 'manual'
+    };
+    onUpdateProject({ entities: [...entities, newGroup] });
+  };
 
   const handleAddRelationship = () => {
     if (!newRel.sourceId || !newRel.targetId || !newRel.type) return;
@@ -80,15 +134,16 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
             <p className="hidden md:block text-xs md:text-sm text-slate-500 dark:text-slate-400">Manage the souls that inhabit your story.</p>
           </div>
           <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-full md:w-auto overflow-x-auto no-scrollbar">
-            {[CharacterTab.ROSTER, CharacterTab.RELATIONSHIPS, CharacterTab.NOTES].map(tab => (
+            {Object.values(CharacterTab).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 md:flex-none px-3 md:px-4 py-2 rounded-xl font-bold text-[10px] md:text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                {tab === CharacterTab.ROSTER && <Users size={14} />}
+                {tab === CharacterTab.ACTIVE_CAST && <Users size={14} />}
+                {tab === CharacterTab.BACKGROUND && <User size={14} />}
+                {tab === CharacterTab.GROUPS && <Shield size={14} />}
                 {tab === CharacterTab.RELATIONSHIPS && <Network size={14} />}
-                {tab === CharacterTab.NOTES && <FileText size={14} />}
                 {tab}
               </button>
             ))}
@@ -98,55 +153,42 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
 
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
-          {activeTab === CharacterTab.ROSTER && (
+          {activeTab !== CharacterTab.RELATIONSHIPS ? (
             <>
               <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 md:mb-8">
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
                     type="text"
-                    placeholder="Search..."
+                    placeholder={`Search ${activeTab}...`}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
                 <button
-                  onClick={() => onAddCharacter({ id: Math.random().toString(), name: 'New Character', role: 'Supporting', job: '', description: '', traits: [], source: 'manual' })}
+                  onClick={activeTab === CharacterTab.GROUPS ? handleAddGroup : handleAddCharacter}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors sm:ml-auto"
                 >
                   <Plus size={16} />
-                  Add
+                  Add {activeTab === CharacterTab.GROUPS ? 'Group' : 'Character'}
                 </button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {filteredCharacters.map(char => (
+                {filteredEntities.map(char => (
                   <div key={char.id} className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden group hover:shadow-md transition-all">
                     <div className="aspect-[4/5] bg-slate-100 dark:bg-slate-800 relative">
                       {char.images && char.images.length > 0 ? (
                         <img src={char.images[0].url} alt={char.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-700">
-                          <User size={64} />
+                          {activeTab === CharacterTab.GROUPS ? <Shield size={64} /> : <User size={64} />}
                         </div>
                       )}
                       <div className="absolute top-4 right-4 px-3 py-1 bg-black/50 backdrop-blur-md text-white rounded-full text-[10px] font-black uppercase tracking-widest">
-                        {char.role}
+                        {char.type === 'Character' ? `Tier ${char.tier}` : char.species}
                       </div>
-                      
-                      {/* Character Lifespan Bar */}
-                      {char.firstMentionOffset !== undefined && char.lastMentionOffset !== undefined && (
-                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
-                          <div 
-                            className="absolute h-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"
-                            style={{ 
-                              left: `${(char.firstMentionOffset / 1000000) * 100}%`, 
-                              right: `${100 - (char.lastMentionOffset / 1000000) * 100}%` 
-                            }}
-                          />
-                        </div>
-                      )}
 
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                         <button 
@@ -180,42 +222,28 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                               <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.age}</div>
                             </div>
                           )}
-                          {char.species && (
+                          {char.species && char.type === 'Character' && (
                             <div className="flex items-center gap-2">
                               <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Race</div>
                               <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.species}</div>
-                            </div>
-                          )}
-                          {char.birthplace && (
-                            <div className="flex items-center gap-2 col-span-2">
-                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Home</div>
-                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{char.birthplace}</div>
                             </div>
                           )}
                         </div>
                       )}
 
                       <div className="flex flex-wrap gap-2 mt-auto pt-2">
-                        {char.traits.map(trait => (
+                        {char.traits?.map(trait => (
                           <span key={trait} className="px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded text-[10px] font-bold uppercase tracking-wider">
                             {trait}
                           </span>
                         ))}
                       </div>
-                      {char.source === 'ai' && (
-                        <div className="flex items-center gap-1 text-[10px] font-black text-amber-500 uppercase tracking-widest">
-                          <Sparkles size={10} />
-                          AI Extracted
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </>
-          )}
-
-          {activeTab === CharacterTab.RELATIONSHIPS && (
+          ) : (
             <div className="space-y-8 animate-in fade-in duration-500 pb-20">
               <div className="flex items-center justify-between">
                 <div>

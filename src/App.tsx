@@ -41,6 +41,7 @@ import { AdminView } from './components/Views/AdminView';
 import { ToolboxView } from './components/Views/ToolboxView';
 import ResearchView from './components/Views/ResearchView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
+import { CodexView } from './components/Views/CodexView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { AlertCircle, X, Sparkles, Menu, LogOut, Shield } from 'lucide-react';
@@ -1058,38 +1059,13 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         }} onLinkClick={handleLinkClick} onAddDoubleProcessedNote={handleDoubleProcessNote} activeTasks={activeTasks} onUpdateProject={updateProjectData} semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled} />;
 
       case ViewType.CHARACTERS: 
-        return <CharacterView 
-          projectTitle={projectData?.title || ''} 
-          characters={projectData?.characters || []} 
-          relationships={projectData?.relationships || []}
-          locations={projectData?.locations || []} 
-          timeline={projectData?.timeline || []} 
-          artifacts={projectData?.artifacts || []} 
-          themes={projectData?.themes || []} 
-          notes={globalNotes} 
-          manuscriptHistory={projectData?.manuscriptHistory || []} 
-          onUpdateCharacter={(c) => updateProjectData({ characters: projectData?.characters.map(ch => ch.id === c.id ? c : ch) })} 
-          onAddCharacter={(c) => updateProjectData({ characters: [...(projectData?.characters || []), c] })} 
+        return projectData ? <CharacterView 
+          data={projectData}
           onUpdateProject={updateProjectData}
           onLinkClick={handleLinkClick} 
-          characterLimit={projectData?.characterLimit} 
-          onChangeView={setCurrentView} 
-          onExtractThemesFromNotes={async () => {
-            if (!projectData) return;
-            setIsExtractingThemes(true);
-            addTask('Extracting Themes');
-            try {
-              const themes = await extractThemesFromNotes(globalNotes);
-              if (themes.length > 0) await updateProjectData({ themes: Array.from(new Set([...projectData.themes, ...themes])) });
-            } catch (e) { handleError(e); } finally { 
-              setIsExtractingThemes(false); 
-              removeTask('Extracting Themes');
-            }
-          }}
-          isExtractingThemes={isExtractingThemes}
           onExtractRelationships={handleExtractRelationships}
           isExtractingRelationships={isExtractingRelationships}
-        />;
+        /> : null;
       case ViewType.DASHBOARD:
         return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => {}} onLoadSample={() => {}} isAnalyzing={isAnalyzing} error={null} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={(t) => {
             setIsAnalyzing(true);
@@ -1188,6 +1164,9 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
 
       case ViewType.RESEARCH:
         return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
+
+      case ViewType.CODEX:
+        return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;

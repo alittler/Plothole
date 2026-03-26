@@ -49,8 +49,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: Search, projectOnly: true },
     { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
-    { id: ViewType.MAP, label: 'World Hub', icon: Map, projectOnly: true },
-    { id: ViewType.TIMELINE, label: 'Plot & Timeline', icon: Calendar, projectOnly: true },
+    { id: ViewType.MAP, label: 'Atlas', icon: Map, projectOnly: true },
+    { id: ViewType.TIMELINE, label: 'History', icon: Calendar, projectOnly: true },
+    { id: ViewType.CODEX, label: 'Codex', icon: Book, projectOnly: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: HelpCircle, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
     { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
@@ -68,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
       {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(i.id))
       },
       {
         title: 'System',

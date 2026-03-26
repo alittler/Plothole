@@ -76,6 +76,67 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
             <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20"><Archive size={28} /></div>
+                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Data Storage & Formats</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">How the system ingests and mirrors your research.</p></div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
+                    <FileText size={14} /> Accepted Formats
+                  </h3>
+                  <div className="space-y-2">
+                    {[
+                      { ext: '.txt, .md', type: 'Plain Text', save: 'Original' },
+                      { ext: '.pdf', type: 'Document', save: 'Original' },
+                      { ext: '.png, .jpg', type: 'Images', save: 'Original' },
+                      { ext: 'URLs', type: 'Websites', save: 'MHTML' },
+                    ].map(f => (
+                      <div key={f.ext} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div>
+                          <p className="text-sm font-black text-slate-900 dark:text-white uppercase">{f.ext}</p>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{f.type}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Saves As</p>
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{f.save}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
+                    <Activity size={14} /> Sidecar Recommendation
+                  </h3>
+                  <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 space-y-4">
+                    <p className="text-xs text-slate-400 leading-relaxed font-serif italic">
+                      "For processed files (AI summaries, OCR results, etc.), we recommend using <strong>Sidecar JSON</strong> files."
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 p-1 bg-indigo-500/20 text-indigo-400 rounded-lg"><Code size={12} /></div>
+                        <div>
+                          <p className="text-[10px] font-black text-slate-200 uppercase tracking-widest">Structure</p>
+                          <p className="text-[11px] text-slate-500">filename.ext.meta.json</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 p-1 bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={12} /></div>
+                        <div>
+                          <p className="text-[10px] font-black text-slate-200 uppercase tracking-widest">Benefit</p>
+                          <p className="text-[11px] text-slate-500">Keeps processed data portable and paired with the original source without bloating the primary database.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
                 <div className="p-4 bg-amber-500 text-white rounded-2xl shadow-lg shadow-amber-500/20"><Cpu size={28} /></div>
                 <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">AI Intelligence Schema</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Define global extraction logic and system instructions.</p></div>
               </div>

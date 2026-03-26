@@ -10,6 +10,7 @@ import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
 import { Resend } from 'resend';
 import * as Sentry from "@sentry/node";
 import multer from 'multer';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({
@@ -25,13 +26,18 @@ const __dirname = path.dirname(__filename);
 
 // Configure Multer for local storage
 const uploadDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const sourceFilesDir = path.join(__dirname, 'public', 'source');
+
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+if (!fs.existsSync(sourceFilesDir)) fs.mkdirSync(sourceFilesDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    console.log('Multer destination check:', req.url, req.originalUrl);
+    const isSourceUpload = (req.originalUrl && req.originalUrl.includes('source-upload')) || (req.url && req.url.includes('source-upload'));
+    const dest = isSourceUpload ? sourceFilesDir : uploadDir;
+    console.log('Multer using destination:', dest);
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -41,7 +47,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
 async function startServer() {
@@ -51,16 +57,154 @@ async function startServer() {
   // Initialize DB
   await initDb();
 
-  app.use(express.json({ limit: '50mb' }));
+  app.use(express.json({ limit: '100mb' }));
   app.use('/uploads', express.static(uploadDir));
+  app.use('/source-files', express.static(sourceFilesDir));
   
   // Local File Upload API
   app.post('/api/upload', upload.single('image'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    res.json({ url: `/uploads/${req.file.filename}` });
+  });
+
+  app.post('/api/source-upload', upload.single('file'), async (req, res) => {
+    console.log('Source upload request received');
     if (!req.file) {
+      console.error('Source upload failed: No file in request');
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    const imageUrl = `/uploads/${req.file.filename}`;
-    res.json({ url: imageUrl });
+
+    const filename = req.file.filename;
+    const filePath = path.join(sourceFilesDir, filename);
+    let extractedText = '';
+
+    // If it's a PDF, extract text on the server using pdf.js
+    if (req.file.mimetype === 'application/pdf' || filename.endsWith('.pdf')) {
+      try {
+        console.log('Extracting text from PDF:', filename);
+        const data = new Uint8Array(fs.readFileSync(filePath));
+        const loadingTask = pdfjsLib.getDocument({
+          data,
+          useSystemFonts: true,
+          disableFontFace: true,
+        });
+        const pdf = await loadingTask.promise;
+        let fullText = '';
+        
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          // @ts-ignore
+          const pageText = textContent.items.map((item: any) => item.str).join(' ');
+          fullText += pageText + '\n';
+        }
+        
+        extractedText = fullText;
+        console.log(`Successfully extracted ${extractedText.length} chars from PDF`);
+        
+        // Save extracted text as a sidecar .txt file
+        fs.writeFileSync(`${filePath}.txt`, extractedText);
+      } catch (err) {
+        console.error('Server-side PDF extraction failed:', err);
+      }
+    }
+
+    console.log('Source upload success:', filename);
+    res.json({ 
+      url: `/source-files/${filename}`,
+      filename: filename,
+      extractedText: extractedText
+    });
+  });
+
+  app.post('/api/source-link', (req, res) => {
+    const { url, title, content } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+
+    const filename = `mirror-${Date.now()}.html`;
+    const filePath = path.join(sourceFilesDir, filename);
+    
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${title || 'Source Mirror'}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 20px; color: #1e293b; background: #fdfdfd; }
+    .meta { background: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 40px; font-size: 14px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+    .url { color: #4f46e5; word-break: break-all; font-family: monospace; }
+    h1 { margin-top: 0; color: #0f172a; font-weight: 800; tracking: -0.025em; }
+    .content { background: white; padding: 40px; border-radius: 16px; border: 1px solid #f1f5f9; }
+    p { margin-bottom: 1.5em; }
+  </style>
+</head>
+<body>
+  <div class="meta">
+    <h1>${title || 'Untitled Source'}</h1>
+    <p><strong>Original URL:</strong> <a class="url" href="${url}">${url}</a></p>
+    <p><strong>Captured:</strong> ${new Date().toLocaleString()}</p>
+  </div>
+  <div class="content">
+    ${content?.split('\n').filter((p: string) => p.trim()).map((p: string) => `<p>${p}</p>`).join('')}
+  </div>
+</body>
+</html>`;
+
+    fs.writeFileSync(filePath, htmlContent);
+
+    res.json({ 
+      success: true, 
+      filename,
+      url: `/source-files/${filename}`
+    });
+  });
+
+  // Sidecar Metadata API
+  app.post('/api/source-meta', (req, res) => {
+    const { filename, metadata } = req.body;
+    if (!filename || !metadata) return res.status(400).json({ error: 'Filename and metadata required' });
+
+    // Ensure we are only writing to the source directory
+    const baseName = path.basename(filename);
+    const metaFilename = `${baseName}.meta.json`;
+    const filePath = path.join(sourceFilesDir, metaFilename);
+    
+    fs.writeFileSync(filePath, JSON.stringify(metadata, null, 2));
+    res.json({ success: true, url: `/source-files/${metaFilename}` });
+  });
+
+  app.get('/api/source-meta/:filename', (req, res) => {
+    const baseName = path.basename(req.params.filename);
+    const filePath = path.join(sourceFilesDir, `${baseName}.meta.json`);
+    
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf-8');
+      res.json(JSON.parse(data));
+    } else {
+      res.status(404).json({ error: 'No sidecar found' });
+    }
+  });
+
+  app.post('/api/validate-link', async (req, res) => {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+
+    try {
+      // Use a standard fetch with a timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        signal: controller.signal,
+        headers: { 'User-Agent': 'PlotholeBot/1.0' }
+      });
+      clearTimeout(timeout);
+      res.json({ valid: response.ok, status: response.status });
+    } catch (e) {
+      res.json({ valid: false, error: 'Network failure or timeout' });
+    }
   });
 
   app.post('/api/cleanup', async (req: any, res) => {

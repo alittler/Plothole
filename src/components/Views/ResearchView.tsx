@@ -145,7 +145,7 @@ interface ResearchViewProps {
       case StenoTab.SOURCES:
         return (
           <div className="h-full p-8 overflow-y-auto">
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-7xl mx-auto">
               <StenoSourcesPanel 
                 sources={sources} 
                 setSources={setSources} 

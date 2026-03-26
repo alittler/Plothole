@@ -22,7 +22,7 @@ interface PlotSystemViewProps {
 enum PlotTab {
   TIMELINE = 'Timeline',
   CALENDAR = 'Calendar',
-  MANUSCRIPT = 'Manuscript'
+  REVISIONS = 'Revisions'
 }
 
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
@@ -105,11 +105,11 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="space-y-1 text-center md:text-left">
-            <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">PLOT & TIMELINE</h1>
-            <p className="hidden md:block text-xs md:text-sm text-slate-500 dark:text-slate-400">The sequence of events that define your story.</p>
+            <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">HISTORY</h1>
+            <p className="hidden md:block text-xs md:text-sm text-slate-500 dark:text-slate-400">Events, timelines, and the narrative thread of your project.</p>
           </div>
           <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-full md:w-auto overflow-x-auto no-scrollbar">
-            {[PlotTab.TIMELINE, PlotTab.CALENDAR, PlotTab.MANUSCRIPT].map(tab => (
+            {[PlotTab.TIMELINE, PlotTab.CALENDAR, PlotTab.REVISIONS].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -117,7 +117,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
               >
                 {tab === PlotTab.TIMELINE && <List size={14} />}
                 {tab === PlotTab.CALENDAR && <Calendar size={14} />}
-                {tab === PlotTab.MANUSCRIPT && <FileText size={14} />}
+                {tab === PlotTab.REVISIONS && <FileText size={14} />}
                 {tab}
               </button>
             ))}
@@ -263,63 +263,19 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
             </div>
           )}
 
-          {activeTab === PlotTab.MANUSCRIPT && (
+          {activeTab === PlotTab.REVISIONS && (
             <div className="space-y-6 animate-in fade-in duration-500">
-              <div className="flex items-center justify-between gap-4 flex-col sm:flex-row">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input
-                    type="text"
-                    placeholder="Search manuscript..."
-                    value={manuscriptSearch}
-                    onChange={(e) => setManuscriptSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs focus:ring-2 focus:ring-amber-500 outline-none"
-                  />
-                </div>
-                <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                   <span>{(data.wordCount || 0).toLocaleString()} Words</span>
-                   <span>{(data.chapters?.length || 0)} Chapters</span>
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Revision Log</h2>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                   Incremental Changes
                 </div>
               </div>
 
-              <div className="space-y-12 pb-20">
-                {data.chapters && data.chapters.length > 0 ? (
-                  data.chapters.map((chapter) => {
-                    const content = chapter.content || '';
-                    if (manuscriptSearch && !content.toLowerCase().includes(manuscriptSearch.toLowerCase()) && !chapter.title.toLowerCase().includes(manuscriptSearch.toLowerCase())) return null;
-
-                    return (
-                      <div key={chapter.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-slate-100 dark:border-slate-800 space-y-8">
-                        <div className="flex items-center justify-between border-b border-slate-50 dark:border-slate-800 pb-6">
-                           <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">{chapter.title}</h2>
-                           <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{chapter.wordCount} Words</span>
-                        </div>
-                        <div className="font-serif text-lg leading-relaxed text-slate-700 dark:text-slate-300 space-y-6 max-w-none prose dark:prose-invert">
-                          {content.split('\n\n').map((para, i) => (
-                            <p key={i}>{para}</p>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : data.latestManuscriptText ? (
-                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-slate-100 dark:border-slate-800 space-y-8">
-                    <div className="flex items-center justify-between border-b border-slate-50 dark:border-slate-800 pb-6">
-                       <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Full Manuscript</h2>
-                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Single Stream</span>
-                    </div>
-                    <div className="font-serif text-lg leading-relaxed text-slate-700 dark:text-slate-300 space-y-6 max-w-none prose dark:prose-invert">
-                      {data.latestManuscriptText.split('\n\n').map((para, i) => (
-                        <p key={i}>{para}</p>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
-                    <FileText size={48} className="mx-auto text-slate-200 mb-4" />
-                    <p className="text-slate-400 font-serif italic text-lg">No manuscript text found. <br /> Upload a file in the Bookshelf to begin.</p>
-                  </div>
-                )}
+              <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-slate-800 overflow-hidden">
+                <pre className="font-mono text-xs md:text-sm leading-relaxed text-emerald-400/90 overflow-x-auto whitespace-pre-wrap">
+                  {data.history_diff || 'No revision history recorded yet.'}
+                </pre>
               </div>
             </div>
           )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ViewType, ProjectData, Location, Artifact, LoreEntry } from '../../types';
 import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw } from 'lucide-react';
@@ -32,19 +32,31 @@ interface WorldSystemViewProps {
 }
 
 enum WorldTab {
-  ATLAS = 'Atlas',
-  LOCATIONS = 'Locations',
-  INVENTORY = 'Inventory',
-  ENCYCLOPEDIA = 'Encyclopedia',
-  DICTIONARY = 'Dictionary',
-  COSMOLOGY = 'Cosmology'
+  MAP = 'Interactive Map',
+  LOCATIONS = 'Locations List',
+  INVENTORY = 'Inventory'
 }
 
 export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
-  currentView, onChangeView, data, onAddLocation, onAddArtifact, onUpdateArtifact, onAddLore, onUpdateLocation, onLocationUndo, onLocationReset, onUpdateRootMap, onUpdateRootMapData, onUpdateMapOrder, onDeleteArtifact, onDeleteLore, onUpdateProject, currentMapParentId, onMapChange, isFullscreen, onToggleFullscreen, onLinkClick
+  data, 
+  onUpdateProject, 
+  onLinkClick,
+  isFullscreen,
+  onToggleFullscreen,
+  currentMapParentId,
+  onMapChange,
+  onUpdateLocation,
+  onAddLocation,
+  onLocationUndo,
+  onLocationReset,
+  onAddArtifact,
+  onDeleteArtifact,
+  onAddLore,
+  onDeleteLore,
+  onUpdateRootMap
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get('tab') as WorldTab) || WorldTab.ATLAS;
+  const activeTab = (searchParams.get('tab') as WorldTab) || WorldTab.MAP;
   const setActiveTab = (tab: WorldTab) => setSearchParams({ tab });
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
@@ -56,52 +68,50 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   const [isMapMenuOpen, setIsMapMenuOpen] = useState(false);
   const [isWorldExpanded, setIsWorldExpanded] = useState(false);
   const [isWorldListOpen, setIsWorldListOpen] = useState(false);
-  const [isManagerTabPlaced, setIsManagerTabPlaced] = useState(false);
   const [editingMapId, setEditingMapId] = useState<string | null>(null);
-  const [editingMapName, setEditingMapName] = useState('');
+  const [editingMapName, setEditingMapName] = useState("");
+  const [localScale, setLocalScale] = useState(data.mapScale || 100);
+  const [localUnit, setLocalUnit] = useState(data.mapUnit || "km");
 
-  // Auto-generate shortIds for locations that don't have them
-  React.useEffect(() => {
-    const locationsWithoutShortId = data.locations.filter(l => !l.shortId);
+  const zoomInRef = useRef<() => void>(null);
+  const zoomOutRef = useRef<() => void>(null);
+  const centerMapRef = useRef<() => void>(null);
+  const getViewStateRef = useRef<() => any>(null);
+
+  useEffect(() => {
+    const locationsWithoutShortId = data.locations.filter((l) => !l.shortId);
     if (locationsWithoutShortId.length > 0) {
-      const updated = data.locations.map(l => {
+      const updated = data.locations.map((l) => {
         if (l.shortId) return l;
         return { ...l, shortId: Math.random().toString(36).substring(2, 10) };
       });
       onUpdateProject({ locations: updated });
     }
   }, [data.locations]);
-  
-  // Local Scale Calibration State
-  const [localScale, setLocalScale] = useState(data.mapScale || 100);
-  const [localUnit, setLocalUnit] = useState(data.mapUnit || 'km');
-
-  const zoomInRef = React.useRef<(() => void) | null>(null);
-  const zoomOutRef = React.useRef<(() => void) | null>(null);
-  const centerMapRef = React.useRef<((coords?: { x: number, y: number }) => void) | null>(null);
-  const getViewStateRef = React.useRef<(() => { x: number, y: number, zoom: number } | null) | null>(null);
 
   const DEFAULT_MAP = `data:image/svg+xml,%3Csvg width='800' height='600' viewBox='0 0 800 600' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f5f1e6'/%3E%3Cpath d='M0 0l800 600M800 0L0 600' stroke='%23e2e8f0' stroke-width='1'/%3E%3Ccircle cx='400' cy='300' r='100' fill='none' stroke='%23cbd5e1' stroke-dasharray='10,10'/%3E%3Ctext x='400' y='310' font-family='serif' font-size='24' fill='%2394a3b8' text-anchor='middle' font-style='italic'%3EUncharted Territory%3C/text%3E%3C/svg%3E`;
 
-  const locationQueue = data.locations.filter(l => l.x === undefined || l.y === undefined);
+  const locationQueue = data.locations.filter((l) => l.x === undefined || l.y === undefined);
+  const filteredLocations = data.locations.filter((l) => l.x !== undefined && l.y !== undefined && l.parentId === (currentMapParentId || undefined));
+  const parentLocation = data.locations.find((l) => l.id === currentMapParentId);
 
   const handleMapUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append("image", file);
     try {
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
-      if (!response.ok) throw new Error('Upload failed');
+      const response = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!response.ok) throw new Error("Upload failed");
       const result = await response.json();
       if (currentMapParentId) {
-        onUpdateProject({ locations: data.locations.map(l => l.id === currentMapParentId ? { ...l, mapImage: result.url } : l) });
+        onUpdateLocation({ ...data.locations.find(l => l.id === currentMapParentId)!, mapImage: result.url });
       } else {
-        onUpdateProject({ rootMapImage: result.url, isRealWorldMap: false });
+        onUpdateRootMap(result.url);
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to upload map to server.");
+      alert("Failed to upload map image.");
     }
   };
 
@@ -121,7 +131,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
           updatedLocations[i] = { ...loc, x: lon, y: lat, matchedX: lon, matchedY: lat };
           matchedCount++;
         }
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 1000));
       } catch (err) {
         console.error(`Failed to match ${loc.name}:`, err);
       }
@@ -135,8 +145,46 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
     setIsMatching(false);
   };
 
-  const filteredLocations = data.locations.filter(l => l.x !== undefined && l.y !== undefined && l.parentId === (currentMapParentId || undefined));
-  const parentLocation = data.locations.find(l => l.id === currentMapParentId);
+  const entities = data.entities || [];
+
+  const handleAddLocation = () => {
+    onUpdateProject({ entities: [...entities, { id: generateId(), name: 'New Location', type: 'Location', tier: 3, species: 'Structure', description: '' }] });
+  };
+
+  const handleAddArtifact = () => {
+    onUpdateProject({ entities: [...entities, { id: generateId(), name: 'New Item', type: 'Item', tier: 3, species: 'Artifact', description: '' }] });
+  };
+
+  const handleAddLore = (cat: string) => {
+    onUpdateProject({ entities: [...entities, { id: generateId(), name: 'New Entry', type: 'Lore', tier: 3, species: cat, description: '' }] });
+  };
+
+  const handleDelete = (id: string) => {
+    if (!confirm('Delete this entry?')) return;
+    onUpdateProject({ entities: entities.filter(e => e.id !== id) });
+  };
+
+  const renderEntityGrid = (type: string, species?: string) => {
+    const filtered = entities.filter(e => e.type === type && (!species || e.species === species));
+    
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filtered.map(entity => (
+          <div key={entity.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">T{entity.tier} {entity.species}</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => onLinkClick?.('admin', entity.id)} className="text-slate-400 hover:text-indigo-500 transition-colors"><Edit2 size={14} /></button>
+                <button onClick={() => handleDelete(entity.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+              </div>
+            </div>
+            <h3 className="font-bold text-slate-900 dark:text-white">{entity.name}</h3>
+            <p className="text-sm text-slate-500 line-clamp-2 mt-2 font-serif italic">{entity.description || 'No description yet.'}</p>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
@@ -144,7 +192,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
         <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-center md:text-left">
-              <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">WORLD HUB</h1>
+              <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">ATLAS</h1>
               <p className="hidden md:block text-xs md:text-sm text-slate-500 dark:text-slate-400">Geography, artifacts, and the lore of your universe.</p>
             </div>
             <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar w-full md:w-auto">
@@ -164,9 +212,9 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
       <div className="flex-1 min-h-0 overflow-hidden relative">
         <div className="h-full w-full flex flex-col items-center p-4 md:p-8 relative">
-          <div className={`h-full w-full flex flex-col ${isFullscreen ? 'max-w-none' : 'max-w-6xl'} ${activeTab !== WorldTab.ATLAS ? 'space-y-12 overflow-y-auto pb-12' : ''}`}>
+          <div className={`h-full w-full flex flex-col ${isFullscreen ? 'max-w-none' : 'max-w-6xl'} ${activeTab !== WorldTab.MAP ? 'space-y-12 overflow-y-auto pb-12' : ''}`}>
             
-            {activeTab === WorldTab.ATLAS && (
+            {activeTab === WorldTab.MAP && (
               <div className="flex-1 min-h-0 relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-100 dark:bg-slate-900 w-full flex flex-col">
                 
                 {/* Initial Choice State */}
@@ -587,59 +635,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       <p className="text-sm text-slate-500 line-clamp-2 mt-2 font-serif italic">{art.description || 'No description.'}</p>
                     </div>
                   ))}
-                </div>
-              </section>
-            )}
-
-            {activeTab === WorldTab.ENCYCLOPEDIA && (
-              <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl"><Book size={24} /></div>
-                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Encyclopedia</h2><p className="text-sm text-slate-500 uppercase font-bold tracking-widest">Lore and Narrative Grounds</p></div>
-                  </div>
-                  <button onClick={() => onAddLore({ id: generateId(), term: 'New Entry', definition: '', category: 'General', source: 'manual' })} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"><Plus size={18} /> New Entry</button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {data.lore?.filter(l => l.category !== 'Dictionary').map(entry => (
-                    <div key={entry.id} className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative group">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{entry.category}</span>
-                        <div className="flex items-center gap-2 transition-opacity">
-                          <button onClick={() => onLinkClick?.('admin', entry.id)} className="text-slate-400 hover:text-indigo-500 transition-colors"><Edit2 size={16} /></button>
-                          <button onClick={() => onDeleteLore(entry.id)} className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
-                        </div>
-                      </div>
-                      <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase mb-2">{entry.term}</h3>
-                      <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-serif"><WikiText text={entry.definition} projectData={data} onLinkClick={onLinkClick} /></div>
-                    </div>
-                  )) || <p className="p-8 text-center text-slate-400 italic">No encyclopedia entries yet.</p>}
-                </div>
-              </section>
-            )}
-
-            {activeTab === WorldTab.DICTIONARY && (
-              <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl"><FileText size={24} /></div>
-                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Lexicon</h2><p className="text-sm text-slate-500 uppercase font-bold tracking-widest">Constructed Language and Terminology</p></div>
-                  </div>
-                  <button onClick={() => onAddLore({ id: generateId(), term: 'New Word', definition: '', category: 'Dictionary', source: 'manual' })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"><Plus size={18} /> New Word</button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-8">
-                  {data.lore?.filter(l => l.category === 'Dictionary').map(entry => (
-                    <div key={entry.id} className="border-b border-slate-100 dark:border-slate-800 pb-4 group relative">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white">{entry.term}</h3>
-                        <div className="flex items-center gap-2 transition-opacity">
-                          <button onClick={() => onLinkClick?.('admin', entry.id)} className="text-slate-400 hover:text-indigo-500 transition-colors"><Edit2 size={14} /></button>
-                          <button onClick={() => onDeleteLore(entry.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
-                        </div>
-                      </div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">{entry.definition}</p>
-                    </div>
-                  )) || <p className="col-span-2 p-8 text-center text-slate-400 italic">No dictionary entries yet.</p>}
                 </div>
               </section>
             )}

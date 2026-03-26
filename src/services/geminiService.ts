@@ -673,6 +673,8 @@ export const smartExtractSources = async (text: string): Promise<{ title: string
     2. If the text is a title of a book, article, or resource, find/suggest a likely primary URL for it.
     3. Extract any significant literary/scriptural verses or quotes.
     
+    IMPORTANT: Ignore any search engine prompts, search queries, or navigational artifacts (like "search results for...", "people also ask", etc.). Only extract the actual source data.
+
     Return a JSON array of objects with { title, author, content, citation, url, type }.
     - 'type' should be 'web' if a URL is provided or found, otherwise 'text'.
     
