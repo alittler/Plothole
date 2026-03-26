@@ -10,7 +10,11 @@ import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
 import { Resend } from 'resend';
 import * as Sentry from "@sentry/node";
 import multer from 'multer';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { simpleGit, SimpleGit } from 'simple-git';
+import cors from 'cors';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({
@@ -26,16 +30,22 @@ const __dirname = path.dirname(__filename);
 
 // Configure Multer for local storage
 const uploadDir = path.join(__dirname, 'public', 'uploads');
-const sourceFilesDir = path.join(__dirname, 'public', 'source');
+const sourceFilesRootDir = path.join(__dirname, 'public', 'source');
 
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-if (!fs.existsSync(sourceFilesDir)) fs.mkdirSync(sourceFilesDir, { recursive: true });
+if (!fs.existsSync(sourceFilesRootDir)) fs.mkdirSync(sourceFilesRootDir, { recursive: true });
+
+const getProjectGit = (projectId: string): SimpleGit => {
+  const projectDir = path.join(sourceFilesRootDir, projectId);
+  if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
+  return simpleGit(projectDir);
+};
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     console.log('Multer destination check:', req.url, req.originalUrl);
     const isSourceUpload = (req.originalUrl && req.originalUrl.includes('source-upload')) || (req.url && req.url.includes('source-upload'));
-    const dest = isSourceUpload ? sourceFilesDir : uploadDir;
+    const dest = isSourceUpload ? sourceFilesRootDir : uploadDir;
     console.log('Multer using destination:', dest);
     cb(null, dest);
   },
@@ -57,9 +67,10 @@ async function startServer() {
   // Initialize DB
   await initDb();
 
+  app.use(cors());
   app.use(express.json({ limit: '100mb' }));
   app.use('/uploads', express.static(uploadDir));
-  app.use('/source-files', express.static(sourceFilesDir));
+  app.use('/source-files', express.static(sourceFilesRootDir));
   
   // Local File Upload API
   app.post('/api/upload', upload.single('image'), (req, res) => {
@@ -75,31 +86,16 @@ async function startServer() {
     }
 
     const filename = req.file.filename;
-    const filePath = path.join(sourceFilesDir, filename);
+    const filePath = path.join(sourceFilesRootDir, filename);
     let extractedText = '';
 
-    // If it's a PDF, extract text on the server using pdf.js
+    // If it's a PDF, extract text on the server using pdf-parse
     if (req.file.mimetype === 'application/pdf' || filename.endsWith('.pdf')) {
       try {
         console.log('Extracting text from PDF:', filename);
-        const data = new Uint8Array(fs.readFileSync(filePath));
-        const loadingTask = pdfjsLib.getDocument({
-          data,
-          useSystemFonts: true,
-          disableFontFace: true,
-        });
-        const pdf = await loadingTask.promise;
-        let fullText = '';
-        
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
-          // @ts-ignore
-          const pageText = textContent.items.map((item: any) => item.str).join(' ');
-          fullText += pageText + '\n';
-        }
-        
-        extractedText = fullText;
+        const dataBuffer = fs.readFileSync(filePath);
+        const data = await pdf(dataBuffer);
+        extractedText = data.text;
         console.log(`Successfully extracted ${extractedText.length} chars from PDF`);
         
         // Save extracted text as a sidecar .txt file
@@ -122,7 +118,7 @@ async function startServer() {
     if (!url) return res.status(400).json({ error: 'URL is required' });
 
     const filename = `mirror-${Date.now()}.html`;
-    const filePath = path.join(sourceFilesDir, filename);
+    const filePath = path.join(sourceFilesRootDir, filename);
     
     const htmlContent = `
 <!DOCTYPE html>
@@ -168,7 +164,7 @@ async function startServer() {
     // Ensure we are only writing to the source directory
     const baseName = path.basename(filename);
     const metaFilename = `${baseName}.meta.json`;
-    const filePath = path.join(sourceFilesDir, metaFilename);
+    const filePath = path.join(sourceFilesRootDir, metaFilename);
     
     fs.writeFileSync(filePath, JSON.stringify(metadata, null, 2));
     res.json({ success: true, url: `/source-files/${metaFilename}` });
@@ -176,7 +172,7 @@ async function startServer() {
 
   app.get('/api/source-meta/:filename', (req, res) => {
     const baseName = path.basename(req.params.filename);
-    const filePath = path.join(sourceFilesDir, `${baseName}.meta.json`);
+    const filePath = path.join(sourceFilesRootDir, `${baseName}.meta.json`);
     
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf-8');
@@ -204,6 +200,80 @@ async function startServer() {
       res.json({ valid: response.ok, status: response.status });
     } catch (e) {
       res.json({ valid: false, error: 'Network failure or timeout' });
+    }
+  });
+
+  // Git API Endpoints
+  app.post('/api/git/init', async (req, res) => {
+    const { projectId } = req.body;
+    if (!projectId) return res.status(400).json({ error: 'Project ID required' });
+    
+    try {
+      const git = getProjectGit(projectId);
+      await git.init();
+      res.json({ success: true, message: 'Git initialized' });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/git/commit', async (req, res) => {
+    const { projectId, message, files } = req.body;
+    if (!projectId || !message) return res.status(400).json({ error: 'Project ID and message required' });
+
+    try {
+      const projectDir = path.join(sourceFilesRootDir, projectId);
+      if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
+
+      // Save files to the project directory before committing
+      if (files && Array.isArray(files)) {
+        files.forEach((file: { path: string, content: string }) => {
+          const filePath = path.join(projectDir, file.path);
+          const dir = path.dirname(filePath);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(filePath, file.content);
+        });
+      }
+
+      const git = getProjectGit(projectId);
+      await git.add('.');
+      const result = await git.commit(message);
+      res.json({ success: true, result });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get('/api/git/log/:projectId', async (req, res) => {
+    const { projectId } = req.params;
+    try {
+      const git = getProjectGit(projectId);
+      const log = await git.log();
+      res.json(log);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get('/api/git/diff/:projectId/:commitHash', async (req, res) => {
+    const { projectId, commitHash } = req.params;
+    try {
+      const git = getProjectGit(projectId);
+      const diff = await git.show([commitHash]);
+      res.json({ diff });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/git/status', async (req, res) => {
+    const { projectId } = req.body;
+    try {
+      const git = getProjectGit(projectId);
+      const status = await git.status();
+      res.json(status);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 

@@ -7,3 +7,5 @@ coverage/
 .env*
 !.env.example
 public/uploads/
+public/source/
+server_log.txt

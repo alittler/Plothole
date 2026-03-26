@@ -65,10 +65,15 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
     onUpdateProject({ timeline: data.timeline.filter(e => e.id !== id) });
   };
 
-  // Pre-calculate UEI for events
+  // Pre-calculate and sort timeline
+  const sortedTimeline = useMemo(() => {
+    return [...(data.timeline || [])].sort((a, b) => (a.uei || 0) - (b.uei || 0));
+  }, [data.timeline]);
+
+  // Pre-calculate UEI for calendar map
   const eventsByUEI = useMemo(() => {
     const map = new Map<number, TimelineEvent[]>();
-    data.timeline.forEach(event => {
+    sortedTimeline.forEach(event => {
        if (event.uei !== undefined) {
          const list = map.get(event.uei) || [];
          list.push(event);
@@ -76,7 +81,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
        }
     });
     return map;
-  }, [data.timeline]);
+  }, [sortedTimeline]);
 
   const currentMonth = activeCalendar.months[currentMonthIndex] || { name: 'Unknown', days: 30 };
   const daysPerWeek = activeCalendar.daysPerWeek || 7;
@@ -142,7 +147,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                 </button>
               </div>
               <div className="relative border-l-2 border-slate-200 dark:border-slate-800 pl-4 md:pl-8 space-y-8 md:space-y-12">
-                {data.timeline.sort((a,b) => (a.uei || 0) - (b.uei || 0)).map((event, idx) => (
+                {sortedTimeline.map((event, idx) => (
                   <div key={event.id} className="relative group">
                     <div className={`absolute -left-[17px] md:-left-[41px] top-0 w-3 md:h-4 md:w-4 h-3 rounded-full border-2 md:border-4 border-white dark:border-slate-950 shadow-sm ${event.isSoftAnchor ? 'bg-indigo-400 border-dashed' : 'bg-amber-500'}`} />
                     <div 

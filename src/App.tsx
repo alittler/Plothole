@@ -22,7 +22,7 @@ import {
   analyzeStoryText, generateBookCover, doubleProcessNote, extractThemesFromNotes, extractSoftAnchors, auditPlotThreads,
   DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid, analyzeRelationships, unifiedAnalysisSchema, detectManuscriptStructure
   } from './services/geminiService';
-import { createCommit, updateIntegrityHash } from './services/versioningService';
+import { initGitForProject, commitToGit, getGitLog, updateIntegrityHash } from './services/versioningService';
 import { Commit, BackupStatus } from './types';
 
 // Components
@@ -179,19 +179,33 @@ const App: React.FC = () => {
       if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Timeline', entityName: added.title, entityId: added.id, action: 'Created' };
     }
 
-    const baseUpdated = { 
-      ...projectData, 
+    const baseUpdated = {
+      ...projectData,
       ...updates,
       changeLog: newLog ? [...(projectData.changeLog || []), newLog] : projectData.changeLog
     };
-    const commit = await createCommit(baseUpdated, updates.title ? `Meta update: ${updates.title}` : 'Manual Save');
+
+    // If chapters changed, perform a real Git commit on the server
+    if (updates.chapters) {
+      const manuscriptText = updates.chapters.map(c => c.content).join('\n\n');
+      try {
+        await commitToGit(projectData.id, updates.title ? `Edit: ${updates.title}` : 'Manuscript Update', [
+          { path: 'manuscript.md', content: manuscriptText }
+        ]);
+        // Also fetch the log to update the local commits state
+        const log = await getGitLog(projectData.id);
+        baseUpdated.commits = log.all;
+      } catch (e) {
+        console.error("Git commit failed", e);
+      }
+    }
+
     const integrityHash = await updateIntegrityHash(baseUpdated);
 
-    const updated: ProjectData = { 
-      ...baseUpdated, 
-      commits: [...(projectData.commits || []), commit],
+    const updated: ProjectData = {
+      ...baseUpdated,
       integrityHash,
-      lastModified: Date.now() 
+      lastModified: Date.now()
     };
 
     console.log("Setting project data. New character count:", updated.characters.length, "New location count:", updated.locations.length);
@@ -546,6 +560,11 @@ const App: React.FC = () => {
 
   const handleCreateProject = async (title: string, author: string, useSample: boolean, shortName?: string) => {
     const id = generateId();
+    try {
+      await initGitForProject(id);
+    } catch (e) {
+      console.error("Git init failed", e);
+    }
     let newProject: ProjectData = {
       id, title, shortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: [], sources: [],
       lastProcessedManuscriptSha: '', lastProcessedPromptSha: '',

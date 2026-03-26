@@ -8,7 +8,7 @@ import { Modal } from '../../ui/Modal';
 import { formatCitation, exportAllCitations, CitationStyle } from '../../../utils/citationUtils';
 
 // Initialize PDF.js worker using unpkg which is more reliable for specific versions
-// pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+// We are now prioritizing server-side extraction with pdf-parse
 
 interface StenoSourcesPanelProps {
   sources: Source[];
@@ -163,18 +163,26 @@ export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
     console.log('Starting source upload for:', file.name);
     const formData = new FormData();
     formData.append('file', file);
-    const uploadResp = await fetch('/api/source-upload', {
-      method: 'POST',
-      body: formData
-    });
-    console.log('Upload response status:', uploadResp.status);
-    if (!uploadResp.ok) {
-      const errorText = await uploadResp.text();
-      console.error('Upload failed details:', errorText);
-      throw new Error(`Upload failed: ${uploadResp.status}`);
+    
+    let uploadData;
+    try {
+      const uploadResp = await fetch('/api/source-upload', {
+        method: 'POST',
+        body: formData
+      });
+      console.log('Upload response status:', uploadResp.status);
+      if (!uploadResp.ok) {
+        const errorText = await uploadResp.text();
+        console.error('Upload failed details:', errorText);
+        throw new Error(`Upload failed: ${uploadResp.status}`);
+      }
+      uploadData = await uploadResp.json();
+      console.log('Upload success, server data:', uploadData);
+    } catch (err: any) {
+      console.error('CRITICAL FETCH ERROR:', err);
+      alert(`Connection to server failed: ${err.message}. Ensure the backend is running.`);
+      return; // Stop processing if fetch fails
     }
-    const uploadData = await uploadResp.json();
-    console.log('Upload success, server data:', uploadData);
 
     if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
       type = 'pdf';
