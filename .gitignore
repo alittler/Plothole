@@ -9,3 +9,8 @@ coverage/
 public/uploads/
 public/source/
 server_log.txt
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
