@@ -100,15 +100,12 @@ async function startServer() {
         const dataBuffer = fs.readFileSync(filePath);
         
         // Handle both function and object exports
-        const parseFn = typeof pdf === 'function' ? pdf : pdf.PDFParse;
+        const parseFn = typeof pdf === 'function' ? pdf : (pdf as any).PDFParse;
         if (typeof parseFn !== 'function') throw new Error('PDF parse function not found in module');
         
         const data = await parseFn(dataBuffer);
         extractedText = data.text;
         console.log(`Successfully extracted ${extractedText.length} chars from PDF`);
-        
-        // Save extracted text as a sidecar .txt file
-        fs.writeFileSync(`${filePath}.txt`, extractedText);
       } catch (err) {
         console.error('Server-side PDF extraction failed:', err);
       }
@@ -122,53 +119,6 @@ async function startServer() {
     });
   });
 
-  app.post('/api/source-link', (req, res) => {
-    const { url, title, content, projectId } = req.body;
-    if (!url) return res.status(400).json({ error: 'URL is required' });
-
-    const filename = `mirror-${Date.now()}.html`;
-    const projectDir = projectId ? path.join(sourceFilesRootDir, projectId) : sourceFilesRootDir;
-    const filePath = path.join(projectDir, filename);
-    const publicUrl = projectId ? `/source-files/${projectId}/${filename}` : `/source-files/${filename}`;
-    
-    if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
-    
-    const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>${title || 'Source Mirror'}</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 20px; color: #1e293b; background: #fdfdfd; }
-    .meta { background: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 40px; font-size: 14px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-    .url { color: #4f46e5; word-break: break-all; font-family: monospace; }
-    h1 { margin-top: 0; color: #0f172a; font-weight: 800; tracking: -0.025em; }
-    .content { background: white; padding: 40px; border-radius: 16px; border: 1px solid #f1f5f9; }
-    p { margin-bottom: 1.5em; }
-  </style>
-</head>
-<body>
-  <div class="meta">
-    <h1>${title || 'Untitled Source'}</h1>
-    <p><strong>Original URL:</strong> <a class="url" href="${url}">${url}</a></p>
-    <p><strong>Captured:</strong> ${new Date().toLocaleString()}</p>
-  </div>
-  <div class="content">
-    ${content?.split('\n').filter((p: string) => p.trim()).map((p: string) => `<p>${p}</p>`).join('')}
-  </div>
-</body>
-</html>`;
-
-    fs.writeFileSync(filePath, htmlContent);
-
-    res.json({ 
-      success: true, 
-      filename,
-      url: publicUrl
-    });
-  });
-
   // Sidecar Metadata API
   app.post('/api/source-meta', (req, res) => {
     const { filename, metadata, projectId, content } = req.body;
@@ -178,8 +128,8 @@ async function startServer() {
     const projectDir = projectId ? path.join(sourceFilesRootDir, projectId) : sourceFilesRootDir;
     const baseName = path.basename(filename);
 
-    // Save JSON metadata
-    const metaFilename = `${baseName}.meta.json`;
+    // Save Metadata Index (index.json)
+    const metaFilename = `${baseName}.index.json`;
     const metaPath = path.join(projectDir, metaFilename);
     const publicMetaUrl = projectId ? `/source-files/${projectId}/${metaFilename}` : `/source-files/${metaFilename}`;
 
@@ -188,9 +138,9 @@ async function startServer() {
     fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
 
     let mdUrl = null;
-    // Save Markdown content if provided
+    // Save Plaintext Sidecar (extracted.md)
     if (content) {
-      const mdFilename = `${baseName}.md`;
+      const mdFilename = `${baseName}.extracted.md`;
       const mdPath = path.join(projectDir, mdFilename);
       fs.writeFileSync(mdPath, content);
       mdUrl = projectId ? `/source-files/${projectId}/${mdFilename}` : `/source-files/${mdFilename}`;
@@ -198,6 +148,31 @@ async function startServer() {
 
     res.json({ success: true, url: publicMetaUrl, mdUrl });
   });
+
+  app.get('/api/source-files/:projectId', (req, res) => {
+    const { projectId } = req.params;
+    const projectDir = path.join(sourceFilesRootDir, projectId);
+
+    if (!fs.existsSync(projectDir)) {
+      return res.json({ files: [] });
+    }
+
+    try {
+      const files = fs.readdirSync(projectDir).map(file => {
+        const stats = fs.statSync(path.join(projectDir, file));
+        return {
+          name: file,
+          size: stats.size,
+          mtime: stats.mtime,
+          url: `/source-files/${projectId}/${file}`
+        };
+      });
+      res.json({ files });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to list files' });
+    }
+  });
+
   app.get('/api/source-meta/:projectId/:filename', (req, res) => {
     const { projectId, filename } = req.params;
     const baseName = path.basename(filename);

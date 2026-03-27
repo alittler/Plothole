@@ -87,10 +87,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   </h3>
                   <div className="space-y-2">
                     {[
-                      { ext: '.txt, .md', type: 'Plain Text', save: 'Original' },
-                      { ext: '.pdf', type: 'Document', save: 'Original' },
-                      { ext: '.png, .jpg', type: 'Images', save: 'Original' },
-                      { ext: 'URLs', type: 'Websites', save: 'MHTML' },
+                      { ext: '.txt, .md', type: 'Plain Text', save: 'Bundle (extracted.md)' },
+                      { ext: '.pdf', type: 'Document', save: 'Bundle (extracted.md)' },
+                      { ext: '.png, .jpg', type: 'Images', save: 'Bundle (extracted.md)' },
                     ].map(f => (
                       <div key={f.ext} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                         <div>
@@ -108,25 +107,25 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
                 <div className="space-y-4">
                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
-                    <Activity size={14} /> Sidecar Recommendation
+                    <Activity size={14} /> The Bundle Method
                   </h3>
                   <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 space-y-4">
                     <p className="text-xs text-slate-400 leading-relaxed font-serif italic">
-                      "For processed files (AI summaries, OCR results, etc.), we recommend using <strong>Sidecar JSON</strong> files."
+                      "Plothole uses the <strong>Bundle Method</strong> to pair raw sources with machine-readable indices and clean transcripts."
                     </p>
                     <div className="space-y-3">
                       <div className="flex items-start gap-3">
                         <div className="mt-1 p-1 bg-indigo-500/20 text-indigo-400 rounded-lg"><Code size={12} /></div>
                         <div>
-                          <p className="text-[10px] font-black text-slate-200 uppercase tracking-widest">Structure</p>
-                          <p className="text-[11px] text-slate-500">filename.ext.meta.json</p>
+                          <p className="text-[10px] font-black text-slate-200 uppercase tracking-widest">Index Sidecar</p>
+                          <p className="text-[11px] text-slate-500">filename.ext.index.json</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <div className="mt-1 p-1 bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={12} /></div>
+                        <div className="mt-1 p-1 bg-emerald-500/20 text-emerald-400 rounded-lg"><FileText size={12} /></div>
                         <div>
-                          <p className="text-[10px] font-black text-slate-200 uppercase tracking-widest">Benefit</p>
-                          <p className="text-[11px] text-slate-500">Keeps processed data portable and paired with the original source without bloating the primary database.</p>
+                          <p className="text-[10px] font-black text-slate-200 uppercase tracking-widest">Prose Sidecar</p>
+                          <p className="text-[11px] text-slate-500">filename.ext.extracted.md</p>
                         </div>
                       </div>
                     </div>
@@ -250,7 +249,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       </aside>
 
       {/* Main Admin Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative bg-slate-50 dark:bg-slate-950">
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar">
         {renderTabContent()}
       </main>
     </div>

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { generateId } from '../../services/storageService';
 import { parseDateToUEI } from '../../utils/calendarUtils';
+import Fuse from 'fuse.js';
 
 interface UnifiedDatabaseViewProps {
   data: ProjectData;
@@ -176,14 +177,21 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
     }
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      entities = entities.filter(e => 
-        (e.name || '').toLowerCase().includes(q) || 
-        (e.type || '').toLowerCase().includes(q) ||
-        (e.id || '').toLowerCase().includes(q) ||
-        (e.data.shortId || '').toLowerCase().includes(q) ||
-        (e.data.description && e.data.description.toLowerCase().includes(q))
-      );
+      const fuse = new Fuse(entities, {
+        keys: [
+          'name',
+          'type',
+          'id',
+          'data.description',
+          'data.term',
+          'data.title',
+          'data.content',
+          'data.shortId'
+        ],
+        threshold: 0.3,
+        distance: 100
+      });
+      return fuse.search(searchQuery).map(result => result.item);
     }
 
     entities.sort((a, b) => {

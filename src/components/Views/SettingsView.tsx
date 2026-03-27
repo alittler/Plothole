@@ -3,16 +3,21 @@ import { ProjectData, Note, User, LedgerEntry, ViewType, ChangeLogEntry } from '
 import { 
   Settings, User as UserIcon, Database, Shield, Code, Check, 
   ChevronRight, History, Activity, Hash, Archive, FileCode,
-  Link as LinkIcon, Sparkles, Copy, Trash2
+  Link as LinkIcon, Sparkles, Copy, Trash2, Download, FileText, X
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { saveAs } from 'file-saver';
 
 enum SettingsTab {
   PROFILE = 'Profile',
   PREFERENCES = 'Preferences',
+  ARCHIVE = 'Storage Archive',
   AUDIT = 'Audit Log',
   MANIFEST = 'Manifest',
-  RAW = 'Raw'
+  RAW = 'Raw',
+  EXPORT = 'Export'
 }
 
 interface SettingsViewProps {
@@ -36,6 +41,78 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isSaved, setIsSaved] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+
+  const [archiveFiles, setArchiveFiles] = React.useState<{ name: string, size: number, mtime: Date, url: string }[]>([]);
+  const [previewFile, setPreviewFile] = React.useState<{ name: string, content: string, type: string } | null>(null);
+  const [isLoadingArchive, setIsLoadingArchive] = React.useState(false);
+
+  React.useEffect(() => {
+    if (activeTab === SettingsTab.ARCHIVE && projectData) {
+      fetchArchiveFiles();
+    }
+  }, [activeTab, projectData]);
+
+  const fetchArchiveFiles = async () => {
+    if (!projectData) return;
+    setIsLoadingArchive(true);
+    try {
+      const resp = await fetch(`/api/source-files/${projectData.id}`);
+      const data = await resp.json();
+      setArchiveFiles(data.files || []);
+    } catch (err) {
+      console.error("Failed to fetch archive files", err);
+    } finally {
+      setIsLoadingArchive(false);
+    }
+  };
+
+  const handlePreviewFile = async (file: { name: string, url: string }) => {
+    try {
+      const resp = await fetch(file.url);
+      const content = await resp.text();
+      const type = file.name.endsWith('.json') ? 'json' : (file.name.endsWith('.md') ? 'markdown' : 'text');
+      setPreviewFile({ name: file.name, content, type });
+    } catch (err) {
+      console.error("Failed to preview file", err);
+    }
+  };
+
+  const handleExportDocx = async () => {
+    if (!projectData) return;
+
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({
+            text: projectData.title,
+            heading: HeadingLevel.TITLE,
+          }),
+          new Paragraph({
+            text: `Author: ${projectData.author || currentUser.name}`,
+            heading: HeadingLevel.HEADING_2,
+          }),
+          new Paragraph({
+            text: projectData.summary || "",
+            heading: HeadingLevel.HEADING_3,
+          }),
+          ... (projectData.chapters || []).flatMap(chapter => [
+            new Paragraph({
+              text: chapter.title,
+              heading: HeadingLevel.HEADING_1,
+              pageBreakBefore: true,
+            }),
+            ...chapter.content.split('\n').map(line => new Paragraph({
+              children: [new TextRun(line)],
+            }))
+          ])
+        ],
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `${projectData.title.replace(/\s+/g, '_')}_Manuscript.docx`);
+  };
 
   const allTextEntries = React.useMemo(() => {
     const entries: { id: string; type: string; content: string; timestamp: number }[] = [];
@@ -162,35 +239,179 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       <div className="max-w-4xl mx-auto px-4 pb-12 space-y-12">
         {activeTab === SettingsTab.PROFILE && (
-          <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
-            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
-              <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
-                <UserIcon size={24} />
+          <div className="space-y-12">
+            <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
+                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+                  <UserIcon size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">User Profile</h2>
+                  <p className="text-xs text-slate-500">Your identity within the Plothole ecosystem.</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">User Profile</h2>
-                <p className="text-xs text-slate-500">Your identity within the Plothole ecosystem.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Display Name</label>
+                  <input
+                    type="text"
+                    value={currentUser.name}
+                    onChange={(e) => onUpdateUser({ name: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                  <input
+                    type="email"
+                    value={currentUser.email}
+                    onChange={(e) => onUpdateUser({ email: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                  />
+                </div>
               </div>
+            </section>
+
+            <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
+                <div className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl">
+                  <Shield size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Open Source Credits</h2>
+                  <p className="text-xs text-slate-500">The powerful foundations that make Plothole possible.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[
+                  { name: 'React Flow', purpose: 'Graphs', license: 'MIT' },
+                  { name: 'Tiptap', purpose: 'Rich Text', license: 'MIT' },
+                  { name: 'Leaflet', purpose: 'Maps', license: 'BSD-2' },
+                  { name: 'Fuse.js', purpose: 'Fuzzy Search', license: 'Apache 2.0' },
+                  { name: 'docx', purpose: 'Word Export', license: 'MIT' },
+                  { name: 'Clerk', purpose: 'Auth', license: 'Commercial' },
+                  { name: 'Gemini', purpose: 'AI Intelligence', license: 'Commercial' },
+                  { name: 'Lucide', purpose: 'Iconography', license: 'ISC' },
+                  { name: 'React', purpose: 'UI Framework', license: 'MIT' },
+                  { name: 'Vite', purpose: 'Build Tool', license: 'MIT' },
+                  { name: 'Simple Git', purpose: 'Versioning', license: 'MIT' },
+                  { name: 'Express', purpose: 'Server Engine', license: 'MIT' }
+                ].map((lib) => (
+                  <div key={lib.name} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">{lib.purpose}</div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">{lib.name}</div>
+                    <div className="text-[8px] text-slate-400 uppercase mt-1 font-black">{lib.license} License</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {activeTab === SettingsTab.ARCHIVE && projectData && (
+          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-8">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20">
+                  <Archive size={28} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Storage Archive</h2>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Explore raw and processed sidecar files.</p>
+                </div>
+              </div>
+              <button 
+                onClick={fetchArchiveFiles}
+                className="p-3 text-slate-400 hover:text-indigo-600 bg-slate-50 dark:bg-slate-800 rounded-xl transition-all"
+                title="Refresh File List"
+              >
+                <Activity size={20} />
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Display Name</label>
-                <input
-                  type="text"
-                  value={currentUser.name}
-                  onChange={(e) => onUpdateUser({ name: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[600px]">
+              {/* File List */}
+              <div className="bg-slate-50 dark:bg-slate-950 rounded-3xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col">
+                <div className="p-4 bg-white/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Project Folder: /{projectData.id}</span>
+                  <span className="text-[10px] font-bold text-indigo-500 uppercase">{archiveFiles.length} Files</span>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+                  {isLoadingArchive ? (
+                    <div className="h-full flex items-center justify-center text-slate-400 italic text-sm">Scanning directory...</div>
+                  ) : archiveFiles.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-slate-400 italic text-sm">No archive files found.</div>
+                  ) : (
+                    archiveFiles.map(file => (
+                      <button
+                        key={file.name}
+                        onClick={() => handlePreviewFile(file)}
+                        className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left group ${previewFile?.name === file.name ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-indigo-500/50'}`}
+                      >
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          {file.name.endsWith('.json') ? <Code size={16} className={previewFile?.name === file.name ? 'text-white' : 'text-amber-500'} /> : file.name.endsWith('.md') ? <FileText size={16} className={previewFile?.name === file.name ? 'text-white' : 'text-indigo-500'} /> : <Database size={16} className={previewFile?.name === file.name ? 'text-white' : 'text-slate-400'} />}
+                          <div className="truncate">
+                            <div className="text-xs font-bold truncate">{file.name}</div>
+                            <div className={`text-[9px] uppercase font-black tracking-widest mt-0.5 ${previewFile?.name === file.name ? 'text-indigo-200' : 'text-slate-400'}`}>{(file.size / 1024).toFixed(1)} KB • {new Date(file.mtime).toLocaleDateString()}</div>
+                          </div>
+                        </div>
+                        <ChevronRight size={14} className={`opacity-0 group-hover:opacity-100 transition-opacity ${previewFile?.name === file.name ? 'text-white' : 'text-slate-300'}`} />
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Email Address</label>
-                <input
-                  type="email"
-                  value={currentUser.email}
-                  onChange={(e) => onUpdateUser({ email: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                />
+
+              {/* Preview Panel */}
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+                <div className="p-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+                    <Activity size={14} /> File Previewer
+                  </h3>
+                  {previewFile && (
+                    <button 
+                      onClick={() => setPreviewFile(null)}
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                  {previewFile ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full">{previewFile.name}</span>
+                        <button 
+                          onClick={() => { navigator.clipboard.writeText(previewFile.content); alert('Copied to clipboard!'); }}
+                          className="text-[10px] font-black uppercase text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                        >
+                          <Copy size={12} /> Copy Raw
+                        </button>
+                      </div>
+                      {previewFile.type === 'json' ? (
+                        <pre className="text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl overflow-x-auto border border-slate-100 dark:border-slate-800 whitespace-pre-wrap">
+                          {JSON.stringify(JSON.parse(previewFile.content), null, 2)}
+                        </pre>
+                      ) : (
+                        <div className="prose prose-slate dark:prose-invert prose-xs max-w-none font-serif leading-relaxed text-slate-700 dark:text-slate-300">
+                          <textarea 
+                            readOnly 
+                            value={previewFile.content} 
+                            className="w-full h-[400px] bg-transparent border-none focus:ring-0 resize-none text-xs leading-relaxed custom-scrollbar"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-300 space-y-4">
+                      <Archive size={48} className="opacity-20" />
+                      <p className="font-serif italic text-lg opacity-50">Select a file to preview its content</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </section>
@@ -400,6 +621,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${currentUser.preferences?.semanticSearchEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentUser.preferences?.semanticSearchEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {activeTab === SettingsTab.EXPORT && projectData && (
+          <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
+              <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl">
+                <Download size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Export Project</h2>
+                <p className="text-xs text-slate-500">Export your work into various formats for publication or backup.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <button 
+                onClick={handleExportDocx}
+                className="flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl hover:border-indigo-500/50 hover:bg-indigo-50/10 transition-all group"
+              >
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <FileCode size={24} />
+                </div>
+                <span className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Microsoft Word</span>
+                <span className="text-[10px] text-slate-400 mt-1">Export Manuscript (.docx)</span>
+              </button>
+
+              <button 
+                onClick={() => {
+                  const dataStr = JSON.stringify(projectData, null, 2);
+                  const blob = new Blob([dataStr], { type: 'application/json' });
+                  saveAs(blob, `${projectData.title.replace(/\s+/g, '_')}_Backup.json`);
+                }}
+                className="flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl hover:border-indigo-500/50 hover:bg-indigo-50/10 transition-all group"
+              >
+                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Database size={24} />
+                </div>
+                <span className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">JSON Data</span>
+                <span className="text-[10px] text-slate-400 mt-1">Full Project Backup (.json)</span>
               </button>
             </div>
           </section>

@@ -20,6 +20,7 @@ interface SidebarProps {
   onQuickNote?: (text: string) => void;
   appName?: string;
   sidebarOrder?: ViewType[];
+  onOpenLicenses?: () => void;
 }
 
 interface NavItem {
@@ -38,13 +39,12 @@ interface SidebarSection {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, appName = 'PLOTHOLE',
-  sidebarOrder
+  sidebarOrder, onOpenLicenses
 }) => {
   const { signOut } = useClerk();
   
   const allNavItems: NavItem[] = [
     { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
-    // { id: ViewType.STORY_ARCHITECT, label: 'Story Architect', icon: Zap, always: true },
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
     { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: Search, projectOnly: true },
@@ -58,10 +58,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const sections: SidebarSection[] = React.useMemo(() => {
-    // If we have a custom order, we might want to just show one big section or grouped by original sections
-    // For now, let's keep the sections but sort items within them if they are in the order list.
-    // Or even better: if custom order is provided, use that order and group them by their original section.
-    
     const baseSections: SidebarSection[] = [
       {
         title: 'Workspace',
@@ -79,7 +75,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     if (!sidebarOrder) return baseSections;
 
-    // Filter out sections that end up empty
     return baseSections.map(section => ({
       ...section,
       items: [...section.items].sort((a, b) => {
@@ -235,23 +230,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">Sign Out</span>}
           </button>
 
-          {/* Commit Label */}
-          <a 
-            href={`https://github.com/alittler/Plothole/commit/${import.meta.env.VITE_GIT_COMMIT_HASH}`}
-            target="_blank"
-            rel="noreferrer"
-            className={`flex items-center gap-2 px-4 py-2 mt-4 transition-all opacity-40 hover:opacity-100 hover:text-white ${isCollapsed ? 'justify-center' : ''}`}
-          >
-            <GitBranch size={12} className="shrink-0" />
-            {!isCollapsed && (
-              <span className="text-[9px] font-mono tracking-tighter uppercase font-bold">Build: {import.meta.env.VITE_GIT_COMMIT_HASH}</span>
-            )}
-            {isCollapsed && (
-              <div className="absolute left-full ml-4 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none border border-white/10 shadow-2xl">
-                Build: {import.meta.env.VITE_GIT_COMMIT_HASH}
-              </div>
-            )}
-          </a>
+          {/* Commit Label & Licenses */}
+          <div className={`flex flex-col gap-1 mt-4 ${isCollapsed ? 'items-center' : 'px-4'}`}>
+            <a 
+              href={`https://github.com/alittler/Plothole/commit/${import.meta.env.VITE_GIT_COMMIT_HASH}`}
+              target="_blank"
+              rel="noreferrer"
+              className={`flex items-center gap-2 transition-all opacity-40 hover:opacity-100 hover:text-white ${isCollapsed ? 'justify-center' : ''}`}
+            >
+              <GitBranch size={12} className="shrink-0" />
+              {!isCollapsed && (
+                <span className="text-[9px] font-mono tracking-tighter uppercase font-bold">Build: {import.meta.env.VITE_GIT_COMMIT_HASH}</span>
+              )}
+            </a>
+            <button 
+              onClick={onOpenLicenses}
+              className={`flex items-center gap-2 transition-all opacity-40 hover:opacity-100 hover:text-white group relative ${isCollapsed ? 'justify-center' : ''}`}
+            >
+              <Shield size={12} className="shrink-0" />
+              {!isCollapsed && (
+                <span className="text-[9px] font-bold tracking-tighter uppercase">Open Source Licenses</span>
+              )}
+              {isCollapsed && (
+                <div className="absolute left-full ml-4 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none border border-white/10 shadow-2xl z-[2000]">
+                  Open Source Licenses
+                </div>
+              )}
+            </button>
+          </div>
         </div>
       </nav>
     </aside>

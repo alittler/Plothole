@@ -853,30 +853,63 @@ export const notebookLMProcess = async (text: string, type: 'text' | 'pdf' | 'im
   const model = prompts.AI_MODEL || "gemini-3-flash-preview";
 
   const systemInstruction = `
-    You are an expert Research Assistant. Your task is to perform a deep-scan of the provided source material and document it with extreme precision.
-    
-    GUIDELINES:
-    1. TEXT: Document all prose, maintaining hierarchies (headings, sub-headings).
-    2. TABLES: Convert all data tables into clean Markdown tables.
-    3. CHARTS/GRAPHS: Describe any visual data representations, their axes, trends, and key data points.
-    4. IMAGES: For any diagrams or illustrations, provide a detailed technical description.
-    5. COMPLEX COLUMNS: Reconstruct the logical flow of text even if it was originally in newspaper-style columns.
-    
-    Output strictly in well-formatted Markdown. Start with a ## Source Executive Summary section.
+    You are a processing pipeline. Your task is to parse this source and generate the required sidecar files to integrate it into my application's database using the 'Bundle Method.'
+
+    1. Generate the Plaintext Sidecar (extracted.md)
+    - Extract all meaningful text, transcripts, or OCR data from the raw source file.
+    - Format the extraction neatly as Markdown. Remove headers, footers, ad blocks, or UI noise if applicable.
+
+    2. Generate the Metadata Index (index.json)
+    - Analyze the extracted text and output a JSON object containing the database index.
+    - The JSON object must strictly include the following fields:
+      title: A concise name for the source.
+      author: The creator of the source (if identifiable).
+      date: The publication date to the best of your knowledge (Format: ISO-8601).
+      summary: A strict 2-3 sentence summary of the core information or thesis inside the source.
+      skos_tags: An object mapping this source to my Codex taxonomy using three string arrays: broader (parent categories), narrower (subcategories), and related (associated concepts).
+
+    Output Rules:
+    - Do not provide conversational filler.
+    - Output the extracted.md text inside a Markdown block.
+    - Followed immediately by the index.json text block in valid JSON format.
   `;
 
   const response = await withRetry(() => ai.models.generateContent({
     model,
-    contents: [{ role: 'user', parts: [{ text: `Analyze and document this ${type} content:\n\n${text}` }] }],
+    contents: [{ role: 'user', parts: [{ text: `Process this ${type} content using the Bundle Method:\n\n${text}` }] }],
     config: { systemInstruction }
   }));
 
+  const fullText = response.text || "";
+  
+  // Extract Markdown block
+  const mdMatch = fullText.match(/```markdown\n([\s\S]*?)\n```/) || fullText.match(/```\n([\s\S]*?)\n```/);
+  const markdown = mdMatch ? mdMatch[1] : fullText.split('```json')[0].trim();
+
+  // Extract JSON block
+  const jsonMatch = fullText.match(/```json\n([\s\S]*?)\n```/);
+  let metadata = {};
+  try {
+    if (jsonMatch) {
+      metadata = JSON.parse(jsonMatch[1]);
+    } else {
+      // Fallback: search for first { and last }
+      const start = fullText.lastIndexOf('{');
+      const end = fullText.lastIndexOf('}');
+      if (start !== -1 && end !== -1) {
+        metadata = JSON.parse(fullText.substring(start, end + 1));
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to parse metadata JSON from bundle output", e);
+  }
+
   return {
-    markdown: response.text || text,
+    markdown: markdown || fullText,
     metadata: {
+      ...metadata,
       processedAt: Date.now(),
-      engine: model,
-      fidelity: 'High'
+      engine: model
     }
   };
 };

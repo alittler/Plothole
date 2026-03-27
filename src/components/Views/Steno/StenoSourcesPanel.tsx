@@ -131,18 +131,28 @@ export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
 
         if (controller.signal.aborted) return;
 
-        // NotebookLM Process
-        const { markdown } = await notebookLMProcess(rawContent, type);
-        const guide = await generateSourceGuideAi(markdown);
+        // Bundle Method Process (Returns { markdown, metadata })
+        const { markdown, metadata } = await notebookLMProcess(rawContent, type);
 
         if (controller.signal.aborted) return;
 
         const updatedSource: Source = {
           ...initialSource,
+          name: metadata.title || initialSource.name,
           content: markdown,
+          author: metadata.author,
+          publicationYear: metadata.date?.split('-')[0],
+          guide: {
+            summary: metadata.summary,
+            topics: metadata.skos_tags?.related || []
+          },
+          // SKOS Mapping
+          prefLabel: metadata.title,
+          broader: metadata.skos_tags?.broader,
+          narrower: metadata.skos_tags?.narrower,
+          related: metadata.skos_tags?.related,
           filename: uploadData.url,
-          isAnalyzing: false,
-          guide
+          isAnalyzing: false
         };
 
         const sidecarData = await syncSidecar(updatedSource);

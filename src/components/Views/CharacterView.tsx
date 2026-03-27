@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ViewType, Relationship, ProjectData, HierarchicalEntity } from '../../types';
 import { Plus, Search, Sparkles, Edit2, Trash2, Camera, Users, User, FileText, Network, Heart, Zap, Shield, ArrowRight, X, Loader2 } from 'lucide-react';
 import { generateId } from '../../services/storageService';
+import { RelationshipGraph } from '../ui/RelationshipGraph';
 
 interface CharacterViewProps {
   data: ProjectData;
@@ -16,7 +17,8 @@ enum CharacterTab {
   ACTIVE_CAST = 'Active Cast',
   BACKGROUND = 'Background',
   GROUPS = 'Groups',
-  RELATIONSHIPS = 'Relationships'
+  RELATIONSHIPS = 'Relationships',
+  GRAPH = 'Graph Map'
 }
 
 export const CharacterView: React.FC<CharacterViewProps> = ({
@@ -98,6 +100,8 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
       tier: 2 as any, 
       species: 'Faction', 
       description: '',
+      role: 'Organization',
+      traits: [],
       source: 'manual'
     };
     onUpdateProject({ entities: [...entities, newGroup] });
@@ -105,16 +109,14 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
 
   const handleAddRelationship = () => {
     if (!newRel.sourceId || !newRel.targetId || !newRel.type) return;
-    
-    const rel: Relationship = {
+    const relationship: Relationship = {
       id: generateId(),
       sourceId: newRel.sourceId,
       targetId: newRel.targetId,
       type: newRel.type,
       description: newRel.description
     };
-
-    onUpdateProject({ relationships: [...relationships, rel] });
+    onUpdateProject({ relationships: [...relationships, relationship] });
     setIsAddingRel(false);
     setNewRel({ sourceId: '', targetId: '', type: '', description: '' });
   };
@@ -124,6 +126,250 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
   };
 
   const getCharacterName = (id: string) => characters.find(c => c.id === id)?.name || 'Unknown Character';
+
+  const renderActiveTabContent = () => {
+    if (activeTab === CharacterTab.GRAPH) {
+      return (
+        <div className="h-[calc(100vh-300px)] animate-in fade-in duration-500">
+          <RelationshipGraph 
+            entities={allEntities} 
+            relationships={relationships} 
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === CharacterTab.RELATIONSHIPS) {
+      return (
+        <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                <Network size={20} className="text-indigo-600" /> Relationship Mapper
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">Map the social web and emotional ties of your cast.</p>
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={onExtractRelationships}
+                disabled={isExtractingRelationships || characters.length < 2}
+                className="px-6 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+              >
+                {isExtractingRelationships ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                Scan Manuscript
+              </button>
+              <button 
+                onClick={() => setIsAddingRel(!isAddingRel)}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
+              >
+                {isAddingRel ? <X size={18} /> : <Plus size={18} />}
+                {isAddingRel ? 'Cancel' : 'New Connection'}
+              </button>
+            </div>
+          </div>
+
+          {isAddingRel && (
+            <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-indigo-500 shadow-xl space-y-6 animate-in slide-in-from-top-4 duration-300">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Source Character</label>
+                  <select 
+                    value={newRel.sourceId}
+                    onChange={(e) => setNewRel({...newRel, sourceId: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select...</option>
+                    {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2 text-center flex flex-col justify-center">
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Connection Type</div>
+                  <input 
+                    type="text"
+                    placeholder="e.g. Rival, Spouse, Ally"
+                    value={newRel.type}
+                    onChange={(e) => setNewRel({...newRel, type: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm text-center font-bold focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Target Character</label>
+                  <select 
+                    value={newRel.targetId}
+                    onChange={(e) => setNewRel({...newRel, targetId: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select...</option>
+                    {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Context / Notes</label>
+                <textarea 
+                  value={newRel.description}
+                  onChange={(e) => setNewRel({...newRel, description: e.target.value})}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm h-20 resize-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Optional context about this relationship..."
+                />
+              </div>
+              <button 
+                onClick={handleAddRelationship}
+                disabled={!newRel.sourceId || !newRel.targetId || !newRel.type}
+                className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-indigo-700 transition-all disabled:opacity-50"
+              >
+                Create Bond
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {relationships.map(rel => (
+              <div key={rel.id} className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-indigo-500/30 transition-all">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span className="font-bold text-slate-900 dark:text-white truncate">{getCharacterName(rel.sourceId)}</span>
+                    <ArrowRight size={14} className="text-slate-400 shrink-0" />
+                    <span className="font-bold text-slate-900 dark:text-white truncate">{getCharacterName(rel.targetId)}</span>
+                  </div>
+                  <button onClick={() => handleDeleteRelationship(rel.id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
+                </div>
+                <div className="inline-flex px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest mb-3">{rel.type}</div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 italic leading-relaxed">{rel.description || 'No additional context provided.'}</p>
+              </div>
+            ))}
+            {relationships.length === 0 && (
+              <div className="col-span-full py-20 text-center space-y-4">
+                <Heart size={48} className="mx-auto text-slate-200 dark:text-slate-800" />
+                <p className="text-slate-400 font-serif italic text-lg">No relationships mapped yet. Connect your cast to see their ties.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 md:mb-8">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder={`Search ${activeTab}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+          </div>
+          <button
+            onClick={activeTab === CharacterTab.GROUPS ? handleAddGroup : handleAddCharacter}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors sm:ml-auto"
+          >
+            <Plus size={16} />
+            Add {activeTab === CharacterTab.GROUPS ? 'Group' : 'Character'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          {filteredEntities.map(char => (
+            <div key={char.id} className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden group hover:shadow-md transition-all">
+              <div className="aspect-[4/5] bg-slate-100 dark:bg-slate-800 relative">
+                {char.images && char.images.length > 0 ? (
+                  <img src={char.images[0].url} alt={char.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-700">
+                    {activeTab === CharacterTab.GROUPS ? <Shield size={64} /> : <User size={64} />}
+                  </div>
+                )}
+                <div className="absolute top-4 right-4 px-3 py-1 bg-black/50 backdrop-blur-md text-white rounded-full text-[10px] font-black uppercase tracking-widest">
+                  {char.species || 'Human'}
+                </div>
+                <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black text-white uppercase tracking-tight drop-shadow-md">{char.name}</h3>
+                    <p className="text-xs text-white/80 font-bold uppercase tracking-widest drop-shadow-sm">{char.role || 'Supporting'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => onLinkClick('admin', char.id)}
+                      className="p-2 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 flex flex-col h-[200px]">
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`w-2 h-2 rounded-full ${char.tier === 1 ? 'bg-indigo-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Tier {char.tier} Entity</span>
+                  </div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-2">{char.description || 'No description provided.'}</p>
+                </div>
+
+                {(char.age || char.species || char.gender || char.nationality || char.birthPlace || char.residence) && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 py-3 border-y border-slate-100 dark:border-slate-800">
+                    {char.age && (
+                      <div className="flex items-center gap-2">
+                        <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Age</div>
+                        <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.age}</div>
+                      </div>
+                    )}
+                    {char.species && char.type === 'Character' && (
+                      <div className="flex items-center gap-2">
+                        <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Race</div>
+                        <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.species}</div>
+                      </div>
+                    )}
+                    {char.gender && (
+                      <div className="flex items-center gap-2">
+                        <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Gender</div>
+                        <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.gender}</div>
+                      </div>
+                    )}
+                    {char.nationality && (
+                      <div className="flex items-center gap-2">
+                        <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nation</div>
+                        <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.nationality}</div>
+                      </div>
+                    )}
+                    {(char.birthPlace || char.birthplace) && (
+                      <div className="flex items-center gap-2 col-span-2">
+                        <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Born</div>
+                        <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{char.birthPlace || char.birthplace}</div>
+                      </div>
+                    )}
+                    {(char.homeLocation || char.residence) && (
+                      <div className="flex items-center gap-2 col-span-2">
+                        <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Lives</div>
+                        <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{char.homeLocation || char.residence}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 mt-auto pt-2">
+                  {char.traits?.map(trait => (
+                    <span key={trait} className="px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded text-[10px] font-bold uppercase tracking-wider">
+                      {trait}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+          {filteredEntities.length === 0 && (
+            <div className="col-span-full py-20 text-center space-y-4">
+              <FileText size={48} className="mx-auto text-slate-200 dark:text-slate-800" />
+              <p className="text-slate-400 font-serif italic text-lg">No {activeTab.toLowerCase()} found matching your search.</p>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
@@ -144,6 +390,7 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                 {tab === CharacterTab.BACKGROUND && <User size={14} />}
                 {tab === CharacterTab.GROUPS && <Shield size={14} />}
                 {tab === CharacterTab.RELATIONSHIPS && <Network size={14} />}
+                {tab === CharacterTab.GRAPH && <Network size={14} />}
                 {tab}
               </button>
             ))}
@@ -153,266 +400,7 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
 
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
-          {activeTab !== CharacterTab.RELATIONSHIPS ? (
-            <>
-              <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 md:mb-8">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input
-                    type="text"
-                    placeholder={`Search ${activeTab}...`}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-                <button
-                  onClick={activeTab === CharacterTab.GROUPS ? handleAddGroup : handleAddCharacter}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors sm:ml-auto"
-                >
-                  <Plus size={16} />
-                  Add {activeTab === CharacterTab.GROUPS ? 'Group' : 'Character'}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {filteredEntities.map(char => (
-                  <div key={char.id} className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden group hover:shadow-md transition-all">
-                    <div className="aspect-[4/5] bg-slate-100 dark:bg-slate-800 relative">
-                      {char.images && char.images.length > 0 ? (
-                        <img src={char.images[0].url} alt={char.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-700">
-                          {activeTab === CharacterTab.GROUPS ? <Shield size={64} /> : <User size={64} />}
-                        </div>
-                      )}
-                      <div className="absolute top-4 right-4 px-3 py-1 bg-black/50 backdrop-blur-md text-white rounded-full text-[10px] font-black uppercase tracking-widest">
-                        {char.type === 'Character' ? `Tier ${char.tier}` : char.species}
-                      </div>
-
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                        <button 
-                          onClick={() => onLinkClick('admin', char.id)}
-                          className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all transform scale-90 group-hover:scale-100 shadow-2xl border border-white/20 flex flex-col items-center gap-2"
-                        >
-                          <Edit2 size={24} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-4 flex-1 flex flex-col">
-                      <div className="break-words [overflow-wrap:anywhere]">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-xl font-black text-slate-900 dark:text-white">{char.name}</h3>
-                          {char.nickname && <span className="text-[10px] font-bold text-slate-400 italic">"{char.nickname}"</span>}
-                        </div>
-                        {char.job && (
-                          <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">
-                            {char.job}
-                          </div>
-                        )}
-                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-2">{char.description || 'No description provided.'}</p>
-                      </div>
-
-                      {(char.age || char.species || char.gender || char.nationality || char.birthPlace || char.residence) && (
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 py-3 border-y border-slate-100 dark:border-slate-800">
-                          {char.age && (
-                            <div className="flex items-center gap-2">
-                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Age</div>
-                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.age}</div>
-                            </div>
-                          )}
-                          {char.species && char.type === 'Character' && (
-                            <div className="flex items-center gap-2">
-                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Race</div>
-                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.species}</div>
-                            </div>
-                          )}
-                          {char.gender && (
-                            <div className="flex items-center gap-2">
-                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Gender</div>
-                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.gender}</div>
-                            </div>
-                          )}
-                          {char.nationality && (
-                            <div className="flex items-center gap-2">
-                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nation</div>
-                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.nationality}</div>
-                            </div>
-                          )}
-                          {(char.birthPlace || char.birthplace) && (
-                            <div className="flex items-center gap-2 col-span-2">
-                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Born</div>
-                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{char.birthPlace || char.birthplace}</div>
-                            </div>
-                          )}
-                          {(char.homeLocation || char.residence) && (
-                            <div className="flex items-center gap-2 col-span-2">
-                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Lives</div>
-                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{char.homeLocation || char.residence}</div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="flex flex-wrap gap-2 mt-auto pt-2">
-                        {char.traits?.map(trait => (
-                          <span key={trait} className="px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded text-[10px] font-bold uppercase tracking-wider">
-                            {trait}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                    <Network size={20} className="text-indigo-600" /> Relationship Mapper
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1">Map the social web and emotional ties of your cast.</p>
-                </div>
-                <div className="flex gap-3">
-                  <button 
-                    onClick={onExtractRelationships}
-                    disabled={isExtractingRelationships || characters.length < 2}
-                    className="px-6 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-100 transition-colors disabled:opacity-50"
-                  >
-                    {isExtractingRelationships ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                    Scan Manuscript
-                  </button>
-                  <button 
-                    onClick={() => setIsAddingRel(!isAddingRel)}
-                    className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
-                  >
-                    {isAddingRel ? <X size={18} /> : <Plus size={18} />}
-                    {isAddingRel ? 'Cancel' : 'New Connection'}
-                  </button>
-                </div>
-              </div>
-
-              {isAddingRel && (
-                <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-indigo-500 shadow-xl space-y-6 animate-in slide-in-from-top-4 duration-300">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Source Character</label>
-                      <select 
-                        value={newRel.sourceId}
-                        onChange={(e) => setNewRel({...newRel, sourceId: e.target.value})}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="">Select...</option>
-                        {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div className="flex items-end justify-center py-2 text-slate-300">
-                      <ArrowRight size={24} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Target Character</label>
-                      <select 
-                        value={newRel.targetId}
-                        onChange={(e) => setNewRel({...newRel, targetId: e.target.value})}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="">Select...</option>
-                        {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Connection Type</label>
-                      <input 
-                        type="text"
-                        placeholder="e.g. Rival, Spouse, Mentor..."
-                        value={newRel.type}
-                        onChange={(e) => setNewRel({...newRel, type: e.target.value})}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</label>
-                      <input 
-                        type="text"
-                        placeholder="Details about their bond..."
-                        value={newRel.description}
-                        onChange={(e) => setNewRel({...newRel, description: e.target.value})}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-2">
-                    <button 
-                      onClick={handleAddRelationship}
-                      disabled={!newRel.sourceId || !newRel.targetId || !newRel.type}
-                      className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg disabled:opacity-50"
-                    >
-                      Establish Connection
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {relationships.length > 0 ? relationships.map(rel => (
-                  <div key={rel.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest">
-                        {rel.type}
-                      </div>
-                      <button 
-                        onClick={() => handleDeleteRelationship(rel.id)}
-                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 text-center">
-                        <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2 text-slate-400">
-                          <User size={20} />
-                        </div>
-                        <div className="text-xs font-black text-slate-900 dark:text-white uppercase truncate">{getCharacterName(rel.sourceId)}</div>
-                      </div>
-                      <div className="text-indigo-300 flex flex-col items-center">
-                        <ArrowRight size={16} />
-                      </div>
-                      <div className="flex-1 text-center">
-                        <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2 text-slate-400">
-                          <User size={20} />
-                        </div>
-                        <div className="text-xs font-black text-slate-900 dark:text-white uppercase truncate">{getCharacterName(rel.targetId)}</div>
-                      </div>
-                    </div>
-                    {rel.description && (
-                      <p className="mt-4 text-[11px] text-slate-500 dark:text-slate-400 italic text-center border-t border-slate-50 dark:border-slate-800 pt-4">
-                        "{rel.description}"
-                      </p>
-                    )}
-                  </div>
-                )) : (
-                  <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 space-y-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
-                    <Network size={48} className="opacity-20" />
-                    <p className="font-serif italic text-lg text-center px-8">No character connections mapped yet. <br /> Use the "New Connection" button to define how your cast is linked.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === CharacterTab.NOTES && (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-4">
-              <FileText size={48} className="opacity-20" />
-              <p className="font-serif italic text-lg">Character notes integration coming soon...</p>
-            </div>
-          )}
+          {renderActiveTabContent()}
         </div>
       </div>
     </div>

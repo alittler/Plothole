@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { StackedPaper } from '../ui/StackedPaper';
 import Markdown from 'react-markdown';
+import { RichEditor } from '../ui/RichEditor';
 
 interface SemanticEditorViewProps {
   projectData: ProjectData;
@@ -38,9 +39,8 @@ export const SemanticEditorView: React.FC<SemanticEditorViewProps> = ({ projectD
     onUpdateProject({ semanticDocuments: documents });
   }, [documents]);
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleContentChange = (newContent: string) => {
     if (!activeDocId) return;
-    const newContent = e.target.value;
     setDocuments(prev => prev.map(d => d.id === activeDocId ? { ...d, content: newContent, lastModified: Date.now() } : d));
   };
 
@@ -146,10 +146,9 @@ export const SemanticEditorView: React.FC<SemanticEditorViewProps> = ({ projectD
                     className="w-full bg-transparent border-none focus:ring-0 text-xl font-black text-slate-900 dark:text-white"
                   />
                 </div>
-                <textarea
-                  value={activeDoc.content}
-                  onChange={(e) => handleContentChange(e)}
-                  className="flex-1 p-8 bg-transparent border-none focus:ring-0 resize-none font-mono text-sm leading-relaxed text-slate-700 dark:text-slate-300"
+                <RichEditor
+                  content={activeDoc.content}
+                  onChange={handleContentChange}
                   placeholder="Write your semantic prose here... Use [[Entities]], @Mentions, #Tags, and ^Anchors."
                 />
               </div>
