@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { MessageSquare, Sparkles, User as UserIcon, Pin, ArrowRight, Loader2, Send } from 'lucide-react';
+import { MessageSquare, Sparkles, User as UserIcon, Pin, ArrowRight, Loader2, Send, BookOpen, Trash2 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { Note, Source } from '../../../types';
 import { chatWithAssistant } from '../../../services/geminiService';
@@ -13,6 +13,7 @@ interface StenoChatPanelProps {
   setIsChatLoading: React.Dispatch<React.SetStateAction<boolean>>;
   onSaveIdea: (content: string) => void;
   onCommitToLedger: (content: string) => void;
+  onSaveAsSource: () => void;
   sources: Source[];
   ideas: Note[];
   isFullScreen?: boolean;
@@ -27,6 +28,7 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
   setIsChatLoading,
   onSaveIdea,
   onCommitToLedger,
+  onSaveAsSource,
   sources,
   ideas,
   isFullScreen = false
@@ -50,7 +52,7 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
       const context = (ledgerContent ? `### USER LEDGER (PRIORITY)\nYour primary source of truth is the user's Ledger. These are their creative thoughts and drafting notes.\n${ledgerContent}\n\n` : '') +
         `### EXTERNAL SOURCES\nUse these for research and factual grounding, but the Ledger takes precedence.\n` + 
         sources.map(s => `Source: ${s.name}\n${s.content}`).join('\n\n') + 
-        `\n\nINSTRUCTIONS: You are Merlin, a grounded AI assistant. 
+        `\n\nINSTRUCTIONS: You are The Oracle, a grounded AI assistant. 
         1. GROUNDEDNESS: Prioritize ideas in the USER LEDGER over EXTERNAL RESEARCH. 
         2. CITATIONS: Every claim MUST include a deep-link citation back to the original text using the format [[Source: Source Name]] or [[Ledger: Entry ID]].
         3. STYLE: Be concise, analytical, and supportive of the user's creative vision.`;
@@ -71,9 +73,29 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
   return (
     <div className={`flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden ${isFullScreen ? 'h-full max-w-4xl mx-auto w-full' : 'h-full'}`}>
       <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <MessageSquare size={14} /> Synthesis Chat
-        </h3>
+        <div className="flex flex-col">
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <MessageSquare size={14} /> Oracle Terminal
+          </h3>
+          <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-tighter mt-0.5">
+            {sources.length} active sources for grounding
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onSaveAsSource}
+            disabled={chatMessages.length === 0}
+            className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-1 disabled:opacity-30 disabled:pointer-events-none"
+          >
+            <BookOpen size={12} /> Archive to Library
+          </button>
+          <button 
+            onClick={() => { if (confirm('Clear chat history?')) setChatMessages([]); }}
+            className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1"
+          >
+            <Trash2 size={12} /> New Chat
+          </button>
+        </div>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-32">
@@ -107,14 +129,22 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
                    <Markdown
                      components={{
                        p: ({node, children}) => {
-                         if (typeof children === 'string' || Array.isArray(children)) {
-                           return <p className="mb-2 last:mb-0">{children}</p>;
-                         }
                          return <p className="mb-2 last:mb-0">{children}</p>;
+                       },
+                       code: ({node, inline, className, children, ...props}) => {
+                         const content = String(children);
+                         if (inline && (content.startsWith('Source:') || content.startsWith('Ledger:'))) {
+                           return (
+                             <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800 mx-0.5 cursor-help" title={content}>
+                               <BookOpen size={10} className="mr-1" /> {content.split(':').pop()?.trim()}
+                             </span>
+                           );
+                         }
+                         return <code className={className} {...props}>{children}</code>;
                        }
                      }}
                    >
-                     {msg.text.replace(/\[Source:\s*(.+?)\]/g, '`[$1]`')}
+                     {msg.text.replace(/\[\[Source:\s*(.+?)\]\]/g, '`Source: $1`').replace(/\[\[Ledger:\s*(.+?)\]\]/g, '`Ledger: $1`')}
                    </Markdown>
                  </div>
                  {msg.role === 'model' && (

@@ -203,7 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${isAiOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-900 hover:bg-slate-800 text-slate-300'}`}
           >
             <Sparkles size={18} className={isProcessing ? 'animate-spin' : ''} />
-            {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">AI Architect</span>}
+            {!isCollapsed && <span className="font-black text-xs uppercase tracking-widest">The Oracle</span>}
           </button>
           
           {isProcessing && processingStatus && !isCollapsed && (

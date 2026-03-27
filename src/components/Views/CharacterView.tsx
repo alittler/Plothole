@@ -214,8 +214,8 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                         <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-2">{char.description || 'No description provided.'}</p>
                       </div>
 
-                      {(char.age || char.birthplace || char.residence) && (
-                        <div className="grid grid-cols-2 gap-y-2 py-3 border-y border-slate-100 dark:border-slate-800">
+                      {(char.age || char.species || char.gender || char.nationality || char.birthPlace || char.residence) && (
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 py-3 border-y border-slate-100 dark:border-slate-800">
                           {char.age && (
                             <div className="flex items-center gap-2">
                               <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Age</div>
@@ -226,6 +226,30 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
                             <div className="flex items-center gap-2">
                               <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Race</div>
                               <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.species}</div>
+                            </div>
+                          )}
+                          {char.gender && (
+                            <div className="flex items-center gap-2">
+                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Gender</div>
+                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.gender}</div>
+                            </div>
+                          )}
+                          {char.nationality && (
+                            <div className="flex items-center gap-2">
+                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nation</div>
+                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{char.nationality}</div>
+                            </div>
+                          )}
+                          {(char.birthPlace || char.birthplace) && (
+                            <div className="flex items-center gap-2 col-span-2">
+                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Born</div>
+                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{char.birthPlace || char.birthplace}</div>
+                            </div>
+                          )}
+                          {(char.homeLocation || char.residence) && (
+                            <div className="flex items-center gap-2 col-span-2">
+                              <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Lives</div>
+                              <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{char.homeLocation || char.residence}</div>
                             </div>
                           )}
                         </div>

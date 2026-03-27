@@ -50,16 +50,37 @@ export interface HierarchicalEntity {
   primary_trait?: string;
   location_id?: string;
   role?: string;
-  job?: string;
-  nickname?: string;
+  job?: string; // Maps to jobTitle
+  nickname?: string; // Maps to additionalName
   age?: string;
-  birthplace?: string;
-  residence?: string;
+  birthplace?: string; // Maps to birthPlace
+  residence?: string; // Maps to homeLocation
   traits?: string[];
   source?: 'manual' | 'ai';
   images?: { url: string }[];
   firstMentionOffset?: number;
   lastMentionOffset?: number;
+
+  // Schema.org/Person Extension Fields
+  givenName?: string;
+  familyName?: string;
+  honorificPrefix?: string;
+  honorificSuffix?: string;
+  jobTitle?: string;
+  birthDate?: string;
+  deathDate?: string;
+  gender?: string;
+  nationality?: string;
+  affiliation?: string;
+  knowsAbout?: string[];
+
+  // SKOS Compatibility
+  prefLabel?: string;
+  altLabel?: string[];
+  broader?: string[];
+  narrower?: string[];
+  related?: string[];
+  scopeNote?: string;
   
   // Generic / Tier 3
   description?: string;
@@ -92,26 +113,66 @@ export interface ProjectManifest {
 
 export interface LoreEntry {
   id: string;
-  term: string;
-  definition: string;
+  term: string; // Maps to prefLabel
+  definition: string; // Maps to definition/note
   category: string;
   source?: 'manual' | 'ai';
+
+  // SKOS (Simple Knowledge Organization System) Compatibility
+  prefLabel?: string;
+  altLabel?: string[]; // Synonyms/Aliases
+  hiddenLabel?: string[];
+  broader?: string[]; // Parent concepts (IDs)
+  narrower?: string[]; // Child concepts (IDs)
+  related?: string[]; // Related concepts (IDs)
+  scopeNote?: string;
 }
 
 export interface Source {
   id: string;
-  name: string;
+  name: string; // Maps to dc:title
   content: string;
-  type: string;
-  timestamp: number;
+  type: string; // Maps to dc:type
+  timestamp: number; // Maps to dc:date
   isAnalyzing?: boolean;
   guide?: any;
-  url?: string;
-  author?: string;
+  url?: string; // Maps to dc:identifier
+  author?: string; // Maps to dc:creator / bibtex:author
   citation?: string;
   filename?: string;
   
-  // Academic Citation Fields
+  // Dublin Core (DCMI) Compatibility
+  dc_title?: string;
+  dc_creator?: string;
+  dc_subject?: string;
+  dc_description?: string;
+  dc_publisher?: string;
+  dc_contributor?: string;
+  dc_date?: string;
+  dc_type?: string;
+  dc_format?: string;
+  dc_identifier?: string;
+  dc_source?: string;
+  dc_language?: string;
+  dc_relation?: string;
+  dc_coverage?: string;
+  dc_rights?: string;
+
+  // BibTeX Compatibility
+  bibtex_key?: string;
+  bibtex_type?: 'article' | 'book' | 'booklet' | 'conference' | 'inbook' | 'incollection' | 'inproceedings' | 'manual' | 'mastersthesis' | 'misc' | 'phdthesis' | 'proceedings' | 'techreport' | 'unpublished';
+  bibtex_journal?: string;
+  bibtex_year?: string;
+  bibtex_volume?: string;
+  bibtex_number?: string;
+  bibtex_pages?: string;
+  bibtex_month?: string;
+  bibtex_note?: string;
+  bibtex_isbn?: string;
+  bibtex_issn?: string;
+  bibtex_doi?: string;
+  
+  // Academic Citation Fields (Legacy Sync)
   publisher?: string;
   publicationYear?: string;
   volume?: string;
@@ -203,6 +264,21 @@ export interface Character {
   motivation?: string;
   conflict?: string;
   primary_trait?: string;
+
+  // Schema.org/Person Compatibility
+  givenName?: string;
+  familyName?: string;
+  honorificPrefix?: string;
+  honorificSuffix?: string;
+  jobTitle?: string;
+  birthDate?: string;
+  deathDate?: string;
+  birthPlace?: string;
+  homeLocation?: string;
+  gender?: string;
+  nationality?: string;
+  affiliation?: string;
+  knowsAbout?: string[];
 }
 
 export interface Location {
@@ -235,13 +311,21 @@ export interface Artifact {
 
 export interface TimelineEvent {
   id: string;
-  date: string;
+  date: string; // Legacy field, mapping to startDate if ISO
   uei?: number;
   title: string;
   description: string;
-  charactersInvolved: string[];
+  charactersInvolved: string[]; // Maps to attendees
   location: string;
   source?: 'manual' | 'ai';
+
+  // Schema.org/Event Compatibility
+  startDate?: string; // ISO-8601
+  endDate?: string;   // ISO-8601
+  eventStatus?: string;
+  attendees?: string[];
+  duration?: string; // ISO-8601 duration
+  typicalAgeRange?: string;
 }
 
 export interface Note {
@@ -253,10 +337,16 @@ export interface Note {
 
 export interface Relationship {
   id: string;
-  sourceId: string;
-  targetId: string;
-  type: string;
+  sourceId: string; // Node A
+  targetId: string; // Node B
+  type: string;     // The edge label / predicate
   description?: string;
+  
+  // Standard Graph Metadata (JGF/RDF)
+  predicate?: string; // Standardized URI or slug for the relationship
+  weight?: number;    // Strength of connection (0.0 to 1.0)
+  directed?: boolean; // Whether the relationship is one-way
+  metadata?: Record<string, any>;
 }
 
 export interface CalendarSystem {
@@ -302,7 +392,8 @@ export interface User {
 
 export interface AppSettings {
   appName: string;
-  aiCharacterLimit: number;
+  aiCharacterLimit?: number;
+  adminEmails?: string[];
 }
 
 export interface AppPrompts {

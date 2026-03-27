@@ -274,7 +274,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">AI Architect Verbosity</label>
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">The Oracle Verbosity</label>
                   <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                     {(['concise', 'detailed'] as const).map(v => (
                       <button

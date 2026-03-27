@@ -19,7 +19,7 @@ interface AiAssistantProps {
 
 export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, projectData, currentUser }) => {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: `Hello ${currentUser.name}! I'm your story architect. How can I help you with your narrative today?` }
+    { role: 'model', text: `Hello ${currentUser.name}! I'm The Oracle. How can I help you with your narrative today?` }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -69,7 +69,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, proje
   };
 
   const handleExportDiscussion = () => {
-    const chatText = messages.map(m => `### ${m.role === 'user' ? currentUser.name : 'Story Assistant'}\n\n${m.text}\n\n---\n`).join('\n');
+    const chatText = messages.map(m => `### ${m.role === 'user' ? currentUser.name : 'The Oracle'}\n\n${m.text}\n\n---\n`).join('\n');
     const blob = new Blob([chatText], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -86,7 +86,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, proje
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
         <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white text-sm uppercase tracking-tighter">
           <Sparkles size={18} className="text-indigo-500" />
-          <span>Story Assistant</span>
+          <span>The Oracle</span>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -114,7 +114,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, proje
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-3">
                       <span className={`text-[10px] font-black uppercase tracking-widest ${m.role === 'user' ? 'text-indigo-600' : 'text-slate-400'}`}>
-                        {m.role === 'user' ? currentUser.name : 'Story Assistant'}
+                        {m.role === 'user' ? currentUser.name : 'The Oracle'}
                       </span>
                     </div>
                     <div className="prose prose-slate dark:prose-invert max-w-none prose-sm leading-relaxed">

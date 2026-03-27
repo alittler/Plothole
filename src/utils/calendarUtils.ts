@@ -78,6 +78,57 @@ export const isValidDate = (calendar: CalendarSystem, year: number, monthIndex: 
   return true;
 };
 
+// Attempt to parse a string date into a UEI for sorting
+export const parseDateToUEI = (calendar: CalendarSystem, dateStr: string): number | null => {
+  if (!dateStr) return null;
+  const normalized = dateStr.toLowerCase().trim();
+  
+  // 1. Try ISO-8601 (YYYY-MM-DD)
+  const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1]);
+    const month = parseInt(isoMatch[2]);
+    const day = parseInt(isoMatch[3]);
+    return calculateUEI(calendar, year, month - 1, day);
+  }
+
+  // 2. Extract Year
+  let year = 1;
+  const yearMatch = normalized.match(/year[:\s]+(\d+)/i) || normalized.match(/yr\s*(\d+)/i) || normalized.match(/\b(\d{3,4})\b/);
+  if (yearMatch) {
+    year = parseInt(yearMatch[1]);
+  }
+
+  // 3. Extract Month
+  let monthIndex = 0;
+  calendar.months.forEach((m, idx) => {
+    if (normalized.includes(m.name.toLowerCase())) {
+      monthIndex = idx;
+    }
+  });
+
+  // 4. Extract Day
+  let day = 1;
+  const dayMatch = normalized.match(/(\d+)(st|nd|rd|th)?\s+of/i) || normalized.match(/day\s+(\d+)/i) || normalized.match(/(\d+)\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i);
+  if (dayMatch) {
+    // dayMatch[1] or dayMatch[2] depending on which regex hit
+    const val = dayMatch[1] || dayMatch[2];
+    if (val) day = parseInt(val);
+  }
+
+  // 5. Special Case: "Day X" relative to start of time
+  if (normalized.match(/^day\s+(\d+)$/i)) {
+    return parseInt(normalized.match(/\d+/)?.[0] || '0') - 1;
+  }
+
+  // If we found at least a year or month, return calculated UEI
+  if (yearMatch || monthIndex > 0 || normalized.includes(calendar.months[0].name.toLowerCase())) {
+    return calculateUEI(calendar, year, monthIndex, day);
+  }
+
+  return null;
+};
+
 export const detectTemporalParadoxes = (projectData: any): { id: string; type: string; message: string }[] => {
   const paradoxes: { id: string; type: string; message: string }[] = [];
   const calendar = projectData.calendars?.find((c: any) => c.id === projectData.activeCalendarId) || projectData.calendars?.[0];

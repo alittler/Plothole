@@ -706,7 +706,7 @@ export const chatWithAssistant = async (
   const chat = ai.chats.create({
     model,
     config: {
-      systemInstruction: `You are the Plothole Story Architect, a world-class narrative consultant. 
+      systemInstruction: `You are The Oracle, a world-class narrative consultant.
       Your goal is to help the writer develop their story, characters, and world.
       
       ${context ? `ADDITIONAL CONTEXT (Grounded Sources):\n---\n${context}\n---\n` : ''}
@@ -845,6 +845,40 @@ export const performOCR = async (base64Image: string): Promise<string> => {
     console.error("OCR Error:", error);
     return "Failed to extract text from image.";
   }
+};
+
+export const notebookLMProcess = async (text: string, type: 'text' | 'pdf' | 'image'): Promise<{ markdown: string, metadata: any }> => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+
+  const systemInstruction = `
+    You are an expert Research Assistant. Your task is to perform a deep-scan of the provided source material and document it with extreme precision.
+    
+    GUIDELINES:
+    1. TEXT: Document all prose, maintaining hierarchies (headings, sub-headings).
+    2. TABLES: Convert all data tables into clean Markdown tables.
+    3. CHARTS/GRAPHS: Describe any visual data representations, their axes, trends, and key data points.
+    4. IMAGES: For any diagrams or illustrations, provide a detailed technical description.
+    5. COMPLEX COLUMNS: Reconstruct the logical flow of text even if it was originally in newspaper-style columns.
+    
+    Output strictly in well-formatted Markdown. Start with a ## Source Executive Summary section.
+  `;
+
+  const response = await withRetry(() => ai.models.generateContent({
+    model,
+    contents: [{ role: 'user', parts: [{ text: `Analyze and document this ${type} content:\n\n${text}` }] }],
+    config: { systemInstruction }
+  }));
+
+  return {
+    markdown: response.text || text,
+    metadata: {
+      processedAt: Date.now(),
+      engine: model,
+      fidelity: 'High'
+    }
+  };
 };
 
 export const auditPlotThreads = async (

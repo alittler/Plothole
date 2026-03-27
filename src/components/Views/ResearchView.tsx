@@ -25,11 +25,12 @@ interface ResearchViewProps {
   projectsMetadata: ProjectMetadata[];
   currentUser: any;
   onUpdateProject: (data: Partial<ProjectData>) => void;
+  onDeleteNote: (id: string) => Promise<void>;
   onLinkClick?: (type: string, id: string) => void;
   }
 
   const ResearchView: React.FC<ResearchViewProps> = ({
-  projectData, globalNotes, projectsMetadata, currentUser, onUpdateProject, onLinkClick
+  projectData, globalNotes, projectsMetadata, currentUser, onUpdateProject, onDeleteNote, onLinkClick
   }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as StenoTab) || StenoTab.WORKSPACE;
@@ -42,13 +43,19 @@ interface ResearchViewProps {
     onUpdateProject({ ideas: updated });
   };
   
-  const sources = projectData.sources || [];
   const setSources = (newSources: Source[] | ((prev: Source[]) => Source[])) => {
-    const updated = typeof newSources === 'function' ? newSources(sources) : newSources;
-    onUpdateProject({ sources: updated });
+    // We need to use functional update to avoid stale closure issues
+    onUpdateProject(prev => {
+      const currentSources = prev.sources || [];
+      const updated = typeof newSources === 'function' ? newSources(currentSources) : newSources;
+      console.log("Saving sources to projectData:", updated.length);
+      return { ...prev, sources: updated };
+    });
   };
 
+  const sources = projectData.sources || [];
   const ledger = projectData.ledger || [];
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>(sources.map(s => s.id));
 
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -80,48 +87,66 @@ interface ResearchViewProps {
     setIdeas(prev => [newIdea, ...prev]);
   };
 
+  const handleSaveChatAsSource = () => {
+    if (chatMessages.length === 0) return;
+    
+    const content = chatMessages.map(m => `### ${m.role === 'user' ? 'USER' : 'ORACLE'}\n\n${m.text}`).join('\n\n');
+    const newSource: Source = {
+      id: generateId(),
+      name: `Chat Archive - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+      content: content,
+      type: 'text',
+      timestamp: Date.now(),
+      isAnalyzing: false
+    };
+    
+    setSources(prev => [newSource, ...prev]);
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case StenoTab.WORKSPACE:
         return (
-          <div className="h-full p-4 lg:p-8 overflow-hidden">
-            <div className="max-w-6xl mx-auto h-full grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Ledger Feed Panel - Takes up 2/3 on desktop */}
-              <div className="lg:col-span-2 h-full overflow-hidden">
+          <div className="h-full p-4 lg:p-6 overflow-hidden">
+            <div className="h-full grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Left Panel: Ledger (25%) */}
+              <div className="lg:col-span-1 h-full overflow-hidden">
                 <StenoLedgerPanel 
                   projectData={projectData} 
                   onUpdateProject={onUpdateProject} 
+                  onDeleteNote={onDeleteNote}
                   currentUser={currentUser}
                   projectsMetadata={projectsMetadata}
                   onLinkClick={onLinkClick}
-                  
                 />
               </div>
 
-              {/* Combined Source & Chat Column - Takes up 1/3 on desktop */}
-              <div className="flex flex-col gap-6 h-full overflow-hidden">
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <StenoSourcesPanel
-                    sources={sources}
-                    setSources={setSources}
-                    
-                  />
-                </div>
-                
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <StenoChatPanel 
-                    chatMessages={chatMessages}
-                    setChatMessages={setChatMessages}
-                    chatInput={chatInput}
-                    setChatInput={setChatInput}
-                    isChatLoading={isChatLoading}
-                    setIsChatLoading={setIsChatLoading}
-                    onSaveIdea={handleSaveIdea}
-                    onCommitToLedger={handleCommitToLedger}
-                    sources={sources}
-                    ideas={ideas}
-                  />
-                </div>
+              {/* Middle Panel: Chat (50%) */}
+              <div className="lg:col-span-2 h-full overflow-hidden">
+                <StenoChatPanel 
+                  chatMessages={chatMessages}
+                  setChatMessages={setChatMessages}
+                  chatInput={chatInput}
+                  setChatInput={setChatInput}
+                  isChatLoading={isChatLoading}
+                  setIsChatLoading={setIsChatLoading}
+                  onSaveIdea={handleSaveIdea}
+                  onCommitToLedger={handleCommitToLedger}
+                  onSaveAsSource={handleSaveChatAsSource}
+                  sources={sources.filter(s => selectedSourceIds.includes(s.id))}
+                  ideas={ideas}
+                />
+              </div>
+
+              {/* Right Panel: Sources (25%) */}
+              <div className="lg:col-span-1 h-full overflow-hidden">
+                <StenoSourcesPanel
+                  sources={sources}
+                  setSources={setSources}
+                  projectId={projectData.id}
+                  selectedSourceIds={selectedSourceIds}
+                  setSelectedSourceIds={setSelectedSourceIds}
+                />
               </div>
             </div>
           </div>
@@ -133,6 +158,7 @@ interface ResearchViewProps {
              <StenoLedgerPanel 
               projectData={projectData} 
               onUpdateProject={onUpdateProject} 
+              onDeleteNote={onDeleteNote}
               currentUser={currentUser}
               projectsMetadata={projectsMetadata}
               onLinkClick={onLinkClick}
@@ -150,7 +176,7 @@ interface ResearchViewProps {
                 sources={sources} 
                 setSources={setSources} 
                 isFullScreen={true}
-                
+                projectId={projectData.id}
               />
             </div>
           </div>
@@ -168,6 +194,7 @@ interface ResearchViewProps {
               setIsChatLoading={setIsChatLoading}
               onSaveIdea={handleSaveIdea}
               onCommitToLedger={handleCommitToLedger}
+              onSaveAsSource={handleSaveChatAsSource}
               sources={sources}
               ideas={ideas}
               isFullScreen={true}

@@ -43,10 +43,15 @@ const getProjectGit = (projectId: string): SimpleGit => {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    console.log('Multer destination check:', req.url, req.originalUrl);
     const isSourceUpload = (req.originalUrl && req.originalUrl.includes('source-upload')) || (req.url && req.url.includes('source-upload'));
-    const dest = isSourceUpload ? sourceFilesRootDir : uploadDir;
-    console.log('Multer using destination:', dest);
+    const projectId = req.body?.projectId;
+    
+    let dest = uploadDir;
+    if (isSourceUpload) {
+      dest = projectId ? path.join(sourceFilesRootDir, projectId) : sourceFilesRootDir;
+    }
+    
+    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
     cb(null, dest);
   },
   filename: (req, file, cb) => {
@@ -79,14 +84,13 @@ async function startServer() {
   });
 
   app.post('/api/source-upload', upload.single('file'), async (req, res) => {
-    console.log('Source upload request received');
-    if (!req.file) {
-      console.error('Source upload failed: No file in request');
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
+    const projectId = req.body.projectId;
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     const filename = req.file.filename;
-    const filePath = path.join(sourceFilesRootDir, filename);
+    const projectDir = projectId ? path.join(sourceFilesRootDir, projectId) : sourceFilesRootDir;
+    const filePath = path.join(projectDir, filename);
+    const publicUrl = projectId ? `/source-files/${projectId}/${filename}` : `/source-files/${filename}`;
     let extractedText = '';
 
     // If it's a PDF, extract text on the server using pdf-parse
@@ -94,7 +98,12 @@ async function startServer() {
       try {
         console.log('Extracting text from PDF:', filename);
         const dataBuffer = fs.readFileSync(filePath);
-        const data = await pdf(dataBuffer);
+        
+        // Handle both function and object exports
+        const parseFn = typeof pdf === 'function' ? pdf : pdf.PDFParse;
+        if (typeof parseFn !== 'function') throw new Error('PDF parse function not found in module');
+        
+        const data = await parseFn(dataBuffer);
         extractedText = data.text;
         console.log(`Successfully extracted ${extractedText.length} chars from PDF`);
         
@@ -105,20 +114,24 @@ async function startServer() {
       }
     }
 
-    console.log('Source upload success:', filename);
+    console.log('Source upload success:', filename, 'Project:', projectId);
     res.json({ 
-      url: `/source-files/${filename}`,
+      url: publicUrl,
       filename: filename,
       extractedText: extractedText
     });
   });
 
   app.post('/api/source-link', (req, res) => {
-    const { url, title, content } = req.body;
+    const { url, title, content, projectId } = req.body;
     if (!url) return res.status(400).json({ error: 'URL is required' });
 
     const filename = `mirror-${Date.now()}.html`;
-    const filePath = path.join(sourceFilesRootDir, filename);
+    const projectDir = projectId ? path.join(sourceFilesRootDir, projectId) : sourceFilesRootDir;
+    const filePath = path.join(projectDir, filename);
+    const publicUrl = projectId ? `/source-files/${projectId}/${filename}` : `/source-files/${filename}`;
+    
+    if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
     
     const htmlContent = `
 <!DOCTYPE html>
@@ -152,27 +165,43 @@ async function startServer() {
     res.json({ 
       success: true, 
       filename,
-      url: `/source-files/${filename}`
+      url: publicUrl
     });
   });
 
   // Sidecar Metadata API
   app.post('/api/source-meta', (req, res) => {
-    const { filename, metadata } = req.body;
+    const { filename, metadata, projectId, content } = req.body;
     if (!filename || !metadata) return res.status(400).json({ error: 'Filename and metadata required' });
 
-    // Ensure we are only writing to the source directory
+    // Ensure we are only writing to the project directory
+    const projectDir = projectId ? path.join(sourceFilesRootDir, projectId) : sourceFilesRootDir;
     const baseName = path.basename(filename);
-    const metaFilename = `${baseName}.meta.json`;
-    const filePath = path.join(sourceFilesRootDir, metaFilename);
-    
-    fs.writeFileSync(filePath, JSON.stringify(metadata, null, 2));
-    res.json({ success: true, url: `/source-files/${metaFilename}` });
-  });
 
-  app.get('/api/source-meta/:filename', (req, res) => {
-    const baseName = path.basename(req.params.filename);
-    const filePath = path.join(sourceFilesRootDir, `${baseName}.meta.json`);
+    // Save JSON metadata
+    const metaFilename = `${baseName}.meta.json`;
+    const metaPath = path.join(projectDir, metaFilename);
+    const publicMetaUrl = projectId ? `/source-files/${projectId}/${metaFilename}` : `/source-files/${metaFilename}`;
+
+    if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
+
+    fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
+
+    let mdUrl = null;
+    // Save Markdown content if provided
+    if (content) {
+      const mdFilename = `${baseName}.md`;
+      const mdPath = path.join(projectDir, mdFilename);
+      fs.writeFileSync(mdPath, content);
+      mdUrl = projectId ? `/source-files/${projectId}/${mdFilename}` : `/source-files/${mdFilename}`;
+    }
+
+    res.json({ success: true, url: publicMetaUrl, mdUrl });
+  });
+  app.get('/api/source-meta/:projectId/:filename', (req, res) => {
+    const { projectId, filename } = req.params;
+    const baseName = path.basename(filename);
+    const filePath = path.join(sourceFilesRootDir, projectId, `${baseName}.meta.json`);
     
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, 'utf-8');

@@ -34,7 +34,7 @@ export const ActiveArchitect: React.FC<ActiveArchitectProps> = ({ tasks }) => {
           </div>
           
           <div className="flex flex-col">
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Architect Active</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">The Oracle is Thinking</span>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-white whitespace-nowrap">{task}</span>
               <div className="flex gap-0.5">

@@ -70,7 +70,10 @@ const App: React.FC = () => {
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [globalResources, setGlobalResources] = useState<ToolboxLink[]>([]);
   const [appPrompts, setAppPromptsState] = useState<AppPrompts>(DEFAULT_PROMPTS);
-  const [appSettings, setAppSettings] = useState<AppSettings>({ appName: 'Plothole — Your Story, Decoded' });
+  const [appSettings, setAppSettings] = useState<AppSettings>({ 
+    appName: 'Plothole — Your Story, Decoded',
+    adminEmails: ['alittler86@gmail.com']
+  });
   
   const [currentUser, setCurrentUser] = useState<User>(DEMO_USER);
   
@@ -162,61 +165,43 @@ const App: React.FC = () => {
     }
   }, [projectData]);
 
-  const updateProjectData = useCallback(async (updates: Partial<ProjectData>) => {
+  const updateProjectData = useCallback(async (updatesOrFn: Partial<ProjectData> | ((prev: ProjectData) => Partial<ProjectData>)) => {
     if (!projectData) return;
-    console.log("Project update requested:", updates);
+    
+    // Use functional update to ensure we always have the latest state for the merge
+    setProjectData(prev => {
+      if (!prev) return null;
+      
+      const updates = typeof updatesOrFn === 'function' ? updatesOrFn(prev) : updatesOrFn;
+      console.log("Project update requested:", updates);
 
-    // Auto-generate change log entry for notable entities
-    let newLog: ChangeLogEntry | null = null;
-    if (updates.characters && updates.characters.length !== projectData.characters?.length) {
-      const added = updates.characters.find(c => !projectData.characters?.some(pc => pc.id === c.id));
-      if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Character', entityName: added.name, entityId: added.id, action: 'Created' };
-    } else if (updates.locations && updates.locations.length !== projectData.locations?.length) {
-      const added = updates.locations.find(l => !projectData.locations?.some(pl => pl.id === l.id));
-      if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Location', entityName: added.name, entityId: added.id, action: 'Created' };
-    } else if (updates.timeline && updates.timeline.length !== projectData.timeline?.length) {
-      const added = updates.timeline.find(e => !projectData.timeline?.some(pe => pe.id === e.id));
-      if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Timeline', entityName: added.title, entityId: added.id, action: 'Created' };
-    }
-
-    const baseUpdated = {
-      ...projectData,
-      ...updates,
-      changeLog: newLog ? [...(projectData.changeLog || []), newLog] : projectData.changeLog
-    };
-
-    // If chapters changed, perform a real Git commit on the server
-    if (updates.chapters) {
-      const manuscriptText = updates.chapters.map(c => c.content).join('\n\n');
-      try {
-        await commitToGit(projectData.id, updates.title ? `Edit: ${updates.title}` : 'Manuscript Update', [
-          { path: 'manuscript.md', content: manuscriptText }
-        ]);
-        // Also fetch the log to update the local commits state
-        const log = await getGitLog(projectData.id);
-        baseUpdated.commits = log.all;
-      } catch (e) {
-        console.error("Git commit failed", e);
+      // Auto-generate change log entry for notable entities
+      let newLog: ChangeLogEntry | null = null;
+      if (updates.characters && updates.characters.length !== prev.characters?.length) {
+        const added = updates.characters.find(c => !prev.characters?.some(pc => pc.id === c.id));
+        if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Character', entityName: added.name, entityId: added.id, action: 'Created' };
+      } else if (updates.locations && updates.locations.length !== prev.locations?.length) {
+        const added = updates.locations.find(l => !prev.locations?.some(pl => pl.id === l.id));
+        if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Location', entityName: added.name, entityId: added.id, action: 'Created' };
+      } else if (updates.timeline && updates.timeline.length !== prev.timeline?.length) {
+        const added = updates.timeline.find(e => !prev.timeline?.some(pe => pe.id === e.id));
+        if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Timeline', entityName: added.title, entityId: added.id, action: 'Created' };
       }
-    }
 
-    const integrityHash = await updateIntegrityHash(baseUpdated);
+      const baseUpdated = {
+        ...prev,
+        ...updates,
+        changeLog: newLog ? [...(prev.changeLog || []), newLog] : prev.changeLog,
+        lastModified: Date.now()
+      };
 
-    const updated: ProjectData = {
-      ...baseUpdated,
-      integrityHash,
-      lastModified: Date.now()
-    };
+      // We handle Git and integrity in a separate effect or after this update if needed,
+      // but for immediate UI responsiveness, we return the merged state.
+      saveProjectData(baseUpdated as ProjectData);
+      return baseUpdated as ProjectData;
+    });
 
-    console.log("Setting project data. New character count:", updated.characters.length, "New location count:", updated.locations.length);
-    setProjectData(updated);
-    await saveProjectData(updated);
     await refreshMetadata();
-
-    // Trigger cleanup occasionally
-    if (Math.random() < 0.2) {
-      performImageCleanup();
-    }
   }, [projectData, refreshMetadata]);
 
   const handleUpdateProcessedFiles = async () => {
@@ -350,6 +335,28 @@ const App: React.FC = () => {
       removeTask('Analyzing Relationships');
     }
   };
+
+  const handleDeleteNote = useCallback(async (id: string) => {
+    // 1. Delete from Global Notes (Notepad)
+    if (globalNotes.some(n => n.id === id)) {
+      setGlobalNotes(prev => prev.filter(n => n.id !== id));
+      await deleteGlobalNote(id);
+    }
+
+    // 2. Delete from Project Ideas and Ledger
+    if (projectData) {
+      updateProjectData(prev => {
+        const updates: Partial<ProjectData> = {};
+        if (prev.ideas?.some(n => n.id === id)) {
+          updates.ideas = prev.ideas.filter(n => n.id !== id);
+        }
+        if (prev.ledger?.some(n => n.id === id)) {
+          updates.ledger = prev.ledger.filter(n => n.id !== id);
+        }
+        return updates;
+      });
+    }
+  }, [globalNotes, projectData, updateProjectData]);
 
   const handleQuickUpdate = useCallback((type: string, id: string, key: string, value: any) => {
     if (!projectData) return;
@@ -1064,14 +1071,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
 
           setGlobalNotes(prev => [noteToSave, ...prev]); 
           await saveGlobalNote(noteToSave); 
-        }} onAddIdeaToProject={handleAddIdeaToProject} onToggleCanon={handleToggleCanon} onDeleteNote={async id => { 
-          if (globalNotes.some(n => n.id === id)) {
-            setGlobalNotes(prev => prev.filter(n => n.id !== id)); 
-            await deleteGlobalNote(id); 
-          } else if (projectData?.ideas?.some(n => n.id === id)) {
-            await updateProjectData({ ideas: projectData.ideas.filter(n => n.id !== id) });
-          }
-        }} onDeleteAllNotes={async () => {
+        }} onAddIdeaToProject={handleAddIdeaToProject} onToggleCanon={handleToggleCanon} onDeleteNote={handleDeleteNote} onDeleteAllNotes={async () => {
           setGlobalNotes([]);
           for (const note of globalNotes) await deleteGlobalNote(note.id);
           if (projectData?.ideas) await updateProjectData({ ideas: [] });
@@ -1182,7 +1182,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} onClearGlobalNotes={handleClearGlobalNotes} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} onLinkClick={handleLinkClick} />;
 
       case ViewType.RESEARCH:
-        return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
+        return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onDeleteNote={handleDeleteNote} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
 
       case ViewType.CODEX:
         return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;

@@ -29,7 +29,14 @@ const getDB = (): Promise<IDBDatabase> => {
   });
 };
 
-export const generateId = () => crypto.randomUUID();
+export const generateId = (length: number = 12) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 // ==========================================
 // TIERED ENTITY CONVERSION LOGIC
@@ -80,6 +87,52 @@ export const convertToTieredEntity = (raw: any, type: string, allLocations: any[
       if (mentionedLoc) locId = `LOC-${mentionedLoc.name.toUpperCase().replace(/[^A-Z0-9]/g, '-')}`;
     }
     entity.location_id = locId;
+
+    // Schema.org/Person mapping
+    if (type === 'Character') {
+      entity.givenName = raw.givenName;
+      entity.familyName = raw.familyName;
+      entity.honorificPrefix = raw.honorificPrefix;
+      entity.honorificSuffix = raw.honorificSuffix;
+      entity.jobTitle = raw.jobTitle || raw.job;
+      entity.birthDate = raw.birthDate;
+      entity.deathDate = raw.deathDate;
+      entity.birthPlace = raw.birthPlace || raw.birthplace;
+      entity.homeLocation = raw.homeLocation || raw.residence;
+      entity.gender = raw.gender;
+      entity.nationality = raw.nationality;
+      entity.affiliation = raw.affiliation;
+      entity.knowsAbout = raw.knowsAbout;
+    }
+
+    if (type === 'Timeline' || type === 'Event') {
+      entity.startDate = raw.startDate || raw.date;
+      entity.endDate = raw.endDate;
+      entity.eventStatus = raw.eventStatus;
+      entity.attendees = raw.attendees || raw.charactersInvolved;
+      entity.duration = raw.duration;
+    }
+
+    if (type === 'Lore') {
+      entity.prefLabel = raw.prefLabel || raw.term;
+      entity.altLabel = raw.altLabel;
+      entity.broader = raw.broader;
+      entity.narrower = raw.narrower;
+      entity.related = raw.related;
+      entity.scopeNote = raw.scopeNote;
+    }
+
+    if (type === 'Source') {
+      entity.dc_creator = raw.dc_creator || raw.author;
+      entity.dc_publisher = raw.dc_publisher || raw.publisher;
+      entity.dc_title = raw.dc_title || raw.name;
+      entity.dc_date = raw.dc_date || (raw.publicationYear ? String(raw.publicationYear) : undefined);
+      entity.bibtex_type = raw.bibtex_type;
+      entity.bibtex_journal = raw.bibtex_journal;
+      entity.bibtex_volume = raw.bibtex_volume || raw.volume;
+      entity.bibtex_number = raw.bibtex_number || raw.issue;
+      entity.bibtex_pages = raw.bibtex_pages || raw.pages;
+    }
   }
 
   return entity;

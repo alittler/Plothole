@@ -8,6 +8,7 @@ import { generateId } from '../../../services/storageService';
 interface StenoLedgerPanelProps {
   projectData: ProjectData;
   onUpdateProject: (data: Partial<ProjectData>) => void;
+  onDeleteNote?: (id: string) => Promise<void>;
   currentUser?: User;
   projectsMetadata?: ProjectMetadata[];
   onLinkClick?: (type: string, id: string) => void;
@@ -17,6 +18,7 @@ interface StenoLedgerPanelProps {
 export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
   projectData,
   onUpdateProject,
+  onDeleteNote,
   currentUser,
   projectsMetadata,
   onLinkClick,
@@ -43,8 +45,12 @@ export const StenoLedgerPanel: React.FC<StenoLedgerPanelProps> = ({
 
   const handleDeleteNote = (id: string) => {
     if (confirm('Delete this ledger entry permanently?')) {
-      const updatedLedger = ledgerEntries.filter(n => n.id !== id);
-      onUpdateProject({ ledger: updatedLedger });
+      if (onDeleteNote) {
+        onDeleteNote(id);
+      } else {
+        const updatedLedger = ledgerEntries.filter(n => n.id !== id);
+        onUpdateProject({ ledger: updatedLedger });
+      }
     }
   };
 

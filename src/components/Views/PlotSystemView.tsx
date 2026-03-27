@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
 import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight, FileText, Search } from 'lucide-react';
-import { calculateUEI, getDateFromUEI } from '../../utils/calendarUtils';
+import { calculateUEI, getDateFromUEI, parseDateToUEI } from '../../utils/calendarUtils';
 
 interface PlotSystemViewProps {
   currentView: ViewType;
@@ -67,8 +67,12 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
 
   // Pre-calculate and sort timeline
   const sortedTimeline = useMemo(() => {
-    return [...(data.timeline || [])].sort((a, b) => (a.uei || 0) - (b.uei || 0));
-  }, [data.timeline]);
+    return [...(data.timeline || [])].sort((a, b) => {
+      const ueiA = a.uei !== undefined ? a.uei : (parseDateToUEI(activeCalendar, a.startDate || a.date) ?? -1);
+      const ueiB = b.uei !== undefined ? b.uei : (parseDateToUEI(activeCalendar, b.startDate || b.date) ?? -1);
+      return ueiA - ueiB;
+    });
+  }, [data.timeline, activeCalendar]);
 
   // Pre-calculate UEI for calendar map
   const eventsByUEI = useMemo(() => {
@@ -158,6 +162,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                         <div className="flex items-center gap-2">
                           <span className={`text-xs font-black uppercase tracking-widest ${event.isSoftAnchor ? 'text-indigo-500' : 'text-amber-600'}`}>{event.date}</span>
                           {event.isSoftAnchor && <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded uppercase tracking-widest font-black flex items-center gap-1"><Clock size={10} /> Soft Anchor</span>}
+                          <span className="text-[8px] font-mono opacity-30">UEI: {event.uei !== undefined ? event.uei : parseDateToUEI(activeCalendar, event.startDate || event.date)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           {event.source === 'ai' && <Sparkles size={14} className={event.isSoftAnchor ? 'text-indigo-400' : 'text-amber-400'} />}
