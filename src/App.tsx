@@ -45,7 +45,7 @@ import { CodexView } from './components/Views/CodexView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
-import { AlertCircle, X, Sparkles, Menu, LogOut, Shield } from 'lucide-react';
+import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText } from 'lucide-react';
 import { SignedIn, SignedOut, useUser, UserButton } from '@clerk/clerk-react';
 import { SignInPage } from './components/Auth/SignInPage';
 
