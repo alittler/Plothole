@@ -21,6 +21,7 @@ interface AdminViewProps {
   onSavePrompts: (prompts: AppPrompts) => void;
   projectsMetadata: ProjectMetadata[];
   onUpdateProject: (updates: Partial<ProjectData>) => void;
+  onDeleteNote?: (id: string) => Promise<void>;
   onFullArchive: () => void;
   globalResources: ToolboxLink[];
   onAddGlobalResource: (resource: ToolboxLink) => void;
@@ -43,18 +44,23 @@ enum AdminTab {
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
-  data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote, onLinkClick, onChangeView, onQuickUpdate, currentUser, adminTargetId, onClearAdminTarget
+  data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteNote, onDeleteGlobalNote, onLinkClick, onChangeView, onQuickUpdate, currentUser, adminTargetId, onClearAdminTarget
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (adminTargetId ? AdminTab.LEDGER : (searchParams.get('tab') as AdminTab)) || AdminTab.SYSTEM;
-  const setActiveTab = (tab: AdminTab) => setSearchParams({ tab });
+  const [activeTab, setActiveTab] = useState<AdminTab | null>(adminTargetId ? AdminTab.LEDGER : (searchParams.get('tab') as AdminTab) || null);
+  
+  const handleSetActiveTab = (tab: AdminTab | null) => {
+    setActiveTab(tab);
+    if (tab) setSearchParams({ tab });
+    else setSearchParams({});
+  };
 
   const [prompts, setPrompts] = useState(appPrompts);
   const [settings, setSettings] = useState(appSettings);
   const [newUserEmail, setNewUserEmail] = useState('');
 
   React.useEffect(() => {
-    if (adminTargetId) setActiveTab(AdminTab.LEDGER);
+    if (adminTargetId) handleSetActiveTab(AdminTab.LEDGER);
   }, [adminTargetId]);
 
   const renderTabContent = () => {
@@ -199,7 +205,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       case AdminTab.LEDGER:
         return data ? (
           <div className="h-full flex flex-col min-h-0 animate-in fade-in duration-500">
-            <UnifiedDatabaseView data={data} onUpdateProject={onUpdateProject} onQuickUpdate={onQuickUpdate} onLinkClick={onLinkClick} adminTargetId={adminTargetId} onClearAdminTarget={onClearAdminTarget} hideHeader={true} />
+            <UnifiedDatabaseView data={data} onUpdateProject={onUpdateProject} onDeleteNote={onDeleteNote} onQuickUpdate={onQuickUpdate} onLinkClick={onLinkClick} adminTargetId={adminTargetId} onClearAdminTarget={onClearAdminTarget} hideHeader={true} />
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center p-20"><div className="text-center space-y-4"><Database size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Narrative Ledger.</p></div></div>
@@ -210,9 +216,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   return (
-    <div className="h-full flex bg-slate-50 dark:bg-slate-950 overflow-hidden">
+    <div className="h-full flex bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
       {/* Admin Secondary Sidebar */}
-      <aside className="w-64 md:w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0">
+      <aside className={`${activeTab ? 'hidden lg:flex' : 'flex'} w-full lg:w-64 md:w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col shrink-0 transition-all duration-300`}>
         <div className="p-8 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-4 mb-2">
             <div className="p-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl shadow-lg"><Shield size={20} /></div>
@@ -225,7 +231,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
           {Object.values(AdminTab).map(tab => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleSetActiveTab(tab)}
               className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
             >
               {tab === AdminTab.SYSTEM && <Settings size={18} />}
@@ -249,8 +255,23 @@ export const AdminView: React.FC<AdminViewProps> = ({
       </aside>
 
       {/* Main Admin Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar">
-        {renderTabContent()}
+      <main className={`${!activeTab ? 'hidden lg:flex' : 'flex'} flex-1 flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar`}>
+        <div className="flex-1 w-full max-w-5xl mx-auto p-4 lg:p-8">
+          {activeTab && (
+            <button 
+              onClick={() => handleSetActiveTab(null)}
+              className="lg:hidden mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
+            >
+              <ChevronRight size={14} className="rotate-180" /> Back to Admin
+            </button>
+          )}
+          {activeTab ? renderTabContent() : (
+            <div className="hidden lg:flex h-full flex-col items-center justify-center text-slate-300 space-y-4 py-20">
+              <Shield size={64} className="opacity-10" />
+              <p className="font-serif italic text-xl opacity-30">Select an admin module to configure</p>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

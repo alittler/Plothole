@@ -75,6 +75,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
   const zoomInRef = useRef<() => void>(null);
   const zoomOutRef = useRef<() => void>(null);
+  const fitAllLocationsRef = useRef<() => void>(null);
   const centerMapRef = useRef<() => void>(null);
   const getViewStateRef = useRef<() => any>(null);
 
@@ -265,8 +266,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       zoomInRef={zoomInRef}
                       zoomOutRef={zoomOutRef}
                       centerMapRef={centerMapRef}
+                      fitAllLocationsRef={fitAllLocationsRef}
                       getViewStateRef={getViewStateRef}
                       onDimensionsDetected={(width, height) => setMapDimensions({ width, height })}
+                      onLinkClick={onLinkClick}
                       isRealWorld={currentMapParentId ? parentLocation?.isRealWorld : data.isRealWorldMap}
                       onLocationClick={(id) => {
                         setSelectedLocationId(id);
@@ -521,6 +524,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-30 pointer-events-none">
                       <div className="flex flex-col bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl shadow-xl border border-white/20 overflow-hidden pointer-events-auto">
                         <button onClick={() => zoomInRef.current?.()} className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800" title="Zoom In"><Plus size={20} /></button>
+                        <button onClick={() => fitAllLocationsRef.current?.()} className="p-3 text-slate-500 hover:text-emerald-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800" title="Fit All Locations"><Maximize2 size={20} /></button>
                         <button onClick={() => zoomOutRef.current?.()} className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" title="Zoom Out"><Minus size={20} /></button>
                       </div>
                     </div>

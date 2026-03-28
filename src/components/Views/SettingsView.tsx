@@ -36,7 +36,7 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser, onUpdateUser, onFactoryReset, projectData, onUpdateProject, onChangeView, onLinkClick, globalNotes, onClearGlobalNotes
 }) => {
-  const [activeTab, setActiveTab] = React.useState<SettingsTab>(SettingsTab.PROFILE);
+  const [activeTab, setActiveTab] = React.useState<SettingsTab | null>(null);
   const [rawText, setRawText] = React.useState('');
   const [isSaved, setIsSaved] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
@@ -155,43 +155,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const getEntityView = (type: string): ViewType => {
-    switch (type) {
-      case 'Character': return ViewType.CHARACTERS;
-      case 'Location': return ViewType.MAP;
-      case 'Timeline': return ViewType.TIMELINE;
-      case 'Note': return ViewType.RESEARCH;
-      case 'Source': return ViewType.RESEARCH;
-      default: return ViewType.DASHBOARD;
+  const getTabIcon = (tab: SettingsTab) => {
+    switch (tab) {
+      case SettingsTab.PROFILE: return <UserIcon size={18} />;
+      case SettingsTab.PREFERENCES: return <Settings size={18} />;
+      case SettingsTab.ARCHIVE: return <Archive size={18} />;
+      case SettingsTab.AUDIT: return <History size={18} />;
+      case SettingsTab.MANIFEST: return <FileCode size={18} />;
+      case SettingsTab.RAW: return <Code size={18} />;
+      case SettingsTab.EXPORT: return <Download size={18} />;
     }
-  };
-
-  React.useEffect(() => {
-    if (projectData?.ledger) {
-      setRawText(projectData.ledger.map(e => `--- ENTRY ${e.id} ---\n${e.content}`).join('\n\n'));
-    }
-  }, [projectData]);
-
-  const handleSaveRaw = () => {
-    if (!projectData) return;
-    // Simple parser for the raw format
-    const entries = rawText.split(/--- ENTRY (.*) ---/).filter(Boolean);
-    const newLedger: LedgerEntry[] = [];
-    for (let i = 0; i < entries.length; i += 2) {
-      const id = entries[i].trim();
-      const content = entries[i + 1]?.trim();
-      if (id && content) {
-        newLedger.push({
-          id,
-          content,
-          timestamp: Date.now(),
-          tags: [] // Tags are lost in this simple raw editor, but that's okay for "raw"
-        });
-      }
-    }
-    onUpdateProject({ ledger: newLedger });
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
   };
 
   const handleDeleteFeed = () => {
@@ -209,78 +182,52 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setShowDeleteConfirm(false);
   };
 
-  return (
-    <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950">
-      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-8">
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg">
-              <Settings size={32} />
-            </div>
-            <div className="space-y-1 text-center md:text-left">
-              <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">SYSTEM SETTINGS</h1>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Configure your writing environment and user profile.</p>
-            </div>
-          </div>
-          
-          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar">
-            {Object.values(SettingsTab).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 pb-12 space-y-12">
-        {activeTab === SettingsTab.PROFILE && (
-          <div className="space-y-12">
-            <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
-              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
-                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
-                  <UserIcon size={24} />
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case SettingsTab.PROFILE:
+        return (
+          <div className="space-y-12 animate-in fade-in duration-500">
+            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20">
+                  <UserIcon size={28} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">User Profile</h2>
-                  <p className="text-xs text-slate-500">Your identity within the Plothole ecosystem.</p>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">User Profile</h2>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Your identity within the Plothole ecosystem.</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Display Name</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Display Name</label>
                   <input
                     type="text"
                     value={currentUser.name}
                     onChange={(e) => onUpdateUser({ name: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                    className="w-full px-5 py-3 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all text-sm font-bold"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
                   <input
                     type="email"
                     value={currentUser.email}
                     onChange={(e) => onUpdateUser({ email: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                    className="w-full px-5 py-3 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all text-sm font-bold"
                   />
                 </div>
               </div>
             </section>
 
-            <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
-              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
-                <div className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl">
-                  <Shield size={24} />
+            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl">
+                  <Shield size={28} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Open Source Credits</h2>
-                  <p className="text-xs text-slate-500">The powerful foundations that make Plothole possible.</p>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Open Source Credits</h2>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">The powerful foundations that make Plothole possible.</p>
                 </div>
               </div>
 
@@ -307,12 +254,146 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 ))}
               </div>
             </section>
-          </div>
-        )}
 
-        {activeTab === SettingsTab.ARCHIVE && projectData && (
-          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-8">
+            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-2xl">
+                  <Database size={28} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Data Management</h2>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Critical system operations and maintenance.</p>
+                </div>
+              </div>
+
+              <div className="p-8 bg-red-50 dark:bg-red-900/10 rounded-[2rem] border border-red-100 dark:border-red-900/30">
+                <h3 className="font-black text-red-600 dark:text-red-400 mb-2 uppercase text-xs tracking-[0.2em]">Factory Reset</h3>
+                <p className="text-sm text-red-700 dark:text-red-300/70 mb-6 font-medium">This will permanently delete all projects, characters, manuscripts, and notes. This action cannot be undone.</p>
+                <button
+                  onClick={onFactoryReset}
+                  className="px-8 py-3 bg-red-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
+                >
+                  Wipe All Data
+                </button>
+              </div>
+            </section>
+          </div>
+        );
+
+      case SettingsTab.PREFERENCES:
+        return (
+          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-10 animate-in fade-in duration-500">
+            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+              <div className="p-4 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+                <Settings size={28} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">System Preferences</h2>
+                <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Customize your experience and workflow defaults.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              {/* Appearance */}
+              <div className="space-y-8">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-l-4 border-indigo-500 pl-4">Appearance</h3>
+                
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Theme Mode</label>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+                    {(['light', 'dark'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, themeMode: mode } })}
+                        className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${currentUser.preferences?.themeMode === mode ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Font Family</label>
+                  <select 
+                    value={currentUser.preferences?.fontFamily || 'sans'}
+                    onChange={(e) => onUpdateUser({ preferences: { ...currentUser.preferences, fontFamily: e.target.value as any } })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    <option value="sans">Modern Sans</option>
+                    <option value="serif">Classic Serif</option>
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Font Size</label>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+                    {(['sm', 'md', 'lg'] as const).map(size => (
+                      <button
+                        key={size}
+                        onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, fontSize: size } })}
+                        className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${currentUser.preferences?.fontSize === size ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Workflow */}
+              <div className="space-y-8">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-l-4 border-indigo-500 pl-4">Workflow</h3>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Default Landing Page</label>
+                  <select 
+                    value={currentUser.preferences?.landingPage || ViewType.DASHBOARD}
+                    onChange={(e) => onUpdateUser({ preferences: { ...currentUser.preferences, landingPage: e.target.value as any } })}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    {Object.values(ViewType).map(view => (
+                      <option key={view} value={view}>{view}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">The Oracle Verbosity</label>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+                    {(['concise', 'detailed'] as const).map(v => (
+                      <button
+                        key={v}
+                        onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, aiVerbosity: v } })}
+                        className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${currentUser.preferences?.aiVerbosity === v ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 mt-4">
+                  <div className="space-y-1">
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Reduce Motion</span>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">Minimize animations and transitions.</p>
+                  </div>
+                  <button 
+                    onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, reducedMotion: !currentUser.preferences?.reducedMotion } })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${currentUser.preferences?.reducedMotion ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentUser.preferences?.reducedMotion ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+
+      case SettingsTab.ARCHIVE:
+        return projectData ? (
+          <section className="h-full flex flex-col bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in duration-500">
+            <div className="p-10 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 relative z-10">
               <div className="flex items-center gap-4">
                 <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20">
                   <Archive size={28} />
@@ -324,40 +405,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
               <button 
                 onClick={fetchArchiveFiles}
-                className="p-3 text-slate-400 hover:text-indigo-600 bg-slate-50 dark:bg-slate-800 rounded-xl transition-all"
+                className="p-4 text-slate-400 hover:text-indigo-600 bg-slate-50 dark:bg-slate-800 rounded-2xl transition-all"
                 title="Refresh File List"
               >
-                <Activity size={20} />
+                <Activity size={24} />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[600px]">
+            <div className="flex-1 flex min-h-0">
               {/* File List */}
-              <div className="bg-slate-50 dark:bg-slate-950 rounded-3xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col">
-                <div className="p-4 bg-white/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Project Folder: /{projectData.id}</span>
-                  <span className="text-[10px] font-bold text-indigo-500 uppercase">{archiveFiles.length} Files</span>
+              <div className="w-80 border-r border-slate-100 dark:border-slate-800 flex flex-col">
+                <div className="p-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2 truncate">Folder: /{projectData.id}</span>
+                  <span className="text-[9px] font-black text-indigo-500 uppercase shrink-0">{archiveFiles.length} Files</span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
                   {isLoadingArchive ? (
-                    <div className="h-full flex items-center justify-center text-slate-400 italic text-sm">Scanning directory...</div>
+                    <div className="h-full flex items-center justify-center text-slate-400 italic text-xs">Scanning...</div>
                   ) : archiveFiles.length === 0 ? (
-                    <div className="h-full flex items-center justify-center text-slate-400 italic text-sm">No archive files found.</div>
+                    <div className="h-full flex items-center justify-center text-slate-400 italic text-xs">Empty.</div>
                   ) : (
                     archiveFiles.map(file => (
                       <button
                         key={file.name}
                         onClick={() => handlePreviewFile(file)}
-                        className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left group ${previewFile?.name === file.name ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-indigo-500/50'}`}
+                        className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left group ${previewFile?.name === file.name ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-indigo-500/50'}`}
                       >
                         <div className="flex items-center gap-3 overflow-hidden">
                           {file.name.endsWith('.json') ? <Code size={16} className={previewFile?.name === file.name ? 'text-white' : 'text-amber-500'} /> : file.name.endsWith('.md') ? <FileText size={16} className={previewFile?.name === file.name ? 'text-white' : 'text-indigo-500'} /> : <Database size={16} className={previewFile?.name === file.name ? 'text-white' : 'text-slate-400'} />}
                           <div className="truncate">
-                            <div className="text-xs font-bold truncate">{file.name}</div>
-                            <div className={`text-[9px] uppercase font-black tracking-widest mt-0.5 ${previewFile?.name === file.name ? 'text-indigo-200' : 'text-slate-400'}`}>{(file.size / 1024).toFixed(1)} KB • {new Date(file.mtime).toLocaleDateString()}</div>
+                            <div className="text-[11px] font-bold truncate">{file.name}</div>
+                            <div className={`text-[8px] uppercase font-black tracking-widest mt-0.5 ${previewFile?.name === file.name ? 'text-indigo-200' : 'text-slate-400'}`}>{(file.size / 1024).toFixed(1)} KB</div>
                           </div>
                         </div>
-                        <ChevronRight size={14} className={`opacity-0 group-hover:opacity-100 transition-opacity ${previewFile?.name === file.name ? 'text-white' : 'text-slate-300'}`} />
                       </button>
                     ))
                   )}
@@ -365,192 +445,86 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
 
               {/* Preview Panel */}
-              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
-                <div className="p-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
+              <div className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-slate-900">
+                <div className="p-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+                  <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-2">
                     <Activity size={14} /> File Previewer
                   </h3>
                   {previewFile && (
                     <button 
                       onClick={() => setPreviewFile(null)}
-                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
+                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
                     >
-                      <X size={14} />
+                      <X size={16} />
                     </button>
                   )}
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                   {previewFile ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full">{previewFile.name}</span>
+                    <div className="max-w-3xl mx-auto space-y-6">
+                      <div className="flex items-center justify-between mb-6">
+                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-4 py-1.5 rounded-full">{previewFile.name}</span>
                         <button 
                           onClick={() => { navigator.clipboard.writeText(previewFile.content); alert('Copied to clipboard!'); }}
-                          className="text-[10px] font-black uppercase text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                          className="text-[10px] font-black uppercase text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-2"
                         >
-                          <Copy size={12} /> Copy Raw
+                          <Copy size={14} /> Copy Raw
                         </button>
                       </div>
                       {previewFile.type === 'json' ? (
-                        <pre className="text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl overflow-x-auto border border-slate-100 dark:border-slate-800 whitespace-pre-wrap">
+                        <pre className="text-[11px] font-mono text-amber-600 dark:text-amber-400 bg-slate-50 dark:bg-slate-950 p-8 rounded-[2rem] overflow-x-auto border border-slate-100 dark:border-slate-800 whitespace-pre-wrap leading-relaxed">
                           {JSON.stringify(JSON.parse(previewFile.content), null, 2)}
                         </pre>
                       ) : (
-                        <div className="prose prose-slate dark:prose-invert prose-xs max-w-none font-serif leading-relaxed text-slate-700 dark:text-slate-300">
+                        <div className="prose prose-slate dark:prose-invert prose-sm max-w-none font-serif leading-relaxed text-slate-700 dark:text-slate-300">
                           <textarea 
                             readOnly 
                             value={previewFile.content} 
-                            className="w-full h-[400px] bg-transparent border-none focus:ring-0 resize-none text-xs leading-relaxed custom-scrollbar"
+                            className="w-full h-[500px] bg-transparent border-none focus:ring-0 resize-none text-sm leading-relaxed custom-scrollbar font-serif"
                           />
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-300 space-y-4">
-                      <Archive size={48} className="opacity-20" />
-                      <p className="font-serif italic text-lg opacity-50">Select a file to preview its content</p>
+                    <div className="h-full flex flex-col items-center justify-center text-slate-300 space-y-6">
+                      <Archive size={64} className="opacity-10" />
+                      <p className="font-serif italic text-xl opacity-30">Select a file to inspect its contents</p>
                     </div>
                   )}
                 </div>
               </div>
             </div>
           </section>
-        )}
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-20 shrink-0"><div className="text-center space-y-4"><Database size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Archive.</p></div></div>
+        );
 
-        {activeTab === SettingsTab.PREFERENCES && (
-          <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
-            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
-              <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
-                <Settings size={24} />
+      case SettingsTab.AUDIT:
+        return projectData ? (
+          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
+            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+              <div className="p-4 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+                <History size={28} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">System Preferences</h2>
-                <p className="text-xs text-slate-500">Customize your experience and workflow defaults.</p>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Audit Log</h2>
+                <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Every change to every card is recorded here.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Appearance */}
-              <div className="space-y-6">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">Appearance</h3>
-                
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Theme Mode</label>
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                    {(['light', 'dark'] as const).map(mode => (
-                      <button
-                        key={mode}
-                        onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, themeMode: mode } })}
-                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all capitalize ${currentUser.preferences?.themeMode === mode ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                      >
-                        {mode}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Font Family</label>
-                  <select 
-                    value={currentUser.preferences?.fontFamily || 'sans'}
-                    onChange={(e) => onUpdateUser({ preferences: { ...currentUser.preferences, fontFamily: e.target.value as any } })}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="sans">Modern Sans</option>
-                    <option value="serif">Classic Serif</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Font Size</label>
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                    {(['sm', 'md', 'lg'] as const).map(size => (
-                      <button
-                        key={size}
-                        onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, fontSize: size } })}
-                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all uppercase ${currentUser.preferences?.fontSize === size ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Workflow */}
-              <div className="space-y-6">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">Workflow</h3>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Default Landing Page</label>
-                  <select 
-                    value={currentUser.preferences?.landingPage || ViewType.DASHBOARD}
-                    onChange={(e) => onUpdateUser({ preferences: { ...currentUser.preferences, landingPage: e.target.value as any } })}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {Object.values(ViewType).map(view => (
-                      <option key={view} value={view}>{view}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">The Oracle Verbosity</label>
-                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                    {(['concise', 'detailed'] as const).map(v => (
-                      <button
-                        key={v}
-                        onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, aiVerbosity: v } })}
-                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all capitalize ${currentUser.preferences?.aiVerbosity === v ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                      >
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 mt-4">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Reduce Motion</span>
-                    <p className="text-[10px] text-slate-500">Minimize animations and transitions.</p>
-                  </div>
-                  <button 
-                    onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, reducedMotion: !currentUser.preferences?.reducedMotion } })}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${currentUser.preferences?.reducedMotion ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}
-                  >
-                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${currentUser.preferences?.reducedMotion ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-        
-        {activeTab === SettingsTab.AUDIT && projectData && (
-          <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
-            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
-              <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
-                <History size={24} />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Audit Log</h2>
-                <p className="text-xs text-slate-500">Every change to every card is recorded here.</p>
-              </div>
-            </div>
-
-            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
               {(projectData.changeLog || []).slice().reverse().map((log: ChangeLogEntry) => (
-                <div key={log.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 group hover:border-indigo-500/30 transition-all">
+                <div key={log.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 group hover:border-indigo-500/30 transition-all">
                   <div className="flex items-center gap-4">
-                    <div className="p-2 bg-white dark:bg-slate-900 rounded-lg text-slate-400">
+                    <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl text-slate-400 shadow-sm">
                       {getEntityIcon(log.entityType)}
                     </div>
-                    <div className="space-y-0.5">
-                      <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                    <div className="space-y-1">
+                      <div className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
                         {log.action} {log.entityType}
-                        {log.entityId && <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-1 rounded">#{log.entityId}</span>}
+                        {log.entityId && <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">#{log.entityId}</span>}
                       </div>
-                      <div className="text-[10px] text-slate-500 font-bold uppercase">{log.entityName} • {new Date(log.timestamp).toLocaleString()}</div>
+                      <div className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">{log.entityName} • {new Date(log.timestamp).toLocaleString()}</div>
                     </div>
                   </div>
                   {log.entityId && (
@@ -561,55 +535,56 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         setCopiedId(log.entityId || null);
                         setTimeout(() => setCopiedId(null), 2000);
                       }}
-                      className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1"
+                      className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all opacity-0 group-hover:opacity-100 flex items-center gap-2"
                       title="Copy Reference Tag"
                     >
-                      {copiedId === log.entityId ? <Check size={16} /> : <LinkIcon size={16} />}
-                      {copiedId === log.entityId && <span className="text-[8px] font-black uppercase">Copied</span>}
+                      {copiedId === log.entityId ? <Check size={18} /> : <LinkIcon size={18} />}
+                      {copiedId === log.entityId && <span className="text-[9px] font-black uppercase">Copied</span>}
                     </button>
                   )}
                 </div>
               ))}
               {(!projectData.changeLog || projectData.changeLog.length === 0) && (
-                <div className="py-12 text-center text-slate-400 italic text-sm">No activity recorded yet.</div>
+                <div className="py-20 text-center text-slate-400 italic font-serif text-lg">No activity recorded yet.</div>
               )}
             </div>
           </section>
-        )}
+        ) : null;
 
-        {activeTab === SettingsTab.MANIFEST && projectData && (
-          <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
-            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
-              <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl">
-                <FileCode size={24} />
+      case SettingsTab.MANIFEST:
+        return projectData ? (
+          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-10 animate-in fade-in duration-500">
+            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+              <div className="p-4 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl">
+                <FileCode size={28} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Project Manifest</h2>
-                <p className="text-xs text-slate-500">The metadata and structural integrity of this .plothole container.</p>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Project Manifest</h2>
+                <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">The metadata and structural integrity of this .plothole container.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Container ID</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Container ID</div>
                 <div className="text-xs font-mono font-bold text-slate-900 dark:text-white truncate">#{projectData.id}</div>
               </div>
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Integrity Hash</div>
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Integrity Hash</div>
                 <div className="text-xs font-mono font-bold text-emerald-500 truncate">{projectData.integrityHash?.slice(0, 16)}...</div>
               </div>
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Sync</div>
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Last Sync</div>
                 <div className="text-xs font-bold text-slate-900 dark:text-white">{new Date(projectData.lastModified).toLocaleTimeString()}</div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
               <div className="space-y-1">
-                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Shield size={16} className="text-indigo-500" /> Semantic Security
+                <h3 className="font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase text-sm tracking-tight">
+                  <Shield size={18} className="text-indigo-500" /> Semantic Security
                 </h3>
-                <p className="text-xs text-slate-500">Enable deep-meaning search and AI analysis for this project manifest.</p>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Enable deep-meaning search and AI analysis for this manifest.</p>
               </div>
               <button 
                 onClick={() => onUpdateUser({ 
@@ -618,36 +593,82 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     semanticSearchEnabled: !currentUser.preferences?.semanticSearchEnabled 
                   } 
                 })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${currentUser.preferences?.semanticSearchEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${currentUser.preferences?.semanticSearchEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}
               >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${currentUser.preferences?.semanticSearchEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${currentUser.preferences?.semanticSearchEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
           </section>
-        )}
+        ) : null;
 
-        {activeTab === SettingsTab.EXPORT && projectData && (
-          <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
-            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
-              <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl">
-                <Download size={24} />
+      case SettingsTab.RAW:
+        return projectData ? (
+          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-8">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl">
+                  <FileCode size={28} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Raw Text Feed</h2>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">A continuous Markdown export of all project notes.</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Export Project</h2>
-                <p className="text-xs text-slate-500">Export your work into various formats for publication or backup.</p>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
+                  title="Clear All Text Entries"
+                >
+                  <Trash2 size={24} />
+                </button>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(rawMarkdownDump);
+                    setIsSaved(true);
+                    setTimeout(() => setIsSaved(false), 2000);
+                  }}
+                  className={`px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center gap-3 ${isSaved ? 'bg-emerald-100 text-emerald-600 shadow-lg shadow-emerald-600/10' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-600/20'}`}
+                >
+                  {isSaved ? <><Check size={18} /> Copied</> : <><Copy size={18} /> Copy All</>}
+                </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6">
+              <textarea
+                readOnly
+                value={rawMarkdownDump}
+                className="w-full h-[600px] bg-transparent border-none focus:ring-0 resize-none font-mono text-sm leading-relaxed text-slate-600 dark:text-slate-300 break-words [overflow-wrap:anywhere] custom-scrollbar"
+                placeholder="No text entries found in this project."
+              />
+            </div>
+          </section>
+        ) : null;
+
+      case SettingsTab.EXPORT:
+        return projectData ? (
+          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-10 animate-in fade-in duration-500">
+            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+              <div className="p-4 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl">
+                <Download size={28} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Export Project</h2>
+                <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Export your work into various formats for publication or backup.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <button 
                 onClick={handleExportDocx}
-                className="flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl hover:border-indigo-500/50 hover:bg-indigo-50/10 transition-all group"
+                className="flex flex-col items-center justify-center p-12 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-indigo-50/10 transition-all group"
               >
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <FileCode size={24} />
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <FileCode size={32} />
                 </div>
                 <span className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Microsoft Word</span>
-                <span className="text-[10px] text-slate-400 mt-1">Export Manuscript (.docx)</span>
+                <span className="text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-wider">Manuscript (.docx)</span>
               </button>
 
               <button 
@@ -656,87 +677,74 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   const blob = new Blob([dataStr], { type: 'application/json' });
                   saveAs(blob, `${projectData.title.replace(/\s+/g, '_')}_Backup.json`);
                 }}
-                className="flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl hover:border-indigo-500/50 hover:bg-indigo-50/10 transition-all group"
+                className="flex flex-col items-center justify-center p-12 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] hover:border-emerald-500/50 hover:bg-emerald-50/10 transition-all group"
               >
-                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Database size={24} />
+                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Database size={32} />
                 </div>
                 <span className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">JSON Data</span>
-                <span className="text-[10px] text-slate-400 mt-1">Full Project Backup (.json)</span>
+                <span className="text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-wider">Full Project Backup (.json)</span>
               </button>
             </div>
           </section>
-        )}
+        ) : null;
 
-        {activeTab === SettingsTab.RAW && projectData && (
-          <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl">
-                  <FileCode size={24} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Raw Text Feed</h2>
-                  <p className="text-xs text-slate-500">A continuous Markdown export of all project notes.</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
-                  title="Clear All Text Entries"
-                >
-                  <Trash2 size={20} />
-                </button>
-                <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(rawMarkdownDump);
-                    setIsSaved(true);
-                    setTimeout(() => setIsSaved(false), 2000);
-                  }}
-                  className={`px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${isSaved ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-                >
-                  {isSaved ? <><Check size={16} /> Copied</> : <><Copy size={16} /> Copy All</>}
-                </button>
-              </div>
-            </div>
+      default: return null;
+    }
+  };
 
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 p-4">
-              <textarea
-                readOnly
-                value={rawMarkdownDump}
-                className="w-full h-[600px] bg-transparent border-none focus:ring-0 resize-none font-mono text-sm leading-relaxed text-slate-600 dark:text-slate-300 break-words [overflow-wrap:anywhere]"
-                placeholder="No text entries found in this project."
-              />
-            </div>
-          </section>
-        )}
+  return (
+    <div className="h-full flex bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
+      {/* Settings Secondary Sidebar */}
+      <aside className={`${activeTab ? 'hidden lg:flex' : 'flex'} w-full lg:w-64 md:w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col shrink-0 transition-all duration-300`}>
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="p-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl shadow-lg"><Settings size={20} /></div>
+            <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Settings</h1>
+          </div>
+          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Environment Control</p>
+        </div>
 
-        {activeTab === SettingsTab.PROFILE && (
-          <section className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
-            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
-              <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-2xl">
-                <Database size={24} />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Data Management</h2>
-                <p className="text-xs text-slate-500">Critical system operations and database maintenance.</p>
-              </div>
-            </div>
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
+          {Object.values(SettingsTab).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+            >
+              {getTabIcon(tab)}
+              {tab}
+            </button>
+          ))}
+        </nav>
 
-            <div className="p-6 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30">
-              <h3 className="font-bold text-red-600 dark:text-red-400 mb-2 uppercase text-xs tracking-widest">Factory Reset</h3>
-              <p className="text-sm text-red-700 dark:text-red-300/70 mb-4">This will permanently delete all projects, characters, manuscripts, and notes. This action cannot be undone.</p>
-              <button
-                onClick={onFactoryReset}
-                className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-colors"
-              >
-                Wipe All Data
-              </button>
+        <div className="p-6 border-t border-slate-100 dark:border-slate-800">
+          <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl space-y-2 text-center">
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Build Info</p>
+            <div className="text-[10px] font-mono text-indigo-500 truncate">#{import.meta.env.VITE_GIT_COMMIT_HASH}</div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Settings Content Area */}
+      <main className={`${!activeTab ? 'hidden lg:flex' : 'flex'} flex-1 flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar p-4 lg:p-8`}>
+        <div className="max-w-5xl mx-auto w-full">
+          {activeTab && (
+            <button 
+              onClick={() => setActiveTab(null)}
+              className="lg:hidden mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
+            >
+              <ChevronRight size={14} className="rotate-180" /> Back to Settings
+            </button>
+          )}
+          {activeTab ? renderTabContent() : (
+            <div className="hidden lg:flex h-full flex-col items-center justify-center text-slate-300 space-y-4 py-20">
+              <Settings size={64} className="opacity-10" />
+              <p className="font-serif italic text-xl opacity-30">Select a setting to configure</p>
             </div>
-          </section>
-        )}
-      </div>
+          )}
+        </div>
+      </main>
 
       <Modal
         isOpen={showDeleteConfirm}
@@ -745,8 +753,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         title="Clear Raw Text Feed?"
         footer={
           <>
-            <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-slate-600 font-bold hover:text-slate-900 transition-colors">Cancel</button>
-            <button onClick={handleDeleteFeed} className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors">Clear All Feed Data</button>
+            <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 text-slate-600 font-bold hover:text-slate-900 transition-colors uppercase text-[10px] tracking-widest">Cancel</button>
+            <button onClick={handleDeleteFeed} className="px-6 py-2 bg-red-600 text-white rounded-xl font-black hover:bg-red-700 transition-colors uppercase text-[10px] tracking-widest shadow-lg shadow-red-600/20">Clear All Feed Data</button>
           </>
         }
       >

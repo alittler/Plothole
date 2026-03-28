@@ -3,7 +3,13 @@ import { ViewType, Note, ProjectData, ProjectMetadata, User } from '../../types'
 import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2 } from 'lucide-react';
 import { StackedPaper } from '../ui/StackedPaper';
 import { WikiText } from '../ui/WikiText';
+import { RichEditor } from '../ui/RichEditor';
 import { semanticSearchNotes } from '../../services/geminiService';
+
+enum NotepadView {
+  STREAM = 'Stream',
+  PROSE = 'Prose'
+}
 import { generateId } from '../../services/storageService';
 
 interface ResearchSystemViewProps {
@@ -28,12 +34,35 @@ interface ResearchSystemViewProps {
 export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   currentView, onChangeView, data, projectsMetadata, currentUser, onAddNote, onAddIdeaToProject, onToggleCanon, onDeleteNote, onDeleteAllNotes, onLinkClick, onAddDoubleProcessedNote, activeTasks, onUpdateProject, semanticSearchEnabled, isEmbedded
 }) => {
+  const [viewMode, setNotepadView] = React.useState<NotepadView>(NotepadView.STREAM);
   const [newNote, setNewNote] = React.useState('');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [semanticResults, setSemanticResults] = React.useState<string[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [showTagSuggestion, setShowTagSuggestion] = React.useState(false);
   const [noteToDelete, setNoteToDelete] = React.useState<string | null>(null);
+
+  // Keyboard shortcuts for delete modal
+  React.useEffect(() => {
+    if (!noteToDelete) return;
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (noteToDelete === 'ALL' && onDeleteAllNotes) {
+          onDeleteAllNotes();
+        } else if (noteToDelete !== 'ALL') {
+          onDeleteNote(noteToDelete);
+        }
+        setNoteToDelete(null);
+      } else if (e.key === 'Escape') {
+        setNoteToDelete(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [noteToDelete, onDeleteNote, onDeleteAllNotes]);
 
   // Automatically sync canonized notes to ledger if onUpdateProject is provided
   React.useEffect(() => {
@@ -173,7 +202,20 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
       {!isEmbedded && (
         <header className="hidden lg:block p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">RESEARCH & NOTES</h1>
+            <div className="flex flex-col">
+              <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">NOTEPAD</h1>
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mt-2 w-fit">
+                {Object.values(NotepadView).map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setNotepadView(v)}
+                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === v ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center gap-4">
               {onDeleteAllNotes && (
                 <button
@@ -211,131 +253,143 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
 
       <div className="flex-1 overflow-y-auto relative p-4 pt-0 md:pt-8 md:p-8 bg-slate-50 dark:bg-slate-950">
         <div className="max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-b-3xl md:rounded-3xl overflow-hidden flex flex-col paper-texture">
-          {/* Transition Zone - paper texture continues underneath */}
-          <div className="hidden lg:block relative h-14 z-20 pointer-events-none overflow-hidden shrink-0">
-            {/* Layer 3 (Back) */}
-            <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-4">
-              <div className="h-8 paper-fringe-dark path-torn-2" />
-            </div>
-            {/* Layer 2 */}
-            <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-2">
-              <div className="h-8 paper-fringe-mid path-torn-3" />
-            </div>
-            {/* Layer 1 (Front) */}
-            <div className="absolute top-0 left-0 right-0 torn-layer-shadow">
-              <div className="h-8 paper-fringe-light path-torn-1" />
-            </div>
-          </div>
+          {viewMode === NotepadView.STREAM ? (
+            <>
+              {/* Transition Zone - paper texture continues underneath */}
+              <div className="hidden lg:block relative h-14 z-20 pointer-events-none overflow-hidden shrink-0">
+                {/* Layer 3 (Back) */}
+                <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-4">
+                  <div className="h-8 paper-fringe-dark path-torn-2" />
+                </div>
+                {/* Layer 2 */}
+                <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-2">
+                  <div className="h-8 paper-fringe-mid path-torn-3" />
+                </div>
+                {/* Layer 1 (Front) */}
+                <div className="absolute top-0 left-0 right-0 torn-layer-shadow">
+                  <div className="h-8 paper-fringe-light path-torn-1" />
+                </div>
+              </div>
 
-          <div className="flex-1 relative pt-2 pb-32 lg:pb-8 px-4 md:pl-16 lg:pl-32">
-            <div className="space-y-0 relative z-10">
-              <StackedPaper className="space-y-4" transparent>
-                <div className="p-4 md:p-6 relative z-20">
-                  <div className="relative">
-                    <textarea
-                      value={newNote}
-                      onChange={handleTextChange}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Jot down a thought... (Enter to Save)"
-                      className="w-full h-32 bg-transparent border-none focus:ring-0 text-base md:text-lg resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400/50"
-                    />
-                    {showTagSuggestion && (
-                      <button
-                        onClick={applyTagSuggestion}
-                        className="absolute bottom-2 left-0 bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2"
-                      >
-                        #{(data.shortName || data.title || 'Project').replace(/[^\w\s]/g, '').replace(/\s+/g, '_')}
-                      </button>
+              <div className="flex-1 relative pt-2 pb-32 lg:pb-8 px-4 md:pl-16 lg:pl-32">
+                <div className="space-y-0 relative z-10">
+                  <StackedPaper className="space-y-4" transparent>
+                    <div className="p-4 md:p-6 relative z-20">
+                      <div className="relative">
+                        <textarea
+                          value={newNote}
+                          onChange={handleTextChange}
+                          onKeyDown={handleKeyDown}
+                          placeholder="Jot down a thought... (Enter to Save)"
+                          className="w-full h-32 bg-transparent border-none focus:ring-0 text-base md:text-lg resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400/50"
+                        />
+                        {showTagSuggestion && (
+                          <button
+                            onClick={applyTagSuggestion}
+                            className="absolute bottom-2 left-0 bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2"
+                          >
+                            #{(data.shortName || data.title || 'Project').replace(/[^\w\s]/g, '').replace(/\s+/g, '_')}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30 pb-4">
+                        <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # to tag characters or books.</span>
+                      </div>
+                    </div>
+                  </StackedPaper>
+
+                  <div className="grid grid-cols-1">
+                    {filteredNotes.length === 0 && searchQuery.trim() && (
+                      <div className="p-12 text-center text-slate-400 italic">
+                        No notes found matching your search.
+                      </div>
                     )}
-                  </div>
-                  <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30 pb-4">
-                    <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # to tag characters or books.</span>
+                    {filteredNotes.map((note, index) => (
+                      <React.Fragment key={note.id}>
+                        {index > 0 && <div className="perforation-line my-2" />}
+                        <StackedPaper className="group" transparent>
+                          <div className={`p-6 relative z-20 ${note.isCanon ? 'border-l-4 border-amber-500/50' : ''}`}>
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex flex-wrap gap-2">
+                                {note.tags.map(tag => {
+                                  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                  const tagSimple = normalize(tag);
+                                  const bookSimple = normalize(data.shortName || data.title || '');
+                                  
+                                  const isBook = tagSimple === bookSimple;
+                                  const isCharacter = data.characters?.some(c => normalize(c.name) === tagSimple);
+                                  const isLocation = data.locations?.some(l => normalize(l.name) === tagSimple);
+                                  
+                                  return (
+                                    <button 
+                                      key={tag} 
+                                      onClick={() => {
+                                        if (isBook) onChangeView(ViewType.DASHBOARD);
+                                        else if (isCharacter) onChangeView(ViewType.CHARACTERS);
+                                        else if (isLocation) {
+                                          const loc = data.locations?.find(l => normalize(l.name) === tagSimple);
+                                          if (loc) onLinkClick('location', loc.id);
+                                        }
+                                      }}
+                                      className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest transition-colors max-w-[150px] truncate inline-block align-bottom ${
+                                        isBook || isCharacter || isLocation
+                                          ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200' 
+                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                                      }`}
+                                    >
+                                      #{tag}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => onLinkClick('admin', note.id)}
+                                  className="p-1 text-slate-300 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100"
+                                  title="Edit Note"
+                                >
+                                  <Edit2 size={18} />
+                                </button>
+                                {onToggleCanon && (
+                                  <button 
+                                    onClick={() => onToggleCanon(note.id, !note.isCanon)}
+                                    className={`p-1 rounded-lg transition-all ${note.isCanon ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-300 hover:text-amber-500'}`}
+                                    title={note.isCanon ? "Canonized" : "Mark as Canon"}
+                                  >
+                                    <Zap size={18} fill={note.isCanon ? "currentColor" : "none"} />
+                                  </button>
+                                )}
+                                <button onClick={() => setNoteToDelete(note.id)} className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="text-slate-800 dark:text-slate-200 mb-4 font-serif text-lg leading-relaxed">
+                              <WikiText text={note.content} projectData={data as any} projectsMetadata={projectsMetadata} onLinkClick={onLinkClick} />
+                            </div>
+                            <div className="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest flex justify-between items-center">
+                              <span>{new Date(note.timestamp).toLocaleString()}</span>
+                              {currentUser?.role === 'admin' && (
+                                <span className="font-mono text-[9px] opacity-50 select-all">ID: {note.id}</span>
+                              )}
+                            </div>
+                          </div>
+                        </StackedPaper>
+                      </React.Fragment>
+                    ))}
                   </div>
                 </div>
-              </StackedPaper>
-
-              <div className="grid grid-cols-1">
-                {filteredNotes.length === 0 && searchQuery.trim() && (
-                  <div className="p-12 text-center text-slate-400 italic">
-                    No notes found matching your search.
-                  </div>
-                )}
-                {filteredNotes.map((note, index) => (
-                  <React.Fragment key={note.id}>
-                    {index > 0 && <div className="perforation-line my-2" />}
-                    <StackedPaper className="group" transparent>
-                      <div className={`p-6 relative z-20 ${note.isCanon ? 'border-l-4 border-amber-500/50' : ''}`}>
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex flex-wrap gap-2">
-                            {note.tags.map(tag => {
-                              const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-                              const tagSimple = normalize(tag);
-                              const bookSimple = normalize(data.shortName || data.title || '');
-                              
-                              const isBook = tagSimple === bookSimple;
-                              const isCharacter = data.characters?.some(c => normalize(c.name) === tagSimple);
-                              const isLocation = data.locations?.some(l => normalize(l.name) === tagSimple);
-                              
-                              return (
-                                <button 
-                                  key={tag} 
-                                  onClick={() => {
-                                    if (isBook) onChangeView(ViewType.DASHBOARD);
-                                    else if (isCharacter) onChangeView(ViewType.CHARACTERS);
-                                    else if (isLocation) {
-                                      const loc = data.locations?.find(l => normalize(l.name) === tagSimple);
-                                      if (loc) onLinkClick('location', loc.id);
-                                    }
-                                  }}
-                                  className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest transition-colors max-w-[150px] truncate inline-block align-bottom ${
-                                    isBook || isCharacter || isLocation
-                                      ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200' 
-                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                                  }`}
-                                >
-                                  #{tag}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button 
-                              onClick={() => onLinkClick('admin', note.id)}
-                              className="p-1 text-slate-300 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100"
-                              title="Edit Note"
-                            >
-                              <Edit2 size={18} />
-                            </button>
-                            {onToggleCanon && (
-                              <button 
-                                onClick={() => onToggleCanon(note.id, !note.isCanon)}
-                                className={`p-1 rounded-lg transition-all ${note.isCanon ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-300 hover:text-amber-500'}`}
-                                title={note.isCanon ? "Canonized" : "Mark as Canon"}
-                              >
-                                <Zap size={18} fill={note.isCanon ? "currentColor" : "none"} />
-                              </button>
-                            )}
-                            <button onClick={() => setNoteToDelete(note.id)} className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="text-slate-800 dark:text-slate-200 mb-4 font-serif text-lg leading-relaxed">
-                          <WikiText text={note.content} projectData={data as any} projectsMetadata={projectsMetadata} onLinkClick={onLinkClick} />
-                        </div>
-                        <div className="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest flex justify-between items-center">
-                          <span>{new Date(note.timestamp).toLocaleString()}</span>
-                          {currentUser?.role === 'admin' && (
-                            <span className="font-mono text-[9px] opacity-50 select-all">ID: {note.id}</span>
-                          )}
-                        </div>
-                      </div>
-                    </StackedPaper>
-                  </React.Fragment>
-                ))}
               </div>
+            </>
+          ) : (
+            <div className="flex-1 bg-white dark:bg-slate-900 animate-in fade-in duration-500 flex flex-col relative">
+              <RichEditor 
+                content={data.manuscriptDraft || ''} 
+                onChange={(html) => onUpdateProject?.({ manuscriptDraft: html })}
+                placeholder="Start writing your masterpiece... Your draft is automatically saved."
+              />
             </div>
-          </div>
+          )}
         </div>
       </div>
 

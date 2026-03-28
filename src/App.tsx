@@ -345,10 +345,13 @@ const App: React.FC = () => {
       await deleteGlobalNote(id);
     }
 
-    // 2. Delete from Project Ideas and Ledger
+    // 2. Delete from Project Notes, Ideas and Ledger
     if (projectData) {
       updateProjectData(prev => {
         const updates: Partial<ProjectData> = {};
+        if (prev.notes?.some(n => n.id === id)) {
+          updates.notes = prev.notes.filter(n => n.id !== id);
+        }
         if (prev.ideas?.some(n => n.id === id)) {
           updates.ideas = prev.ideas.filter(n => n.id !== id);
         }
@@ -1199,9 +1202,9 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
   }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, isExtractingRelationships, isUpdatingProcessed, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleDeleteProject, handleUploadProject, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, handleQuickUpdate]);
-  // Auto-collapse sidebar when entering/exiting Admin view
+  // Auto-collapse sidebar when entering/exiting Admin or Settings view
   useEffect(() => {
-    if (currentView === ViewType.ADMIN) {
+    if (currentView === ViewType.ADMIN || currentView === ViewType.SETTINGS) {
       setIsSidebarCollapsed(true);
     } else {
       setIsSidebarCollapsed(false);

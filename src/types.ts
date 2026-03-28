@@ -218,9 +218,13 @@ export interface ProjectData {
   backups?: BackupStatus[];
   integrityHash?: string;
   latestManuscriptText?: string;
+  manuscriptDraft?: string;
+  notepadCanvas?: {
+    nodes: any[];
+    edges: any[];
+  };
 
-  // Map settings
-  rootMapImage?: string;
+  // Map settings  rootMapImage?: string;
   isRealWorldMap?: boolean;
   mapScale?: number;
   mapUnit?: string;

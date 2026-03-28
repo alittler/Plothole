@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2 } from 'lucide-react';
 import { Location, TimelineEvent, Character } from '../../types';
 
 interface MapViewProps {
@@ -13,6 +14,7 @@ interface MapViewProps {
   onLocationReset?: (id: string) => void;
   onLocationLock?: (id: string, isLocked: boolean) => void;
   onDimensionsDetected?: (width: number, height: number) => void;
+  onLinkClick?: (type: string, id: string) => void;
   rootMapImage?: string;
   mapScale?: number;
   mapUnit?: string;
@@ -20,12 +22,13 @@ interface MapViewProps {
   zoomInRef?: React.MutableRefObject<(() => void) | null>;
   zoomOutRef?: React.MutableRefObject<(() => void) | null>;
   centerMapRef?: React.MutableRefObject<((coords?: { x: number, y: number }) => void) | null>;
+  fitAllLocationsRef?: React.MutableRefObject<(() => void) | null>;
   getViewStateRef?: React.MutableRefObject<(() => { x: number, y: number, zoom: number } | null) | null>;
   isRealWorld?: boolean;
 }
 
 export const MapView: React.FC<MapViewProps> = ({ 
-  locations, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onLocationUnplace, onLocationUndo, onLocationReset, onLocationLock, onDimensionsDetected, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, getViewStateRef,
+  locations, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onLocationUnplace, onLocationUndo, onLocationReset, onLocationLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef,
   isRealWorld = false
 }) => {
   const mapRef = useRef<L.Map | null>(null);
@@ -34,8 +37,85 @@ export const MapView: React.FC<MapViewProps> = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const imgWidthRef = useRef<number>(1);
   const [isReady, setIsReady] = useState(false);
+  const [shortcuts, setShortcuts] = useState<{ name: string, bounds: L.LatLngBounds, count: number, type: string }[]>([]);
 
-  // Map-style SVG Icons (Lucide-inspired raw paths)
+  const locationsRef = useRef(locations);
+  useEffect(() => { locationsRef.current = locations; }, [locations]);
+
+  // Update off-screen and dive-in shortcuts
+  const updateShortcuts = React.useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !isReady) return;
+
+    try {
+      const bounds = map.getBounds();
+      const zoom = map.getZoom();
+      const isZoomedOut = isRealWorld ? zoom <= 6 : zoom <= 0;
+      
+      const allPlaced = locationsRef.current.filter(l => l.x !== undefined && l.y !== undefined);
+      
+      if (allPlaced.length === 0) {
+        setShortcuts([]);
+        return;
+      }
+
+      // Smart Clustering by Region
+      const clusters: Record<string, { locs: Location[], name: string }> = {};
+      
+      allPlaced.forEach(loc => {
+        let region = 'Remote';
+        if (loc.address) {
+          const parts = loc.address.split(',').map(p => p.trim());
+          region = parts[parts.length - 1];
+        } else if (isRealWorld) {
+          region = `Area ${Math.round(loc.x! / 10)},${Math.round(loc.y! / 10)}`;
+        } else {
+          const grid = imgWidthRef.current * 0.3 || 1000;
+          region = `Sector ${Math.round(loc.x! / grid)},${Math.round(loc.y! / grid)}`;
+        }
+
+        if (!clusters[region]) {
+          clusters[region] = { locs: [], name: region };
+        }
+        clusters[region].locs.push(loc);
+      });
+
+      const newShortcuts = Object.values(clusters).map(c => {
+        const clusterBounds = L.latLngBounds(c.locs.map(l => L.latLng(l.y!, l.x!)));
+        const isOffScreen = !bounds.contains(clusterBounds.getCenter());
+        
+        // A cluster is a "Dive" candidate if it's on-screen but small relative to the view
+        const clusterWidth = Math.abs(clusterBounds.getEast() - clusterBounds.getWest());
+        const viewWidth = Math.abs(bounds.getEast() - bounds.getWest());
+        const isSmallGroup = clusterWidth < (viewWidth * 0.3); // Occupies less than 30% of view
+
+        const displayName = (c.name === 'Remote' || c.name.startsWith('Area') || c.name.startsWith('Sector'))
+          ? (c.locs.length === 1 ? c.locs[0].name : `${c.locs[0].name} & ${c.locs.length - 1}+`)
+          : c.name;
+
+        return {
+          name: displayName,
+          bounds: clusterBounds,
+          count: c.locs.length,
+          type: c.locs[0].type,
+          isOffScreen,
+          shouldShow: isOffScreen || (isZoomedOut && isSmallGroup)
+        };
+      }).filter(s => (s as any).shouldShow);
+
+      setShortcuts(newShortcuts.sort((a, b) => b.count - a.count).slice(0, 4));
+    } catch (e) {
+      console.warn("Shortcut update failed", e);
+    }
+  }, [isReady, isRealWorld]);
+
+  useEffect(() => {
+    if (isReady) {
+      updateShortcuts();
+    }
+  }, [isReady, locations, updateShortcuts]);
+
+  // Map-style SVG Icons
   const MAP_ICONS: Record<string, string> = {
     castle: '<path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6"/><path d="M21 11v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V11"/><path d="M15 11V8a3 3 0 0 0-6 0v3"/><path d="M9 11h6"/><path d="M7 11V8"/><path d="M17 11V8"/><path d="M12 3v2"/>',
     city: '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
@@ -64,29 +144,21 @@ export const MapView: React.FC<MapViewProps> = ({
     return { color, svg: MAP_ICONS[iconKey] || MAP_ICONS['landmark'] };
   };
 
-  const onMapClickRef = useRef(onMapClick);
   const onDimensionsDetectedRef = useRef(onDimensionsDetected);
   const onLocationPlaceRef = useRef(onLocationPlace);
   const onLocationMoveRef = useRef(onLocationMove);
   const onLocationUnplaceRef = useRef(onLocationUnplace);
-  const onLocationUndoRef = useRef(onLocationUndo);
-  const onLocationResetRef = useRef(onLocationReset);
   const onLocationLockRef = useRef(onLocationLock);
   const onLocationClickRef = useRef(onLocationClick);
-  const mapScaleRef = useRef(mapScale);
-  const mapUnitRef = useRef(mapUnit);
+  const onLinkClickRef = useRef(onLinkClick);
 
-  useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
   useEffect(() => { onDimensionsDetectedRef.current = onDimensionsDetected; }, [onDimensionsDetected]);
   useEffect(() => { onLocationPlaceRef.current = onLocationPlace; }, [onLocationPlace]);
   useEffect(() => { onLocationMoveRef.current = onLocationMove; }, [onLocationMove]);
   useEffect(() => { onLocationUnplaceRef.current = onLocationUnplace; }, [onLocationUnplace]);
-  useEffect(() => { onLocationUndoRef.current = onLocationUndo; }, [onLocationUndo]);
-  useEffect(() => { onLocationResetRef.current = onLocationReset; }, [onLocationReset]);
   useEffect(() => { onLocationLockRef.current = onLocationLock; }, [onLocationLock]);
   useEffect(() => { onLocationClickRef.current = onLocationClick; }, [onLocationClick]);
-  useEffect(() => { mapScaleRef.current = mapScale; }, [mapScale]);
-  useEffect(() => { mapUnitRef.current = mapUnit; }, [mapUnit]);
+  useEffect(() => { onLinkClickRef.current = onLinkClick; }, [onLinkClick]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -115,39 +187,8 @@ export const MapView: React.FC<MapViewProps> = ({
       map.setView([0, 0], 0);
     }
 
-    const CalibratedScale = L.Control.extend({
-      options: { position: 'bottomleft' },
-      onAdd: function(map: L.Map) {
-        const container = L.DomUtil.create('div', 'leaflet-control-scale');
-        const line = L.DomUtil.create('div', 'leaflet-control-scale-line', container);
-        const updateScale = () => {
-          if (isRealWorld) { container.style.display = 'none'; return; }
-          const currentScale = mapScaleRef.current || 1000;
-          const currentUnit = mapUnitRef.current || 'km';
-          const imgWidth = imgWidthRef.current || 1000;
-          try {
-            const containerWidth = map.getSize().x;
-            const bounds = map.getBounds();
-            const viewWidthProjected = Math.abs(map.project(bounds.getSouthEast()).x - map.project(bounds.getSouthWest()).x);
-            const targetPx = 100;
-            const unitsInBar = (viewWidthProjected / containerWidth) * targetPx * (currentScale / imgWidth);
-            let displayValue = unitsInBar >= 10 ? Math.round(unitsInBar).toString() : unitsInBar.toFixed(unitsInBar >= 1 ? 1 : 2);
-            line.style.width = targetPx + 'px';
-            line.style.borderLeft = '2px solid white';
-            line.style.borderRight = '2px solid white';
-            line.style.borderBottom = '2px solid white';
-            line.style.height = '8px';
-            line.innerHTML = `<span style="position: absolute; left: calc(100% + 8px); white-space: nowrap; font-weight: 900; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: white !important; text-shadow: 0 0 1px rgba(0,0,0,0.5);">${displayValue}${currentUnit}${!mapScaleRef.current ? '*' : ''}</span>`;
-            container.style.display = 'block';
-          } catch (e) { container.style.display = 'none'; }
-        };
-        map.on('zoomend moveend resize', updateScale);
-        setTimeout(updateScale, 100);
-        return container;
-      }
-    });
-    new (CalibratedScale as any)().addTo(map);
     mapRef.current = map;
+    map.on('moveend zoomend', updateShortcuts);
     
     if (zoomInRef) zoomInRef.current = () => map.zoomIn();
     if (zoomOutRef) zoomOutRef.current = () => map.zoomOut();
@@ -161,13 +202,21 @@ export const MapView: React.FC<MapViewProps> = ({
       else map.fitBounds(map.options.maxBounds as L.LatLngBounds, { animate: true, padding: [20, 20], duration: 1.5 });
     };
 
+    if (fitAllLocationsRef) fitAllLocationsRef.current = () => {
+      const placed = locationsRef.current.filter(l => l.x !== undefined && l.y !== undefined);
+      if (placed.length === 0) return;
+      
+      const bounds = L.latLngBounds(placed.map(l => L.latLng(l.y!, l.x!)));
+      map.fitBounds(bounds, { animate: true, padding: [50, 50], duration: 1.5, maxZoom: isRealWorld ? 15 : undefined });
+    };
+
     setIsReady(true);
     return () => {
       setIsReady(false);
       map.remove();
       mapRef.current = null;
     };
-  }, [isRealWorld]);
+  }, [isRealWorld, updateShortcuts]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -186,9 +235,7 @@ export const MapView: React.FC<MapViewProps> = ({
       map.options.maxBoundsViscosity = 1.0;
       if (defaultView) map.setView([defaultView.y, defaultView.x], defaultView.zoom, { animate: false });
       else map.fitBounds(bounds, { animate: false });
-      const minZoom = map.getBoundsZoom(bounds, true);
-      map.setMinZoom(minZoom);
-      if (!defaultView || map.getZoom() < minZoom) map.setZoom(minZoom);
+      map.setMinZoom(map.getBoundsZoom(bounds, true));
     };
     img.src = rootMapImage;
   }, [isReady, rootMapImage]);
@@ -219,49 +266,89 @@ export const MapView: React.FC<MapViewProps> = ({
       locations.forEach(loc => {
         if (loc.x !== undefined && loc.y !== undefined) {
           const latlng = L.latLng(loc.y, loc.x);
-          const isLocked = loc.isLocked ?? (loc.matchedX !== undefined);
+          const isLocLocked = loc.isLocked ?? (loc.matchedX !== undefined);
           if (!isRealWorld && mapBoundsRef.current && !mapBoundsRef.current.contains(latlng)) return;
           const style = getMarkerStyle(loc);
           const marker = L.marker(latlng, {
-            draggable: !isLocked,
+            draggable: !isLocLocked,
             icon: L.divIcon({
               className: 'custom-marker',
-              html: `<div class="group/marker relative">
-                <div class="relative flex flex-col items-center group-hover/marker:scale-110 transition-transform duration-300 ${loc.type === 'Region' ? 'scale-[2.5] opacity-30' : ''}">
-                  <!-- Teardrop Bulb -->
-                  <div class="w-10 h-10 ${style.color} rounded-full border-2 border-white shadow-xl flex items-center justify-center relative z-10">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">${style.svg}</svg>
-                  </div>
-                  <!-- Teardrop Point -->
-                  <div class="w-4 h-4 ${style.color} border-r-2 border-b-2 border-white rotate-45 -mt-2 shadow-lg relative z-0"></div>
+              iconSize: [32, 40],
+              iconAnchor: [16, 40],
+              html: `<div class="group/marker relative flex flex-col items-center">
+                <div class="relative transition-transform duration-300 group-hover/marker:scale-110 ${loc.type === 'Region' ? 'opacity-40' : ''}">
                   
-                  <!-- Clickable Padlock -->
-                  ${isLocked ? `
-                    <button class="lock-toggle-indicator absolute -top-1 -right-1 bg-slate-900 rounded-full p-1 border-2 border-white shadow-lg pointer-events-auto hover:bg-rose-600 transition-colors z-20" title="Click to Unlock">
-                      <svg viewBox="0 0 24 24" width="8" height="8" fill="none" stroke="white" stroke-width="3">
-                        <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                      </svg>
-                    </button>
-                  ` : ''}
-                </div>
-                <!-- Label (Always visible on hover) -->
-                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl pointer-events-none opacity-0 group-hover/marker:opacity-100 transition-opacity whitespace-nowrap border border-white/20 z-[100]">
-                  ${loc.name}
+                  <!-- Unified Teardrop SVG (Standard Size) -->
+                  <div class="w-8 h-10 relative flex items-center justify-center filter drop-shadow-xl">
+                    <svg viewBox="0 0 24 30" class="w-full h-full fill-current ${style.color.replace('bg-', 'text-')}" xmlns="http://www.w3.org/2000/svg">
+                      <path 
+                        d="M12 0C5.37 0 0 5.37 0 12c0 9 12 18 12 18s12-9 12-18c0-6.63-5.37-12-12-12z" 
+                        fill="currentColor" 
+                        stroke="white" 
+                        stroke-width="1" 
+                      />
+                    </svg>
+
+                    <div class="absolute top-[6px] w-4 h-4 flex items-center justify-center text-white">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">${style.svg}</svg>
+                    </div>
+                  </div>
                 </div>
               </div>`
             })
           }).addTo(map);
+
+          // Popup Content with Edit/Delete/Lock
+          marker.bindPopup(`
+            <div class="p-4 min-w-[200px] space-y-3 bg-white dark:bg-slate-900 rounded-2xl">
+              <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2">
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${loc.type}</div>
+                <button class="lock-toggle-map p-1.5 rounded-lg transition-all ${isLocLocked ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400 hover:bg-amber-50 hover:text-amber-500'}">
+                  ${isLocLocked ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>'}
+                </button>
+              </div>
+              <div class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">${loc.name}</div>
+              <div class="flex gap-2 pt-2">
+                <button class="edit-map-btn flex-1 px-3 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/20">
+                  Edit
+                </button>
+                <button class="remove-map-btn px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center">
+                  Remove
+                </button>
+              </div>
+            </div>
+          `, {
+            className: 'custom-map-popup',
+            closeButton: false,
+            offset: [0, -30]
+          });
           
-          marker.on('add', () => {
-            const el = marker.getElement();
-            if (el) {
-              const lockBtn = el.querySelector('.lock-toggle-indicator');
-              if (lockBtn) {
-                L.DomEvent.on(lockBtn as HTMLElement, 'click', (e) => {
-                  L.DomEvent.stopPropagation(e);
-                  onLocationLockRef.current?.(loc.id, false);
-                });
-              }
+          marker.on('popupopen', (e) => {
+            const popup = e.popup.getElement();
+            if (popup) {
+              const editBtn = popup.querySelector('.edit-map-btn');
+              const unplaceBtn = popup.querySelector('.remove-map-btn');
+              const lockBtn = popup.querySelector('.lock-toggle-map');
+              
+              if (editBtn) L.DomEvent.on(editBtn as HTMLElement, 'click', (ev) => {
+                L.DomEvent.stopPropagation(ev);
+                onLinkClickRef.current?.('admin', loc.id);
+                map.closePopup();
+              });
+              
+              if (unplaceBtn) L.DomEvent.on(unplaceBtn as HTMLElement, 'click', (ev) => {
+                L.DomEvent.stopPropagation(ev);
+                if (confirm(`Remove "${loc.name}" from the map?`)) {
+                  onLocationUnplaceRef.current?.(loc.id);
+                  map.closePopup();
+                }
+              });
+
+              if (lockBtn) L.DomEvent.on(lockBtn as HTMLElement, 'click', (ev) => {
+                L.DomEvent.stopPropagation(ev);
+                onLocationLockRef.current?.(loc.id, !isLocLocked);
+                // Keep popup open as requested
+              });
             }
           });
 
@@ -275,11 +362,44 @@ export const MapView: React.FC<MapViewProps> = ({
   return (
     <div className="w-full h-full relative group/map">
       <style>{`
-        .leaflet-control-scale { margin-bottom: 24px !important; margin-left: 24px !important; display: none; background: none !important; border: none !important; pointer-events: none; }
-        .leaflet-control-scale-line { background: none !important; color: white !important; mix-blend-mode: difference !important; margin-bottom: 8px !important; margin-left: 8px !important; display: flex; align-items: center; justify-content: center; position: relative; }
-        .dark .leaflet-control-scale-line { color: white !important; mix-blend-mode: difference !important; }
+        .custom-map-popup .leaflet-popup-content-wrapper { background: white; border-radius: 24px; padding: 0; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); }
+        .dark .custom-map-popup .leaflet-popup-content-wrapper { background: #0f172a; border: 1px solid rgba(255,255,255,0.1); }
+        .custom-map-popup .leaflet-popup-content { margin: 0; }
+        .custom-map-popup .leaflet-popup-tip { background: white; }
+        .dark .custom-map-popup .leaflet-popup-tip { background: #0f172a; }
       `}</style>
       <div ref={containerRef} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} className="w-full h-full rounded-3xl overflow-hidden shadow-inner bg-slate-100 dark:bg-slate-900 z-0 relative" />
+
+      {/* Smart Portals (Jump & Dive) */}
+      <div className="absolute top-24 left-6 flex flex-col gap-4 z-40 pointer-events-none">
+        {shortcuts.map((s: any, i) => (
+          <button
+            key={i}
+            onClick={(e) => {
+              e.stopPropagation();
+              mapRef.current?.fitBounds(s.bounds, { animate: true, padding: [100, 100], duration: 1.5, maxZoom: isRealWorld ? 15 : undefined });
+            }}
+            className="flex items-center gap-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl pointer-events-auto hover:scale-105 transition-all group active:scale-95 overflow-hidden"
+          >
+            <div className={`w-12 h-12 bg-gradient-to-br ${s.isOffScreen ? 'from-indigo-600 to-violet-700' : 'from-emerald-500 to-teal-600'} text-white flex items-center justify-center shadow-inner relative overflow-hidden shrink-0`}>
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
+              <div className="relative z-10 flex flex-col items-center">
+                {s.isOffScreen ? <MapPin size={14} className="mb-0.5" /> : <Maximize2 size={14} className="mb-0.5" />}
+                <span className="text-[10px] font-black">{s.count}</span>
+              </div>
+            </div>
+            <div className="px-4 py-2 text-left border-l border-white/10 overflow-hidden">
+              <div className={`text-[8px] font-black uppercase tracking-[0.2em] leading-none mb-1.5 whitespace-nowrap ${s.isOffScreen ? 'text-indigo-500 dark:text-indigo-400' : 'text-emerald-500'}`}>
+                {s.isOffScreen ? 'Jump to' : 'Dive into'}
+              </div>
+              <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight truncate max-w-[140px]">{s.name}</div>
+            </div>
+            <div className={`pr-3 pl-1 transition-colors shrink-0 ${s.isOffScreen ? 'text-slate-300 group-hover:text-indigo-500' : 'text-slate-300 group-hover:text-emerald-500'}`}>
+              <ChevronRight size={16} />
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

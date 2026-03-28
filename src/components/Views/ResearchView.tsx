@@ -63,6 +63,7 @@ interface ResearchViewProps {
 
   // UI State
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [mobileSubTab, setMobileSubTab] = useState<'ledger' | 'chat' | 'sources'>('chat');
 
   const handleCommitToLedger = (content: string) => {
     const newEntry: Note = {
@@ -107,46 +108,70 @@ interface ResearchViewProps {
     switch (activeTab) {
       case StenoTab.WORKSPACE:
         return (
-          <div className="h-full p-4 lg:p-6 overflow-hidden">
-            <div className="h-full grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Left Panel: Ledger (25%) */}
-              <div className="lg:col-span-1 h-full overflow-hidden">
-                <StenoLedgerPanel 
-                  projectData={projectData} 
-                  onUpdateProject={onUpdateProject} 
-                  onDeleteNote={onDeleteNote}
-                  currentUser={currentUser}
-                  projectsMetadata={projectsMetadata}
-                  onLinkClick={onLinkClick}
-                />
-              </div>
+          <div className="h-full flex flex-col overflow-hidden">
+            {/* Mobile Sub-Tab Navigation */}
+            <div className="lg:hidden flex p-2 bg-slate-100 dark:bg-slate-800 gap-1 shrink-0 border-b border-slate-200 dark:border-slate-700">
+              <button 
+                onClick={() => setMobileSubTab('ledger')}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mobileSubTab === 'ledger' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+              >
+                Ledger
+              </button>
+              <button 
+                onClick={() => setMobileSubTab('chat')}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mobileSubTab === 'chat' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+              >
+                Oracle
+              </button>
+              <button 
+                onClick={() => setMobileSubTab('sources')}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mobileSubTab === 'sources' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+              >
+                Sources
+              </button>
+            </div>
 
-              {/* Middle Panel: Chat (50%) */}
-              <div className="lg:col-span-2 h-full overflow-hidden">
-                <StenoChatPanel 
-                  chatMessages={chatMessages}
-                  setChatMessages={setChatMessages}
-                  chatInput={chatInput}
-                  setChatInput={setChatInput}
-                  isChatLoading={isChatLoading}
-                  setIsChatLoading={setIsChatLoading}
-                  onSaveIdea={handleSaveIdea}
-                  onCommitToLedger={handleCommitToLedger}
-                  onSaveAsSource={handleSaveChatAsSource}
-                  sources={sources.filter(s => selectedSourceIds.includes(s.id))}
-                  ideas={ideas}
-                />
-              </div>
+            <div className="flex-1 overflow-hidden p-4 lg:p-6">
+              <div className="h-full grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Ledger Panel */}
+                <div className={`${mobileSubTab === 'ledger' ? 'block' : 'hidden'} lg:block lg:col-span-1 h-full overflow-hidden`}>
+                  <StenoLedgerPanel 
+                    projectData={projectData} 
+                    onUpdateProject={onUpdateProject} 
+                    onDeleteNote={onDeleteNote}
+                    currentUser={currentUser}
+                    projectsMetadata={projectsMetadata}
+                    onLinkClick={onLinkClick}
+                  />
+                </div>
 
-              {/* Right Panel: Sources (25%) */}
-              <div className="lg:col-span-1 h-full overflow-hidden">
-                <StenoSourcesPanel
-                  sources={sources}
-                  setSources={setSources}
-                  projectId={projectData.id}
-                  selectedSourceIds={selectedSourceIds}
-                  setSelectedSourceIds={setSelectedSourceIds}
-                />
+                {/* Chat Panel */}
+                <div className={`${mobileSubTab === 'chat' ? 'block' : 'hidden'} lg:block lg:col-span-2 h-full overflow-hidden`}>
+                  <StenoChatPanel 
+                    chatMessages={chatMessages}
+                    setChatMessages={setChatMessages}
+                    chatInput={chatInput}
+                    setChatInput={setChatInput}
+                    isChatLoading={isChatLoading}
+                    setIsChatLoading={setIsChatLoading}
+                    onSaveIdea={handleSaveIdea}
+                    onCommitToLedger={handleCommitToLedger}
+                    onSaveAsSource={handleSaveChatAsSource}
+                    sources={sources.filter(s => selectedSourceIds.includes(s.id))}
+                    ideas={ideas}
+                  />
+                </div>
+
+                {/* Sources Panel */}
+                <div className={`${mobileSubTab === 'sources' ? 'block' : 'hidden'} lg:block lg:col-span-1 h-full overflow-hidden`}>
+                  <StenoSourcesPanel
+                    sources={sources}
+                    setSources={setSources}
+                    projectId={projectData.id}
+                    selectedSourceIds={selectedSourceIds}
+                    setSelectedSourceIds={setSelectedSourceIds}
+                  />
+                </div>
               </div>
             </div>
           </div>

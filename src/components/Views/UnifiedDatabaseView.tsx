@@ -12,6 +12,7 @@ import Fuse from 'fuse.js';
 interface UnifiedDatabaseViewProps {
   data: ProjectData;
   onUpdateProject: (updates: Partial<ProjectData>) => void;
+  onDeleteNote?: (id: string) => Promise<void>;
   onQuickUpdate: (type: string, id: string, key: string, value: any) => void;
   onLinkClick?: (type: string, id: string) => void;
   adminTargetId?: string | null;
@@ -54,6 +55,7 @@ const CHARACTER_FIELDS = [
 const LOCATION_FIELDS = [
   { key: 'name', label: 'Place Name', type: 'text', group: 'Identity' },
   { key: 'type', label: 'Place Type', type: 'text', group: 'GeoJSON/Place' },
+  { key: 'icon', label: 'Marker Icon', type: 'text', group: 'GeoJSON/Place' },
   { key: 'latitude', label: 'Latitude', type: 'number', group: 'GeoJSON/Place' },
   { key: 'longitude', label: 'Longitude', type: 'number', group: 'GeoJSON/Place' },
   { key: 'address', label: 'Address/Region', type: 'text', group: 'GeoJSON/Place' },
@@ -122,7 +124,7 @@ const UNIVERSAL_FIELDS = [
 ];
 
 export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
-  data, onUpdateProject, onQuickUpdate, onLinkClick, adminTargetId, onClearAdminTarget, hideHeader = false
+  data, onUpdateProject, onDeleteNote, onQuickUpdate, onLinkClick, adminTargetId, onClearAdminTarget, hideHeader = false
 }) => {
   const [activeCategory, setActiveCategory] = useState<Category>(Category.ALL);
   const [searchQuery, setSearchQuery] = useState('');
@@ -270,6 +272,13 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
 
   const handleDelete = (type: string, id: string) => {
     if (!confirm(`Delete this ${type}?`)) return;
+
+    if (type === 'Ledger' && onDeleteNote) {
+      onDeleteNote(id);
+      if (selectedId === id) setSelectedId(null);
+      return;
+    }
+
     const mapTypeToKey: Record<string, string> = {
       'Character': 'characters', 'Location': 'locations', 'Timeline': 'timeline',
       'Artifact': 'artifacts', 'Lore': 'lore', 'Source': 'sources', 'Ledger': 'ledger', 'Relationship': 'relationships'
