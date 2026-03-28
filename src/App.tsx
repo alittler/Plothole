@@ -675,7 +675,6 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         timeline: [],
         relationships: [],
         notes: [],
-        themes: ['Memory', 'Power', 'Legacy', 'Sacrifice'],
         manuscript: fullManuscript,
         history_diff: history_diff,
         assets: [],
