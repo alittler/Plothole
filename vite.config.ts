@@ -16,7 +16,10 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       license({
         thirdParty: {
-          output: path.resolve(__dirname, './public/licenses.txt'),
+          output: [
+            path.resolve(__dirname, './public/licenses.txt'),
+            path.resolve(__dirname, './THIRD-PARTY-NOTICES.txt'),
+          ],
           includePrivate: true,
         },
       }),
