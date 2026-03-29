@@ -101,7 +101,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ${isOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full lg:translate-x-0 pointer-events-none lg:pointer-events-auto'}
         ${isFullscreen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-none' : isCollapsed ? 'lg:w-20' : 'lg:w-64 md:w-72'}
       `}>
-        <div className="p-6 flex flex-col gap-1">
+        {/* Mobile Safe Area Forehead */}
+        <div className="lg:hidden h-[env(safe-area-inset-top)] bg-black w-full shrink-0" />
+
+        <div className="p-6 border-b border-slate-800/50 flex flex-col gap-1">
           <div className="flex items-center justify-between">
             {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white uppercase">{appName.replace(' — Your Story, Decoded', '')}</span>}
             <div className="flex items-center gap-2">
