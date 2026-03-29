@@ -46,7 +46,7 @@ import { CodexView } from './components/Views/CodexView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool } from 'lucide-react';
+import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool, Trash2 } from 'lucide-react';
 import { SignedIn, SignedOut, useUser, UserButton } from '@clerk/clerk-react';
 import { SignInPage } from './components/Auth/SignInPage';
 
@@ -1384,7 +1384,8 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
                     onKeyDown={async (e) => {
                       if (e.key === 'Enter' && e.shiftKey) {
                         e.preventDefault();
-                        const text = e.currentTarget.value.trim();
+                        const target = e.currentTarget;
+                        const text = target.value.trim();
                         if (!text) return;
                         const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
                         if (projectData) {
@@ -1393,7 +1394,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
                           setGlobalNotes(prev => [n, ...prev]);
                           await saveGlobalNote(n);
                         }
-                        e.currentTarget.value = '';
+                        target.value = '';
                       }
                     }}
                   />
