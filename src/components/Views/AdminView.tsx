@@ -1,15 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ProjectData, AppPrompts, ToolboxLink, ProjectMetadata, Note, AppSettings, ViewType, User as AppUser, Artifact, LoreEntry, Source, Character, Location, TimelineEvent, ChangeLogEntry } from '../../types';
+import { ProjectData, AppPrompts, ToolboxLink, ProjectMetadata, Note, AppSettings, ViewType, User as AppUser } from '../../types';
 import { 
   Shield, Sparkles, Save, Database, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, Globe, Loader2, RotateCcw, Target
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, Globe, Loader2, RotateCcw, Target, Wrench
 } from 'lucide-react';
 
 import { UnifiedDatabaseView } from './UnifiedDatabaseView';
-import { WikiText } from '../ui/WikiText';
 import { generateId } from '../../services/storageService';
 
 interface AdminViewProps {
@@ -40,6 +39,7 @@ enum AdminTab {
   SYSTEM = 'System',
   NAVIGATION = 'Navigation',
   USERS = 'Users',
+  TOOLBOX = 'Toolbox',
   LEDGER = 'Narrative Ledger'
 }
 
@@ -48,7 +48,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<AdminTab | null>(adminTargetId ? AdminTab.LEDGER : (searchParams.get('tab') as AdminTab) || null);
-  
+
   const handleSetActiveTab = (tab: AdminTab | null) => {
     setActiveTab(tab);
     if (tab) setSearchParams({ tab });
@@ -58,6 +58,35 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [prompts, setPrompts] = useState(appPrompts);
   const [settings, setSettings] = useState(appSettings);
   const [newUserEmail, setNewUserEmail] = useState('');
+
+  const [newLink, setNewLink] = useState<Partial<ToolboxLink>>({ label: '', url: '', category: 'Writing', description: '' });
+
+  const handleAddDefaultLink = () => {
+    if (!newLink.label || !newLink.url) return;
+    const link: ToolboxLink = {
+      id: generateId(),
+      label: newLink.label,
+      url: newLink.url,
+      category: newLink.category || 'Writing',
+      description: newLink.description
+    };
+    const updatedSettings = {
+      ...settings,
+      defaultToolboxLinks: [...(settings.defaultToolboxLinks || []), link]
+    };
+    setSettings(updatedSettings);
+    onSaveSettings(updatedSettings);
+    setNewLink({ label: '', url: '', category: 'Writing', description: '' });
+  };
+
+  const handleRemoveDefaultLink = (id: string) => {
+    const updatedSettings = {
+      ...settings,
+      defaultToolboxLinks: (settings.defaultToolboxLinks || []).filter(l => l.id !== id)
+    };
+    setSettings(updatedSettings);
+    onSaveSettings(updatedSettings);
+  };
 
   React.useEffect(() => {
     if (adminTargetId) handleSetActiveTab(AdminTab.LEDGER);
@@ -169,6 +198,52 @@ export const AdminView: React.FC<AdminViewProps> = ({
           </div>
         );
 
+      case AdminTab.TOOLBOX:
+        return (
+          <div className="max-w-5xl mx-auto py-8 animate-in fade-in duration-500 space-y-8">
+            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20"><Wrench size={28} /></div>
+                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Toolbox Defaults</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Global resources for every story architect.</p></div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tool Label</label><input type="text" value={newLink.label} onChange={e => setNewLink({...newLink, label: e.target.value})} placeholder="e.g. RhymeZone" className="bg-white dark:bg-slate-900 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Resource URL</label><input type="text" value={newLink.url} onChange={e => setNewLink({...newLink, url: e.target.value})} placeholder="https://..." className="bg-white dark:bg-slate-900 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label><input type="text" value={newLink.category} onChange={e => setNewLink({...newLink, category: e.target.value})} placeholder="e.g. Vocabulary" className="bg-white dark:bg-slate-900 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
+                  <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Description (Optional)</label><input type="text" value={newLink.description} onChange={e => setNewLink({...newLink, description: e.target.value})} placeholder="What is this for?" className="bg-white dark:bg-slate-900 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
+                </div>
+                <button onClick={handleAddDefaultLink} className="md:col-span-2 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3"><Plus size={20} /> Add Global Resource</button>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Active Global Tools</h3>
+                {settings.defaultToolboxLinks?.map(link => (
+                  <div key={link.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 group">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl text-indigo-600 shadow-sm"><LinkIcon size={18} /></div>
+                      <div>
+                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">{link.label}</p>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{link.category} &bull; {link.description || 'No description'}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => handleRemoveDefaultLink(link.id)} className="p-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={18} /></button>
+                  </div>
+                ))}
+                {(!settings.defaultToolboxLinks || settings.defaultToolboxLinks.length === 0) && (
+                  <div className="py-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
+                    <Activity size={48} className="mx-auto text-slate-200 mb-4 opacity-20" />
+                    <p className="text-slate-400 font-serif italic text-lg">No global resources configured.</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        );
+
       case AdminTab.USERS:
         return (
           <div className="max-w-5xl mx-auto py-8 animate-in fade-in duration-500 space-y-8">
@@ -237,6 +312,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               {tab === AdminTab.SYSTEM && <Settings size={18} />}
               {tab === AdminTab.NAVIGATION && <Layout size={18} />}
               {tab === AdminTab.USERS && <User size={18} />}
+              {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
               {tab === AdminTab.LEDGER && <Database size={18} />}
               {tab}
             </button>

@@ -1,14 +1,16 @@
 import React from 'react';
 import { ViewType, Note, ProjectData, ProjectMetadata, User } from '../../types';
-import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2 } from 'lucide-react';
+import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe } from 'lucide-react';
 import { StackedPaper } from '../ui/StackedPaper';
 import { WikiText } from '../ui/WikiText';
 import { RichEditor } from '../ui/RichEditor';
 import { semanticSearchNotes } from '../../services/geminiService';
+import { BookshelfView } from './BookshelfView';
 
 enum NotepadView {
   STREAM = 'Stream',
-  PROSE = 'Prose'
+  PROSE = 'Prose',
+  WORKSPACE = 'Workspace'
 }
 import { generateId } from '../../services/storageService';
 
@@ -29,10 +31,18 @@ interface ResearchSystemViewProps {
   activeTasks: string[];
   semanticSearchEnabled?: boolean;
   isEmbedded?: boolean;
+  // Bookshelf Props
+  onCreateProject?: (title: string, author: string, useSample: boolean, shortName?: string) => Promise<void>;
+  onUploadProject?: (file: File) => Promise<void>;
+  onDeleteProject?: (id: string) => Promise<void>;
+  onSelectProject?: (id: string) => Promise<void>;
+  onOpenDashboard?: () => void;
+  isAnalyzing?: boolean;
 }
 
 export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
-  currentView, onChangeView, data, projectsMetadata, currentUser, onAddNote, onAddIdeaToProject, onToggleCanon, onDeleteNote, onDeleteAllNotes, onLinkClick, onAddDoubleProcessedNote, activeTasks, onUpdateProject, semanticSearchEnabled, isEmbedded
+  currentView, onChangeView, data, projectsMetadata, currentUser, onAddNote, onAddIdeaToProject, onToggleCanon, onDeleteNote, onDeleteAllNotes, onLinkClick, onAddDoubleProcessedNote, activeTasks, onUpdateProject, semanticSearchEnabled, isEmbedded,
+  onCreateProject, onUploadProject, onDeleteProject, onSelectProject, onOpenDashboard, isAnalyzing: isAnalyzingProp
 }) => {
   const [viewMode, setNotepadView] = React.useState<NotepadView>(NotepadView.STREAM);
   const [newNote, setNewNote] = React.useState('');
@@ -41,6 +51,32 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   const [isSearching, setIsSearching] = React.useState(false);
   const [showTagSuggestion, setShowTagSuggestion] = React.useState(false);
   const [noteToDelete, setNoteToDelete] = React.useState<string | null>(null);
+  const [selectedProseId, setSelectedProseId] = React.useState<string | null>(null);
+
+  const proseDocs = React.useMemo(() => data.proseDocuments || [], [data.proseDocuments]);
+  const activeProse = React.useMemo(() => proseDocs.find(d => d.id === selectedProseId), [proseDocs, selectedProseId]);
+
+  const handleCreateProse = () => {
+    const newDoc = {
+      id: generateId(),
+      title: 'Untitled Scene',
+      content: '',
+      lastModified: Date.now()
+    };
+    onUpdateProject?.({ proseDocuments: [newDoc, ...proseDocs] });
+    setSelectedProseId(newDoc.id);
+  };
+
+  const handleUpdateProse = (id: string, updates: Partial<{ title: string, content: string }>) => {
+    const updated = proseDocs.map(d => d.id === id ? { ...d, ...updates, lastModified: Date.now() } : d);
+    onUpdateProject?.({ proseDocuments: updated });
+  };
+
+  const handleDeleteProse = (id: string) => {
+    if (!confirm('Delete this document?')) return;
+    onUpdateProject?.({ proseDocuments: proseDocs.filter(d => d.id !== id) });
+    if (selectedProseId === id) setSelectedProseId(null);
+  };
 
   // Keyboard shortcuts for delete modal
   React.useEffect(() => {
@@ -256,7 +292,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
           {viewMode === NotepadView.STREAM ? (
             <>
               {/* Transition Zone - paper texture continues underneath */}
-              <div className="hidden lg:block relative h-14 z-20 pointer-events-none overflow-hidden shrink-0">
+              <div className="relative h-14 z-20 pointer-events-none overflow-hidden shrink-0">
                 {/* Layer 3 (Back) */}
                 <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-4">
                   <div className="h-8 paper-fringe-dark path-torn-2" />
@@ -274,7 +310,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
               <div className="flex-1 relative pt-2 pb-32 lg:pb-8 px-4 md:pl-16 lg:pl-32">
                 <div className="space-y-0 relative z-10">
                   <StackedPaper className="space-y-4" transparent>
-                    <div className="p-4 md:p-6 relative z-20">
+                    <div className="p-4 md:p-6 relative z-20 bg-white/40 dark:bg-white/5 rounded-2xl backdrop-blur-sm border border-slate-300 dark:border-slate-700 mb-4">
                       <div className="relative">
                         <textarea
                           value={newNote}
@@ -381,12 +417,99 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                 </div>
               </div>
             </>
+          ) : viewMode === NotepadView.PROSE ? (
+            <div className="flex-1 bg-slate-100 dark:bg-slate-900 overflow-hidden flex flex-col relative">
+              {activeProse ? (
+                <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 animate-in fade-in zoom-in-95 duration-300">
+                  <header className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => setSelectedProseId(null)}
+                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                        title="Back to Corkboard"
+                      >
+                        <ChevronRight size={20} className="rotate-180" />
+                      </button>
+                      <input 
+                        type="text" 
+                        value={activeProse.title}
+                        onChange={(e) => handleUpdateProse(activeProse.id, { title: e.target.value })}
+                        className="bg-transparent border-none focus:ring-0 text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleDeleteProse(activeProse.id)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={18} /></button>
+                    </div>
+                  </header>
+                  <div className="flex-1 overflow-hidden">
+                    <RichEditor 
+                      content={activeProse.content} 
+                      onChange={(html) => handleUpdateProse(activeProse.id, { content: html })}
+                      placeholder="Write your scene here... Your work is automatically saved."
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto p-8 lg:p-12 relative">
+                  {/* Corkboard Texture/Design */}
+                  <div className="absolute inset-0 bg-[#d2b48c]/20 dark:bg-slate-900 opacity-50 pointer-events-none" />
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cork-board.png')] opacity-10 pointer-events-none" />
+                  
+                  <div className="max-w-5xl mx-auto relative z-10">
+                    <div className="flex items-center justify-between mb-8">
+                      <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Prose Corkboard</h2>
+                      <button 
+                        onClick={handleCreateProse}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
+                      >
+                        <Plus size={16} /> New Scene
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {proseDocs.length === 0 ? (
+                        <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4">
+                          <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
+                            <FileText size={32} className="text-slate-300" />
+                          </div>
+                          <p className="text-slate-400 font-serif italic">Your corkboard is empty. Create a new scene to begin.</p>
+                        </div>
+                      ) : (
+                        proseDocs.map(doc => (
+                          <button
+                            key={doc.id}
+                            onClick={() => setSelectedProseId(doc.id)}
+                            className="group relative bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl border-t-8 border-t-amber-200 dark:border-t-amber-900/50 hover:scale-105 hover:shadow-2xl transition-all text-left flex flex-col h-48 overflow-hidden"
+                          >
+                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-slate-300/50" /> {/* Pin head */}
+                            <h3 className="font-bold text-slate-900 dark:text-white mb-2 line-clamp-1 uppercase text-xs tracking-widest">{doc.title}</h3>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-serif line-clamp-5 overflow-hidden" dangerouslySetInnerHTML={{ __html: doc.content || 'Empty scene...' }} />
+                            <div className="mt-auto pt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(doc.lastModified).toLocaleDateString()}</span>
+                              <div className="flex items-center gap-2">
+                                <Edit2 size={12} className="text-indigo-500" />
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
-            <div className="flex-1 bg-white dark:bg-slate-900 animate-in fade-in duration-500 flex flex-col relative">
-              <RichEditor 
-                content={data.manuscriptDraft || ''} 
-                onChange={(html) => onUpdateProject?.({ manuscriptDraft: html })}
-                placeholder="Start writing your masterpiece... Your draft is automatically saved."
+            <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
+              <BookshelfView 
+                projects={projectsMetadata || []} 
+                activeProjectId={data.id || ''} 
+                currentUser={currentUser!} 
+                onSelectProject={onSelectProject || (async () => {})} 
+                onCreateProject={onCreateProject || (async () => {})} 
+                onUploadProject={onUploadProject || (async () => {})} 
+                onDeleteProject={onDeleteProject || (async () => {})} 
+                onOpenDashboard={onOpenDashboard || (() => {})} 
+                isAnalyzing={isAnalyzingProp || false} 
               />
             </div>
           )}

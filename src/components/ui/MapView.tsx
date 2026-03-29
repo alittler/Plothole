@@ -36,7 +36,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapBoundsRef = useRef<L.LatLngBounds | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const imgWidthRef = useRef<number>(1);
+  const [imgWidth, setImgWidth] = useState<number>(0);
   const [isReady, setIsReady] = useState(false);
   const [shortcuts, setShortcuts] = useState<{ name: string, bounds: L.LatLngBounds, count: number, type: string }[]>([]);
 
@@ -71,7 +71,7 @@ export const MapView: React.FC<MapViewProps> = ({
         } else if (isRealWorld) {
           region = `Area ${Math.round(loc.x! / 10)},${Math.round(loc.y! / 10)}`;
         } else {
-          const grid = imgWidthRef.current * 0.3 || 1000;
+          const grid = imgWidth * 0.3 || 1000;
           region = `Sector ${Math.round(loc.x! / grid)},${Math.round(loc.y! / grid)}`;
         }
 
@@ -232,7 +232,7 @@ export const MapView: React.FC<MapViewProps> = ({
     img.onload = () => {
       if (!mapRef.current) return;
       const w = img.width; const h = img.height;
-      imgWidthRef.current = w;
+      setImgWidth(w);
       onDimensionsDetectedRef.current?.(w, h);
       const bounds = new L.LatLngBounds(L.latLng(-h/2, -w/2), L.latLng(h/2, w/2));
       mapBoundsRef.current = bounds;
@@ -256,6 +256,46 @@ export const MapView: React.FC<MapViewProps> = ({
     const rect = containerRef.current.getBoundingClientRect();
     const latlng = map.containerPointToLatLng(L.point(e.clientX - rect.left, e.clientY - rect.top));
     onLocationPlaceRef.current(locationId, latlng.lng, latlng.lat);
+  };
+
+  const renderScaleBar = () => {
+    if (!mapRef.current) return null;
+    const map = mapRef.current;
+    
+    let displayDist = 0;
+    let label = mapUnit || 'km';
+
+    if (isRealWorld) {
+      // For real world, calculate distance between two points 100px apart at the center
+      const center = map.getCenter();
+      const p1 = map.containerPointToLatLng([0, 0]);
+      const p2 = map.containerPointToLatLng([100, 0]);
+      displayDist = p1.distanceTo(p2) / 1000; // km
+      if (mapUnit === 'mi') displayDist *= 0.621371;
+    } else {
+      if (!imgWidth) return null;
+      const currentScale = mapScale || 1000;
+      const p1 = map.unproject([0, 0], map.getZoom());
+      const p2 = map.unproject([100, 0], map.getZoom());
+      const pixelDist = Math.abs(p2.lng - p1.lng);
+      displayDist = (pixelDist / imgWidth) * currentScale;
+    }
+    
+    if (displayDist < 1) {
+      displayDist = displayDist * 1000;
+      label = (mapUnit === 'mi' || label === 'mi') ? 'ft' : 'm';
+    }
+
+    return (
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 py-2 rounded-xl shadow-2xl border border-white/20 flex flex-col gap-1 border-b-4 border-b-emerald-500">
+          <div className="flex items-center justify-between w-[100px] border-b-2 border-l-2 border-r-2 border-slate-900 dark:border-white h-1.5" />
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white text-center">
+            {displayDist.toFixed(displayDist < 10 ? 1 : 0)} {label}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -457,8 +497,10 @@ export const MapView: React.FC<MapViewProps> = ({
       `}</style>
       <div ref={containerRef} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} className="w-full h-full rounded-3xl overflow-hidden shadow-inner bg-slate-100 dark:bg-slate-900 z-0 relative" />
 
+      {renderScaleBar()}
+
       {/* Smart Portals (Jump & Dive) */}
-      <div className="absolute top-24 right-6 flex flex-col gap-4 z-40 pointer-events-none items-end">
+      <div className="absolute top-3 md:top-6 left-3 md:left-6 flex flex-col gap-4 z-40 pointer-events-none items-start">
         {shortcuts.map((s: any, i) => (
           <button
             key={i}
@@ -470,20 +512,17 @@ export const MapView: React.FC<MapViewProps> = ({
           >
             <div className="w-12 h-12 relative shrink-0 overflow-hidden m-1 rounded-xl shadow-lg border border-black/5 dark:border-white/10">
               {renderTargetPreview(s.bounds, s.isOffScreen)}
-              <div className="absolute -bottom-1 -right-1">
-                <div className="bg-indigo-600 text-white px-1.5 py-0.5 rounded-tl-lg text-[8px] font-black shadow-sm border-t border-l border-white/20">
-                  {s.count}
+            </div>
+            <div className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 transition-all duration-500 ease-in-out flex items-center overflow-hidden">
+              <div className="px-4 py-2 text-left border-l border-white/10 overflow-hidden">
+                <div className={`text-[8px] font-black uppercase tracking-[0.2em] leading-none mb-1.5 whitespace-nowrap ${s.isOffScreen ? 'text-indigo-500 dark:text-indigo-400' : 'text-emerald-500'}`}>
+                  {s.isOffScreen ? 'Jump to' : 'Dive into'}
                 </div>
+                <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight truncate max-w-[140px]">{s.name}</div>
               </div>
-            </div>
-            <div className="px-4 py-2 text-left overflow-hidden">
-              <div className={`text-[8px] font-black uppercase tracking-[0.2em] leading-none mb-1.5 whitespace-nowrap ${s.isOffScreen ? 'text-indigo-500 dark:text-indigo-400' : 'text-emerald-500'}`}>
-                {s.isOffScreen ? 'Jump to' : 'Dive into'}
+              <div className={`pr-3 pl-1 transition-colors shrink-0 ${s.isOffScreen ? 'text-slate-300 group-hover:text-indigo-500' : 'text-slate-300 group-hover:text-emerald-500'}`}>
+                <ChevronRight size={16} />
               </div>
-              <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight truncate max-w-[140px]">{s.name}</div>
-            </div>
-            <div className={`pr-3 pl-1 transition-colors shrink-0 ${s.isOffScreen ? 'text-slate-300 group-hover:text-indigo-500' : 'text-slate-300 group-hover:text-emerald-500'}`}>
-              <ChevronRight size={16} />
             </div>
           </button>
         ))}

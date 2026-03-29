@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType, User } from '../../types';
-import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, GitBranch } from 'lucide-react';
+import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, GitBranch, Wrench } from 'lucide-react';
 import { UserButton, useClerk } from '@clerk/clerk-react';
 
 interface SidebarProps {
@@ -22,6 +22,7 @@ interface SidebarProps {
   sidebarOrder?: ViewType[];
   onOpenLicenses?: () => void;
   hideDesktopActions?: boolean;
+  isFullscreen?: boolean;
 }
 
 interface NavItem {
@@ -40,20 +41,19 @@ interface SidebarSection {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, appName = 'PLOTHOLE',
-  sidebarOrder, onOpenLicenses, hideDesktopActions = false
+  sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false
 }) => {
   const { signOut } = useClerk();
   
   const allNavItems: NavItem[] = [
     { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
-    { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
-    { id: ViewType.RESEARCH, label: 'Research', icon: Search, projectOnly: true },
+    // { id: ViewType.RESEARCH, label: 'Research', icon: Search, projectOnly: true },
     { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
     { id: ViewType.MAP, label: 'Atlas', icon: Map, projectOnly: true },
     { id: ViewType.TIMELINE, label: 'History', icon: Calendar, projectOnly: true },
     { id: ViewType.CODEX, label: 'Codex', icon: Book, projectOnly: true },
-    { id: ViewType.TOOLBOX, label: 'Toolbox', icon: HelpCircle, always: true },
+    { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
     { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
   ];
@@ -61,12 +61,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const sections: SidebarSection[] = React.useMemo(() => {
     const baseSections: SidebarSection[] = [
       {
-        title: 'Workspace',
-        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.STORY_ARCHITECT, ViewType.BOOKSHELF, ViewType.DASHBOARD].includes(i.id))
-      },
-      {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.BOOKSHELF, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(i.id))
       },
       {
         title: 'System',
@@ -100,10 +96,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside className={`
-        fixed inset-y-0 left-0 z-[1001] lg:relative
+        fixed inset-y-0 left-0 z-[1001] lg:relative shrink-0
         bg-slate-950 text-slate-400 flex flex-col transition-all duration-500 ease-in-out border-r border-slate-800/50
-        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
+        ${isOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full lg:translate-x-0 pointer-events-none lg:pointer-events-auto'}
+        ${isFullscreen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-none' : isCollapsed ? 'lg:w-20' : 'lg:w-64 md:w-72'}
       `}>
         <div className="p-6 flex flex-col gap-1">
           <div className="flex items-center justify-between">

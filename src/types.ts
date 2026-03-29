@@ -201,6 +201,8 @@ export interface ProjectData {
   chapters?: Chapter[];
   notes: Note[];
   themes: string[];
+  proseDocuments?: ProseDocument[];
+  userToolboxLinks?: ToolboxLink[];
   
   // Modular Tiered Architecture fields
   entities: HierarchicalEntity[];
@@ -337,6 +339,16 @@ export interface Note {
   content: string;
   tags: string[];
   timestamp: number;
+  isCanon?: boolean;
+  expandedContent?: string;
+  isSavedInLedger?: boolean;
+}
+
+export interface ProseDocument {
+  id: string;
+  title: string;
+  content: string;
+  lastModified: number;
 }
 
 export interface Relationship {
@@ -398,6 +410,9 @@ export interface AppSettings {
   appName: string;
   aiCharacterLimit?: number;
   adminEmails?: string[];
+  sidebarOrder?: ViewType[];
+  bottomNavOrder?: ViewType[];
+  defaultToolboxLinks?: ToolboxLink[];
 }
 
 export interface AppPrompts {
@@ -409,4 +424,5 @@ export interface ToolboxLink {
   label: string;
   url: string;
   category: string;
+  description?: string;
 }

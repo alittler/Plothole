@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ViewType, ProjectData, Location, Artifact, LoreEntry } from '../../types';
-import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw } from 'lucide-react';
+import { ViewType, ProjectData, Location, Artifact, LoreEntry, Note, ProseDocument, User, ProjectMetadata } from '../../types';
+import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers } from 'lucide-react';
 
 import { MapView } from '../ui/MapView';
 import { WikiText } from '../ui/WikiText';
 import { generateId } from '../../services/storageService';
+import { RichEditor } from '../ui/RichEditor';
 
 interface WorldSystemViewProps {
   currentView: ViewType;
@@ -29,6 +30,8 @@ interface WorldSystemViewProps {
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   onLinkClick: (type: string, id: string) => void;
+  projectsMetadata?: ProjectMetadata[];
+  currentUser?: User;
 }
 
 enum WorldTab {
@@ -53,7 +56,9 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   onDeleteArtifact,
   onAddLore,
   onDeleteLore,
-  onUpdateRootMap
+  onUpdateRootMap,
+  projectsMetadata,
+  currentUser
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as WorldTab) || WorldTab.MAP;
@@ -66,8 +71,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   const [mapDimensions, setMapDimensions] = useState({ width: 0, height: 0 });
   const [isMatching, setIsMatching] = useState(false);
   const [isMapMenuOpen, setIsMapMenuOpen] = useState(false);
+  const [isLayersOpen, setIsLayersOpen] = useState(false);
   const [isWorldExpanded, setIsWorldExpanded] = useState(false);
-  const [isWorldListOpen, setIsWorldListOpen] = useState(false);
   const [editingMapId, setEditingMapId] = useState<string | null>(null);
   const [editingMapName, setEditingMapName] = useState("");
   const [localScale, setLocalScale] = useState(data.mapScale || 100);
@@ -106,9 +111,9 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
       if (!response.ok) throw new Error("Upload failed");
       const result = await response.json();
       if (currentMapParentId) {
-        onUpdateLocation({ ...data.locations.find(l => l.id === currentMapParentId)!, mapImage: result.url });
+        onUpdateLocation({ ...data.locations.find(l => l.id === currentMapParentId)!, mapImage: result.url, isRealWorld: false });
       } else {
-        onUpdateRootMap(result.url);
+        onUpdateProject({ rootMapImage: result.url, isRealWorldMap: false });
       }
     } catch (err) {
       console.error(err);
@@ -147,45 +152,14 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   };
 
   const entities = data.entities || [];
-
-  const handleAddLocation = () => {
-    onUpdateProject({ entities: [...entities, { id: generateId(), name: 'New Location', type: 'Location', tier: 3, species: 'Structure', description: '' }] });
-  };
-
-  const handleAddArtifact = () => {
-    onUpdateProject({ entities: [...entities, { id: generateId(), name: 'New Item', type: 'Item', tier: 3, species: 'Artifact', description: '' }] });
-  };
-
-  const handleAddLore = (cat: string) => {
-    onUpdateProject({ entities: [...entities, { id: generateId(), name: 'New Entry', type: 'Lore', tier: 3, species: cat, description: '' }] });
-  };
-
-  const handleDelete = (id: string) => {
-    if (!confirm('Delete this entry?')) return;
-    onUpdateProject({ entities: entities.filter(e => e.id !== id) });
-  };
-
-  const renderEntityGrid = (type: string, species?: string) => {
-    const filtered = entities.filter(e => e.type === type && (!species || e.species === species));
-    
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map(entity => (
-          <div key={entity.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">T{entity.tier} {entity.species}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => onLinkClick?.('admin', entity.id)} className="text-slate-400 hover:text-indigo-500 transition-colors"><Edit2 size={14} /></button>
-                <button onClick={() => handleDelete(entity.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
-              </div>
-            </div>
-            <h3 className="font-bold text-slate-900 dark:text-white">{entity.name}</h3>
-            <p className="text-sm text-slate-500 line-clamp-2 mt-2 font-serif italic">{entity.description || 'No description yet.'}</p>
-          </div>
-        ))}
-      </div>
-    );
-  };
+  
+  const isCurrentMapRealWorld = (() => {
+    if (currentMapParentId) {
+      const parent = data.locations.find(l => l.id === currentMapParentId);
+      return !!parent?.isRealWorld;
+    }
+    return !!data.isRealWorldMap;
+  })();
 
   return (
     <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
@@ -218,7 +192,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
             {activeTab === WorldTab.MAP && (
               <div className="flex-1 min-h-0 relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-100 dark:bg-slate-900 w-full flex flex-col">
                 
-                {/* Initial Choice State */}
                 {(!data.rootMapImage && !data.isRealWorldMap && !currentMapParentId) ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
                     <div className="space-y-2">
@@ -271,7 +244,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       onViewChange={(view) => onUpdateProject({ mapDefaultView: view })}
                       onDimensionsDetected={(width, height) => setMapDimensions({ width, height })}
                       onLinkClick={onLinkClick}
-                      isRealWorld={currentMapParentId ? parentLocation?.isRealWorld : data.isRealWorldMap}
+                      isRealWorld={isCurrentMapRealWorld}
                       onLocationClick={(id) => {
                         setSelectedLocationId(id);
                         const loc = data.locations.find(l => l.id === id);
@@ -317,176 +290,12 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     )}
 
                     <div className="absolute top-3 md:top-6 left-3 md:left-6 right-3 md:right-6 flex items-start justify-between pointer-events-none z-30">
-                      <div className="flex flex-col gap-2 md:gap-3 pointer-events-auto">
-                        <div className="relative group/breadcrumbs">
-                          <div className="flex items-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-1 rounded-xl md:rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-                            <button 
-                              onClick={() => { if (!currentMapParentId) setIsWorldExpanded(!isWorldExpanded); setIsWorldListOpen(!isWorldListOpen); }} 
-                              className={`h-10 md:h-12 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg md:rounded-xl transition-all px-3 ${isWorldExpanded || currentMapParentId ? 'min-w-[100px]' : 'w-10 md:w-12'} ${!currentMapParentId ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-500'}`}
-                            >
-                              <MapIcon size={20} className="md:w-6 md:h-6 shrink-0" />
-                              <div className={`overflow-hidden transition-all duration-500 ease-in-out flex items-center ${isWorldExpanded || currentMapParentId ? 'max-w-[100px] opacity-100 ml-2' : 'max-w-0 opacity-0'}`}>
-                                <span className="text-xs font-black uppercase tracking-widest whitespace-nowrap">Atlas</span>
-                              </div>
-                            </button>
-                            {parentLocation && (
-                              <div className="flex items-center gap-1.5 md:gap-2 pr-2 animate-in slide-in-from-left-4 duration-500">
-                                <div className="h-4 md:h-6 w-px bg-slate-200 dark:bg-slate-800" />
-                                <ChevronRight size={12} className="text-slate-400" />
-                                <span className="text-[10px] md:text-sm text-slate-900 dark:text-white font-black uppercase tracking-tight truncate max-w-[120px] md:max-w-none">{parentLocation.name}</span>
-                              </div>
-                            )}
+                      <div className="flex flex-col gap-4 pointer-events-auto items-start">
+                        {parentLocation && (
+                          <div className="flex items-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-2 px-4 rounded-2xl shadow-xl border border-white/20">
+                            <span className="text-[10px] md:text-sm text-slate-900 dark:text-white font-black uppercase tracking-tight truncate max-w-[120px] md:max-w-none">{parentLocation.name}</span>
                           </div>
-
-                          {isWorldListOpen && (
-                            <div className="absolute top-full left-0 mt-3 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-800 min-w-[320px] animate-in fade-in slide-in-from-top-4 duration-300 z-[100]">
-                              <div className="flex items-center justify-between mb-4 px-2">
-                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Atlas</h3>
-                                <div className="flex items-center gap-1">
-                                  <button 
-                                    onClick={() => {
-                                      if (!confirm("RESET ATLAS: This will clear ALL placements and reset to initial map selection. Continue?")) return;
-                                      const resetLocs = data.locations.map(l => ({ ...l, x: undefined, y: undefined, parentId: undefined, mapId: undefined, mapImage: undefined, isRealWorld: false, isLocked: false }));
-                                      onUpdateProject({ isRealWorldMap: false, rootMapImage: undefined, mapScale: undefined, mapDefaultView: undefined, locations: resetLocs });
-                                      onMapChange(null);
-                                      setIsWorldListOpen(false);
-                                    }}
-                                    className="p-1.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"
-                                    title="Reset Atlas"
-                                  >
-                                    <RotateCcw size={14} />
-                                  </button>
-                                  <button 
-                                    onClick={() => {
-                                      const name = prompt("Enter new map name:", "New Map Layer");
-                                      if (!name) return;
-                                      const isReal = confirm("Is this a Real World (Earth) map? (Cancel for Custom Fantasy map)");
-                                      onAddLocation({ id: generateId(), name, description: '', type: 'Region', source: 'manual', shortId: Math.random().toString(36).substring(2, 10), mapImage: DEFAULT_MAP, isRealWorld: isReal });
-                                      setIsWorldListOpen(false);
-                                    }}
-                                    className="p-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
-                                    title="Add New Root Map"
-                                  >
-                                    <Plus size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-1 max-h-[400px] overflow-y-auto no-scrollbar pr-1">
-                                <div className="flex items-center gap-1 group/root">
-                                  <button 
-                                    onClick={() => { onMapChange(null); setIsWorldListOpen(false); }}
-                                    className={`flex-1 flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${!currentMapParentId ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <Globe size={14} className={!currentMapParentId ? 'text-emerald-500' : 'text-slate-400'} />
-                                      {data.isRealWorldMap ? 'Earth (Global)' : 'Fantasy (Global)'}
-                                    </div>
-                                    <span className="text-[8px] font-mono opacity-40 uppercase tracking-tighter">Root</span>
-                                  </button>
-                                  
-                                  <div className="flex items-center gap-1">
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const name = prompt("Enter sub-layer name:", "New Sub-Layer");
-                                        if (!name) return;
-                                        const isReal = confirm("Is this a Real World (Earth) map? (Cancel for Custom Fantasy map)");
-                                        onAddLocation({ id: generateId(), name, description: '', type: 'Region', source: 'manual', shortId: Math.random().toString(36).substring(2, 10), mapImage: DEFAULT_MAP, isRealWorld: isReal });
-                                      }}
-                                      className="p-1.5 text-slate-400 hover:text-emerald-600"
-                                      title="Add Sub-layer to Root"
-                                    >
-                                      <Plus size={12} />
-                                    </button>
-                                    {data.isRealWorldMap && (
-                                      <button onClick={(e) => { e.stopPropagation(); handleAutoMatch(); }} disabled={isMatching} className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="Auto-match ALL to Earth">{isMatching ? <Loader2 size={12} className="animate-spin" /> : <Target size={12} />}</button>
-                                    )}
-                                    <button 
-                                      onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        const locsOnRoot = data.locations.filter(l => !l.parentId && l.x !== undefined);
-                                        if (locsOnRoot.length > 0) {
-                                          if (!confirm(`Switching to ${!data.isRealWorldMap ? 'Earth' : 'Fantasy'} mode will remove all ${locsOnRoot.length} locations currently placed on this map layer. Continue?`)) return;
-                                          const updatedLocs = data.locations.map(l => !l.parentId ? { ...l, x: undefined, y: undefined, isRealWorld: !data.isRealWorldMap } : l);
-                                          onUpdateProject({ isRealWorldMap: !data.isRealWorldMap, locations: updatedLocs });
-                                        } else {
-                                          onUpdateProject({ isRealWorldMap: !data.isRealWorldMap }); 
-                                        }
-                                      }}
-                                      className={`p-1.5 rounded-lg transition-colors ${data.isRealWorldMap ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20'}`}
-                                      title={data.isRealWorldMap ? "Switch to Fantasy Map" : "Switch to Earth Map"}
-                                    >
-                                      {data.isRealWorldMap ? <MapIcon size={12} /> : <Globe size={12} />}
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {(() => {
-                                  const renderMapLevel = (parentId: string | null, depth = 0) => {
-                                    return data.locations
-                                      .filter(l => l.parentId === (parentId || undefined) && l.mapImage)
-                                      .map(mapLoc => (
-                                        <React.Fragment key={mapLoc.id}>
-                                          <div className="flex items-center gap-1 group/item">
-                                            <div className={`flex-1 flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${currentMapParentId === mapLoc.id ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'}`} style={{ marginLeft: `${depth * 0.5}rem` }}>
-                                              {editingMapId === mapLoc.id ? (
-                                                <input type="text" value={editingMapName} autoFocus onChange={e => setEditingMapName(e.target.value)} onBlur={() => { if (editingMapName.trim()) onUpdateLocation({ ...mapLoc, name: editingMapName }); setEditingMapId(null); }} onKeyDown={e => { if (e.key === 'Enter') { if (editingMapName.trim()) onUpdateLocation({ ...mapLoc, name: editingMapName }); setEditingMapId(null); } }} className="bg-white dark:bg-slate-800 border-none rounded px-1 py-0.5 w-full outline-none ring-1 ring-emerald-500" />
-                                              ) : (
-                                                <>
-                                                  <div onClick={() => { onMapChange(mapLoc.id); setIsWorldListOpen(false); }} className="flex items-center gap-3 truncate cursor-pointer flex-1">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/30" />
-                                                    <span className="truncate">{mapLoc.name}</span>
-                                                  </div>
-                                                  <div className="flex items-center gap-1">
-                                                    <button 
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        const name = prompt("Enter sub-layer name:", "New Sub-Layer");
-                                                        if (!name) return;
-                                                        const isReal = confirm("Is this a Real World (Earth) map? (Cancel for Custom Fantasy map)");
-                                                        onAddLocation({ id: generateId(), name, description: '', type: 'Region', source: 'manual', parentId: mapLoc.id, mapId: mapLoc.id, shortId: Math.random().toString(36).substring(2, 10), mapImage: DEFAULT_MAP, isRealWorld: isReal });
-                                                      }}
-                                                      className="p-1 text-slate-400 hover:text-emerald-600"
-                                                      title="Add Sub-layer"
-                                                    >
-                                                      <Plus size={10} />
-                                                    </button>
-                                                    <button 
-                                                      onClick={(e) => { 
-                                                        e.stopPropagation(); 
-                                                        const locsOnMap = data.locations.filter(l => l.parentId === mapLoc.id && l.x !== undefined);
-                                                        if (locsOnMap.length > 0) {
-                                                          if (!confirm(`Switching to ${!mapLoc.isRealWorld ? 'Earth' : 'Fantasy'} mode will remove all ${locsOnMap.length} locations currently placed on this map layer. Continue?`)) return;
-                                                          const updated = data.locations.map(l => l.id === mapLoc.id ? { ...l, isRealWorld: !l.isRealWorld } : (l.parentId === mapLoc.id ? { ...l, x: undefined, y: undefined } : l));
-                                                          onUpdateProject({ locations: updated });
-                                                        } else {
-                                                          onUpdateLocation({ ...mapLoc, isRealWorld: !mapLoc.isRealWorld });
-                                                        }
-                                                      }}
-                                                      className={`p-1 rounded transition-colors ${mapLoc.isRealWorld ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20'}`}
-                                                      title={mapLoc.isRealWorld ? "Switch to Fantasy Map" : "Switch to Earth Map"}
-                                                    >
-                                                      {mapLoc.isRealWorld ? <MapIcon size={10} /> : <Globe size={10} />}
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setEditingMapId(mapLoc.id); setEditingMapName(mapLoc.name); }} className="p-1 opacity-0 group-hover/item:opacity-100 hover:text-indigo-500 transition-all"><Edit2 size={10} /></button>
-                                                    <button onClick={(e) => { e.stopPropagation(); if (confirm(`Delete map layer "${mapLoc.name}"?`)) onUpdateLocation({ ...mapLoc, mapImage: undefined }); }} className="p-1 opacity-0 group-hover/item:opacity-100 hover:text-red-500 transition-all"><Trash2 size={10} /></button>
-                                                    <span className="text-[8px] font-mono opacity-60 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded uppercase ml-1">{mapLoc.shortId}</span>
-                                                  </div>
-                                                </>
-                                              )}
-                                            </div>
-                                          </div>
-                                          {renderMapLevel(mapLoc.id, depth + 1)}
-                                        </React.Fragment>
-                                      ));
-                                  };
-                                  return renderMapLevel(null);
-                                })()}
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </div>
 
                       <div className="flex flex-col gap-2 md:gap-3 items-end pointer-events-auto">
@@ -494,13 +303,43 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                           <div className={`flex items-center transition-all duration-500 ease-in-out ${isMapMenuOpen ? 'max-w-[600px] opacity-100 px-2 gap-1 md:gap-2' : 'max-w-0 opacity-0 pointer-events-none'}`}>
                             <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggleFullscreen?.(); }} className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-colors ${isFullscreen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-500 hover:text-indigo-600'}`} title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}><Maximize2 size={16} className="md:w-5 md:h-5" /></button>
                             <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
-                            <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); if (getViewStateRef.current) { const view = getViewStateRef.current(); if (view) { onUpdateProject({ mapDefaultView: view }); setShowOriginPulse(true); setTimeout(() => setShowOriginPulse(false), 2000); } } }} className="p-1.5 md:p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg md:rounded-xl transition-colors" title="Save current view as default"><Activity size={16} className="md:w-5 md:h-5" /></button>
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); e.preventDefault(); 
+                                if (getViewStateRef.current) { 
+                                  const view = getViewStateRef.current(); 
+                                  if (view) { onUpdateProject({ mapDefaultView: view }); setShowOriginPulse(true); setTimeout(() => setShowOriginPulse(false), 2000); } 
+                                } 
+                              }} 
+                              className="p-1.5 md:p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg md:rounded-xl transition-colors" 
+                              title="Save current view as default"
+                            >
+                              <Target size={16} className="md:w-5 md:h-5" />
+                            </button>
                             <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
                             <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsQueueOpen(!isQueueOpen); }} className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-colors ${isQueueOpen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-500 hover:text-indigo-600'}`} title="Location Manager"><MapPin size={16} className="md:w-5 md:h-5" /></button>
                             <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+                            {!isCurrentMapRealWorld && (
+                              <>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsScaleOpen(!isScaleOpen); }} 
+                                  className={`p-1.5 md:p-2 rounded-lg md:rounded-xl transition-all ${isScaleOpen ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' : 'text-slate-500 hover:text-emerald-600'}`} 
+                                  title="Scale Calibration"
+                                >
+                                  <Ruler size={16} className="md:w-5 md:h-5" />
+                                </button>
+                                <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+                              </>
+                            )}
                             <label className="p-1.5 md:p-2 text-slate-500 hover:text-indigo-600 cursor-pointer rounded-lg md:rounded-xl transition-colors" title="Change Map" onClick={(e) => e.stopPropagation()}><Upload size={16} className="md:w-5 md:h-5" /><input type="file" className="hidden" accept="image/*" onChange={handleMapUpload} /></label>
                           </div>
                           <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsMapMenuOpen(!isMapMenuOpen); }} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-lg md:rounded-xl transition-all ${isMapMenuOpen ? 'bg-emerald-600 text-white rotate-180 shadow-lg' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><MapIcon size={20} className="md:w-6 md:h-6 shrink-0" /></button>
+                        </div>
+
+                        <div className="flex flex-col bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl md:rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+                          <button onClick={() => zoomInRef.current?.()} className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800" title="Zoom In"><Plus size={20} /></button>
+                          <button onClick={() => fitAllLocationsRef.current?.()} className="p-3 text-slate-500 hover:text-emerald-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800" title="Fit All Locations"><Maximize2 size={20} /></button>
+                          <button onClick={() => zoomOutRef.current?.()} className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" title="Zoom Out"><Minus size={20} /></button>
                         </div>
                       </div>
                     </div>
@@ -522,15 +361,53 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       </div>
                     )}
 
-                    <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-30 pointer-events-none">
-                      <div className="flex flex-col bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl shadow-xl border border-white/20 overflow-hidden pointer-events-auto">
-                        <button onClick={() => zoomInRef.current?.()} className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800" title="Zoom In"><Plus size={20} /></button>
-                        <button onClick={() => fitAllLocationsRef.current?.()} className="p-3 text-slate-500 hover:text-emerald-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800" title="Fit All Locations"><Maximize2 size={20} /></button>
-                        <button onClick={() => zoomOutRef.current?.()} className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" title="Zoom Out"><Minus size={20} /></button>
-                      </div>
+                    <div className="absolute bottom-6 left-6 z-[100] pointer-events-auto flex items-end gap-2">
+                      <button 
+                        onClick={() => setIsLayersOpen(!isLayersOpen)}
+                        className={`group relative w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shadow-2xl ${isLayersOpen ? 'border-emerald-500 ring-4 ring-emerald-500/20' : 'border-white dark:border-slate-800 hover:border-emerald-400'}`}
+                        title="Atlas Layers"
+                      >
+                        <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                          {(() => {
+                            const currentImg = currentMapParentId ? data.locations.find(l => l.id === currentMapParentId)?.mapImage : data.rootMapImage;
+                            return currentImg ? <img src={currentImg} className="w-full h-full object-cover" alt="" /> : <Globe className="w-6 h-6 text-emerald-500" />;
+                          })()}
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-sm py-0.5 text-[7px] font-black text-white uppercase tracking-tighter text-center">Layers</div>
+                      </button>
+
+                      {isLayersOpen && (
+                        <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
+                          {currentMapParentId && (
+                            <button 
+                              onClick={() => { onMapChange(null); setIsLayersOpen(false); }}
+                              className="group relative w-12 h-12 rounded-xl overflow-hidden border border-white/20 shadow-xl transition-all hover:scale-105"
+                              title="Switch to Root Map"
+                            >
+                              <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                                {data.rootMapImage ? <img src={data.rootMapImage} className="w-full h-full object-cover opacity-60 group-hover:opacity-100" alt="" /> : <Globe className="w-5 h-5 text-slate-400" />}
+                              </div>
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-[6px] font-black text-white uppercase text-center">Root</div>
+                            </button>
+                          )}
+                          {data.locations.filter(l => l.mapImage && l.id !== currentMapParentId).map(mapLoc => (
+                            <button 
+                              key={mapLoc.id}
+                              onClick={() => { onMapChange(mapLoc.id); setIsLayersOpen(false); }}
+                              className="group relative w-12 h-12 rounded-xl overflow-hidden border border-white/20 shadow-xl transition-all hover:scale-105"
+                              title={`Switch to ${mapLoc.name}`}
+                            >
+                              <div className="w-full h-full bg-slate-200 dark:bg-slate-800">
+                                <img src={mapLoc.mapImage} className="w-full h-full object-cover opacity-60 group-hover:opacity-100" alt="" />
+                              </div>
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-[6px] font-black text-white uppercase text-center truncate px-1">{mapLoc.name}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    <aside className={`absolute top-24 bottom-6 right-6 z-40 w-80 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-2xl transition-all duration-500 ease-in-out rounded-3xl p-6 flex flex-col space-y-6 ${isQueueOpen ? 'translate-x-0 opacity-100 scale-100' : 'translate-x-12 opacity-0 scale-95 pointer-events-none'}`}>
+                    <aside className={`absolute top-24 bottom-6 right-[88px] z-40 w-80 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-2xl transition-all duration-500 ease-in-out rounded-3xl p-6 flex flex-col space-y-6 ${isQueueOpen ? 'translate-x-0 opacity-100 scale-100' : 'translate-x-12 opacity-0 scale-95 pointer-events-none'}`}>
                       <div className="flex items-center justify-between">
                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={14} /> Location Manager</h3>
                         <button onClick={() => setIsQueueOpen(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400"><X size={16} /></button>
@@ -558,21 +435,13 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
                                   <div className="flex items-center gap-2">
                                     <button onClick={(e) => { e.stopPropagation(); onUpdateLocation({ ...loc, isLocked: !(loc.isLocked ?? (loc.matchedX !== undefined)) }); }} className={`p-1 rounded transition-colors ${ (loc.isLocked ?? (loc.matchedX !== undefined)) ? 'text-amber-500 hover:bg-amber-50' : 'text-slate-300 hover:bg-slate-50'}`} title={(loc.isLocked ?? (loc.matchedX !== undefined)) ? "Unlock Marker" : "Lock Marker"}>{ (loc.isLocked ?? (loc.matchedX !== undefined)) ? <MapPin size={12} /> : <Sparkles size={12} /> }</button>
-
                                     {loc.prevX !== undefined && (
-                                      <button onClick={() => onLocationUndo(loc.id)} className="p-1 text-slate-400 hover:text-indigo-600" title="Undo Move">
-                                        <RotateCcw size={12} />
-                                      </button>
+                                      <button onClick={() => onLocationUndo(loc.id)} className="p-1 text-slate-400 hover:text-indigo-600" title="Undo Move"><RotateCcw size={12} /></button>
                                     )}
-
                                     {loc.matchedX !== undefined && (
-                                      <button onClick={() => onLocationReset(loc.id)} className="p-1 text-slate-400 hover:text-blue-600" title="Reset to Earth">
-                                        <Globe size={12} />
-                                      </button>
+                                      <button onClick={() => onLocationReset(loc.id)} className="p-1 text-slate-400 hover:text-blue-600" title="Reset to Earth"><Globe size={12} /></button>
                                     )}
-
                                     <Edit2 size={12} className="text-slate-300 hover:text-indigo-500 cursor-pointer" onClick={() => onLinkClick?.('admin', loc.id)} />
-
                                     <button onClick={() => onUpdateLocation({ ...loc, x: undefined, y: undefined, parentId: undefined, mapId: undefined, mapImage: undefined })}><Trash2 size={12} className="text-slate-300 hover:text-red-500 cursor-pointer" /></button>
                                   </div>
                                 </div>
@@ -605,7 +474,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
                         <div className="flex items-center gap-2 transition-opacity">
                           {!loc.mapImage && <button onClick={() => onUpdateLocation({ ...loc, mapImage: DEFAULT_MAP, type: 'Region' })} className="text-slate-400 hover:text-emerald-500 transition-colors" title="Turn into Map Link"><MapIcon size={14} /></button>}
-                          <button onClick={() => onLinkClick?.('admin', loc.id)} className="text-slate-400 hover:text-indigo-500 transition-colors"><Edit2 size={14} /></button>
+                          <button onClick={() => onLinkClick?.('admin', loc.id)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
                           <button onClick={() => onUpdateLocation({ ...loc, x: undefined, y: undefined, parentId: undefined, mapId: undefined, mapImage: undefined })} className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
                         </div>
                       </div>

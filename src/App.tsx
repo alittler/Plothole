@@ -45,6 +45,7 @@ import { CodexView } from './components/Views/CodexView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
+import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool } from 'lucide-react';
 import { SignedIn, SignedOut, useUser, UserButton } from '@clerk/clerk-react';
 import { SignInPage } from './components/Auth/SignInPage';
@@ -102,6 +103,8 @@ const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [isAdminNoteOpen, setIsAdminNoteOpen] = useState(false);
+  const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
   const [isLicensesOpen, setIsLicensesOpen] = useState(false);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [activeTasks, setActiveTasks] = useState<string[]>([]);
@@ -1040,46 +1043,72 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
             const d = await loadProjectById(id); 
             if (d) { 
               setProjectData(d); 
-              setCurrentView(ViewType.DASHBOARD); 
+              setIsDashboardModalOpen(true);
             } 
           }} 
           onCreateProject={handleCreateProject} 
           onUploadProject={handleUploadProject} 
           onDeleteProject={handleDeleteProject} 
-          onOpenDashboard={() => setCurrentView(ViewType.DASHBOARD)} 
+          onOpenDashboard={() => setIsDashboardModalOpen(true)} 
           isAnalyzing={isAnalyzing} 
         />;
 
       case ViewType.NOTEPAD: 
-        return <ResearchSystemView currentView={currentView} onChangeView={setCurrentView} data={{...projectData, notes: globalNotes} as any} projectsMetadata={projectsMetadata} currentUser={currentUser} onAddNote={async n => { 
-          let noteToSave = { ...n };
-          
-          // Auto-Ledger Logic
-          if (projectData) {
-            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-            const projectTags = [projectData.shortName, projectData.title].filter(Boolean).map(s => normalize(s!));
-            const charTags = (projectData.characters || []).map(c => normalize(c.name));
-            const locTags = (projectData.locations || []).map(l => normalize(l.name));
-            
-            const noteTags = n.tags.map(t => normalize(t));
-            const shouldCanonize = noteTags.some(t => projectTags.includes(t) || charTags.includes(t) || locTags.includes(t));
-
-            if (shouldCanonize) {
-              noteToSave.isCanon = true;
-              const currentLedger = projectData.ledger || [];
-              if (!currentLedger.some(ln => ln.id === n.id)) {
-                await updateProjectData({ ledger: [{...noteToSave, isSavedInLedger: true}, ...currentLedger] });
+        return <ResearchSystemView 
+          currentView={currentView} 
+          onChangeView={setCurrentView} 
+          data={{...projectData, notes: globalNotes} as any} 
+          projectsMetadata={projectsMetadata} 
+          currentUser={currentUser} 
+          onAddNote={async n => { 
+            let noteToSave = { ...n };
+            if (projectData) {
+              const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+              const projectTags = [projectData.shortName, projectData.title].filter(Boolean).map(s => normalize(s!));
+              const charTags = (projectData.characters || []).map(c => normalize(c.name));
+              const locTags = (projectData.locations || []).map(l => normalize(l.name));
+              const noteTags = n.tags.map(t => normalize(t));
+              const shouldCanonize = noteTags.some(t => projectTags.includes(t) || charTags.includes(t) || locTags.includes(t));
+              if (shouldCanonize) {
+                noteToSave.isCanon = true;
+                const currentLedger = projectData.ledger || [];
+                if (!currentLedger.some(ln => ln.id === n.id)) {
+                  await updateProjectData({ notes: [noteToSave, ...(projectData.notes || [])], ledger: [{...noteToSave, isSavedInLedger: true}, ...currentLedger] });
+                }
+              } else {
+                await updateProjectData({ notes: [noteToSave, ...(projectData.notes || [])] });
               }
+            } else {
+              setGlobalNotes(prev => [noteToSave, ...prev]); 
+              await saveGlobalNote(noteToSave); 
             }
-          }
-
-          setGlobalNotes(prev => [noteToSave, ...prev]); 
-          await saveGlobalNote(noteToSave); 
-        }} onAddIdeaToProject={handleAddIdeaToProject} onToggleCanon={handleToggleCanon} onDeleteNote={handleDeleteNote} onDeleteAllNotes={async () => {
-          setGlobalNotes([]);
-          for (const note of globalNotes) await deleteGlobalNote(note.id);
-          if (projectData?.ideas) await updateProjectData({ ideas: [] });
-        }} onLinkClick={handleLinkClick} onAddDoubleProcessedNote={handleDoubleProcessNote} activeTasks={activeTasks} onUpdateProject={updateProjectData} semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled} />;
+          }} 
+          onAddIdeaToProject={handleAddIdeaToProject} 
+          onToggleCanon={handleToggleCanon} 
+          onDeleteNote={handleDeleteNote} 
+          onDeleteAllNotes={async () => {
+            setGlobalNotes([]);
+            for (const note of globalNotes) await deleteGlobalNote(note.id);
+            if (projectData?.notes) await updateProjectData({ notes: [] });
+          }} 
+          onLinkClick={handleLinkClick} 
+          onAddDoubleProcessedNote={handleDoubleProcessNote} 
+          activeTasks={activeTasks} 
+          onUpdateProject={updateProjectData} 
+          semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled}
+          onCreateProject={handleCreateProject}
+          onUploadProject={handleUploadProject}
+          onDeleteProject={handleDeleteProject}
+          onSelectProject={async (id) => { 
+            const d = await loadProjectById(id); 
+            if (d) { 
+              setProjectData(d); 
+              setIsDashboardModalOpen(true);
+            } 
+          }}
+          onOpenDashboard={() => setIsDashboardModalOpen(true)}
+          isAnalyzing={isAnalyzing}
+        />;
 
       case ViewType.CHARACTERS: 
         return projectData ? <CharacterView 
@@ -1150,7 +1179,17 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         /> : null;
 
       case ViewType.TOOLBOX:
-        return <ToolboxView bakedResources={globalResources} onAddResource={async (l) => { setGlobalResources(prev => [...prev, l]); await saveGlobalResource(l); }} onDeleteResource={async (id) => { setGlobalResources(prev => prev.filter(r => r.id !== id)); await deleteGlobalResource(id); }} />;
+        return projectData ? (
+          <ToolboxView 
+            data={projectData} 
+            defaultResources={appSettings.defaultToolboxLinks || []} 
+            onUpdateProject={updateProjectData} 
+          />
+        ) : (
+          <div className="h-full flex items-center justify-center text-slate-400 font-serif italic text-lg p-12 text-center bg-slate-50 dark:bg-slate-950">
+            Initialize a story world to access the Writer's Toolbox.
+          </div>
+        );
 
       case ViewType.ADMIN:
         return <AdminView 
@@ -1212,56 +1251,30 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
 
   const renderAppContent = () => (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors animate-in fade-in duration-500">
-      <div className={`transition-all duration-700 ease-in-out hidden lg:flex shrink-0 overflow-hidden ${isMapFullscreen ? 'w-0 opacity-0 pointer-events-none' : isSidebarCollapsed ? 'w-20' : 'w-64 md:w-72'}`}>
-        <Sidebar 
-          currentView={currentView} 
-          onChangeView={setCurrentView} 
-          isOpen={isMobileSidebarOpen} 
-          isCollapsed={isSidebarCollapsed} 
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          onClose={() => setIsMobileSidebarOpen(false)}
-          hasActiveProject={!!projectData}
-          onToggleAi={() => setIsAiOpen(!isAiOpen)}
-          isAiOpen={isAiOpen}
-          currentUser={currentUser}
-          isProcessing={activeTasks.length > 0}
-          processingStatus={processingStatus}
-          activeProjectTitle={projectData?.title}
-          onQuickNote={async (text) => {
-            const noteText = text || window.prompt("Admin Note (Edits to make):");
-            if (noteText && noteText.trim()) {
-              const n: Note = { id: generateId(), content: noteText.trim(), tags: ['admin_note'], timestamp: Date.now() };
-              if (projectData) {
-                await updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
-              } else {
-                setGlobalNotes(prev => [n, ...prev]);
-                await saveGlobalNote(n);
-              }
-            }
-          }}
-          appName={appSettings.appName}
-          sidebarOrder={appSettings.sidebarOrder}
-          onOpenLicenses={() => setIsLicensesOpen(true)}
-          hideDesktopActions={!isSidebarCollapsed}
-        />
-      </div>
-      <main className="flex-1 h-full relative overflow-hidden flex flex-col">
+      <Sidebar
+        currentView={currentView}
+        onChangeView={(v) => { setCurrentView(v); setIsMobileSidebarOpen(false); }}
+        isOpen={isMobileSidebarOpen}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onClose={() => setIsMobileSidebarOpen(false)}
+        hasActiveProject={!!projectData}
+        onToggleAi={() => setIsAiOpen(!isAiOpen)}
+        isAiOpen={isAiOpen}
+        currentUser={currentUser}
+        isProcessing={activeTasks.length > 0}
+        processingStatus={processingStatus}
+        activeProjectTitle={projectData?.title}
+        onQuickNote={() => setIsAdminNoteOpen(!isAdminNoteOpen)}
+        appName={appSettings.appName}
+        sidebarOrder={appSettings.sidebarOrder}
+        onOpenLicenses={() => setIsLicensesOpen(true)}
+        hideDesktopActions={!isSidebarCollapsed}
+        isFullscreen={isMapFullscreen}
+      />
 
-        {/* Mobile Header */}
-        <div className={`flex lg:hidden flex-col shrink-0 z-[1000] bg-slate-50 dark:bg-slate-950 transition-all duration-700 ease-in-out ${isMapFullscreen ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-20'}`}>
-          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 relative z-30 shadow-sm">
-            <div className="flex items-center gap-2">
-              <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 dark:text-slate-400">
-                <Menu size={20} />
-              </button>
-              <UserButton afterSignOutUrl={window.location.origin} />
-            </div>
-            <span className="font-black tracking-tighter text-slate-900 dark:text-white uppercase text-sm">{appSettings.appName}</span>
-            <button onClick={() => setIsAiOpen(!isAiOpen)} className="p-2 -mr-2 text-indigo-500">
-              <Sparkles size={20} />
-            </button>
-          </div>
-        </div>
+      <main className="flex-1 h-full relative overflow-hidden flex flex-col">
+        {/* Mobile Header Removed */}
 
         {!hasApiKey && (
           <div className="bg-indigo-600 text-white px-6 py-3 flex items-center justify-between shadow-lg z-[1001]">
@@ -1294,34 +1307,23 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         </div>
         
         {/* Mobile Floating Nav */}
-        <BottomNav 
-          currentView={currentView} 
-          onChangeView={setCurrentView} 
-          onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+        <BottomNav
+          currentView={currentView}
+          onChangeView={setCurrentView}
+          onToggleSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          isSidebarOpen={isMobileSidebarOpen}
           hasActiveProject={!!projectData}
           bottomNavOrder={appSettings.bottomNavOrder}
         />
-
         <ActiveArchitect tasks={activeTasks} />
 
         {/* Desktop Floating Action Buttons */}
-        <div className="hidden lg:flex fixed bottom-8 right-8 flex-col gap-4 z-[1000]">
+        <div className="hidden lg:flex fixed bottom-8 right-8 flex-row items-center gap-4 z-[1000]">
           {currentUser.role === 'admin' && (
             <button
-              onClick={() => {
-                const note = window.prompt("Admin Note (Edits to make):");
-                if (note && note.trim()) {
-                  const n: Note = { id: generateId(), content: note.trim(), tags: ['admin_note'], timestamp: Date.now() };
-                  if (projectData) {
-                    updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
-                  } else {
-                    setGlobalNotes(prev => [n, ...prev]);
-                    saveGlobalNote(n);
-                  }
-                }
-              }}
-              className="p-4 bg-amber-600 text-white rounded-2xl shadow-2xl hover:bg-amber-700 hover:scale-110 transition-all flex items-center justify-center"
-              title="Add Admin Note"
+              onClick={() => setIsAdminNoteOpen(!isAdminNoteOpen)}
+              className={`p-4 rounded-2xl shadow-2xl transition-all flex items-center justify-center hover:scale-110 ${isAdminNoteOpen ? 'bg-amber-600 text-white' : 'bg-slate-900 text-amber-500 hover:bg-slate-800'}`}
+              title="Admin Notes"
             >
               <PenTool size={24} />
             </button>
@@ -1342,6 +1344,133 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         </div>
       </main>
       <AiAssistant projectData={projectData} isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} onToggle={() => setIsAiOpen(!isAiOpen)} currentUser={currentUser} />
+      
+      {/* Admin Note Canvas (Slides from Right) */}
+      <AnimatePresence>
+        {isAdminNoteOpen && (
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-y-0 right-0 w-full md:w-[450px] bg-slate-100 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-[1500] flex flex-col"
+          >
+            <header className="p-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg">
+                  <PenTool size={20} />
+                </div>
+                <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">Admin Ledger</h2>
+              </div>
+              <button 
+                onClick={() => setIsAdminNoteOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto p-6 relative">
+              {/* Corkboard Texture/Design */}
+              <div className="absolute inset-0 bg-[#d2b48c]/10 dark:bg-slate-900 opacity-30 pointer-events-none" />
+              
+              <div className="relative z-10 space-y-6">
+                {/* Persistent Input at Top */}
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-lg border border-white/20">
+                  <textarea 
+                    autoFocus
+                    placeholder="Quick draft an administrative note... (Shift+Enter to save)"
+                    className="w-full h-24 bg-transparent border-none focus:ring-0 text-sm font-serif resize-none"
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter' && e.shiftKey) {
+                        e.preventDefault();
+                        const text = e.currentTarget.value.trim();
+                        if (!text) return;
+                        const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
+                        if (projectData) {
+                          await updateProjectData({ notes: [n, ...(projectData.notes || [])] });
+                        } else {
+                          setGlobalNotes(prev => [n, ...prev]);
+                          await saveGlobalNote(n);
+                        }
+                        e.currentTarget.value = '';
+                      }
+                    }}
+                  />
+                  <div className="flex justify-end pt-2">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Shift + Enter to Append</span>
+                  </div>
+                </div>
+
+                {/* Scrivener-style vertical row of notes */}
+                <div className="space-y-4">
+                  {(projectData?.notes || globalNotes).filter(n => n.tags.includes('admin_note')).map(note => (
+                    <div 
+                      key={note.id}
+                      className="group relative bg-white dark:bg-slate-800 p-5 rounded-lg shadow-md border-t-4 border-t-amber-300 dark:border-t-amber-900 transition-all hover:shadow-xl"
+                    >
+                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-slate-400/50" />
+                      <p className="text-sm text-slate-700 dark:text-slate-300 font-serif leading-relaxed">{note.content}</p>
+                      <div className="mt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(note.timestamp).toLocaleDateString()}</span>
+                        <button 
+                          onClick={async () => {
+                            if (projectData) {
+                              await updateProjectData({ notes: projectData.notes.filter(n => n.id !== note.id) });
+                            } else {
+                              setGlobalNotes(prev => prev.filter(n => n.id !== note.id));
+                              await deleteGlobalNote(note.id);
+                            }
+                          }}
+                          className="text-slate-400 hover:text-rose-500 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {projectData && (
+        <Modal
+          isOpen={isDashboardModalOpen}
+          onClose={() => setIsDashboardModalOpen(false)}
+          title={`Story Dashboard: ${projectData.title}`}
+          maxWidth="max-w-6xl"
+        >
+          <div className="h-[80vh] overflow-y-auto no-scrollbar">
+            <DashboardView 
+              projectData={projectData}
+              globalNotes={globalNotes}
+              onUpdateProject={updateProjectData} 
+              onLinkClick={(type, id) => { 
+                setIsDashboardModalOpen(false); 
+                handleLinkClick(type, id); 
+              }} 
+              onExportProject={exportProjectPlothole} 
+              onGenerateCover={handleGenerateCover}
+              isGeneratingCover={isAnalyzing}
+              onAuditThreads={handleAuditThreads}
+              isAnalyzing={isAnalyzing}
+              onRestoreCommit={handleRestoreCommit}
+              currentUser={currentUser}
+              onFileUpload={() => {}}
+              onLoadSample={() => {}}
+              onExport={() => exportProjectPlothole(projectData, globalNotes)}
+              onAnalyzeText={() => {}}
+              onRestoreHistory={() => {}}
+              onUpdateProcessedFiles={handleUpdateProcessedFiles}
+              isUpdatingProcessed={isUpdatingProcessed}
+              error={null}
+            />
+          </div>
+        </Modal>
+      )}
       
       <Modal
         isOpen={isLicensesOpen}
