@@ -268,6 +268,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       centerMapRef={centerMapRef}
                       fitAllLocationsRef={fitAllLocationsRef}
                       getViewStateRef={getViewStateRef}
+                      onViewChange={(view) => onUpdateProject({ mapDefaultView: view })}
                       onDimensionsDetected={(width, height) => setMapDimensions({ width, height })}
                       onLinkClick={onLinkClick}
                       isRealWorld={currentMapParentId ? parentLocation?.isRealWorld : data.isRealWorldMap}

@@ -24,11 +24,12 @@ interface MapViewProps {
   centerMapRef?: React.MutableRefObject<((coords?: { x: number, y: number }) => void) | null>;
   fitAllLocationsRef?: React.MutableRefObject<(() => void) | null>;
   getViewStateRef?: React.MutableRefObject<(() => { x: number, y: number, zoom: number } | null) | null>;
+  onViewChange?: (view: { x: number, y: number, zoom: number }) => void;
   isRealWorld?: boolean;
 }
 
 export const MapView: React.FC<MapViewProps> = ({ 
-  locations, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onLocationUnplace, onLocationUndo, onLocationReset, onLocationLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef,
+  locations, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onLocationUnplace, onLocationUndo, onLocationReset, onLocationLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef, onViewChange,
   isRealWorld = false
 }) => {
   const mapRef = useRef<L.Map | null>(null);
@@ -151,6 +152,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const onLocationLockRef = useRef(onLocationLock);
   const onLocationClickRef = useRef(onLocationClick);
   const onLinkClickRef = useRef(onLinkClick);
+  const onViewChangeRef = useRef(onViewChange);
 
   useEffect(() => { onDimensionsDetectedRef.current = onDimensionsDetected; }, [onDimensionsDetected]);
   useEffect(() => { onLocationPlaceRef.current = onLocationPlace; }, [onLocationPlace]);
@@ -159,6 +161,7 @@ export const MapView: React.FC<MapViewProps> = ({
   useEffect(() => { onLocationLockRef.current = onLocationLock; }, [onLocationLock]);
   useEffect(() => { onLocationClickRef.current = onLocationClick; }, [onLocationClick]);
   useEffect(() => { onLinkClickRef.current = onLinkClick; }, [onLinkClick]);
+  useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -188,7 +191,11 @@ export const MapView: React.FC<MapViewProps> = ({
     }
 
     mapRef.current = map;
-    map.on('moveend zoomend', updateShortcuts);
+    map.on('moveend zoomend', () => {
+      updateShortcuts();
+      const center = map.getCenter();
+      onViewChangeRef.current?.({ x: center.lng, y: center.lat, zoom: map.getZoom() });
+    });
     
     if (zoomInRef) zoomInRef.current = () => map.zoomIn();
     if (zoomOutRef) zoomOutRef.current = () => map.zoomOut();
@@ -359,6 +366,86 @@ export const MapView: React.FC<MapViewProps> = ({
     } catch (err) { console.warn("Marker update error:", err); }
   }, [locations, isRealWorld, isReady]);
 
+  const renderTargetPreview = (bounds: L.LatLngBounds, isOffScreen: boolean) => {
+    const fullBounds = isRealWorld 
+      ? L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180))
+      : mapBoundsRef.current;
+
+    if (!fullBounds) return null;
+
+    const center = bounds.getCenter();
+
+    if (isRealWorld) {
+      // OpenStreetMap Tile Calculation for Zoom 15
+      const zoom = 15;
+      const x = Math.floor((center.lng + 180) / 360 * Math.pow(2, zoom));
+      const y = Math.floor((1 - Math.log(Math.tan(center.lat * Math.PI / 180) + 1 / Math.cos(center.lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
+      
+      const tileUrl = `https://a.tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+      
+      return (
+        <div className="relative w-full h-full bg-slate-200 dark:bg-slate-800 overflow-hidden shadow-inner">
+          <img 
+            src={tileUrl} 
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-in-out scale-125" 
+            style={{
+              filter: isOffScreen ? 'grayscale(0.5) brightness(0.8)' : 'none'
+            }}
+            alt="" 
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `https://b.tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+            }}
+          />
+          <div className="absolute inset-0 border-[3px] border-white/20 rounded-xl" />
+          <div className="absolute inset-0 bg-blue-500/10 pointer-events-none" />
+        </div>
+      );
+    }
+
+    const getPos = (lat: number, lng: number) => {
+      const w = fullBounds.getEast() - fullBounds.getWest();
+      const h = fullBounds.getNorth() - fullBounds.getSouth();
+      return {
+        x: ((lng - fullBounds.getWest()) / w) * 100,
+        y: (1 - (lat - fullBounds.getSouth()) / h) * 100
+      };
+    };
+
+    if (rootMapImage) {
+      const pos = getPos(center.lat, center.lng);
+      
+      // Calculate a "view window" size. 
+      // We want to zoom in quite a bit, e.g. 15% of the total map width.
+      const zoomFactor = 6.6; // 100 / 15
+      
+      return (
+        <div className="relative w-full h-full bg-slate-900 overflow-hidden shadow-inner">
+          <img 
+            src={rootMapImage} 
+            className="absolute max-w-none transition-transform duration-700 ease-in-out" 
+            style={{
+              width: `${zoomFactor * 100}%`,
+              height: 'auto',
+              left: `${50 - (pos.x * zoomFactor)}%`,
+              top: `${50 - (pos.y * zoomFactor)}%`,
+              filter: isOffScreen ? 'grayscale(0.5) brightness(0.8)' : 'none'
+            }}
+            alt="" 
+          />
+          <div className="absolute inset-0 border-[3px] border-white/20 rounded-xl" />
+        </div>
+      );
+    }
+
+    // Fallback if no image available
+    return (
+      <div className={`relative w-full h-full flex items-center justify-center shadow-inner ${isOffScreen ? 'bg-gradient-to-br from-indigo-500 to-violet-600' : 'bg-gradient-to-br from-emerald-400 to-teal-500'}`}>
+        <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+        {isOffScreen ? <MapPin size={20} className="text-white drop-shadow-md" /> : <Maximize2 size={20} className="text-white drop-shadow-md" />}
+      </div>
+    );
+  };
+
   return (
     <div className="w-full h-full relative group/map">
       <style>{`
@@ -371,7 +458,7 @@ export const MapView: React.FC<MapViewProps> = ({
       <div ref={containerRef} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} className="w-full h-full rounded-3xl overflow-hidden shadow-inner bg-slate-100 dark:bg-slate-900 z-0 relative" />
 
       {/* Smart Portals (Jump & Dive) */}
-      <div className="absolute top-24 left-6 flex flex-col gap-4 z-40 pointer-events-none">
+      <div className="absolute top-24 right-6 flex flex-col gap-4 z-40 pointer-events-none items-end">
         {shortcuts.map((s: any, i) => (
           <button
             key={i}
@@ -381,14 +468,15 @@ export const MapView: React.FC<MapViewProps> = ({
             }}
             className="flex items-center gap-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl pointer-events-auto hover:scale-105 transition-all group active:scale-95 overflow-hidden"
           >
-            <div className={`w-12 h-12 bg-gradient-to-br ${s.isOffScreen ? 'from-indigo-600 to-violet-700' : 'from-emerald-500 to-teal-600'} text-white flex items-center justify-center shadow-inner relative overflow-hidden shrink-0`}>
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
-              <div className="relative z-10 flex flex-col items-center">
-                {s.isOffScreen ? <MapPin size={14} className="mb-0.5" /> : <Maximize2 size={14} className="mb-0.5" />}
-                <span className="text-[10px] font-black">{s.count}</span>
+            <div className="w-12 h-12 relative shrink-0 overflow-hidden m-1 rounded-xl shadow-lg border border-black/5 dark:border-white/10">
+              {renderTargetPreview(s.bounds, s.isOffScreen)}
+              <div className="absolute -bottom-1 -right-1">
+                <div className="bg-indigo-600 text-white px-1.5 py-0.5 rounded-tl-lg text-[8px] font-black shadow-sm border-t border-l border-white/20">
+                  {s.count}
+                </div>
               </div>
             </div>
-            <div className="px-4 py-2 text-left border-l border-white/10 overflow-hidden">
+            <div className="px-4 py-2 text-left overflow-hidden">
               <div className={`text-[8px] font-black uppercase tracking-[0.2em] leading-none mb-1.5 whitespace-nowrap ${s.isOffScreen ? 'text-indigo-500 dark:text-indigo-400' : 'text-emerald-500'}`}>
                 {s.isOffScreen ? 'Jump to' : 'Dive into'}
               </div>

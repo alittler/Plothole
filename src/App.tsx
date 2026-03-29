@@ -45,7 +45,7 @@ import { CodexView } from './components/Views/CodexView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
-import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText } from 'lucide-react';
+import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool } from 'lucide-react';
 import { SignedIn, SignedOut, useUser, UserButton } from '@clerk/clerk-react';
 import { SignInPage } from './components/Auth/SignInPage';
 
@@ -1228,17 +1228,21 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
           processingStatus={processingStatus}
           activeProjectTitle={projectData?.title}
           onQuickNote={async (text) => {
-            const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
-            if (projectData) {
-              await updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
-            } else {
-              setGlobalNotes(prev => [n, ...prev]);
-              await saveGlobalNote(n);
+            const noteText = text || window.prompt("Admin Note (Edits to make):");
+            if (noteText && noteText.trim()) {
+              const n: Note = { id: generateId(), content: noteText.trim(), tags: ['admin_note'], timestamp: Date.now() };
+              if (projectData) {
+                await updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
+              } else {
+                setGlobalNotes(prev => [n, ...prev]);
+                await saveGlobalNote(n);
+              }
             }
           }}
           appName={appSettings.appName}
           sidebarOrder={appSettings.sidebarOrder}
           onOpenLicenses={() => setIsLicensesOpen(true)}
+          hideDesktopActions={!isSidebarCollapsed}
         />
       </div>
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
@@ -1299,6 +1303,43 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         />
 
         <ActiveArchitect tasks={activeTasks} />
+
+        {/* Desktop Floating Action Buttons */}
+        <div className="hidden lg:flex fixed bottom-8 right-8 flex-col gap-4 z-[1000]">
+          {currentUser.role === 'admin' && (
+            <button
+              onClick={() => {
+                const note = window.prompt("Admin Note (Edits to make):");
+                if (note && note.trim()) {
+                  const n: Note = { id: generateId(), content: note.trim(), tags: ['admin_note'], timestamp: Date.now() };
+                  if (projectData) {
+                    updateProjectData({ ideas: [n, ...(projectData.ideas || [])] });
+                  } else {
+                    setGlobalNotes(prev => [n, ...prev]);
+                    saveGlobalNote(n);
+                  }
+                }
+              }}
+              className="p-4 bg-amber-600 text-white rounded-2xl shadow-2xl hover:bg-amber-700 hover:scale-110 transition-all flex items-center justify-center"
+              title="Add Admin Note"
+            >
+              <PenTool size={24} />
+            </button>
+          )}
+          
+          <button
+            onClick={() => setIsAiOpen(!isAiOpen)}
+            className={`p-4 rounded-2xl shadow-2xl transition-all flex items-center justify-center hover:scale-110 ${isAiOpen ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
+            title="Summon The Oracle"
+          >
+            <div className="relative">
+              <Sparkles size={24} className={activeTasks.length > 0 ? 'animate-spin' : ''} />
+              {activeTasks.length > 0 && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse" />
+              )}
+            </div>
+          </button>
+        </div>
       </main>
       <AiAssistant projectData={projectData} isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} onToggle={() => setIsAiOpen(!isAiOpen)} currentUser={currentUser} />
       

@@ -21,6 +21,7 @@ interface SidebarProps {
   appName?: string;
   sidebarOrder?: ViewType[];
   onOpenLicenses?: () => void;
+  hideDesktopActions?: boolean;
 }
 
 interface NavItem {
@@ -39,7 +40,7 @@ interface SidebarSection {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, appName = 'PLOTHOLE',
-  sidebarOrder, onOpenLicenses
+  sidebarOrder, onOpenLicenses, hideDesktopActions = false
 }) => {
   const { signOut } = useClerk();
   
