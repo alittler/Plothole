@@ -236,7 +236,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
       {!isEmbedded && (
-        <header className="hidden lg:block p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-sm z-10">
+        <header className="hidden lg:block p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-md z-10">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex flex-col gap-3">
               <h1 className="ph-section-title text-2xl md:text-3xl flex items-center gap-3">

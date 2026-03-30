@@ -81,13 +81,15 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
-      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <header className="p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10 shrink-0">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-1 text-center md:text-left">
-            <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">CODEX</h1>
-            <p className="hidden md:block text-xs md:text-sm text-slate-500 dark:text-slate-400">The authoritative collection of your world's knowledge.</p>
+            <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
+              <Book size={32} className="text-indigo-600" /> Story Codex
+            </h1>
+            <p className="ph-section-subtitle">The authoritative collection of your world's knowledge.</p>
           </div>
-          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-full md:w-auto overflow-x-auto no-scrollbar">
+          <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
             {Object.values(CodexTab).map(tab => {
               const Icon = {
                 [CodexTab.SYSTEMS]: Settings,
@@ -99,7 +101,7 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`flex-1 md:flex-none px-3 md:px-4 py-2 rounded-xl font-bold text-[10px] md:text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                  className={`ph-tab ${activeTab === tab ? "ph-tab-active" : "ph-tab-inactive"}`}
                 >
                   <Icon size={14} />
                   {tab}
@@ -110,24 +112,24 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="max-w-6xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+        <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
           <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
-                placeholder={`Search ${activeTab}...`} 
+                placeholder={`Search ${activeTab.toLowerCase()}...`} 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="ph-input pl-12 w-full"
               />
             </div>
             <button
               onClick={handleAddEntry}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors sm:ml-auto"
+              className="ph-button-primary w-full sm:w-auto"
             >
-              <Plus size={16} />
+              <Plus size={18} />
               Add Entry
             </button>
           </div>
