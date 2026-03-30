@@ -89,24 +89,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="h-full overflow-y-auto p-4 md:p-8 bg-slate-50 dark:bg-slate-950">
       <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
         <header className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 text-center md:text-left">
-          <div className="w-32 h-48 md:w-48 md:h-72 bg-slate-200 dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden relative group flex-shrink-0">
+          <div className="w-32 h-48 md:w-48 md:h-72 ph-panel shadow-2xl overflow-hidden relative group flex-shrink-0 border-none rounded-xl">
             {projectData.coverImage ? (
               <img src={projectData.coverImage} className="w-full h-full object-cover" alt="Cover" referrerPolicy="no-referrer" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="w-full h-full flex items-center justify-center bg-slate-200 dark:bg-slate-800">
                 <button
                   onClick={onGenerateCover}
                   disabled={isGeneratingCover}
-                  className="flex flex-col items-center gap-2 text-slate-400 hover:text-indigo-500 transition-colors"
+                  className="ph-button-ghost flex-col gap-2 p-4"
                 >
                   <Sparkles size={24} className={isGeneratingCover ? 'animate-spin' : ''} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Generate Cover</span>
+                  <span className="ph-section-subtitle">Generate Cover</span>
                 </button>
               </div>
             )}
           </div>
           <div className="flex-1 space-y-4 w-full">
-            <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase flex flex-col md:flex-row items-center gap-2 md:gap-4">
+            <h1 className="ph-section-title text-2xl sm:text-3xl md:text-5xl flex flex-col md:flex-row items-center gap-2 md:gap-4">
               {projectData.title}
               <button onClick={() => {}} className="hidden">
                 <Edit3 size={20} />
@@ -124,28 +124,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               )}
             </div>
-            <p className="text-base md:text-xl text-slate-500 dark:text-slate-400 italic">by {projectData.author}</p>
+            <p className="text-base md:text-xl text-slate-500 dark:text-slate-400 font-serif italic">by {projectData.author}</p>
           </div>
         </header>
 
         <div className="flex flex-col md:flex-row items-center gap-4">
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex-1 w-full text-left">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Story Summary</span>
-            <p className="text-slate-700 dark:text-slate-300 line-clamp-3 text-xs md:text-base leading-relaxed">{projectData.summary || 'No summary generated yet.'}</p>
+          <div className="ph-panel p-4 flex-1 w-full text-left rounded-2xl">
+            <span className="ph-label">Story Summary</span>
+            <p className="text-slate-700 dark:text-slate-300 line-clamp-3 text-xs md:text-base leading-relaxed font-serif">{projectData.summary || 'No summary generated yet.'}</p>
           </div>
           
-          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl self-stretch overflow-x-auto no-scrollbar shrink-0">
+          <div className="ph-tab-container self-stretch overflow-x-auto no-scrollbar shrink-0">
             <button
               onClick={onUpdateProcessedFiles}
               disabled={isUpdatingProcessed || isAnalyzing}
-              className="px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 flex items-center gap-2 disabled:opacity-50"
+              className="ph-tab ph-tab-inactive bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 disabled:opacity-50"
               title="Smart-sync extracted data with current manuscript and blueprint schemas"
             >
               {isUpdatingProcessed ? <Loader2 size={12} className="animate-spin" /> : <Cpu size={12} />} Sync Processor
             </button>
             <button
               onClick={() => onExportProject(projectData, globalNotes)}
-              className="px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 flex items-center gap-2"
+              className="ph-tab ph-tab-active bg-indigo-600 text-white hover:bg-indigo-700"
             >
               <Download size={12} /> Backup
             </button>
@@ -154,7 +154,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 md:px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                className={`ph-tab ${activeTab === tab ? 'ph-tab-active' : 'ph-tab-inactive'}`}
               >
                 {tab}
               </button>

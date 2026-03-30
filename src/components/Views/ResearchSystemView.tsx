@@ -236,17 +236,21 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
       {!isEmbedded && (
-        <header className="hidden lg:block p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+        <header className="hidden lg:block p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-sm z-10">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <div className="flex flex-col">
-              <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">NOTEPAD</h1>
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mt-2 w-fit">
+            <div className="flex flex-col gap-3">
+              <h1 className="ph-section-title text-2xl md:text-3xl flex items-center gap-3">
+                <PenTool size={32} className="text-indigo-600" /> Laboratory
+              </h1>
+              <div className="ph-tab-container">
                 {Object.values(NotepadView).map(v => (
                   <button
                     key={v}
                     onClick={() => setNotepadView(v)}
-                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === v ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                    className={`ph-tab ${viewMode === v ? 'ph-tab-active' : 'ph-tab-inactive'}`}
                   >
+                    {v === NotepadView.STREAM && <Zap size={14} />}
+                    {v === NotepadView.BOARD && <LayoutGrid size={14} />}
                     {v}
                   </button>
                 ))}
@@ -256,14 +260,14 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
               {onDeleteAllNotes && (
                 <button
                   onClick={() => setNoteToDelete('ALL')}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                  className="ph-button-ghost p-2 text-slate-400 hover:text-red-500"
                   title="Delete All Notes"
                 >
                   <Trash2 size={18} />
                 </button>
               )}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   type="text"
                   value={searchQuery}
@@ -273,11 +277,11 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                       handleSemanticSearch();
                     }
                   }}
-                  placeholder={semanticSearchEnabled ? "Search by meaning (Enter)..." : "Search notes..."}
-                  className="pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-full text-sm focus:ring-2 focus:ring-indigo-500 w-64"
+                  placeholder={semanticSearchEnabled ? "Search meaning..." : "Search research..."}
+                  className="ph-input pl-12 w-64"
                 />
                 {isSearching && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
                     <Loader2 size={14} className="animate-spin text-indigo-500" />
                   </div>
                 )}
