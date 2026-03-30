@@ -697,12 +697,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     <div className="h-full flex bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
       {/* Settings Secondary Sidebar */}
       <aside className={`${activeTab ? 'hidden lg:flex' : 'flex'} w-full lg:w-64 md:w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col shrink-0 transition-all duration-300`}>
-        <div className="p-8 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="p-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl shadow-lg"><Settings size={20} /></div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Settings</h1>
-          </div>
-          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Environment Control</p>
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800 space-y-1">
+          <h1 className="ph-section-title text-xl flex items-center gap-3">
+            <Settings size={20} className="text-indigo-600" /> Settings
+          </h1>
+          <p className="ph-section-subtitle">Environment Control</p>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
@@ -710,9 +709,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+              className={`ph-tab w-full flex items-center gap-3 px-4 py-3.5 ${activeTab === tab ? 'ph-tab-active' : 'ph-tab-inactive'}`}
             >
-              {getTabIcon(tab)}
+              <div className={activeTab === tab ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}>
+                {getTabIcon(tab)}
+              </div>
               {tab}
             </button>
           ))}
@@ -720,8 +721,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <div className="p-6 border-t border-slate-100 dark:border-slate-800">
           <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl space-y-2 text-center">
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Build Info</p>
-            <div className="text-[10px] font-mono text-indigo-500 truncate">#{import.meta.env.VITE_GIT_COMMIT_HASH}</div>
+            <p className="ph-label mb-0 text-center">Build Info</p>
+            <div className="text-[10px] font-mono text-indigo-500 truncate">#{import.meta.env.VITE_GIT_COMMIT_HASH?.slice(0, 7)}</div>
           </div>
         </div>
       </aside>

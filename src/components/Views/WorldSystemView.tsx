@@ -164,19 +164,24 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   return (
     <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
       <div className={`transition-all duration-700 ease-in-out overflow-hidden shrink-0 ${isFullscreen ? 'max-h-0 opacity-0' : 'max-h-64 opacity-100'}`}>
-        <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        <header className="p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm z-10">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-1 text-center md:text-left">
-              <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">ATLAS</h1>
-              <p className="hidden md:block text-xs md:text-sm text-slate-500 dark:text-slate-400">Geography, artifacts, and the lore of your universe.</p>
+              <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
+                <Globe size={32} className="text-indigo-600" /> World Atlas
+              </h1>
+              <p className="ph-section-subtitle">Map the geography and artifacts of your story world.</p>
             </div>
-            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar w-full md:w-auto">
+            <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
               {Object.values(WorldTab).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-3 md:px-4 py-1.5 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                  className={`ph-tab ${activeTab === tab ? "ph-tab-active" : "ph-tab-inactive"}`}
                 >
+                  {tab === WorldTab.MAP && <MapIcon size={14} />}
+                  {tab === WorldTab.LOCATIONS && <MapPin size={14} />}
+                  {tab === WorldTab.INVENTORY && <Box size={14} />}
                   {tab}
                 </button>
               ))}

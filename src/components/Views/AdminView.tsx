@@ -294,12 +294,11 @@ export const AdminView: React.FC<AdminViewProps> = ({
     <div className="h-full flex bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
       {/* Admin Secondary Sidebar */}
       <aside className={`${activeTab ? 'hidden lg:flex' : 'flex'} w-full lg:w-64 md:w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col shrink-0 transition-all duration-300`}>
-        <div className="p-8 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="p-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl shadow-lg"><Shield size={20} /></div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Admin</h1>
-          </div>
-          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">System Control</p>
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800 space-y-1">
+          <h1 className="ph-section-title text-xl flex items-center gap-3">
+            <Shield size={20} className="text-indigo-600" /> Admin
+          </h1>
+          <p className="ph-section-subtitle">System Control</p>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
@@ -307,13 +306,15 @@ export const AdminView: React.FC<AdminViewProps> = ({
             <button
               key={tab}
               onClick={() => handleSetActiveTab(tab)}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+              className={`ph-tab w-full flex items-center gap-3 px-4 py-3.5 ${activeTab === tab ? 'ph-tab-active bg-indigo-600 text-white' : 'ph-tab-inactive'}`}
             >
-              {tab === AdminTab.SYSTEM && <Settings size={18} />}
-              {tab === AdminTab.NAVIGATION && <Layout size={18} />}
-              {tab === AdminTab.USERS && <User size={18} />}
-              {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
-              {tab === AdminTab.LEDGER && <Database size={18} />}
+              <div className={activeTab === tab ? 'text-white' : 'text-indigo-500'}>
+                {tab === AdminTab.SYSTEM && <Settings size={18} />}
+                {tab === AdminTab.NAVIGATION && <Layout size={18} />}
+                {tab === AdminTab.USERS && <User size={18} />}
+                {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
+                {tab === AdminTab.LEDGER && <Database size={18} />}
+              </div>
               {tab}
             </button>
           ))}
@@ -321,7 +322,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
         <div className="p-6 border-t border-slate-100 dark:border-slate-800">
           <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl space-y-2">
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">User Level</p>
+            <p className="ph-label mb-0">User Level</p>
             <div className="flex items-center gap-2 text-indigo-600">
               <Shield size={14} />
               <span className="text-[10px] font-black uppercase tracking-tighter">Root Architect</span>
