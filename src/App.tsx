@@ -104,6 +104,16 @@ const App: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isAdminNoteOpen, setIsAdminNoteOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isAdminNoteOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsAdminNoteOpen(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isAdminNoteOpen]);
+
   const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
   const [isLicensesOpen, setIsLicensesOpen] = useState(false);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
@@ -1382,10 +1392,12 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-lg border border-white/20">
                   <textarea 
                     autoFocus
-                    placeholder="Quick draft an administrative note... (Shift+Enter to save)"
+                    placeholder="Quick draft an administrative note... (Enter to save)"
                     className="w-full h-24 bg-transparent border-none focus:ring-0 text-sm font-serif resize-none"
                     onKeyDown={async (e) => {
-                      if (e.key === 'Enter' && e.shiftKey) {
+                      if (e.key === 'Escape') {
+                        setIsAdminNoteOpen(false);
+                      } else if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         const target = e.currentTarget;
                         const text = target.value.trim();
@@ -1401,8 +1413,8 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
                       }
                     }}
                   />
-                  <div className="flex justify-end pt-2">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Shift + Enter to Append</span>
+                  <div className="flex justify-between pt-2">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Enter to Append &bull; Shift+Enter for Newline</span>
                   </div>
                 </div>
 
