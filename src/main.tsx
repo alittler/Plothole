@@ -13,7 +13,30 @@ if (!PUBLISHABLE_KEY) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+    <ClerkProvider 
+      publishableKey={PUBLISHABLE_KEY}
+      appearance={{
+        layout: {
+          socialButtonsVariant: 'iconButton',
+          shimmer: true
+        },
+        variables: {
+          colorPrimary: '#4f46e5',
+          borderRadius: '1rem',
+        },
+        elements: {
+          userProfileModalBox: {
+            width: '100%',
+            maxWidth: '480px',
+            height: 'auto',
+            maxHeight: '600px',
+          },
+          userButtonPopoverCard: {
+            borderRadius: '1.5rem',
+          }
+        }
+      }}
+    >
       <HashRouter>
         <App />
       </HashRouter>

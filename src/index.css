@@ -162,3 +162,33 @@
 .dark .perforation-line::after {
   background-color: #1e293b;
 }
+
+/* Clerk Customization */
+.cl-userProfile-root {
+  width: 100% !important;
+  max-width: 480px !important;
+  height: auto !important;
+  max-height: 600px !important;
+  margin: 0 auto;
+}
+
+.cl-userProfile-navbar {
+  display: none !important; /* Hide sidebar if only a few options are needed */
+}
+
+.cl-userProfile-pageScrollBox {
+  padding: 1.5rem !important;
+}
+
+.cl-userProfile-content {
+  width: 100% !important;
+}
+
+.cl-modalBackdrop {
+  backdrop-filter: blur(4px);
+}
+
+.cl-modalContent {
+  border-radius: 2rem !important;
+  overflow: hidden;
+}
