@@ -177,36 +177,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         <div className="p-4 border-t border-slate-800/50 space-y-2">
-          {onQuickNote && currentUser.role === 'admin' && (
-            <button 
-              onClick={onQuickNote}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-600/10 text-amber-500 hover:bg-amber-600 hover:text-white transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
-              title="Admin Note"
-            >
-              <PenTool size={18} />
-              {!isCollapsed && <span className="font-black text-[10px] uppercase tracking-widest">Admin Note</span>}
-            </button>
-          )}
-
-          <button 
-            onClick={onToggleAi}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isAiOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'} ${isCollapsed ? 'justify-center px-0' : ''}`}
-            title="The Oracle"
-          >
-            <div className="relative">
-              <Sparkles size={18} className={isProcessing ? 'animate-spin' : ''} />
-              {isProcessing && (
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-indigo-500 border border-slate-950 rounded-full animate-pulse" />
-              )}
-            </div>
-            {!isCollapsed && (
-              <div className="flex flex-col items-start overflow-hidden">
-                <span className="font-black text-[10px] uppercase tracking-widest">The Oracle</span>
-                {isProcessing && <span className="text-[8px] opacity-60 truncate w-full">{processingStatus || 'Thinking...'}</span>}
-              </div>
-            )}
-          </button>
-
           <div className={`flex items-center gap-3 px-4 py-2 mt-2 ${isCollapsed ? 'justify-center px-0' : ''}`}>
             {!isCollapsed && (
               <div className="flex-1 flex flex-col min-w-0">
