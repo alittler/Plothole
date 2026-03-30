@@ -66,15 +66,7 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
-  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
-  const [isSettled, setIsSettled] = useState(false);
-
-  useEffect(() => {
-    if (isAuthLoaded && isClerkLoaded) {
-      const timer = setTimeout(() => setIsSettled(true), 800);
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthLoaded, isClerkLoaded]);
+  const { isSignedIn } = useAuth();
 
   const [projectsMetadata, setProjectsMetadata] = useState<ProjectMetadata[]>([]);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
@@ -1625,31 +1617,10 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
     </div>
   );
 
-  if (!isSettled) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-black text-white gap-6">
-        <motion.div 
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.1)] animate-pulse"
-        >
-          <Shield size={32} className="text-black" />
-        </motion.div>
-        <div className="flex flex-col items-center gap-3">
-          <h1 className="text-2xl font-black uppercase tracking-[0.4em] animate-in fade-in duration-1000">Plothole</h1>
-          <div className="flex items-center gap-3 px-4 py-1.5 bg-white/5 rounded-full border border-white/10">
-            <Loader2 size={12} className="animate-spin text-indigo-400" />
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Synchronizing Session...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
       {!isSignedIn ? (
-        <SignInPage appName={appSettings.appName} />
+        <SignInPage />
       ) : (
         renderAppContent()
       )}
