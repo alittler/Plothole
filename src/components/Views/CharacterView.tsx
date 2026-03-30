@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ViewType, Relationship, ProjectData, HierarchicalEntity } from '../../types';
-import { Plus, Search, Sparkles, Edit2, Trash2, Camera, Users, User, FileText, Network, Heart, Zap, Shield, ArrowRight, X, Loader2 } from 'lucide-react';
+import { Plus, Search, Sparkles, Edit2, Trash2, Camera, Users, User, FileText, Network, Heart, Zap, Shield, ArrowRight, X, Loader2, Ghost, Map } from 'lucide-react';
 import { generateId } from '../../services/storageService';
 import { RelationshipGraph } from '../ui/RelationshipGraph';
 

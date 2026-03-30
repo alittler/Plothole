@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType, Note, ProjectData, ProjectMetadata, User } from '../../types';
-import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe } from 'lucide-react';
+import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe, PenTool, LayoutGrid } from 'lucide-react';
 import { StackedPaper } from '../ui/StackedPaper';
 import { WikiText } from '../ui/WikiText';
 import { RichEditor } from '../ui/RichEditor';
@@ -250,7 +250,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                     className={`ph-tab ${viewMode === v ? 'ph-tab-active' : 'ph-tab-inactive'}`}
                   >
                     {v === NotepadView.STREAM && <Zap size={14} />}
-                    {v === NotepadView.BOARD && <LayoutGrid size={14} />}
+                    {v === NotepadView.WORKSPACE && <LayoutGrid size={14} />}
                     {v}
                   </button>
                 ))}
