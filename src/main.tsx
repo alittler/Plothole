@@ -30,7 +30,7 @@ createRoot(document.getElementById('root')!).render(
             width: '100%',
             maxWidth: '480px',
             height: 'auto',
-            maxHeight: '600px',
+            maxHeight: '420px',
           },
           userButtonPopoverCard: {
             borderRadius: '1.5rem',

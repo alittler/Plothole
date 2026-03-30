@@ -9,7 +9,7 @@
 
 @layer base {
   html, body {
-    @apply h-full overflow-hidden;
+    @apply min-h-full overflow-x-hidden;
   }
   
   body {
@@ -164,31 +164,28 @@
 }
 
 /* Clerk Customization */
+.cl-modalContent {
+  height: 400px !important;
+  max-height: 400px !important;
+  border-radius: 2rem !important;
+  overflow: hidden !important;
+}
+
 .cl-userProfile-root {
-  width: 100% !important;
-  max-width: 480px !important;
-  height: auto !important;
-  max-height: 600px !important;
-  margin: 0 auto;
+  height: 400px !important;
+  max-height: 400px !important;
 }
 
 .cl-userProfile-navbar {
-  display: none !important; /* Hide sidebar if only a few options are needed */
+  display: none !important;
 }
 
 .cl-userProfile-pageScrollBox {
   padding: 1.5rem !important;
+  height: 400px !important;
 }
 
 .cl-userProfile-content {
   width: 100% !important;
-}
-
-.cl-modalBackdrop {
-  backdrop-filter: blur(4px);
-}
-
-.cl-modalContent {
-  border-radius: 2rem !important;
-  overflow: hidden;
+  height: 100% !important;
 }
