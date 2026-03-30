@@ -67,6 +67,14 @@ const App: React.FC = () => {
   const location = useLocation();
   const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
   const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
+  const [isSettled, setIsSettled] = useState(false);
+
+  useEffect(() => {
+    if (isAuthLoaded && isClerkLoaded) {
+      const timer = setTimeout(() => setIsSettled(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthLoaded, isClerkLoaded]);
 
   const [projectsMetadata, setProjectsMetadata] = useState<ProjectMetadata[]>([]);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
@@ -1617,7 +1625,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
     </div>
   );
 
-  if (!isAuthLoaded || !isClerkLoaded) {
+  if (!isSettled) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-black text-white gap-6">
         <motion.div 

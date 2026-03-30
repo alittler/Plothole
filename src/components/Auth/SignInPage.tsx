@@ -5,7 +5,7 @@ import { Sparkles } from 'lucide-react';
 
 export const SignInPage: React.FC<{ appName?: string }> = ({ appName = 'Plothole AI' }) => {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-black p-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
