@@ -46,8 +46,8 @@ import { CodexView } from './components/Views/CodexView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool, Trash2 } from 'lucide-react';
-import { SignedIn, SignedOut, useUser, UserButton } from '@clerk/clerk-react';
+import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool, Trash2, Loader2 } from 'lucide-react';
+import { SignedIn, SignedOut, useUser, UserButton, useAuth } from '@clerk/clerk-react';
 import { SignInPage } from './components/Auth/SignInPage';
 
 const DEMO_USER: User = {
@@ -66,6 +66,7 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
+  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
 
   const [projectsMetadata, setProjectsMetadata] = useState<ProjectMetadata[]>([]);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
@@ -1616,14 +1617,34 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
     </div>
   );
 
+  if (!isAuthLoaded || !isClerkLoaded) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-black text-white gap-6">
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.1)] animate-pulse"
+        >
+          <Shield size={32} className="text-black" />
+        </motion.div>
+        <div className="flex flex-col items-center gap-3">
+          <h1 className="text-2xl font-black uppercase tracking-[0.4em] animate-in fade-in duration-1000">Plothole</h1>
+          <div className="flex items-center gap-3 px-4 py-1.5 bg-white/5 rounded-full border border-white/10">
+            <Loader2 size={12} className="animate-spin text-indigo-400" />
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Synchronizing Session...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      <SignedOut>
+      {!isSignedIn ? (
         <SignInPage appName={appSettings.appName} />
-      </SignedOut>
-      <SignedIn>
-        {renderAppContent()}
-      </SignedIn>
+      ) : (
+        renderAppContent()
+      )}
     </>
   );
 };
