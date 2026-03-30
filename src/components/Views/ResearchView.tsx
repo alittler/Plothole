@@ -234,13 +234,15 @@ interface ResearchViewProps {
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
-      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <header className="p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm z-10 shrink-0">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-1 text-center md:text-left">
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">RESEARCH & DISCOVERY</h1>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">Analyze sources, manage your ledger, and chat with Merlin.</p>
+            <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
+              <Search size={32} className="text-indigo-600" /> Research & Discovery
+            </h1>
+            <p className="ph-section-subtitle">Analyze sources, manage your ledger, and chat with the Oracle.</p>
           </div>
-          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar">
+          <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
             {Object.values(StenoTab).map(tab => {
               const Icon = {
                 [StenoTab.WORKSPACE]: Layout,
@@ -254,9 +256,9 @@ interface ResearchViewProps {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap ${isActive ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                  className={`ph-tab ${isActive ? "ph-tab-active" : "ph-tab-inactive"}`}
                 >
-                  {Icon && <Icon size={16} />}
+                  {Icon && <Icon size={14} />}
                   {tab}
                 </button>
               );
