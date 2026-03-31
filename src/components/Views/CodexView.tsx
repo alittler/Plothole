@@ -112,8 +112,8 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-        <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
+      <div className="flex-1 overflow-y-auto p-0 md:p-8 custom-scrollbar">
+        <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 min-h-full pb-40">
           <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />

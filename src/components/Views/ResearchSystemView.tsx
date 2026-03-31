@@ -291,8 +291,8 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
         </header>
       )}
 
-      <div className="flex-1 overflow-y-auto relative p-4 pt-0 md:pt-8 md:p-8 bg-slate-50 dark:bg-slate-950">
-        <div className="max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-b-3xl md:rounded-3xl overflow-hidden flex flex-col paper-texture">
+      <div className="flex-1 overflow-y-auto relative p-0 md:p-8 bg-slate-50 dark:bg-slate-950">
+        <div className="max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-none md:rounded-3xl overflow-hidden flex flex-col paper-texture">
           {viewMode === NotepadView.STREAM ? (
             <>
               {/* Transition Zone - paper texture continues underneath */}
@@ -311,11 +311,11 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex-1 relative pt-2 pb-32 lg:pb-8 px-4 md:pl-16 lg:pl-32">
+              <div className="flex-1 relative pt-0 pb-40 lg:pb-8 p-0">
                 <div className="space-y-0 relative z-10">
                   <StackedPaper className="space-y-4" transparent>
-                    <div className="p-4 md:p-6 relative z-20 bg-white/40 dark:bg-white/5 rounded-2xl backdrop-blur-sm border border-slate-300 dark:border-slate-700 mb-4">
-                      <div className="relative">
+                    <div className="p-0 md:p-6 relative z-20 bg-white/40 dark:bg-white/5 rounded-none md:rounded-2xl backdrop-blur-sm border border-slate-300 dark:border-slate-700 mb-4">
+                      <div className="relative px-4 md:px-0 pt-4 md:pt-0">
                         <textarea
                           value={newNote}
                           onChange={handleTextChange}
@@ -326,13 +326,13 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                         {showTagSuggestion && (
                           <button
                             onClick={applyTagSuggestion}
-                            className="absolute bottom-2 left-0 bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2"
+                            className="absolute bottom-2 left-4 md:left-0 bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2"
                           >
                             #{(data.shortName || data.title || 'Project').replace(/[^\w\s]/g, '').replace(/\s+/g, '_')}
                           </button>
                         )}
                       </div>
-                      <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30 pb-4">
+                      <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30 pb-4 mx-4 md:mx-0">
                         <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # to tag characters or books.</span>
                       </div>
                     </div>
@@ -348,8 +348,8 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                       <React.Fragment key={note.id}>
                         {index > 0 && <div className="perforation-line my-2" />}
                         <StackedPaper className="group" transparent>
-                          <div className={`p-6 relative z-20 ${note.isCanon ? 'border-l-4 border-amber-500/50' : ''}`}>
-                            <div className="flex items-start justify-between mb-4">
+                          <div className={`p-0 md:p-6 relative z-20 ${note.isCanon ? 'border-l-4 border-amber-500/50' : ''}`}>
+                            <div className="flex items-start justify-between mb-4 p-4 md:p-0">
                               <div className="flex flex-wrap gap-2">
                                 {note.tags.map(tag => {
                                   const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');

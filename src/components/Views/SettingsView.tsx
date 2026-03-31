@@ -187,7 +187,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       case SettingsTab.PROFILE:
         return (
           <div className="space-y-12 animate-in fade-in duration-500">
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+            <section className="bg-white dark:bg-slate-900 rounded-none md:rounded-3xl p-4 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
                 <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20">
                   <UserIcon size={28} />
@@ -220,7 +220,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </section>
 
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+            <section className="bg-white dark:bg-slate-900 rounded-none md:rounded-3xl p-4 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
                 <div className="p-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl">
                   <Shield size={28} />
@@ -255,7 +255,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </section>
 
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+            <section className="bg-white dark:bg-slate-900 rounded-none md:rounded-3xl p-4 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
                 <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-2xl">
                   <Database size={28} />
@@ -729,7 +729,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* Main Settings Content Area */}
       <main className={`${!activeTab ? 'hidden lg:flex' : 'flex'} flex-1 flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar p-4 lg:p-8`}>
-        <div className="max-w-5xl mx-auto w-full">
+        <div className="max-w-5xl mx-auto w-full min-h-full pb-40">
           {activeTab && (
             <button 
               onClick={() => setActiveTab(null)}

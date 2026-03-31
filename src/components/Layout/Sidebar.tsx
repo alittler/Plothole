@@ -44,6 +44,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false
 }) => {
   const { signOut } = useClerk();
+
+  // Close mobile sidebar on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
   
   const allNavItems: NavItem[] = [
     { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
@@ -100,9 +111,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside className={`
-        fixed inset-y-0 left-0 z-[1001] lg:relative shrink-0
-        bg-slate-950 text-slate-400 flex flex-col transition-all duration-500 ease-in-out border-r border-slate-800/50
-        ${isOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full lg:translate-x-0 pointer-events-none lg:pointer-events-auto'}
+        fixed inset-x-0 top-0 z-[1001] lg:relative lg:inset-y-0 lg:left-0 shrink-0
+        bg-slate-950 text-slate-400 flex flex-col transition-all duration-500 ease-in-out border-b lg:border-b-0 lg:border-r border-slate-800/50
+        ${isOpen ? 'translate-y-0 pointer-events-auto max-h-[80vh]' : '-translate-y-full lg:translate-y-0 pointer-events-none lg:pointer-events-auto lg:max-h-none'}
         ${isFullscreen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-none' : isCollapsed ? 'lg:w-20' : 'lg:w-64 md:w-72'}
       `}>
         {/* Mobile Safe Area Forehead */}
@@ -175,10 +186,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             );
           })}
+
+          {/* Persistent Footer Items */}
+          <div className="space-y-1 pt-4 border-t border-slate-800/50">
+            <button
+              onClick={() => signOut()}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 hover:bg-rose-900/20 hover:text-rose-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
+              title="Sign Out"
+            >
+              <LogOut size={18} className="text-slate-500 group-hover:text-rose-400 transition-colors" />
+              {!isCollapsed && <span className="font-bold text-sm">Sign Out</span>}
+            </button>
+
+            <div className="pt-2 flex flex-col gap-0.5">
+              <a
+                href="https://github.com/alittler/Plothole"
+                target="_blank"
+                rel="noreferrer"
+                className={`w-full flex items-center gap-3 px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
+                title="GitHub Repository"
+              >
+                <GitBranch size={14} className="text-slate-700 group-hover:text-indigo-400 transition-colors" />
+                {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest">GitHub</span>}
+              </a>
+
+              <button
+                onClick={onOpenLicenses}
+                className={`w-full flex items-center gap-3 px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
+                title="Open Source Licenses"
+              >
+                <Shield size={14} className="text-slate-700 group-hover:text-indigo-400 transition-colors" />
+                {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest">Licenses</span>}
+              </button>
+            </div>
+          </div>
         </nav>
 
-        <div className="p-4 border-t border-slate-800/50 space-y-2">
-          <div className={`flex items-center gap-3 px-4 py-2 mt-2 ${isCollapsed ? 'justify-center px-0' : ''}`}>
+        <div className="p-4 border-t border-slate-800/50">
+          <div className={`flex items-center gap-3 px-4 py-2 ${isCollapsed ? 'justify-center px-0' : ''}`}>
             {!isCollapsed && (
               <div className="flex-1 flex flex-col min-w-0">
                 <span className="text-xs font-bold text-white truncate">{currentUser.name}</span>
@@ -188,26 +233,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className={`${isCollapsed ? '' : 'shrink-0'}`}>
               <UserButton afterSignOutUrl={window.location.origin} />
             </div>
-          </div>
-
-          <div className="pt-2 flex flex-col gap-1">
-            <button 
-              onClick={() => signOut()}
-              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-400/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
-              title="Logout"
-            >
-              <LogOut size={16} />
-              {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest">Sign Out</span>}
-            </button>
-            
-            <button 
-              onClick={onOpenLicenses}
-              className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-slate-600 hover:text-slate-400 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
-              title="Licenses"
-            >
-              <Shield size={14} />
-              {!isCollapsed && <span className="text-[8px] font-black uppercase tracking-widest">Open Source</span>}
-            </button>
           </div>
         </div>
       </aside>

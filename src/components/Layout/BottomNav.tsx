@@ -36,20 +36,33 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[1000] lg:hidden">
-      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 px-2 py-2 flex items-center justify-around pb-safe">
+      <div className="bg-slate-900/90 dark:bg-white/90 backdrop-blur-2xl border-t border-white/20 dark:border-black/10 px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] flex items-start justify-around rounded-t-[3rem] shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
         
         {order.map((view) => {
           const isActive = currentView === view;
           const isProjectOnly = [ViewType.DASHBOARD, ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(view);
           const isDisabled = isProjectOnly && !hasActiveProject;
+          const isNotepad = view === ViewType.NOTEPAD;
 
           if (isDisabled) return null;
+
+          if (isNotepad) {
+            return (
+              <button
+                key={view}
+                onClick={() => onChangeView(view)}
+                className={`flex items-center justify-center -translate-y-10 w-16 h-16 rounded-full transition-all shadow-2xl ${isActive ? 'text-white bg-indigo-600 scale-110 shadow-indigo-600/50' : 'text-white bg-slate-800 dark:bg-slate-200 dark:text-slate-900 hover:scale-105'}`}
+              >
+                <FileText size={32} strokeWidth={1.5} />
+              </button>
+            );
+          }
 
           return (
             <button
               key={view}
               onClick={() => onChangeView(view)}
-              className={`flex items-center justify-center p-3 rounded-2xl transition-all ${isActive ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-600/20 scale-110' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+              className={`flex items-center justify-center p-3 rounded-2xl transition-all ${isActive ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-600/40 scale-110' : 'text-slate-400 hover:text-slate-300 dark:hover:text-slate-600'}`}
             >
               {getViewIcon(view, isActive)}
             </button>
@@ -58,7 +71,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
         <button
           onClick={onToggleSidebar}
-          className={`flex items-center justify-center p-3 rounded-2xl transition-all ${isSidebarOpen ? 'text-white bg-slate-900 dark:bg-slate-100 dark:text-slate-900' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+          className={`flex items-center justify-center p-3 rounded-2xl transition-all ${isSidebarOpen ? 'text-white bg-indigo-500' : 'text-slate-400 hover:text-slate-300 dark:hover:text-slate-600'}`}
         >
           {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>

@@ -47,8 +47,8 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar pb-20 md:pb-12">
-        <div className="max-w-6xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+        <div className="max-w-6xl mx-auto min-h-full pb-40">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {projects.map(project => {
               const isActive = project.id === activeProjectId;

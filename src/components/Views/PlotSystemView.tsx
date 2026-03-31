@@ -111,8 +111,8 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm z-10 shrink-0">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      <header className="p-0 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm z-10 shrink-0">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 p-4 md:p-0">
           <div className="space-y-1 text-center md:text-left">
             <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
               <Calendar size={32} className="text-indigo-600" /> Plot & Timeline
@@ -136,8 +136,8 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-        <div className="max-w-4xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-0 md:p-8 custom-scrollbar">
+        <div className="max-w-4xl mx-auto px-4 md:px-0 pt-8 md:pt-0 min-h-full pb-40">
           {activeTab === PlotTab.TIMELINE && (
             <>
               <div className="flex flex-col sm:flex-row justify-end gap-3 md:gap-4 mb-8">

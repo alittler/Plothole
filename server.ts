@@ -314,10 +314,16 @@ async function startServer() {
   });
 
   // Clerk Middleware
-  if (process.env.CLERK_SECRET_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY) {
+  const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || 
+                              process.env.VITE_CLERK_PUBLISHABLE_KEY || 
+                              process.env.VITE_PUBLIC_CLERK_PUBLISHABLE_KEY || 
+                              process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const clerkSecretKey = process.env.CLERK_SECRET_KEY;
+
+  if (clerkSecretKey || clerkPublishableKey) {
     // Ensure the SDK picks up the keys correctly
-    process.env.CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-    process.env.CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
+    if (clerkPublishableKey) process.env.CLERK_PUBLISHABLE_KEY = clerkPublishableKey;
+    if (clerkSecretKey) process.env.CLERK_SECRET_KEY = clerkSecretKey;
     
     app.use(ClerkExpressWithAuth());
   }
@@ -496,7 +502,9 @@ async function startServer() {
       }
 
       // Inject the Clerk and Gemini Publishable Keys into the HTML
-      const clerkKey = process.env.VITE_CLERK_PUBLISHABLE_KEY || 
+      const clerkKey = process.env.CLERK_PUBLISHABLE_KEY ||
+                       process.env.VITE_CLERK_PUBLISHABLE_KEY || 
+                       process.env.VITE_PUBLIC_CLERK_PUBLISHABLE_KEY ||
                        process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 
                        process.env.VITE_CLERK_PUBLISH || 
                        '';

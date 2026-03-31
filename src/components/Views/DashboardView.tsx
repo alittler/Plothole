@@ -86,8 +86,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [projectData]);
 
   return (
-    <div className="h-full overflow-y-auto p-4 md:p-8 bg-slate-50 dark:bg-slate-950">
-      <div className="max-w-6xl mx-auto space-y-6 md:space-y-8">
+    <div className="h-full overflow-y-auto p-4 md:p-8 bg-slate-50 dark:bg-slate-950 custom-scrollbar">
+      <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 min-h-full pb-40">
         <header className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 text-center md:text-left">
           <div className="w-32 h-48 md:w-48 md:h-72 ph-panel shadow-2xl overflow-hidden relative group flex-shrink-0 border-none rounded-xl">
             {projectData.coverImage ? (

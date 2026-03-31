@@ -131,8 +131,8 @@ interface ResearchViewProps {
               </button>
             </div>
 
-            <div className="flex-1 overflow-hidden p-4 lg:p-6">
-              <div className="h-full grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="flex-1 overflow-y-auto p-0 md:p-8 custom-scrollbar">
+              <div className="h-full min-h-full grid grid-cols-1 lg:grid-cols-4 gap-6 pb-40 lg:pb-0">
                 {/* Ledger Panel */}
                 <div className={`${mobileSubTab === 'ledger' ? 'block' : 'hidden'} lg:block lg:col-span-1 h-full overflow-hidden`}>
                   <StenoLedgerPanel 
@@ -179,24 +179,25 @@ interface ResearchViewProps {
 
       case StenoTab.LEDGER:
         return (
-          <div className="h-full p-8 overflow-y-auto">
-             <StenoLedgerPanel 
-              projectData={projectData} 
-              onUpdateProject={onUpdateProject} 
-              onDeleteNote={onDeleteNote}
-              currentUser={currentUser}
-              projectsMetadata={projectsMetadata}
-              onLinkClick={onLinkClick}
-              isFullScreen={true}
-              
-            />
+          <div className="h-full overflow-y-auto p-0 md:p-8 custom-scrollbar">
+             <div className="min-h-full pb-40">
+               <StenoLedgerPanel 
+                projectData={projectData} 
+                onUpdateProject={onUpdateProject} 
+                onDeleteNote={onDeleteNote}
+                currentUser={currentUser}
+                projectsMetadata={projectsMetadata}
+                onLinkClick={onLinkClick}
+                isFullScreen={true}
+              />
+             </div>
           </div>
         );
 
       case StenoTab.SOURCES:
         return (
-          <div className="h-full p-8 overflow-y-auto">
-            <div className="max-w-7xl mx-auto">
+          <div className="h-full overflow-y-auto p-0 md:p-8 custom-scrollbar">
+            <div className="max-w-7xl mx-auto min-h-full pb-40">
               <StenoSourcesPanel 
                 sources={sources} 
                 setSources={setSources} 
@@ -209,7 +210,7 @@ interface ResearchViewProps {
 
       case StenoTab.CHAT:
         return (
-          <div className="h-full flex flex-col max-w-4xl mx-auto p-4 lg:p-6">
+          <div className="h-full flex flex-col max-w-4xl mx-auto p-4 lg:p-6 min-h-full pb-40">
              <StenoChatPanel 
               chatMessages={chatMessages}
               setChatMessages={setChatMessages}

@@ -400,8 +400,8 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-        <div className="max-w-6xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-0 md:p-8 custom-scrollbar">
+        <div className="max-w-6xl mx-auto min-h-full pb-40">
           {renderActiveTabContent()}
         </div>
       </div>

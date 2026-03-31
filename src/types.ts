@@ -23,7 +23,10 @@ export enum ViewType {
   RESEARCH = 'Research',
   SEMANTIC_EDITOR = 'SemanticEditor',
   STORY_ARCHITECT = 'StoryArchitect',
-  CODEX = 'Codex'
+  CODEX = 'Codex',
+  WORLD_HUB = 'WorldHub',
+  WORKSPACE_HUB = 'WorkspaceHub',
+  SYSTEM_HUB = 'SystemHub'
 }
 
 export const APP_DATA_VERSION = 12;

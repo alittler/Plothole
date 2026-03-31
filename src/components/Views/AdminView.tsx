@@ -333,11 +333,11 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
       {/* Main Admin Content Area */}
       <main className={`${!activeTab ? 'hidden lg:flex' : 'flex'} flex-1 flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar`}>
-        <div className="flex-1 w-full max-w-5xl mx-auto p-4 lg:p-8">
+        <div className="flex-1 w-full max-w-5xl mx-auto p-0 md:p-8 min-h-full pb-40">
           {activeTab && (
             <button 
               onClick={() => handleSetActiveTab(null)}
-              className="lg:hidden mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
+              className="lg:hidden m-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
             >
               <ChevronRight size={14} className="rotate-180" /> Back to Admin
             </button>

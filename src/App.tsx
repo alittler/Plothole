@@ -1316,7 +1316,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
           </div>
         )}
 
-        <div className="flex-1 overflow-hidden relative pb-14 lg:pb-0">
+        <div className="flex-1 overflow-hidden relative">
           {viewContent}
         </div>
         
