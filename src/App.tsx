@@ -1286,7 +1286,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
 
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
         {/* Mobile Safe Area Forehead */}
-        <div className="lg:hidden h-[env(safe-area-inset-top)] bg-black w-full shrink-0 z-[2000]" />
+        <div className="lg:hidden h-[env(safe-area-inset-top)] bg-slate-50 dark:bg-slate-950 w-full shrink-0 z-[2000]" />
         
         {/* Mobile Header Removed */}
 

@@ -35,7 +35,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[1000] lg:hidden">
+    <div className={`fixed bottom-0 left-0 right-0 z-[1000] lg:hidden transition-transform duration-500 ease-in-out ${isSidebarOpen ? 'translate-y-1/2' : 'translate-y-0'}`}>
       <div className="bg-slate-900/90 dark:bg-white/90 backdrop-blur-2xl border-t border-white/20 dark:border-black/10 px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] flex items-start justify-around rounded-t-[3rem] shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
         
         {order.map((view) => {

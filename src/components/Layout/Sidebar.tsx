@@ -113,11 +113,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <aside className={`
         fixed inset-x-0 top-0 z-[1001] lg:relative lg:inset-y-0 lg:left-0 shrink-0
         bg-slate-950 text-slate-400 flex flex-col transition-all duration-500 ease-in-out border-b lg:border-b-0 lg:border-r border-slate-800/50
-        ${isOpen ? 'translate-y-0 pointer-events-auto max-h-[80vh]' : '-translate-y-full lg:translate-y-0 pointer-events-none lg:pointer-events-auto lg:max-h-none'}
+        rounded-b-[3rem] lg:rounded-b-none
+        ${isOpen ? 'translate-y-0 pointer-events-auto max-h-[92.5vh]' : '-translate-y-full lg:translate-y-0 pointer-events-none lg:pointer-events-auto lg:max-h-none'}
         ${isFullscreen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-none' : isCollapsed ? 'lg:w-20' : 'lg:w-64 md:w-72'}
       `}>
         {/* Mobile Safe Area Forehead */}
-        <div className="lg:hidden h-[env(safe-area-inset-top)] bg-black w-full shrink-0" />
+        <div className="lg:hidden h-[env(safe-area-inset-top)] bg-slate-950 w-full shrink-0" />
 
         <div className="p-6 border-b border-slate-800/50 flex flex-col gap-1">
           <div className="flex items-center justify-between">
