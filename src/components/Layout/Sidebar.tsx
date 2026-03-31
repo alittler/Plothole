@@ -110,11 +110,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      <aside className={`
+      <aside 
+        onClick={(e) => {
+          // If the user clicks the empty space at the bottom of the sidebar, close it
+          if (e.target === e.currentTarget && window.innerWidth < 1024) {
+            onClose();
+          }
+        }}
+        className={`
         fixed inset-x-0 top-0 z-[1001] lg:relative lg:inset-y-0 lg:left-0 shrink-0
         bg-slate-950 text-slate-400 flex flex-col transition-all duration-500 ease-in-out border-b lg:border-b-0 lg:border-r border-slate-800/50
         rounded-b-[3rem] lg:rounded-b-none
-        ${isOpen ? 'translate-y-0 pointer-events-auto max-h-[92.5vh]' : '-translate-y-full lg:translate-y-0 pointer-events-none lg:pointer-events-auto lg:max-h-none'}
+        ${isOpen ? 'translate-y-0 pointer-events-auto max-h-[calc(100vh-12rem)]' : '-translate-y-full lg:translate-y-0 pointer-events-none lg:pointer-events-auto lg:max-h-none'}
         ${isFullscreen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-none' : isCollapsed ? 'lg:w-20' : 'lg:w-64 md:w-72'}
       `}>
         {/* Mobile Safe Area Forehead */}
@@ -189,9 +196,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
 
           {/* Persistent Footer Items */}
-          <div className="space-y-1 pt-4 border-t border-slate-800/50">
+          <div 
+            onClick={() => window.innerWidth < 1024 && onClose()}
+            className="space-y-1 pt-4 border-t border-slate-800/50"
+          >
             <button
-              onClick={() => signOut()}
+              onClick={(e) => { e.stopPropagation(); signOut(); }}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 hover:bg-rose-900/20 hover:text-rose-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
               title="Sign Out"
             >
@@ -204,6 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 href="https://github.com/alittler/Plothole"
                 target="_blank"
                 rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
                 className={`w-full flex items-center gap-3 px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
                 title="GitHub Repository"
               >
@@ -212,7 +223,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </a>
 
               <button
-                onClick={onOpenLicenses}
+                onClick={(e) => { e.stopPropagation(); onOpenLicenses(); }}
                 className={`w-full flex items-center gap-3 px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
                 title="Open Source Licenses"
               >
@@ -223,15 +234,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </nav>
 
-        <div className="p-4 border-t border-slate-800/50">
+        <div 
+          onClick={() => window.innerWidth < 1024 && onClose()}
+          className="p-4 border-t border-slate-800/50"
+        >
           <div className={`flex items-center gap-3 px-4 py-2 ${isCollapsed ? 'justify-center px-0' : ''}`}>
             {!isCollapsed && (
-              <div className="flex-1 flex flex-col min-w-0">
+              <div 
+                className="flex-1 flex flex-col min-w-0"
+              >
                 <span className="text-xs font-bold text-white truncate">{currentUser.name}</span>
                 <span className="text-[10px] text-slate-500 truncate uppercase tracking-tighter">{currentUser.role} Account</span>
               </div>
             )}
-            <div className={`${isCollapsed ? '' : 'shrink-0'}`}>
+            <div 
+              className={`${isCollapsed ? '' : 'shrink-0'} flex items-center gap-2`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {!isCollapsed && currentUser.role === 'admin' && (
+                <button 
+                  onClick={() => {
+                    // Logic to toggle admin note will be passed from App
+                    const event = new CustomEvent('toggleAdminNote');
+                    window.dispatchEvent(event);
+                    if (window.innerWidth < 1024) onClose();
+                  }}
+                  className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg hover:bg-amber-200 transition-colors"
+                  title="Admin Notes"
+                >
+                  <PenTool size={18} />
+                </button>
+              )}
               <UserButton afterSignOutUrl={window.location.origin} />
             </div>
           </div>

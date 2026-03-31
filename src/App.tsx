@@ -1260,6 +1260,13 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
     }
   }, [currentView]);
 
+  // Listen for custom events from Sidebar
+  React.useEffect(() => {
+    const handleToggleAdminNote = () => setIsAdminNoteOpen(prev => !prev);
+    window.addEventListener('toggleAdminNote', handleToggleAdminNote);
+    return () => window.removeEventListener('toggleAdminNote', handleToggleAdminNote);
+  }, []);
+
   const renderAppContent = () => (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors animate-in fade-in duration-500">
       <Sidebar
@@ -1289,16 +1296,25 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         <div className={`lg:hidden z-[2000] fixed top-0 left-0 right-0 transition-all duration-500 bg-black ${currentView === ViewType.NOTEPAD ? 'h-[calc(env(safe-area-inset-top)+3.5rem)] shadow-2xl' : 'h-[env(safe-area-inset-top)]'}`}>
           {currentView === ViewType.NOTEPAD && (
             <>
-              {/* Leather Texture Overlay - Unmasked and starts from top-0 */}
+              {/* Opaque Leather Texture */}
               <div 
-                className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/leather.png')] opacity-90 pointer-events-none" 
+                className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/leather.png')] opacity-100 pointer-events-none" 
               />
               
-              {/* Gradient from solid black forehead into the leather texture */}
-              <div className="absolute inset-x-0 top-0 h-[calc(env(safe-area-inset-top)+1rem)] bg-gradient-to-b from-black via-black/60 to-transparent pointer-events-none" />
+              {/* Rugged Texture Overlay (matches paper noise) */}
+              <div 
+                className="absolute inset-0 opacity-[0.15] pointer-events-none"
+                style={{ 
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='256' height='256' viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' /%3E%3C/svg%3E")`
+                }}
+              />
 
-              {/* Shadow at the bottom transition to paper */}
-              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black to-transparent pointer-events-none" />
+              {/* Smooth transition from solid black forehead into leather */}
+              <div className="absolute inset-x-0 top-0 h-[calc(env(safe-area-inset-top)+1.5rem)] bg-gradient-to-b from-black via-black/40 to-transparent pointer-events-none" />
+
+              {/* Noticeable grounded shadow where leather meets paper */}
+              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent opacity-100 pointer-events-none" />
+              <div className="absolute inset-x-0 bottom-0 h-8 bg-black/40 blur-md pointer-events-none" />
             </>
           )}
         </div>
@@ -1338,8 +1354,15 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         {/* Mobile Floating Nav */}
         <BottomNav
           currentView={currentView}
-          onChangeView={setCurrentView}
-          onToggleSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onChangeView={(v) => {
+            setCurrentView(v);
+            setIsMobileSidebarOpen(false);
+            setIsAdminNoteOpen(false);
+          }}
+          onToggleSidebar={() => {
+            setIsMobileSidebarOpen(!isMobileSidebarOpen);
+            setIsAdminNoteOpen(false);
+          }}
           isSidebarOpen={isMobileSidebarOpen}
           hasActiveProject={!!projectData}
           bottomNavOrder={appSettings.bottomNavOrder}
@@ -1374,16 +1397,20 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
       </main>
       <AiAssistant projectData={projectData} isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} onToggle={() => setIsAiOpen(!isAiOpen)} currentUser={currentUser} />
       
-      {/* Admin Note Canvas (Slides from Right) */}
+      {/* Admin Note Canvas */}
       <AnimatePresence>
         {isAdminNoteOpen && (
           <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
+            initial={{ y: window.innerWidth < 1024 ? '-100%' : 0, x: window.innerWidth < 1024 ? 0 : '100%' }}
+            animate={{ y: 0, x: 0 }}
+            exit={{ y: window.innerWidth < 1024 ? '-100%' : 0, x: window.innerWidth < 1024 ? 0 : '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 right-0 w-full md:w-[450px] bg-slate-100 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-[1500] flex flex-col"
+            className={`fixed z-[1500] bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col
+              ${window.innerWidth < 1024 
+                ? 'inset-x-0 top-0 max-h-[calc(100vh-12rem)] rounded-b-[3rem] border-b' 
+                : 'inset-y-0 right-0 w-[450px] border-l'}`}
           >
+            <div className="lg:hidden h-[env(safe-area-inset-top)] bg-slate-950 w-full shrink-0" />
             <header className="p-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg">
@@ -1429,8 +1456,28 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
                       }
                     }}
                   />
-                  <div className="flex justify-between pt-2">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Enter to Append &bull; Shift+Enter for Newline</span>
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Enter to Save &bull; Shift+Enter for Newline</span>
+                    <button
+                      onClick={async () => {
+                        const textarea = document.querySelector('textarea[placeholder*="Quick draft"]');
+                        if (textarea instanceof HTMLTextAreaElement) {
+                          const text = textarea.value.trim();
+                          if (!text) return;
+                          const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
+                          if (projectData) {
+                            await updateProjectData({ notes: [n, ...(projectData.notes || [])] });
+                          } else {
+                            setGlobalNotes(prev => [n, ...prev]);
+                            await saveGlobalNote(n);
+                          }
+                          textarea.value = '';
+                        }
+                      }}
+                      className="lg:hidden px-4 py-1.5 bg-amber-600 text-white rounded-lg font-black text-[8px] uppercase tracking-widest shadow-lg shadow-amber-600/20 active:scale-95 transition-all"
+                    >
+                      Append
+                    </button>
                   </div>
                 </div>
 

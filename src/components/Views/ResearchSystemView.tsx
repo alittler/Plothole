@@ -291,7 +291,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
         </header>
       )}
 
-      <div className="flex-1 overflow-y-auto relative p-0 md:p-8 bg-slate-50 dark:bg-slate-950">
+      <div className="flex-1 overflow-y-auto relative p-0 md:p-8 paper-texture">
         <div className="max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-none md:rounded-3xl overflow-hidden flex flex-col paper-texture">
           {viewMode === NotepadView.STREAM ? (
             <>
@@ -336,7 +336,13 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                         )}
                       </div>
                       <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30 pb-4">
-                        <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # to tag characters or books.</span>
+                        <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # to tag.</span>
+                        <button 
+                          onClick={handleAdd}
+                          className="lg:hidden px-4 py-1.5 bg-indigo-600 text-white rounded-lg font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                        >
+                          Save
+                        </button>
                       </div>
                     </div>
                   </StackedPaper>

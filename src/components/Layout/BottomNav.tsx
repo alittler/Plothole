@@ -62,14 +62,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     }
   };
 
-  // Reduce 2rem padding by 1/3 (to ~1.3rem) if bottom address bar is detected
-  const extraPadding = hasBottomAddressBar ? '1.3rem' : '2rem';
+  // Reduce 1.3rem padding by 1/3 (to ~0.9rem) if bottom address bar is detected
+  const extraPadding = hasBottomAddressBar ? '0.9rem' : '1.3rem';
 
   return (
     <div className={`fixed bottom-0 left-0 right-0 z-[1000] lg:hidden transition-transform duration-500 ease-in-out ${isSidebarOpen ? 'translate-y-1/3' : 'translate-y-0'}`}>
       <div 
         style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${extraPadding})` }}
-        className="bg-slate-900/90 dark:bg-white/90 backdrop-blur-2xl border-t border-white/20 dark:border-black/10 px-4 pt-4 flex items-start justify-around rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.3)]"
+        className="bg-slate-900/90 dark:bg-white/90 backdrop-blur-2xl border-t border-white/20 dark:border-black/10 px-4 pt-3 flex items-start justify-around rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)]"
       >
         
         {order.map((view) => {
@@ -85,9 +85,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <button
                 key={view}
                 onClick={() => onChangeView(view)}
-                className={`flex items-center justify-center -translate-y-6 w-16 h-16 rounded-full transition-all shadow-2xl ${isActive ? 'text-white bg-indigo-600 scale-110 shadow-indigo-600/50' : 'text-white bg-slate-800 dark:bg-slate-200 dark:text-slate-900 hover:scale-105'}`}
+                className={`flex items-center justify-center -translate-y-4 w-14 h-14 rounded-full transition-all shadow-[0_15px_30px_rgba(0,0,0,0.5)] ${
+                  isActive 
+                    ? 'text-white bg-indigo-600 scale-110 ring-4 ring-white dark:ring-slate-900 shadow-indigo-600/50' 
+                    : 'text-slate-950 bg-amber-400 dark:bg-amber-500 ring-4 ring-amber-400/20 dark:ring-amber-500/20 hover:scale-105'
+                }`}
               >
-                <FileText size={32} strokeWidth={1.5} />
+                <FileText size={28} strokeWidth={1.5} />
               </button>
             );
           }
