@@ -14,6 +14,34 @@ interface BottomNavProps {
 export const BottomNav: React.FC<BottomNavProps> = ({
   currentView, onChangeView, onToggleSidebar, isSidebarOpen, hasActiveProject, bottomNavOrder
 }) => {
+  const [hasBottomAddressBar, setHasBottomAddressBar] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkAddressBar = () => {
+      // Method 1: Check safe area inset (iOS Safari specific)
+      const div = document.createElement('div');
+      div.style.paddingBottom = 'env(safe-area-inset-bottom)';
+      document.body.appendChild(div);
+      const insetBottom = parseInt(window.getComputedStyle(div).paddingBottom);
+      document.body.removeChild(div);
+      
+      // Method 2: Compare visual viewport to layout viewport
+      const isCramped = window.visualViewport 
+        ? window.visualViewport.height < document.documentElement.clientHeight - 20
+        : false;
+
+      setHasBottomAddressBar(insetBottom > 50 || isCramped);
+    };
+
+    checkAddressBar();
+    window.visualViewport?.addEventListener('resize', checkAddressBar);
+    window.addEventListener('resize', checkAddressBar);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', checkAddressBar);
+      window.removeEventListener('resize', checkAddressBar);
+    };
+  }, []);
+
   const defaultOrder = [ViewType.BOOKSHELF, ViewType.DASHBOARD, ViewType.NOTEPAD, ViewType.RESEARCH];
   const order = bottomNavOrder || defaultOrder;
 
@@ -34,9 +62,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     }
   };
 
+  // Reduce 2rem padding by 1/3 (to ~1.3rem) if bottom address bar is detected
+  const extraPadding = hasBottomAddressBar ? '1.3rem' : '2rem';
+
   return (
-    <div className={`fixed bottom-0 left-0 right-0 z-[1000] lg:hidden transition-transform duration-500 ease-in-out ${isSidebarOpen ? 'translate-y-1/2' : 'translate-y-0'}`}>
-      <div className="bg-slate-900/90 dark:bg-white/90 backdrop-blur-2xl border-t border-white/20 dark:border-black/10 px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] flex items-start justify-around rounded-t-[3rem] shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
+    <div className={`fixed bottom-0 left-0 right-0 z-[1000] lg:hidden transition-transform duration-500 ease-in-out ${isSidebarOpen ? 'translate-y-1/3' : 'translate-y-0'}`}>
+      <div 
+        style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${extraPadding})` }}
+        className="bg-slate-900/90 dark:bg-white/90 backdrop-blur-2xl border-t border-white/20 dark:border-black/10 px-4 pt-4 flex items-start justify-around rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.3)]"
+      >
         
         {order.map((view) => {
           const isActive = currentView === view;
@@ -51,7 +85,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <button
                 key={view}
                 onClick={() => onChangeView(view)}
-                className={`flex items-center justify-center -translate-y-10 w-16 h-16 rounded-full transition-all shadow-2xl ${isActive ? 'text-white bg-indigo-600 scale-110 shadow-indigo-600/50' : 'text-white bg-slate-800 dark:bg-slate-200 dark:text-slate-900 hover:scale-105'}`}
+                className={`flex items-center justify-center -translate-y-6 w-16 h-16 rounded-full transition-all shadow-2xl ${isActive ? 'text-white bg-indigo-600 scale-110 shadow-indigo-600/50' : 'text-white bg-slate-800 dark:bg-slate-200 dark:text-slate-900 hover:scale-105'}`}
               >
                 <FileText size={32} strokeWidth={1.5} />
               </button>

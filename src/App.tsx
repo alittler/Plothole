@@ -1285,39 +1285,54 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
       />
 
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
-        {/* Mobile Safe Area Forehead */}
-        <div className="lg:hidden h-[env(safe-area-inset-top)] bg-slate-50 dark:bg-slate-950 w-full shrink-0 z-[2000]" />
-        
-        {/* Mobile Header Removed */}
+        {/* Mobile Fixed Binding Header */}
+        <div className={`lg:hidden z-[2000] fixed top-0 left-0 right-0 transition-all duration-500 bg-black ${currentView === ViewType.NOTEPAD ? 'h-[calc(env(safe-area-inset-top)+3.5rem)] shadow-2xl' : 'h-[env(safe-area-inset-top)]'}`}>
+          {currentView === ViewType.NOTEPAD && (
+            <>
+              {/* Leather Texture Overlay - Unmasked and starts from top-0 */}
+              <div 
+                className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/leather.png')] opacity-90 pointer-events-none" 
+              />
+              
+              {/* Gradient from solid black forehead into the leather texture */}
+              <div className="absolute inset-x-0 top-0 h-[calc(env(safe-area-inset-top)+1rem)] bg-gradient-to-b from-black via-black/60 to-transparent pointer-events-none" />
 
-        {!hasApiKey && (
-          <div className="bg-indigo-600 text-white px-6 py-3 flex items-center justify-between shadow-lg z-[1001]">
-            <div className="flex items-center gap-3 text-sm font-bold">
-              <Sparkles size={18} className="animate-pulse" />
-              <span>Connect your Gemini API Key to unlock AI story analysis features.</span>
-            </div>
-            <button 
-              onClick={handleOpenKeySelection}
-              className="px-4 py-1.5 bg-white text-indigo-600 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-colors shadow-sm"
-            >
-              Connect Key
-            </button>
-          </div>
-        )}
-        {aiError && (
-          <div className="bg-amber-500 text-white px-6 py-4 flex items-center justify-between shadow-2xl animate-in slide-in-from-top duration-300 z-[1000] border-b border-amber-600/50">
-            <div className="flex items-center gap-4 font-bold text-sm">
-              <AlertCircle size={22} className="animate-pulse" />
-              {aiError}
-            </div>
-            <button onClick={() => setAiError(null)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-              <X size={20} />
-            </button>
-          </div>
-        )}
+              {/* Shadow at the bottom transition to paper */}
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black to-transparent pointer-events-none" />
+            </>
+          )}
+        </div>
 
-        <div className="flex-1 overflow-hidden relative">
-          {viewContent}
+        <div className="flex-1 flex flex-col h-full overflow-hidden pt-[env(safe-area-inset-top)]">
+          {!hasApiKey && (
+            <div className="bg-indigo-600 text-white px-6 py-3 flex items-center justify-between shadow-lg z-[1001]">
+              <div className="flex items-center gap-3 text-sm font-bold">
+                <Sparkles size={18} className="animate-pulse" />
+                <span>Connect your Gemini API Key to unlock AI story analysis features.</span>
+              </div>
+              <button
+                onClick={handleOpenKeySelection}
+                className="px-4 py-1.5 bg-white text-indigo-600 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-colors shadow-sm"
+              >
+                Connect Key
+              </button>
+            </div>
+          )}
+          {aiError && (
+            <div className="bg-amber-500 text-white px-6 py-4 flex items-center justify-between shadow-2xl animate-in slide-in-from-top duration-300 z-[1000] border-b border-amber-600/50">
+              <div className="flex items-center gap-4 font-bold text-sm">
+                <AlertCircle size={22} className="animate-pulse" />
+                {aiError}
+              </div>
+              <button onClick={() => setAiError(null)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+          )}
+
+          <div className="flex-1 overflow-hidden relative">
+            {viewContent}
+          </div>
         </div>
         
         {/* Mobile Floating Nav */}

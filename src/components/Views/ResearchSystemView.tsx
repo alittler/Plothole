@@ -295,6 +295,9 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
         <div className="max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-none md:rounded-3xl overflow-hidden flex flex-col paper-texture">
           {viewMode === NotepadView.STREAM ? (
             <>
+              {/* Spacer to push content below fixed leather header */}
+              <div className="h-12 shrink-0 lg:hidden" />
+
               {/* Transition Zone - paper texture continues underneath */}
               <div className="relative h-14 z-20 pointer-events-none overflow-hidden shrink-0">
                 {/* Layer 3 (Back) */}
@@ -311,11 +314,11 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex-1 relative pt-0 pb-40 lg:pb-8 p-0">
+              <div className="flex-1 relative pt-0 pb-40 lg:pb-8 px-4 md:px-8 lg:px-16">
                 <div className="space-y-0 relative z-10">
                   <StackedPaper className="space-y-4" transparent>
-                    <div className="p-0 md:p-6 relative z-20 bg-white/40 dark:bg-white/5 rounded-none md:rounded-2xl backdrop-blur-sm border border-slate-300 dark:border-slate-700 mb-4">
-                      <div className="relative px-4 md:px-0 pt-4 md:pt-0">
+                    <div className="p-4 md:p-6 relative z-20 bg-white/40 dark:bg-white/5 rounded-2xl backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 mb-4 shadow-sm">
+                      <div className="relative">
                         <textarea
                           value={newNote}
                           onChange={handleTextChange}
@@ -326,13 +329,13 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                         {showTagSuggestion && (
                           <button
                             onClick={applyTagSuggestion}
-                            className="absolute bottom-2 left-4 md:left-0 bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2"
+                            className="absolute bottom-2 left-0 bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2"
                           >
                             #{(data.shortName || data.title || 'Project').replace(/[^\w\s]/g, '').replace(/\s+/g, '_')}
                           </button>
                         )}
                       </div>
-                      <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30 pb-4 mx-4 md:mx-0">
+                      <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30 pb-4">
                         <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # to tag characters or books.</span>
                       </div>
                     </div>
