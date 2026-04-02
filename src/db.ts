@@ -25,6 +25,7 @@ export const initDb = async () => {
   if (!p) return;
 
   try {
+    // Basic tables
     await p.query(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -50,13 +51,19 @@ export const initDb = async () => {
         data JSONB,
         timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
-      
+    `);
+
+    // App Globals table
+    await p.query(`
       CREATE TABLE IF NOT EXISTS app_globals (
-        id TEXT PRIMARY KEY,
-        user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
-        data JSONB NOT NULL
+        id TEXT NOT NULL,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        data JSONB NOT NULL,
+        last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id, user_id)
       );
     `);
+
     console.log("✅ Database tables initialized");
   } catch (err) {
     console.error("❌ Database initialization failed:", err);

@@ -211,8 +211,43 @@ export const generateManuscriptDiff = (oldText: string, newText: string): string
   return `\n--- UPDATED: ${timestamp} ---\n${patch}\n`;
 };
 
-// Existing persistence methods (simplified for transition)
+// ==========================================
+// STORAGE CONFIGURATION
+// ==========================================
+
+let useCloudStorage = false;
+let serverHealthy = true;
+let authFetch: ((url: string, options?: RequestInit) => Promise<Response>) | null = null;
+
+export const setCloudStorageEnabled = (enabled: boolean, fetchFn: typeof authFetch) => {
+  useCloudStorage = enabled;
+  authFetch = fetchFn;
+};
+
+export const setServerHealth = (healthy: boolean) => {
+  serverHealthy = healthy;
+};
+
+export const isCloudStorageActive = () => useCloudStorage && serverHealthy;
+
+// Existing persistence methods (wrapped for Cloud support)
 export const saveProjectData = async (data: ProjectData): Promise<void> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      const res = await authFetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Failed to save to cloud');
+      // Wait a tiny bit for the DB transaction to fully commit before resolving
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return;
+    } catch (e) {
+      console.error("Cloud save failed, falling back to local:", e);
+    }
+  }
+
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction([STORE_PROJECTS, STORE_METADATA], 'readwrite');
@@ -239,6 +274,18 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
 };
 
 export const loadProjectById = async (id: string): Promise<ProjectData | null> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      const res = await authFetch('/api/projects');
+      if (res.ok) {
+        const projects: ProjectData[] = await res.json();
+        return projects.find(p => p.id === id) || null;
+      }
+    } catch (e) {
+      console.error("Cloud load failed, falling back to local:", e);
+    }
+  }
+
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_PROJECTS, 'readonly');
@@ -249,6 +296,29 @@ export const loadProjectById = async (id: string): Promise<ProjectData | null> =
 };
 
 export const getAllProjectsMetadata = async (): Promise<ProjectMetadata[]> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      const res = await authFetch('/api/projects');
+      if (res.ok) {
+        const projects: ProjectData[] = await res.json();
+        return projects.map(data => ({
+          id: data.id,
+          title: data.title,
+          author: data.author || '',
+          summary: data.summary,
+          lastModified: data.lastModified || Date.now(),
+          characterCount: data.entities?.filter(e => e.type === 'Character').length || data.characters?.length || 0,
+          locationCount: data.entities?.filter(e => e.type === 'Location').length || data.locations?.length || 0,
+          commitCount: data.commits?.length || 0,
+          backupCount: data.backups?.length || 0,
+          wordCount: data.wordCount || 0
+        }));
+      }
+    } catch (e) {
+      console.error("Cloud metadata fetch failed, falling back to local:", e);
+    }
+  }
+
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_METADATA, 'readonly');
@@ -259,6 +329,15 @@ export const getAllProjectsMetadata = async (): Promise<ProjectMetadata[]> => {
 };
 
 export const deleteProject = async (id: string): Promise<void> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      const res = await authFetch(`/api/projects/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Cloud delete failed');
+    } catch (e) {
+      console.error("Cloud delete failed, attempting local delete:", e);
+    }
+  }
+
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction([STORE_PROJECTS, STORE_METADATA], 'readwrite');
@@ -278,6 +357,13 @@ export const generateSHA256 = async (str: string): Promise<string> => {
 };
 
 export const getAppSettings = async (): Promise<AppSettings | null> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      const res = await authFetch('/api/globals/app_settings');
+      if (res.ok) return await res.json();
+    } catch (e) { /* ignore fallback */ }
+  }
+
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_GLOBALS, 'readonly');
@@ -288,6 +374,16 @@ export const getAppSettings = async (): Promise<AppSettings | null> => {
 };
 
 export const saveAppSettings = async (settings: AppSettings): Promise<void> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      await authFetch('/api/globals/app_settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+    } catch (e) { /* ignore fallback */ }
+  }
+
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_GLOBALS, 'readwrite');
@@ -298,6 +394,13 @@ export const saveAppSettings = async (settings: AppSettings): Promise<void> => {
 };
 
 export const getAppPrompts = async (): Promise<AppPrompts | null> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      const res = await authFetch('/api/globals/app_prompts');
+      if (res.ok) return await res.json();
+    } catch (e) { /* ignore fallback */ }
+  }
+
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_GLOBALS, 'readonly');
@@ -308,6 +411,16 @@ export const getAppPrompts = async (): Promise<AppPrompts | null> => {
 };
 
 export const saveAppPrompts = async (prompts: AppPrompts): Promise<void> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      await authFetch('/api/globals/app_prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(prompts)
+      });
+    } catch (e) { /* ignore fallback */ }
+  }
+
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_GLOBALS, 'readwrite');
@@ -318,6 +431,13 @@ export const saveAppPrompts = async (prompts: AppPrompts): Promise<void> => {
 };
 
 export const getAllGlobalNotes = async (): Promise<Note[]> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      const res = await authFetch('/api/notes');
+      if (res.ok) return await res.json();
+    } catch (e) { /* ignore fallback */ }
+  }
+
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_GLOBALS, 'readonly');
@@ -328,6 +448,20 @@ export const getAllGlobalNotes = async (): Promise<Note[]> => {
 };
 
 export const saveGlobalNote = async (note: Note): Promise<void> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      const res = await authFetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(note)
+      });
+      if (res.ok) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return;
+    } catch (e) { /* fallback */ }
+  }
+
   const notes = await getAllGlobalNotes();
   const db = await getDB();
   return new Promise((resolve, reject) => {
@@ -339,6 +473,10 @@ export const saveGlobalNote = async (note: Note): Promise<void> => {
 };
 
 export const deleteGlobalNote = async (id: string): Promise<void> => {
+  // Cloud deletion for single notes not yet implemented in API explicitly, 
+  // but saveGlobalNote handles individual updates. 
+  // For now we rely on the client-side array management + saveGlobalNote.
+  
   const notes = await getAllGlobalNotes();
   const db = await getDB();
   return new Promise((resolve, reject) => {
@@ -348,6 +486,7 @@ export const deleteGlobalNote = async (id: string): Promise<void> => {
     tx.onerror = () => reject(tx.error);
   });
 };
+
 
 export const clearAllGlobalNotes = async (): Promise<void> => {
   const db = await getDB();
@@ -360,6 +499,16 @@ export const clearAllGlobalNotes = async (): Promise<void> => {
 };
 
 export const getApiKey = async (name: string): Promise<string | null> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      const res = await authFetch(`/api/globals/api_key_${name}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.key || data;
+      }
+    } catch (e) { /* fallback */ }
+  }
+
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_GLOBALS, 'readonly');
@@ -370,6 +519,16 @@ export const getApiKey = async (name: string): Promise<string | null> => {
 };
 
 export const saveApiKey = async (name: string, key: string): Promise<void> => {
+  if (useCloudStorage && authFetch) {
+    try {
+      await authFetch(`/api/globals/api_key_${name}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key })
+      });
+    } catch (e) { /* fallback */ }
+  }
+
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_GLOBALS, 'readwrite');

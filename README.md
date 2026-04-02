@@ -19,7 +19,7 @@
 ### 1. The Oracle (AI Mission Control)
 A deep-integrated Gemini-powered terminal that understands your entire story. Use it to scan manuscripts for plot holes, generate character biographies, or synthesize complex lore based on your research.
 
-### 2. Narrative Ledger (Semantic Database)
+### 2. Entity Explorer (Universal Database)
 A unified, spreadsheet-style explorer for all narrative entities. Plothole standardizes your data using industry-standard formats:
 *   **Characters:** Standardized to [Schema.org/Person](https://schema.org/Person).
 *   **Timeline Events:** Powered by **ISO-8601** and [Schema.org/Event](https://schema.org/Event).
@@ -95,7 +95,7 @@ A specialized ingestion pipeline that pairs raw source files (PDFs, Images, TXT)
 ```text
 ├── src/
 │   ├── components/
-│   │   ├── Views/      # Page-level components (Atlas, Ledger, Notepad)
+│   │   ├── Views/      # Page-level components (Atlas, Entity Explorer, Notepad)
 │   │   ├── Layout/     # Sidebar, Navigation
 │   │   └── ui/         # Reusable widgets (Map, Editor, Graph)
 │   ├── services/       # AI logic, Storage, Git integration

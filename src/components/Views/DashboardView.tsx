@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ProjectData, Note, Commit, BackupStatus } from '../../types';
+import { ProjectData, Note, Commit, BackupStatus, User } from '../../types';
 import { 
   Sparkles, FileText, Users, Map, Calendar, Clock, Edit3, 
   Activity, Ghost, PinOff, Edit2,
   BarChart3, TrendingUp, AlertOctagon, History, ShieldCheck, 
   CloudUpload, Mail, CheckCircle, XCircle, ShieldAlert,
-  Download, Image as ImageIcon, Save, Cpu, Loader2
+  Download, Image as ImageIcon, Save, Cpu, Loader2, Database
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { detectTemporalParadoxes } from '../../utils/calendarUtils';
@@ -27,23 +27,25 @@ interface DashboardViewProps {
   isAnalyzing: boolean;
   error: string | null;
   onExport: () => void;
-  onExportProject: (project: ProjectData, globalNotes: Note[]) => void;
+  onExportProject: (project: ProjectData) => void;
   onAnalyzeText: (text: string) => void;
   onRestoreHistory: () => void;
-  onRestoreCommit: (commit: Commit) => void;
   onRestoreCommit: (commit: Commit) => void;
   onGenerateCover: () => void;
   onAuditThreads: () => void;
   isGeneratingCover: boolean;
   isExporting?: boolean;
-  onUpdateProcessedFiles: () => void;
+  onUpdateProcessedFiles?: () => Promise<void>;
   isUpdatingProcessed?: boolean;
   onLinkClick: (type: string, id: string) => void;
-}
+  onUpdateProject: (updates: Partial<ProjectData>) => Promise<void>;
+  onSave?: () => Promise<void>;
+  currentUser: User;
+  }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, isExporting,
-  onUpdateProcessedFiles, isUpdatingProcessed = false, onLinkClick
+  onUpdateProcessedFiles, isUpdatingProcessed = false, onLinkClick, onUpdateProject, onSave, currentUser
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as DashboardTab) || DashboardTab.HEALTH;
@@ -144,11 +146,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {isUpdatingProcessed ? <Loader2 size={12} className="animate-spin" /> : <Cpu size={12} />} Sync Processor
             </button>
             <button
-              onClick={() => onExportProject(projectData, globalNotes)}
+              onClick={() => onExportProject(projectData)}
               className="ph-tab ph-tab-active bg-indigo-600 text-white hover:bg-indigo-700"
             >
-              <Download size={12} /> Backup
+              <Download size={12} /> Export .plothole
             </button>
+            {onSave && (
+              <button
+                onClick={onSave}
+                className="ph-tab ph-tab-inactive bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100"
+              >
+                <Database size={12} /> Save Project
+              </button>
+            )}
             <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-700 mx-1 self-center" />
             {Object.values(DashboardTab).map(tab => (
               <button

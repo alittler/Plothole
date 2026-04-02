@@ -12,7 +12,6 @@ interface StenoChatPanelProps {
   isChatLoading: boolean;
   setIsChatLoading: React.Dispatch<React.SetStateAction<boolean>>;
   onSaveIdea: (content: string) => void;
-  onCommitToLedger: (content: string) => void;
   onSaveAsSource: () => void;
   sources: Source[];
   ideas: Note[];
@@ -27,7 +26,6 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
   isChatLoading,
   setIsChatLoading,
   onSaveIdea,
-  onCommitToLedger,
   onSaveAsSource,
   sources,
   ideas,
@@ -48,14 +46,11 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
     setIsChatLoading(true);
 
     try {
-      const ledgerContent = ideas.filter(i => i.isCanon).map(i => `Ledger Entry: ${i.content}`).join('\n\n');
-      const context = (ledgerContent ? `### USER LEDGER (PRIORITY)\nYour primary source of truth is the user's Ledger. These are their creative thoughts and drafting notes.\n${ledgerContent}\n\n` : '') +
-        `### EXTERNAL SOURCES\nUse these for research and factual grounding, but the Ledger takes precedence.\n` + 
+      const context = `### EXTERNAL SOURCES\nUse these for research and factual grounding.\n` + 
         sources.map(s => `Source: ${s.name}\n${s.content}`).join('\n\n') + 
         `\n\nINSTRUCTIONS: You are The Oracle, a grounded AI assistant. 
-        1. GROUNDEDNESS: Prioritize ideas in the USER LEDGER over EXTERNAL RESEARCH. 
-        2. CITATIONS: Every claim MUST include a deep-link citation back to the original text using the format [[Source: Source Name]] or [[Ledger: Entry ID]].
-        3. STYLE: Be concise, analytical, and supportive of the user's creative vision.`;
+        1. CITATIONS: Every claim MUST include a deep-link citation back to the original text using the format [[Source: Source Name]].
+        2. STYLE: Be concise, analytical, and supportive of the user's creative vision.`;
       
       const history = chatMessages.map(m => ({
         role: m.role,
@@ -131,20 +126,20 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
                        p: ({node, children}) => {
                          return <p className="mb-2 last:mb-0">{children}</p>;
                        },
-                       code: ({node, inline, className, children, ...props}) => {
+                       code: ({node, className, children, ...props}) => {
                          const content = String(children);
-                         if (inline && (content.startsWith('Source:') || content.startsWith('Ledger:'))) {
+                         const isInline = !className?.includes('language-');
+                         if (isInline && content.startsWith('Source:')) {
                            return (
                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800 mx-0.5 cursor-help" title={content}>
                                <BookOpen size={10} className="mr-1" /> {content.split(':').pop()?.trim()}
                              </span>
                            );
-                         }
-                         return <code className={className} {...props}>{children}</code>;
+                         }                         return <code className={className} {...props}>{children}</code>;
                        }
                      }}
                    >
-                     {msg.text.replace(/\[\[Source:\s*(.+?)\]\]/g, '`Source: $1`').replace(/\[\[Ledger:\s*(.+?)\]\]/g, '`Ledger: $1`')}
+                     {msg.text.replace(/\[\[Source:\s*(.+?)\]\]/g, '`Source: $1`')}
                    </Markdown>
                  </div>
                  {msg.role === 'model' && (
@@ -154,12 +149,6 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
                        className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 flex items-center gap-1 transition-colors"
                      >
                        <Pin size={10} /> Save as Idea
-                     </button>
-                     <button 
-                       onClick={() => onCommitToLedger(msg.text)}
-                       className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors"
-                     >
-                       Commit to Ledger <ArrowRight size={10} />
                      </button>
                    </div>
                  )}

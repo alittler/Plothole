@@ -7,14 +7,12 @@ import {
 } from 'lucide-react';
 import { ViewType, ProjectData, ProjectMetadata, Note, Source } from '../../types';
 import { generateId } from '../../services/storageService';
-import { StenoLedgerPanel } from './Steno/StenoLedgerPanel';
 import { StenoSourcesPanel } from './Steno/StenoSourcesPanel';
 import { StenoChatPanel } from './Steno/StenoChatPanel';
 import Markdown from 'react-markdown';
 
 enum StenoTab {
   WORKSPACE = 'Workspace',
-  LEDGER = 'Ledger',
   SOURCES = 'Sources',
   CHAT = 'Chat'
 }
@@ -44,17 +42,13 @@ interface ResearchViewProps {
   };
   
   const setSources = (newSources: Source[] | ((prev: Source[]) => Source[])) => {
-    // We need to use functional update to avoid stale closure issues
-    onUpdateProject(prev => {
-      const currentSources = prev.sources || [];
-      const updated = typeof newSources === 'function' ? newSources(currentSources) : newSources;
-      console.log("Saving sources to projectData:", updated.length);
-      return { ...prev, sources: updated };
-    });
+    const currentSources = projectData.sources || [];
+    const updated = typeof newSources === 'function' ? newSources(currentSources) : newSources;
+    console.log("Saving sources to projectData:", updated.length);
+    onUpdateProject({ sources: updated });
   };
 
   const sources = projectData.sources || [];
-  const ledger = projectData.ledger || [];
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>(sources.map(s => s.id));
 
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
@@ -63,19 +57,7 @@ interface ResearchViewProps {
 
   // UI State
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [mobileSubTab, setMobileSubTab] = useState<'ledger' | 'chat' | 'sources'>('chat');
-
-  const handleCommitToLedger = (content: string) => {
-    const newEntry: Note = {
-      id: generateId(),
-      content,
-      timestamp: Date.now(),
-      tags: [],
-      isCanon: true,
-      isSavedInLedger: true
-    };
-    onUpdateProject({ ledger: [newEntry, ...ledger] });
-  };
+  const [mobileSubTab, setMobileSubTab] = useState<'chat' | 'sources'>('chat');
 
   const handleSaveIdea = (content: string) => {
     const newIdea: Note = {
@@ -112,12 +94,6 @@ interface ResearchViewProps {
             {/* Mobile Sub-Tab Navigation */}
             <div className="lg:hidden flex p-2 bg-slate-100 dark:bg-slate-800 gap-1 shrink-0 border-b border-slate-200 dark:border-slate-700">
               <button 
-                onClick={() => setMobileSubTab('ledger')}
-                className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mobileSubTab === 'ledger' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-              >
-                Ledger
-              </button>
-              <button 
                 onClick={() => setMobileSubTab('chat')}
                 className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mobileSubTab === 'chat' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
               >
@@ -133,20 +109,8 @@ interface ResearchViewProps {
 
             <div className="flex-1 overflow-y-auto p-0 md:p-8 custom-scrollbar">
               <div className="h-full min-h-full grid grid-cols-1 lg:grid-cols-4 gap-6 pb-40 lg:pb-0">
-                {/* Ledger Panel */}
-                <div className={`${mobileSubTab === 'ledger' ? 'block' : 'hidden'} lg:block lg:col-span-1 h-full overflow-hidden`}>
-                  <StenoLedgerPanel 
-                    projectData={projectData} 
-                    onUpdateProject={onUpdateProject} 
-                    onDeleteNote={onDeleteNote}
-                    currentUser={currentUser}
-                    projectsMetadata={projectsMetadata}
-                    onLinkClick={onLinkClick}
-                  />
-                </div>
-
                 {/* Chat Panel */}
-                <div className={`${mobileSubTab === 'chat' ? 'block' : 'hidden'} lg:block lg:col-span-2 h-full overflow-hidden`}>
+                <div className={`${mobileSubTab === 'chat' ? 'block' : 'hidden'} lg:block lg:col-span-3 h-full overflow-hidden`}>
                   <StenoChatPanel 
                     chatMessages={chatMessages}
                     setChatMessages={setChatMessages}
@@ -155,7 +119,6 @@ interface ResearchViewProps {
                     isChatLoading={isChatLoading}
                     setIsChatLoading={setIsChatLoading}
                     onSaveIdea={handleSaveIdea}
-                    onCommitToLedger={handleCommitToLedger}
                     onSaveAsSource={handleSaveChatAsSource}
                     sources={sources.filter(s => selectedSourceIds.includes(s.id))}
                     ideas={ideas}
@@ -174,23 +137,6 @@ interface ResearchViewProps {
                 </div>
               </div>
             </div>
-          </div>
-        );
-
-      case StenoTab.LEDGER:
-        return (
-          <div className="h-full overflow-y-auto p-0 md:p-8 custom-scrollbar">
-             <div className="min-h-full pb-40">
-               <StenoLedgerPanel 
-                projectData={projectData} 
-                onUpdateProject={onUpdateProject} 
-                onDeleteNote={onDeleteNote}
-                currentUser={currentUser}
-                projectsMetadata={projectsMetadata}
-                onLinkClick={onLinkClick}
-                isFullScreen={true}
-              />
-             </div>
           </div>
         );
 
@@ -219,7 +165,6 @@ interface ResearchViewProps {
               isChatLoading={isChatLoading}
               setIsChatLoading={setIsChatLoading}
               onSaveIdea={handleSaveIdea}
-              onCommitToLedger={handleCommitToLedger}
               onSaveAsSource={handleSaveChatAsSource}
               sources={sources}
               ideas={ideas}
@@ -241,13 +186,12 @@ interface ResearchViewProps {
             <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
               <Search size={32} className="text-indigo-600" /> Research & Discovery
             </h1>
-            <p className="ph-section-subtitle">Analyze sources, manage your ledger, and chat with the Oracle.</p>
+            <p className="ph-section-subtitle">Analyze sources and chat with the Oracle.</p>
           </div>
           <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
             {Object.values(StenoTab).map(tab => {
               const Icon = {
                 [StenoTab.WORKSPACE]: Layout,
-                [StenoTab.LEDGER]: BookOpen,
                 [StenoTab.SOURCES]: Search,
                 [StenoTab.CHAT]: MessageSquare
               }[tab as StenoTab];

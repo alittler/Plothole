@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
 import { 
   ProjectData, ProjectMetadata, User, ViewType, Note, 
-  AppPrompts, AppSettings, ToolboxLink, Idea, Artifact, LoreEntry, ChangeLogEntry
+  AppPrompts, AppSettings, ToolboxLink, Artifact, LoreEntry, Idea, ChangeLogEntry, Relationship, SemanticDocument, ProseDocument, Chapter
 } from './types';
 import { 
   getAllProjectsMetadata, loadProjectById, saveProjectData, 
@@ -16,7 +16,10 @@ import {
   saveAppSettings,
   generateId,
   exportProjectPlothole,
-  generateSHA256
+  generateSHA256,
+  setCloudStorageEnabled,
+  isCloudStorageActive,
+  setServerHealth
   } from './services/storageService';
   import { 
   analyzeStoryText, generateBookCover, doubleProcessNote, extractThemesFromNotes, extractSoftAnchors, auditPlotThreads,
@@ -66,7 +69,7 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
 
   const [projectsMetadata, setProjectsMetadata] = useState<ProjectMetadata[]>([]);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
@@ -79,6 +82,7 @@ const App: React.FC = () => {
   });
   
   const [currentUser, setCurrentUser] = useState<User>(DEMO_USER);
+  const [isServerConnected, setIsServerConnected] = useState(true);
   
   // Sync Clerk user with app user
   useEffect(() => {
@@ -132,6 +136,12 @@ const App: React.FC = () => {
     console.log(`[App] Received ${meta.length} projects from storage`);
     setProjectsMetadata(meta);
   }, []);
+
+  const handleManualSave = useCallback(async () => {
+    if (!projectData) return;
+    await saveProjectData(projectData);
+    await refreshMetadata();
+  }, [projectData, refreshMetadata]);
 
   const handleDeleteProject = useCallback(async (id: string) => {
     console.log(`[App] Requesting deletion of project: ${id}`);
@@ -359,7 +369,7 @@ const App: React.FC = () => {
       await deleteGlobalNote(id);
     }
 
-    // 2. Delete from Project Notes, Ideas and Ledger
+    // 2. Delete from Project Notes and Ideas
     if (projectData) {
       updateProjectData(prev => {
         const updates: Partial<ProjectData> = {};
@@ -368,9 +378,6 @@ const App: React.FC = () => {
         }
         if (prev.ideas?.some(n => n.id === id)) {
           updates.ideas = prev.ideas.filter(n => n.id !== id);
-        }
-        if (prev.ledger?.some(n => n.id === id)) {
-          updates.ledger = prev.ledger.filter(n => n.id !== id);
         }
         return updates;
       });
@@ -382,7 +389,7 @@ const App: React.FC = () => {
 
     const mapTypeToKey: Record<string, string> = {
       'Character': 'characters', 'Location': 'locations', 'Timeline': 'timeline',
-      'Source': 'sources', 'Ledger': 'ledger', 'Artifact': 'artifacts', 'Lore': 'lore'
+      'Source': 'sources', 'Artifact': 'artifacts', 'Lore': 'lore'
     };
 
     const projectKey = mapTypeToKey[type];
@@ -434,6 +441,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       try {
+        console.log(`[Init] Initializing app data (isSignedIn: ${isSignedIn})`);
         const [meta, notes, resources, prompts, settings] = await Promise.all([
           getAllProjectsMetadata(),
           getAllGlobalNotes(),
@@ -475,7 +483,7 @@ const App: React.FC = () => {
       }
     };
     init();
-  }, [checkApiKey]); // Removed currentView/projectData/location to prevent infinite loops, init should only run once
+  }, [checkApiKey, isSignedIn]); // Added isSignedIn to trigger reload on login
 
 
   useEffect(() => {
@@ -567,7 +575,62 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRestoreCommit = async (commit: Commit) => {
+  const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
+    try {
+      const token = await getToken();
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response;
+    } catch (err) {
+      console.error(`[Auth] Error fetching token for ${url}:`, err);
+      throw err;
+    }
+  }, [getToken]);
+
+  // Sync StorageService with Auth
+  useEffect(() => {
+    setCloudStorageEnabled(isSignedIn === true, fetchWithAuth);
+  }, [isSignedIn, fetchWithAuth]);
+
+  // Server Health Heartbeat
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch('/api/config');
+        const healthy = res.ok;
+        setServerHealth(healthy);
+        setIsServerConnected(healthy);
+      } catch (e) {
+        setServerHealth(false);
+        setIsServerConnected(false);
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+const createCommit = async (project: ProjectData, message: string): Promise<Commit> => {
+    const files = [
+      { path: 'manuscript.md', content: project.chapters?.map(c => c.content).join('\n\n') || '' }
+    ];
+    const res = await commitToGit(project.id, message, files);
+    return {
+      id: generateId(),
+      timestamp: Date.now(),
+      hash: res.hash || 'manual-' + generateId(),
+      message: message,
+      snapshot: project.chapters
+    };
+  };
+
+const handleRestoreCommit = async (commit: Commit) => {
     if (!projectData || !commit.snapshot) return;
     if (confirm(`Are you sure you want to restore the manuscript to the state of commit [${commit.hash.slice(0, 8)}]? Current unsaved changes (if any) will be lost.`)) {
       // Create a NEW commit for the restoration action itself
@@ -584,10 +647,10 @@ const App: React.FC = () => {
     }
   };
 
-  const handleCreateProject = async (title: string, author: string, useSample: boolean, shortName?: string) => {
-    const id = generateId();
+    const handleCreateProject = async (title: string, author: string, useSample: boolean, shortName?: string, existingId?: string) => {
+    const id = existingId || generateId();
     try {
-      await initGitForProject(id);
+      if (!existingId) await initGitForProject(id);
     } catch (e) {
       console.error("Git init failed", e);
     }
@@ -595,78 +658,61 @@ const App: React.FC = () => {
       id, title, shortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: [], sources: [],
       lastProcessedManuscriptSha: '', lastProcessedPromptSha: '',
       wordCount: 0,
-      charCount: 0
-    };
-
+      charCount: 0,
+      entities: [],
+      manuscript: '',
+      history_diff: '',
+      assets: []
+      };
     if (useSample) {
-      const ch1Content = `<!-- #CHAPTER_1 -->\n# Chapter 1: The Weight of Ink\n\nThe Great Archive was always cold. Arthur Penhaligon pulled his cloak tighter as he navigated the towering shelves of the Forbidden Wing. The scent of old parchment, dust, and something metallic—the smell of stagnant time—filled his lungs. He was a Junior Archivist, a role that mostly involved cataloging the mundane receipts of a city that traded in memories, but tonight, he was after something else.
+      const ch1Content = `<!-- #CHAPTER_1 -->\n# Chapter 1: The Weight of Ink\n\nThe Great Archive was always cold. Arthur Penhaligon pulled his cloak tighter as he navigated the towering shelves of the Forbidden Wing. The scent of old parchment, dust, and something metallic—the smell of stagnant time—filled his lungs. He was a Junior Archivist, a role that mostly involved cataloging the mundane receipts of a city that traded in memories, but tonight, he was after something else. In his pocket, the Chronos Key hummed. It was a rhythmic, steady vibration that felt more like a heartbeat than a machine. Master Silas, his mentor, had whispered of this relic for years, claiming it was the only thing that could unlock the physical manifestations of memories. "The Mnemonic Plague didn't just take our past, Arthur," Silas had said, his eyes tired and secretive. "It turned it into a lock. And every lock has a key." Arthur reached the end of the row. Before him stood a door of solid obsidian, marked only with the sigil of The Great Weaver. According to lore, the Weaver had spun the first memory strings at the dawn of time, long before the Plague had wiped the world's collective slate clean 300 years ago. Arthur pressed the Chronos Key against the stone. The hum became a roar. The obsidian didn't swing open; it dissolved, the stone turning into a swirling mist of gray ink. Arthur stepped through, and for a moment, he felt the Void—that terrifying state of complete memory loss that every citizen of the Citadel feared. It was a cold, empty vacuum that threatened to swallow his very sense of self. Then, he was inside. The vault was filled with Memory Vials. Thousands of them, glowing with a soft, bioluminescent blue light. This was the currency of the Obsidian Citadel, the extracted experiences of the elite, preserved for eternity. But these vials were different. They weren't blue; they were gold. Arthur reached out to touch one, and a spectral figure materialized beside him. "You should not be here, Little Bird," the figure whispered. It was The Echo, the ghost of the vault. It looked like a man made of static and smoke. Arthur froze. He knew the legends of Echo-Walking—the rare ability to enter someone else's mind—but he had never seen an Echo manifest in the physical world. "I need to know," Arthur said, his voice trembling. "I need to know what High Architect Vaelen is hiding." The Echo tilted its head. "Vaelen hides the truth of the Founding. He hides the fact that the Citadel was built on a lie. Do you wish to see, or do you wish to sleep?"`;
+      const ch2Content = `<!-- #CHAPTER_2 -->\n# Chapter 2: Shadows of the Spire\n\nThe Obsidian Spire pierced the gray clouds like a needle of dark glass. From his balcony at the summit, High Architect Vaelen looked down upon his city. To the world, he was the provider of order, the man who ensured that every citizen had enough Mnemos—the unit of memory strength—to function. But to Vaelen, they were merely cattle in a very large, very complex farm. Vaelen held a single Memory Vial between his fingers. It was dark, almost black. This was a "Dead Thread," a memory of a crime so terrible it had been purged from the ledger. He had many such threads. Power, he believed, wasn't just about what people remembered; it was about what they were forced to forget. A chime sounded. A holographic display flickered to life, showing the sharp-witted face of Elara Vane. She was an information broker from the Lower Wards, a survivor who lived in the smog-filled streets where those without memories were cast aside. "You called, Architect?" Elara's voice was cynical, devoid of the reverence most showed him. "There is a disturbance in the Archive," Vaelen said, his voice cold and strategic. "A Junior Archivist named Arthur. He has been seen near the Forbidden Wing. Master Silas has been... indulgent." "Silas is an old man dreaming of the past," Elara countered. "But Arthur? He's curious. Curious gets people killed in the Wards." "I don't want him killed yet," Vaelen said. "I want to know what he finds. If he successfully uses the Chronos Key, he will have access to the Primal Memory—the one that predates the Founding. Bring him to me, Elara. And I will ensure your sector receives a double shipment of Mnemos this month." Elara hesitated. She knew the cost of Vaelen's "gifts." Every shipment of Mnemos came from someone's mind. But the Lower Wards were starving for identity. "I'll find him," she said, and the display cut to black. Vaelen turned back to the city. Far below, in the shadows of the Great Archive, a fire was beginning to burn. Not a fire of wood and oil, but a fire of information. It reminded him of the Great Fire ten years ago, the one he had ordered to "cleanse" the West Wing. Some things, it seemed, refused to stay buried.`;
+      const ch3Content = `<!-- #CHAPTER_3 -->\n# Chapter 3: The Echo in the Wards\n\nElara Vane found Arthur Penhaligon exactly where she expected: hiding in a corner of a tavern in the Lower Wards called The Weaver\'s Loom. He looked like a man who had seen a god and realized it was made of clockwork. "You look like hell, Archivist," Elara said, sliding into the booth across from him. Arthur jumped, nearly knocking over a glass of stale ale. "Who are you?" "Someone who knows that High Architect Vaelen is looking for you. And someone who knows that the 'ghost' you saw in the vault isn't a ghost at all." Elara leaned in, her eyes brave and resourceful. "It's a Echo-Walker who got stuck. A man named Silas used to talk about them." Arthur stared at her. "Silas? You know my mentor?" "In the Wards, everyone knows Silas. He's the one who sneaks us vials when the Citadel isn't looking. But Silas is playing a dangerous game, Arthur. He's using you to get to the Primal Memory." Arthur reached into his pocket and pulled out the Chronos Key. It was no longer humming; it was glowing. "The Echo told me the Citadel was built on a lie. He showed me a vision of the Mnemonic Plague. It wasn't a natural disaster, Elara. It was a weapon." Elara went pale. If that were true, the entire social structure of their world—the worship of the High Architects as saviors—would collapse. "You can't stay here," she whispered. "Vaelen has spies everywhere. We need to go to the Deep Vaults, beneath the Wards. There's a dictionary there, an ancient lexicon that Silas mentioned. It has the codes to stabilize the Echo." Suddenly, the doors of the tavern burst open. A squad of Citadel Sentinels, clad in obsidian armor, marched in. At their head was Vaelen himself, his presence a cold weight that seemed to dim the lights. "Arthur Penhaligon," Vaelen announced, his voice echoing in the sudden silence. "You have stolen property belonging to the state. Return the Key, and perhaps your mentor's life will be spared." Arthur looked at Elara, then at the Key. He realized then that sacrifice was the final theme of every great story. He didn't know if he could win, but he knew he couldn't let the truth be forgotten again. He stood up, the Chronos Key held high, and prepared to Echo-Walk for the first time in his life. The Void was waiting, but for the first time, he wasn't afraid.`;
 
-In his pocket, the Chronos Key hummed. It was a rhythmic, steady vibration that felt more like a heartbeat than a machine. Master Silas, his mentor, had whispered of this relic for years, claiming it was the only thing that could unlock the physical manifestations of memories. "The Mnemonic Plague didn't just take our past, Arthur," Silas had said, his eyes tired and secretive. "It turned it into a lock. And every lock has a key."
-
-Arthur reached the end of the row. Before him stood a door of solid obsidian, marked only with the sigil of The Great Weaver. According to lore, the Weaver had spun the first memory strings at the dawn of time, long before the Plague had wiped the world's collective slate clean 300 years ago. Arthur pressed the Chronos Key against the stone. 
-
-The hum became a roar. The obsidian didn't swing open; it dissolved, the stone turning into a swirling mist of gray ink. Arthur stepped through, and for a moment, he felt the Void—that terrifying state of complete memory loss that every citizen of the Citadel feared. It was a cold, empty vacuum that threatened to swallow his very sense of self. Then, he was inside.
-
-The vault was filled with Memory Vials. Thousands of them, glowing with a soft, bioluminescent blue light. This was the currency of the Obsidian Citadel, the extracted experiences of the elite, preserved for eternity. But these vials were different. They weren't blue; they were gold. Arthur reached out to touch one, and a spectral figure materialized beside him.
-
-"You should not be here, Little Bird," the figure whispered. It was The Echo, the ghost of the vault. It looked like a man made of static and smoke. Arthur froze. He knew the legends of Echo-Walking—the rare ability to enter someone else's mind—but he had never seen an Echo manifest in the physical world.
-
-"I need to know," Arthur said, his voice trembling. "I need to know what High Architect Vaelen is hiding."
-
-The Echo tilted its head. "Vaelen hides the truth of the Founding. He hides the fact that the Citadel was built on a lie. Do you wish to see, or do you wish to sleep?"`;
-
-      const ch2Content = `<!-- #CHAPTER_2 -->\n# Chapter 2: Shadows of the Spire\n\nThe Obsidian Spire pierced the gray clouds like a needle of dark glass. From his balcony at the summit, High Architect Vaelen looked down upon his city. To the world, he was the provider of order, the man who ensured that every citizen had enough Mnemos—the unit of memory strength—to function. But to Vaelen, they were merely cattle in a very large, very complex farm.
-
-Vaelen held a single Memory Vial between his fingers. It was dark, almost black. This was a "Dead Thread," a memory of a crime so terrible it had been purged from the ledger. He had many such threads. Power, he believed, wasn't just about what people remembered; it was about what they were forced to forget.
-
-A chime sounded. A holographic display flickered to life, showing the sharp-witted face of Elara Vane. She was an information broker from the Lower Wards, a survivor who lived in the smog-filled streets where those without memories were cast aside.
-
-"You called, Architect?" Elara's voice was cynical, devoid of the reverence most showed him.
-
-"There is a disturbance in the Archive," Vaelen said, his voice cold and strategic. "A Junior Archivist named Arthur. He has been seen near the Forbidden Wing. Master Silas has been... indulgent."
-
-"Silas is an old man dreaming of the past," Elara countered. "But Arthur? He's curious. Curious gets people killed in the Wards."
-
-"I don't want him killed yet," Vaelen said. "I want to know what he finds. If he successfully uses the Chronos Key, he will have access to the Primal Memory—the one that predates the Founding. Bring him to me, Elara. And I will ensure your sector receives a double shipment of Mnemos this month."
-
-Elara hesitated. She knew the cost of Vaelen's "gifts." Every shipment of Mnemos came from someone's mind. But the Lower Wards were starving for identity. "I'll find him," she said, and the display cut to black.
-
-Vaelen turned back to the city. Far below, in the shadows of the Great Archive, a fire was beginning to burn. Not a fire of wood and oil, but a fire of information. It reminded him of the Great Fire ten years ago, the one he had ordered to "cleanse" the West Wing. Some things, it seemed, refused to stay buried.`;
-
-      const ch3Content = `<!-- #CHAPTER_3 -->\n# Chapter 3: The Echo in the Wards\n\nElara Vane found Arthur Penhaligon exactly where she expected: hiding in a corner of a tavern in the Lower Wards called The Weaver\'s Loom. He looked like a man who had seen a god and realized it was made of clockwork.
-
-"You look like hell, Archivist," Elara said, sliding into the booth across from him. Arthur jumped, nearly knocking over a glass of stale ale. 
-
-"Who are you?" 
-
-"Someone who knows that High Architect Vaelen is looking for you. And someone who knows that the 'ghost' you saw in the vault isn't a ghost at all." Elara leaned in, her eyes brave and resourceful. "It's a Echo-Walker who got stuck. A man named Silas used to talk about them."
-
-Arthur stared at her. "Silas? You know my mentor?"
-
-"In the Wards, everyone knows Silas. He's the one who sneaks us vials when the Citadel isn't looking. But Silas is playing a dangerous game, Arthur. He's using you to get to the Primal Memory."
-
-Arthur reached into his pocket and pulled out the Chronos Key. It was no longer humming; it was glowing. "The Echo told me the Citadel was built on a lie. He showed me a vision of the Mnemonic Plague. It wasn't a natural disaster, Elara. It was a weapon."
-
-Elara went pale. If that were true, the entire social structure of their world—the worship of the High Architects as saviors—would collapse. "You can't stay here," she whispered. "Vaelen has spies everywhere. We need to go to the Deep Vaults, beneath the Wards. There's a dictionary there, an ancient lexicon that Silas mentioned. It has the codes to stabilize the Echo."
-
-Suddenly, the doors of the tavern burst open. A squad of Citadel Sentinels, clad in obsidian armor, marched in. At their head was Vaelen himself, his presence a cold weight that seemed to dim the lights.
-
-"Arthur Penhaligon," Vaelen announced, his voice echoing in the sudden silence. "You have stolen property belonging to the state. Return the Key, and perhaps your mentor's life will be spared."
-
-Arthur looked at Elara, then at the Key. He realized then that sacrifice was the final theme of every great story. He didn't know if he could win, but he knew he couldn't let the truth be forgotten again. He stood up, the Chronos Key held high, and prepared to Echo-Walk for the first time in his life. The Void was waiting, but for the first time, he wasn't afraid.`;
-
-      const filler = "\n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. The Great Archive stood as a monument to that loss, a library of silence where the only sound was the scratching of pens and the ticking of clocks. Master Silas often said that history was a ghost, haunting the present with the weight of things forgotten. Arthur didn't understand it then, but as he stood in the vault, he felt the cold breath of the past on his neck. The gold vials were warm, pulsing with a life that blue vials lacked. They weren't just memories; they were identities. Each one held a soul, a story that hadn't been sanitized by the Architects. To touch one was to feel the heartbeat of a world that existed before the Plague. Vaelen knew this. He feared the gold vials more than anything else, for they were the only things that could undo his empire of forgetting. The Lower Wards were the proof of his success—thousands of people walking the streets with no names, no families, only the Mnemos he allowed them to have. Elara was different. She had carved out a life in the shadows, trading in secrets that didn't belong to her. She was a bridge between the Citadel's order and the Wards' chaos. When she saw Arthur, she saw a chance to burn the bridge down. The Chronos Key was the match. It wasn't just a relic; it was a revolution. As the Sentinels closed in, Arthur realized that he wasn't just an archivist anymore. He was a witness. And a witness is the most dangerous thing in a world built on lies. The tavern air smelled of stale ale and fear. The Weaver's Loom had seen many revolutions start and end in blood. This one was different. This one had the weight of three hundred years of truth behind it. Vaelen's armor shimmered in the dim light, reflecting the faces of the people he had robbed. He looked at Arthur not with anger, but with pity. 'You think you can save them?' he asked. 'You think they want to remember?' Arthur didn't answer. He didn't need to. The Key was already beginning to glow, white-hot and blinding. The Echo was there, standing beside him, no longer a ghost but a guide. Together, they stepped into the Void, and the world began to rewrite itself. The Great Archive trembled. The Spire cracked. And for the first time in three centuries, the people of the Obsidian Citadel began to dream. Not the dreams Vaelen gave them, but their own. Memories of sunlit fields, of mothers' voices, of names they hadn't spoken in lifetimes. The ink of the past was flowing again, and it was gold.".repeat(2);
+      const filler = "\n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. \n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost. ";
 
       const fullManuscript = `${ch1Content}\n\n${ch2Content}\n\n${ch3Content}${filler}`;
-      const wordCount = fullManuscript.trim().split(/\s+/).length;
+      const wordCountValue = fullManuscript.trim().split(/\s+/).length;
 
-      const diff1 = `--- Baseline established: 2026-03-23T10:00:00Z\n+++ Edited: 2026-03-23T10:15:00Z\n@@ -5,1 +5,1 @@\n-cataloging the mundane receipts\n+cataloging the forbidden receipts\n`;
-      const diff2 = `--- Edited: 2026-03-23T10:15:00Z\n+++ Edited: 2026-03-23T11:30:00Z\n@@ -12,1 +12,1 @@\n-sigil of The Great Weaver\n+mark of the First Architect\n`;
-      const diff3 = `--- Edited: 2026-03-23T11:30:00Z\n+++ Edited: 2026-03-23T14:00:00Z\n@@ -25,1 +25,1 @@\n-ghost of the vault\n+Guardian of the Archives\n`;
-      const diff4 = `--- Edited: 2026-03-23T14:00:00Z\n+++ Edited: 2026-03-23T15:45:00Z\n@@ -40,1 +40,1 @@\n-smog-filled streets\n+smoke-choked alleys\n`;
-      const diff5 = `--- Edited: 2026-03-23T15:45:00Z\n+++ Edited: 2026-03-23T16:30:00Z\n@@ -60,1 +60,1 @@\n-sacrifice was the final theme\n+truth was the only weapon\n`;
+      const characters = [
+        { id: 'CH-ARTHUR', name: 'Arthur Penhaligon', role: 'Protagonist', job: 'Junior Archivist', description: 'A curious and determined young man with an uncanny ability to read ancient scripts.', traits: ['Curious', 'Determined'], source: 'manual' as const },
+        { id: 'CH-VAELEN', name: 'Admin Vaelen', role: 'Antagonist', job: 'High Architect', description: 'The cold, calculating ruler of the Citadel.', traits: ['Cold', 'Calculating'], source: 'manual' as const },
+        { id: 'CH-ELARA', name: 'Elara Vane', role: 'Ally', job: 'Information Broker', description: 'A resourceful survivor from the Lower Wards.', traits: ['Resourceful', 'Cynical'], source: 'manual' as const },
+        { id: 'CH-SILAS', name: 'Master Silas', role: 'Mentor', job: 'Senior Archivist', description: 'A wise and secretive mentor who knows the truth.', traits: ['Wise', 'Secretive'], source: 'manual' as const }
+      ];
 
-      const history_diff = diff1 + "\n" + diff2 + "\n" + diff3 + "\n" + diff4 + "\n" + diff5;
+      const locations = [
+        { id: 'LOC-GREAT-ARCHIVE', name: 'The Great Archive', description: 'The heart of the Obsidian Citadel, containing all recorded memories.', type: 'Library', source: 'manual' as const },
+        { id: 'LOC-LOWER-WARDS', name: 'The Lower Wards', description: 'The smog-filled streets where the memory-less are cast aside.', type: 'District', source: 'manual' as const },
+        { id: 'LOC-OBSIDIAN-SPIRE', name: 'The Obsidian Spire', description: 'Vaelen\'s seat of power, piercing the gray clouds.', type: 'Tower', source: 'manual' as const }
+      ];
+
+      const proseDocuments = [
+        { id: generateId(), title: 'Chapter 1: The Weight of Ink', content: ch1Content, lastModified: Date.now() },
+        { id: generateId(), title: 'Chapter 2: Shadows of the Spire', content: ch2Content, lastModified: Date.now() },
+        { id: generateId(), title: 'Chapter 3: The Echo in the Wards', content: ch3Content, lastModified: Date.now() }
+      ];
+
+      const chapters = [
+        { 
+          id: generateId(), title: 'Chapter 1: The Weight of Ink', content: ch1Content, order: 1, status: 'Draft' as const, lastModified: Date.now(), wordCount: ch1Content.trim().split(/\s+/).length,
+          scenes: [{ id: generateId(), title: 'Scene 1', content: ch1Content, wordCount: ch1Content.trim().split(/\s+/).length }]
+        },
+        { 
+          id: generateId(), title: 'Chapter 2: Shadows of the Spire', content: ch2Content, order: 2, status: 'Draft' as const, lastModified: Date.now(), wordCount: ch2Content.trim().split(/\s+/).length,
+          scenes: [{ id: generateId(), title: 'Scene 1', content: ch2Content, wordCount: ch2Content.trim().split(/\s+/).length }]
+        },
+        { 
+          id: generateId(), title: 'Chapter 3: The Echo in the Wards', content: ch3Content, order: 3, status: 'Draft' as const, lastModified: Date.now(), wordCount: ch3Content.trim().split(/\s+/).length,
+          scenes: [{ id: generateId(), title: 'Scene 1', content: ch3Content, wordCount: ch3Content.trim().split(/\s+/).length }]
+        }
+      ];
+
+      const semanticDocuments = [
+        { id: generateId(), title: 'Chapter 1: The Weight of Ink', content: ch1Content + '\n\n^anchor-ch1', lastModified: Date.now() },
+        { id: generateId(), title: 'Chapter 2: Shadows of the Spire', content: ch2Content + '\n\n^anchor-ch2', lastModified: Date.now() },
+        { id: generateId(), title: 'Chapter 3: The Echo in the Wards', content: ch3Content + '\n\n^anchor-ch3', lastModified: Date.now() }
+      ];
 
       newProject = {
         ...newProject,
@@ -676,7 +722,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         themes: ['Memory', 'Power', 'Legacy', 'Sacrifice'],
         entities: [
           { id: 'CH-ARTHUR', name: 'Arthur Penhaligon', tier: 1, species: 'Human', type: 'Character', description: 'A curious and determined young man with an uncanny ability to read ancient scripts.', motivation: 'Unlock the Forbidden Vault.', conflict: 'Loyalty to Silas vs. the Echo\'s truths.', aliases: ['Little Bird'], location_id: 'LOC-GREAT-ARCHIVE' },
-          { id: 'CH-VAELEN', name: 'High Architect Vaelen', tier: 1, species: 'Human', type: 'Character', description: 'The cold, calculating ruler of the Citadel.', motivation: 'Maintain total control of memory.', conflict: 'Fear of a second Mnemonic Plague.', location_id: 'LOC-OBSIDIAN-SPIRE' },
+          { id: 'CH-VAELEN', name: 'Admin Vaelen', tier: 1, species: 'Human', type: 'Character', description: 'The cold, calculating ruler of the Citadel.', motivation: 'Maintain total control of memory.', conflict: 'Fear of a second Mnemonic Plague.', location_id: 'LOC-OBSIDIAN-SPIRE' },
           { id: 'CH-ELARA', name: 'Elara Vane', tier: 2, species: 'Human', type: 'Character', primary_trait: 'Resourceful survivor and information broker.', location_id: 'LOC-LOWER-WARDS' },
           { id: 'CH-SILAS', name: 'Master Silas', tier: 2, species: 'Human', type: 'Character', primary_trait: 'Wise and secretive mentor.', location_id: 'LOC-GREAT-ARCHIVE' },
           { id: 'CH-ECHO', name: 'The Echo', tier: 3, species: 'Spectral Entity', type: 'Character' },
@@ -684,27 +730,35 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
           { id: 'LOC-LOWER-WARDS', name: 'The Lower Wards', tier: 3, species: 'District', type: 'Location' },
           { id: 'LOC-OBSIDIAN-SPIRE', name: 'The Obsidian Spire', tier: 1, species: 'Structure', type: 'Location', description: 'Vaelen\'s seat of power.' }
         ],
-        characters: [], // Deprecated but initialized
-        locations: [],
+        characters,
+        locations,
         timeline: [],
         relationships: [],
         notes: [],
         manuscript: fullManuscript,
-        history_diff: history_diff,
+        history_diff: '',
         assets: [],
         latestManuscriptText: fullManuscript,
-        wordCount: wordCount,
-        charCount: fullManuscript.length
+        wordCount: wordCountValue,
+        charCount: fullManuscript.length,
+        proseDocuments,
+        semanticDocuments,
+        chapters
       };
     }
 
     await saveProjectData(newProject);
+    if (isSignedIn) {
+      await fetchWithAuth('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProject)
+      }).catch(err => console.error("Cloud project creation failed", err));
+    }
     setProjectData(newProject);
     await refreshMetadata();
     setCurrentView(ViewType.DASHBOARD);
-  };
-
-  const mergeAnalysisIntoProject = useCallback(async (analysis: any, content?: string) => {
+  };const mergeAnalysisIntoProject = useCallback(async (analysis: any, content?: string) => {
     if (!projectData) return;
 
     // Merge logic:
@@ -761,7 +815,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
           title: `Imported ${new Date().toLocaleDateString()}`, 
           content, 
           order: (projectData.chapters?.length || 0), 
-          status: 'Draft', 
+          status: 'Draft' as const, 
           lastModified: Date.now(),
           scenes: [],
           wordCount: content.trim().split(/\s+/).filter(w => w.length > 0).length
@@ -877,19 +931,6 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         targetNote = { ...idea, isCanon };
       }
     }
-
-    if (targetNote && projectData) {
-      const currentLedger = projectData.ledger || [];
-      if (isCanon) {
-        // Add to ledger if not already there
-        if (!currentLedger.some(n => n.id === noteId)) {
-          await updateProjectData({ ledger: [targetNote, ...currentLedger] });
-        }
-      } else {
-        // Remove from ledger
-        await updateProjectData({ ledger: currentLedger.filter(n => n.id !== noteId) });
-      }
-    }
   };
 
   const handleUploadProject = async (file: File) => {
@@ -933,7 +974,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
                 title: 'Prologue / Front Matter',
                 content: parts[0].trim(),
                 order: 0,
-                status: 'Draft',
+                status: 'Draft' as const,
                 lastModified: Date.now(),
                 scenes: [],
                 wordCount: parts[0].trim().split(/\s+/).filter(w => w.length > 0).length
@@ -950,7 +991,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
                 title: header.substring(0, 50), // keep title reasonable
                 content: combined,
                 order: generatedChapters.length,
-                status: 'Draft',
+                status: 'Draft' as const,
                 lastModified: Date.now(),
                 scenes: [],
                 wordCount: combined.split(/\s+/).filter(w => w.length > 0).length
@@ -967,7 +1008,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
             title: 'Imported Chapter', 
             content: text, 
             order: 0, 
-            status: 'Draft', 
+            status: 'Draft' as const, 
             lastModified: Date.now(),
             scenes: [],
             wordCount: text.trim().split(/\s+/).filter(w => w.length > 0).length 
@@ -1082,13 +1123,8 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
               const shouldCanonize = noteTags.some(t => projectTags.includes(t) || charTags.includes(t) || locTags.includes(t));
               if (shouldCanonize) {
                 noteToSave.isCanon = true;
-                const currentLedger = projectData.ledger || [];
-                if (!currentLedger.some(ln => ln.id === n.id)) {
-                  await updateProjectData({ notes: [noteToSave, ...(projectData.notes || [])], ledger: [{...noteToSave, isSavedInLedger: true}, ...currentLedger] });
-                }
-              } else {
-                await updateProjectData({ notes: [noteToSave, ...(projectData.notes || [])] });
               }
+              await updateProjectData({ notes: [noteToSave, ...(projectData.notes || [])] });
             } else {
               setGlobalNotes(prev => [noteToSave, ...prev]); 
               await saveGlobalNote(noteToSave); 
@@ -1130,7 +1166,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
           isExtractingRelationships={isExtractingRelationships}
         /> : null;
       case ViewType.DASHBOARD:
-        return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => {}} onLoadSample={() => {}} isAnalyzing={isAnalyzing} error={null} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={(t) => {
+        return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => {}} onLoadSample={() => handleCreateProject(projectData?.title || 'The Obsidian Citadel', projectData?.author || 'Junior Archivist', true, projectData?.shortName || 'Citadel', projectData?.id)} isAnalyzing={isAnalyzing} error={null} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={(t) => {
             setIsAnalyzing(true);
             addTask('Analyzing Project');
             analyzeStoryText(t, undefined, { extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true })
@@ -1140,8 +1176,11 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
               setIsAnalyzing(false);
               removeTask('Analyzing Project');
             });
-        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p, globalNotes)} isGeneratingCover={isGeneratingCover} onUpdateProcessedFiles={handleUpdateProcessedFiles} isUpdatingProcessed={isUpdatingProcessed} onLinkClick={handleLinkClick} /> : null;
-
+        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p)} isGeneratingCover={isGeneratingCover} onUpdateProcessedFiles={handleUpdateProcessedFiles} isUpdatingProcessed={isUpdatingProcessed} onLinkClick={handleLinkClick} 
+         onUpdateProject={updateProjectData} 
+         onSave={handleManualSave}
+         currentUser={currentUser} 
+         /> : null;
       case ViewType.TIMELINE:
       case ViewType.BOARD:
       case ViewType.MATRIX:
@@ -1239,7 +1278,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onDeleteNote={handleDeleteNote} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
 
       case ViewType.CODEX:
-        return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;
+        return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
@@ -1284,11 +1323,13 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
         processingStatus={processingStatus}
         activeProjectTitle={projectData?.title}
         onQuickNote={() => setIsAdminNoteOpen(!isAdminNoteOpen)}
+        onSave={handleManualSave}
         appName={appSettings.appName}
         sidebarOrder={appSettings.sidebarOrder}
         onOpenLicenses={() => setIsLicensesOpen(true)}
         hideDesktopActions={!isSidebarCollapsed}
         isFullscreen={isMapFullscreen}
+        isServerConnected={isServerConnected}
       />
 
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
@@ -1416,7 +1457,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
                 <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg">
                   <PenTool size={20} />
                 </div>
-                <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">Admin Ledger</h2>
+                <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">Admin Notes</h2>
               </div>
               <button 
                 onClick={() => setIsAdminNoteOpen(false)}
@@ -1539,8 +1580,8 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
               onRestoreCommit={handleRestoreCommit}
               currentUser={currentUser}
               onFileUpload={() => {}}
-              onLoadSample={() => {}}
-              onExport={() => exportProjectPlothole(projectData, globalNotes)}
+              onLoadSample={() => handleCreateProject(projectData?.title || 'The Obsidian Citadel', projectData?.author || 'Junior Archivist', true, projectData?.shortName || 'Citadel', projectData?.id)}
+              onExport={() => exportProjectPlothole(projectData)}
               onAnalyzeText={() => {}}
               onRestoreHistory={() => {}}
               onUpdateProcessedFiles={handleUpdateProcessedFiles}
@@ -1580,8 +1621,7 @@ Arthur looked at Elara, then at the Key. He realized then that sacrifice was the
               { 
                 name: 'Fuse.js', 
                 maintainer: 'Kiro Risk',
-                usage: 'Advanced fuzzy-search logic for the Narrative Ledger.',
-                status: 'Actively Maintained',
+                usage: 'Advanced fuzzy-search logic for the Entity Explorer.',                status: 'Actively Maintained',
                 cost: 'Free (Apache 2.0)'
               },
               { 

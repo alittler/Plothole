@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType } from '../../types';
-import { Book, Search, Zap, LayoutGrid, Menu, FileText, Users, Map, Calendar, X, HelpCircle, Settings, Shield } from 'lucide-react';
+import { Book, Search, Zap, LayoutGrid, Menu, FileText, Users, Map, Calendar, X, HelpCircle, Settings, Shield, Wrench } from 'lucide-react';
 
 interface BottomNavProps {
   currentView: ViewType;

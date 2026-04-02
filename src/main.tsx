@@ -5,10 +5,13 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App.tsx';
 import './index.css';
 
-const PUBLISHABLE_KEY = (import.meta as any).env.VITE_CLERK_PUBLISHABLE_KEY;
+const PUBLISHABLE_KEY = (import.meta as any).env.VITE_CLERK_PUBLISHABLE_KEY || 
+                        (import.meta as any).env.VITE_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+                        (window as any).CLERK_PUBLISHABLE_KEY ||
+                        (window as any)._env_?.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing Publishable Key");
+  console.warn("Missing Clerk Publishable Key. Auth features may not work.");
 }
 
 createRoot(document.getElementById('root')!).render(

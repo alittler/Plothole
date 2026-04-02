@@ -2,6 +2,7 @@ import React from 'react';
 import { ViewType, User } from '../../types';
 import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, GitBranch, Wrench } from 'lucide-react';
 import { UserButton, useClerk } from '@clerk/clerk-react';
+import { isCloudStorageActive } from '../../services/storageService';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -18,11 +19,13 @@ interface SidebarProps {
   processingStatus?: string | null;
   activeProjectTitle?: string;
   onQuickNote?: () => void;
+  onSave?: () => Promise<void>;
   appName?: string;
   sidebarOrder?: ViewType[];
   onOpenLicenses?: () => void;
   hideDesktopActions?: boolean;
   isFullscreen?: boolean;
+  isServerConnected?: boolean;
 }
 
 interface NavItem {
@@ -40,10 +43,22 @@ interface SidebarSection {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, appName = 'PLOTHOLE',
-  sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false
+  currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, onSave, appName = 'PLOTHOLE',
+  sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false, isServerConnected = true
 }) => {
   const { signOut } = useClerk();
+  const isCloudStorage = isCloudStorageActive() && isServerConnected;
+  const [isSyncing, setIsSyncing] = React.useState(false);
+
+  const handleSync = async () => {
+    if (!onSave || isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await onSave();
+    } finally {
+      setTimeout(() => setIsSyncing(false), 1000);
+    }
+  };
 
   // Close mobile sidebar on Escape key
   React.useEffect(() => {
@@ -67,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
     { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
-  ];
+    ];
 
   const sections: SidebarSection[] = React.useMemo(() => {
     const baseSections: SidebarSection[] = [
@@ -144,6 +159,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate">{activeProjectTitle}</span>
             </div>
+          )}
+          {!isCollapsed && !isCloudStorage && (
+            <div className="mt-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-500 shadow-lg shadow-amber-500/5">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full animate-pulse ${!isServerConnected ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                <span className={`text-[10px] font-black uppercase tracking-tight ${!isServerConnected ? 'text-rose-500' : 'text-amber-500'}`}>
+                  {!isServerConnected ? 'Stuck on Localhost' : 'Local Mode'}
+                </span>
+              </div>
+              <p className="text-[8px] text-slate-500 font-medium leading-tight">
+                {!isServerConnected 
+                  ? 'Server unreachable. Data is NOT syncing.' 
+                  : 'Sign in to enable cloud sync.'}
+              </p>
+            </div>
+          )}
+          {!isCollapsed && isCloudStorage && hasActiveProject && (
+            <button 
+              onClick={handleSync}
+              disabled={isSyncing}
+              className={`mt-2 mx-1 px-3 py-2 rounded-xl flex items-center justify-between border transition-all ${isSyncing ? 'bg-indigo-500 text-white border-indigo-400 shadow-lg shadow-indigo-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400'}`}
+            >
+              <div className="flex items-center gap-2">
+                <div className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-white animate-spin' : 'bg-indigo-500'}`} />
+                <span className="text-[10px] font-black uppercase tracking-widest">{isSyncing ? 'Syncing...' : 'Synced to Cloud'}</span>
+              </div>
+              <Database size={12} className={isSyncing ? 'animate-bounce' : ''} />
+            </button>
           )}
         </div>
 

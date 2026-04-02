@@ -28,8 +28,7 @@ enum Category {
   TIMELINE = 'Timeline',
   ARTIFACTS = 'Inventory',
   LORE = 'Lore & Lexicon',
-  SOURCES = 'Research Sources',
-  LEDGER = 'Ledger Entries'
+  SOURCES = 'Research Sources'
 }
 
 // ==========================================
@@ -160,7 +159,6 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
     data.artifacts?.forEach(a => entities.push({ id: a.id, type: 'Artifact', name: a.name || 'Untitled Artifact', data: a }));
     data.lore?.forEach(l => entities.push({ id: l.id, type: 'Lore', name: l.term || 'Untitled Lore', data: l }));
     data.sources?.forEach(s => entities.push({ id: s.id, type: 'Source', name: s.name || 'Untitled Source', data: s, timestamp: s.timestamp }));
-    data.ledger?.forEach(n => entities.push({ id: n.id, type: 'Ledger', name: 'Note', data: n, timestamp: n.timestamp }));
 
     if (activeCategory !== Category.ALL) {
       entities = entities.filter(e => {
@@ -172,7 +170,6 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
           case Category.ARTIFACTS: return e.type === 'Artifact';
           case Category.LORE: return e.type === 'Lore';
           case Category.SOURCES: return e.type === 'Source';
-          case Category.LEDGER: return e.type === 'Ledger';
           default: return true;
         }
       });
@@ -221,7 +218,6 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
       case 'Artifact': return <Box size={16} />;
       case 'Lore': return <Book size={16} />;
       case 'Source': return <FileText size={16} />;
-      case 'Ledger': return <Archive size={16} />;
       case 'Relationship': return <Network size={16} />;
       default: return <Database size={16} />;
     }
@@ -235,7 +231,6 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
       case 'Artifact': return 'text-orange-500 bg-orange-50 dark:bg-orange-900/20';
       case 'Lore': return 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20';
       case 'Source': return 'text-pink-500 bg-pink-50 dark:bg-pink-900/20';
-      case 'Ledger': return 'text-slate-500 bg-slate-50 dark:bg-slate-900/20';
       case 'Relationship': return 'text-violet-500 bg-violet-50 dark:bg-violet-900/20';
       default: return 'text-slate-500 bg-slate-50';
     }
@@ -247,12 +242,11 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
     if (activeCategory === Category.ARTIFACTS) type = 'Artifact';
     if (activeCategory === Category.LORE) type = 'Lore';
     if (activeCategory === Category.SOURCES) type = 'Source';
-    if (activeCategory === Category.LEDGER) type = 'Ledger';
 
     const id = generateId();
     const mapTypeToKey: Record<string, string> = {
       'Character': 'characters', 'Relationship': 'relationships', 'Location': 'locations', 'Timeline': 'timeline',
-      'Artifact': 'artifacts', 'Lore': 'lore', 'Source': 'sources', 'Ledger': 'ledger'
+      'Artifact': 'artifacts', 'Lore': 'lore', 'Source': 'sources'
     };
     const key = mapTypeToKey[type] || 'characters';
 
@@ -264,7 +258,6 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
     if (type === 'Artifact') newItem = { ...newItem, name: 'New Artifact', type: 'Object' };
     if (type === 'Lore') newItem = { ...newItem, term: 'New Lore', definition: '', category: 'General' };
     if (type === 'Source') newItem = { ...newItem, name: 'New Source', content: '', type: 'text', timestamp: Date.now() };
-    if (type === 'Ledger') newItem = { ...newItem, content: 'New Note', tags: [], timestamp: Date.now() };
 
     onUpdateProject({ [key]: [newItem, ...(data as any)[key] || []] });
     setSelectedId(id);
@@ -273,15 +266,9 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
   const handleDelete = (type: string, id: string) => {
     if (!confirm(`Delete this ${type}?`)) return;
 
-    if (type === 'Ledger' && onDeleteNote) {
-      onDeleteNote(id);
-      if (selectedId === id) setSelectedId(null);
-      return;
-    }
-
     const mapTypeToKey: Record<string, string> = {
       'Character': 'characters', 'Location': 'locations', 'Timeline': 'timeline',
-      'Artifact': 'artifacts', 'Lore': 'lore', 'Source': 'sources', 'Ledger': 'ledger', 'Relationship': 'relationships'
+      'Artifact': 'artifacts', 'Lore': 'lore', 'Source': 'sources', 'Relationship': 'relationships'
     };
     const key = mapTypeToKey[type];
     if (key) {
@@ -297,7 +284,7 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg"><Database size={24} /></div>
-              <div><h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Narrative Ledger</h1><p className="text-xs text-slate-500 uppercase font-black tracking-widest">Universal Database Explorer</p></div>
+              <div><h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Entity Explorer</h1><p className="text-xs text-slate-500 uppercase font-black tracking-widest">Universal Database Explorer</p></div>
             </div>
             <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               <div className="relative flex-1 lg:flex-none"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} /><input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search database..." className="w-full lg:w-64 pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
@@ -320,7 +307,7 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
           )}
           <div className="space-y-1">
             {Object.values(Category).map(cat => (
-              <button key={cat} onClick={() => setActiveCategory(cat)} className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeCategory === cat ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><div className="flex items-center gap-3"><div className={activeCategory === cat ? 'text-indigo-500' : 'text-slate-400'}>{cat === Category.ALL && <Archive size={16} />}{cat === Category.CHARACTERS && <Users size={16} />}{cat === Category.RELATIONSHIPS && <LinkIcon size={16} />}{cat === Category.LOCATIONS && <MapPin size={16} />}{cat === Category.TIMELINE && <Clock size={16} />}{cat === Category.ARTIFACTS && <Box size={16} />}{cat === Category.LORE && <Book size={16} />}{cat === Category.SOURCES && <FileText size={16} />}{cat === Category.LEDGER && <Archive size={16} />}</div>{cat}</div>{activeCategory === cat && <ChevronRight size={14} />}</button>
+              <button key={cat} onClick={() => setActiveCategory(cat)} className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeCategory === cat ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><div className="flex items-center gap-3"><div className={activeCategory === cat ? 'text-indigo-500' : 'text-slate-400'}>{cat === Category.ALL && <Archive size={16} />}{cat === Category.CHARACTERS && <Users size={16} />}{cat === Category.RELATIONSHIPS && <LinkIcon size={16} />}{cat === Category.LOCATIONS && <MapPin size={16} />}{cat === Category.TIMELINE && <Clock size={16} />}{cat === Category.ARTIFACTS && <Box size={16} />}{cat === Category.LORE && <Book size={16} />}{cat === Category.SOURCES && <FileText size={16} />}</div>{cat}</div>{activeCategory === cat && <ChevronRight size={14} />}</button>
             ))}
           </div>
         </aside>

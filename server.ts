@@ -3,6 +3,7 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { initDb, getPool } from './src/db.js';
 // @ts-ignore
@@ -64,6 +65,18 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
+
+function getLocalIp() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]!) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
 
 async function startServer() {
   const app = express();
@@ -338,6 +351,13 @@ async function startServer() {
     });
   });
 
+  app.get('/api/network-info', (req, res) => {
+    res.json({
+      ip: getLocalIp(),
+      port: PORT
+    });
+  });
+
   // Protected API Routes
   app.get('/api/projects', async (req: any, res) => {
     const userId = req.auth?.userId || 'user-1';
@@ -367,8 +387,8 @@ async function startServer() {
       await pool.query('INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [userId, 'user@example.com']); // Email would ideally come from clerk webhook or token
 
       await pool.query(
-        'INSERT INTO projects (id, user_id, title, data, last_modified) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET data = $4, title = $3, last_modified = CURRENT_TIMESTAMP',
-        [project.id, userId, project.title, project]
+        'INSERT INTO projects (id, user_id, title, data, last_modified) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET data = $4, title = $3, last_modified = $5',
+        [project.id, userId, project.title, project, Date.now()]
       );
 
       // Send notification if it's a new project and Resend is configured
@@ -431,14 +451,53 @@ async function startServer() {
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
 
     const note = req.body;
+    const now = Date.now();
     try {
       await pool.query(
-        'INSERT INTO global_notes (id, user_id, content, tags, data, timestamp) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET content = $3, tags = $4, data = $5, timestamp = CURRENT_TIMESTAMP',
-        [note.id, userId, note.content, note.tags, note]
+        'INSERT INTO global_notes (id, user_id, content, tags, data, timestamp) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO UPDATE SET content = $3, tags = $4, data = $5, timestamp = $6',
+        [note.id, userId, note.content, note.tags, note, now]
       );
       res.json({ success: true });
     } catch (err) {
+      console.error(err);
       res.status(500).json({ error: 'Failed to save note' });
+    }
+  });
+
+  // App Globals (Settings, Prompts, etc.)
+  app.get('/api/globals/:id', async (req: any, res) => {
+    const userId = req.auth?.userId || 'user-1';
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
+
+    try {
+      const result = await pool.query('SELECT data FROM app_globals WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
+      if (result.rows.length > 0) {
+        res.json(result.rows[0].data);
+      } else {
+        res.status(404).json({ error: 'Global not found' });
+      }
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch global' });
+    }
+  });
+
+  app.post('/api/globals/:id', async (req: any, res) => {
+    const userId = req.auth?.userId || 'user-1';
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
+
+    const data = req.body;
+    const now = Date.now();
+    try {
+      await pool.query(
+        'INSERT INTO app_globals (id, user_id, data, last_modified) VALUES ($1, $2, $3, $4) ON CONFLICT (id, user_id) DO UPDATE SET data = $3, last_modified = $4',
+        [req.params.id, userId, data, now]
+      );
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to save global' });
     }
   });
 

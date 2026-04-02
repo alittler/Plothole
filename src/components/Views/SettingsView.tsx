@@ -1,5 +1,6 @@
-import React from 'react';
-import { ProjectData, Note, User, LedgerEntry, ViewType, ChangeLogEntry } from '../../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ProjectData, Note, User, ViewType, ChangeLogEntry, AppSettings } from '../../types';
 import { 
   Settings, User as UserIcon, Database, Shield, Code, Check, 
   ChevronRight, History, Activity, Hash, Archive, FileCode,
@@ -36,7 +37,10 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser, onUpdateUser, onFactoryReset, projectData, onUpdateProject, onChangeView, onLinkClick, globalNotes, onClearGlobalNotes
 }) => {
-  const [activeTab, setActiveTab] = React.useState<SettingsTab | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get('tab') as SettingsTab) || SettingsTab.PROFILE;
+  const setActiveTab = (tab: SettingsTab) => setSearchParams({ tab });
+
   const [rawText, setRawText] = React.useState('');
   const [isSaved, setIsSaved] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
@@ -121,7 +125,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     globalNotes.forEach(n => entries.push({ id: n.id, type: 'GLOBAL_NOTEPAD', content: n.content, timestamp: n.timestamp }));
 
     if (projectData) {
-      projectData.ledger?.forEach(n => entries.push({ id: n.id, type: 'LEDGER', content: n.content, timestamp: n.timestamp }));
       projectData.sources?.forEach(s => entries.push({ id: s.id, type: 'SOURCE', content: s.content, timestamp: s.timestamp }));
       projectData.notes?.forEach(n => entries.push({ id: n.id, type: 'PROJECT_NOTEPAD', content: n.content, timestamp: n.timestamp }));
       projectData.ideas?.forEach(i => entries.push({ id: i.id, type: 'IDEA', content: i.content, timestamp: i.timestamp }));
@@ -170,7 +173,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleDeleteFeed = () => {
     if (projectData) {
       onUpdateProject({
-        ledger: [],
         sources: projectData.sources?.filter(s => s.type === 'image') || [], // Keep image assets, clear text sources
         notes: [],
         ideas: []
@@ -728,22 +730,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </aside>
 
       {/* Main Settings Content Area */}
-      <main className={`${!activeTab ? 'hidden lg:flex' : 'flex'} flex-1 flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar p-4 lg:p-8`}>
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar p-4 lg:p-8">
         <div className="max-w-5xl mx-auto w-full min-h-full pb-40">
-          {activeTab && (
-            <button 
-              onClick={() => setActiveTab(null)}
-              className="lg:hidden mb-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
-            >
-              <ChevronRight size={14} className="rotate-180" /> Back to Settings
-            </button>
-          )}
-          {activeTab ? renderTabContent() : (
-            <div className="hidden lg:flex h-full flex-col items-center justify-center text-slate-300 space-y-4 py-20">
-              <Settings size={64} className="opacity-10" />
-              <p className="font-serif italic text-xl opacity-30">Select a setting to configure</p>
-            </div>
-          )}
+          {renderTabContent()}
         </div>
       </main>
 
@@ -760,9 +749,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         }
       >
         <p className="text-slate-600 dark:text-slate-400 font-serif text-lg leading-relaxed">
-          This will permanently delete all text entries in the current project (Ledger, Notes, Ideas, and non-image Sources) as well as all global notebook entries. 
-          <br /><br />
-          <span className="font-bold text-red-500">This action cannot be undone and will empty the Raw Text Feed entirely.</span>
+          This will permanently delete all text entries in the current project (Notes, Ideas, and non-image Sources) as well as all global notebook entries.
+          <br /><br />          <span className="font-bold text-red-500">This action cannot be undone and will empty the Raw Text Feed entirely.</span>
         </p>
       </Modal>
     </div>

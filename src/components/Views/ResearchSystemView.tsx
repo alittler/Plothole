@@ -100,44 +100,6 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [noteToDelete, onDeleteNote, onDeleteAllNotes]);
 
-  // Automatically sync canonized notes to ledger if onUpdateProject is provided
-  React.useEffect(() => {
-    if (!onUpdateProject) return;
-    
-    const allNotes = [...(data.notes || []), ...(data.ideas || [])];
-    const canonizedNotes = allNotes.filter(n => n.isCanon);
-    const currentLedger = data.ledger || [];
-    
-    let needsUpdate = false;
-    const newLedger: Note[] = [];
-
-    for (const ledgerNote of currentLedger) {
-      const activeNote = allNotes.find(n => n.id === ledgerNote.id);
-      if (activeNote) {
-        if (activeNote.isCanon) {
-          newLedger.push(activeNote);
-          if (activeNote.content !== ledgerNote.content) needsUpdate = true;
-        } else {
-          needsUpdate = true;
-        }
-      } else {
-        needsUpdate = true;
-      }
-    }
-
-    for (const canonNote of canonizedNotes) {
-      if (!newLedger.some(n => n.id === canonNote.id)) {
-        newLedger.push(canonNote);
-        needsUpdate = true;
-      }
-    }
-
-    if (needsUpdate) {
-      newLedger.sort((a, b) => b.timestamp - a.timestamp);
-      onUpdateProject({ ledger: newLedger });
-    }
-  }, [data.notes, data.ideas, data.ledger, onUpdateProject]);
-
   const handleAdd = () => {
     if (!newNote.trim()) return;
     const tags = newNote.match(/#\w+/g)?.map(t => t.slice(1)) || [];

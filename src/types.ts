@@ -189,9 +189,11 @@ export interface Source {
 export interface ProjectData {
   id: string;
   title: string;
+  shortName?: string;
   author: string;
   summary: string;
   lastModified: number;
+  coverImage?: string;
   
   // Legacy fields (kept for migration/UI compatibility)
   characters: Character[];
@@ -203,8 +205,10 @@ export interface ProjectData {
   relationships: Relationship[];
   chapters?: Chapter[];
   notes: Note[];
+  ideas?: Idea[];
   themes: string[];
   proseDocuments?: ProseDocument[];
+  semanticDocuments?: SemanticDocument[];
   userToolboxLinks?: ToolboxLink[];
   
   // Modular Tiered Architecture fields
@@ -224,12 +228,18 @@ export interface ProjectData {
   integrityHash?: string;
   latestManuscriptText?: string;
   manuscriptDraft?: string;
+  lastProcessedManuscriptSha?: string;
+  lastProcessedPromptSha?: string;
+  aiContextLimit?: number;
+  aiDeadThreads?: any[];
+  changeLog?: any[];
   notepadCanvas?: {
     nodes: any[];
     edges: any[];
   };
 
-  // Map settings  rootMapImage?: string;
+  // Map settings
+  rootMapImage?: string;
   isRealWorldMap?: boolean;
   mapScale?: number;
   mapUnit?: string;
@@ -263,6 +273,7 @@ export interface Character {
   job: string;
   description: string;
   traits: string[];
+  images?: { url: string; caption?: string }[];
   species?: string;
   goals?: string;
   aliases?: string[];
@@ -273,6 +284,7 @@ export interface Character {
   motivation?: string;
   conflict?: string;
   primary_trait?: string;
+  location_id?: string;
 
   // Schema.org/Person Compatibility
   givenName?: string;
@@ -297,6 +309,8 @@ export interface Location {
   type: string;
   mapImage?: string;
   source?: 'manual' | 'ai';
+  address?: string;
+  icon?: string;
   x?: number;
   y?: number;
   prevX?: number;
@@ -315,6 +329,7 @@ export interface Artifact {
   name: string;
   type: string;
   description: string;
+  imageUrl?: string;
   source?: 'manual' | 'ai';
 }
 
@@ -344,7 +359,7 @@ export interface Note {
   timestamp: number;
   isCanon?: boolean;
   expandedContent?: string;
-  isSavedInLedger?: boolean;
+  metaSummary?: string;
 }
 
 export interface ProseDocument {
@@ -380,12 +395,16 @@ export interface Commit {
   timestamp: number;
   hash: string;
   message: string;
+  snapshot?: Chapter[];
 }
 
 export interface BackupStatus {
   id: string;
   timestamp: number;
   status: 'pending' | 'delivered' | 'failed';
+  wordCount?: number;
+  hash?: string;
+  resendId?: string;
 }
 
 export interface ProjectMetadata {
@@ -399,6 +418,7 @@ export interface ProjectMetadata {
   commitCount: number;
   backupCount: number;
   wordCount: number;
+  coverImage?: string;
 }
 
 export interface User {
@@ -407,6 +427,17 @@ export interface User {
   email: string;
   role: 'admin' | 'editor';
   themeColor: string;
+  lastActive?: number;
+  preferences?: {
+    themeMode: 'light' | 'dark';
+    fontSize: 'sm' | 'md' | 'lg';
+    fontFamily: 'sans' | 'serif' | 'mono';
+    landingPage: ViewType;
+    aiVerbosity: 'minimal' | 'balanced' | 'detailed';
+    colorfulIcons: boolean;
+    semanticSearchEnabled: boolean;
+    reducedMotion?: boolean;
+  };
 }
 
 export interface AppSettings {
@@ -429,3 +460,48 @@ export interface ToolboxLink {
   category: string;
   description?: string;
 }
+
+export interface Idea {
+  id: string;
+  content: string;
+  tags: string[];
+  timestamp: number;
+  isCanon?: boolean;
+}
+
+export interface ChangeLogEntry {
+  id: string;
+  timestamp: number;
+  entityType: string;
+  entityName: string;
+  entityId: string;
+  action: string;
+}
+
+export interface SemanticDocument {
+  id: string;
+  title: string;
+  content: string;
+  lastModified: number;
+}
+
+export interface ManuscriptAnalysisResponse {
+  title?: string;
+  summary: string;
+  themes: string[];
+  characters: any[];
+  locations: any[];
+  timeline: any[];
+  artifacts: any[];
+  lore: any[];
+  relationships?: any[];
+}
+
+export interface AnalysisOptions {
+  extractCharacters?: boolean;
+  extractTimeline?: boolean;
+  extractLocations?: boolean;
+  extractArtifacts?: boolean;
+  extractLore?: boolean;
+}
+

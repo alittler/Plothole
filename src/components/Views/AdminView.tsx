@@ -40,19 +40,18 @@ enum AdminTab {
   NAVIGATION = 'Navigation',
   USERS = 'Users',
   TOOLBOX = 'Toolbox',
-  LEDGER = 'Narrative Ledger'
+  ENTITIES = 'Entity Explorer'
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
   data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteNote, onDeleteGlobalNote, onLinkClick, onChangeView, onQuickUpdate, currentUser, adminTargetId, onClearAdminTarget
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<AdminTab | null>(adminTargetId ? AdminTab.LEDGER : (searchParams.get('tab') as AdminTab) || null);
+  const [activeTab, setActiveTab] = useState<AdminTab>(adminTargetId ? AdminTab.ENTITIES : (searchParams.get('tab') as AdminTab) || AdminTab.SYSTEM);
 
-  const handleSetActiveTab = (tab: AdminTab | null) => {
+  const handleSetActiveTab = (tab: AdminTab) => {
     setActiveTab(tab);
-    if (tab) setSearchParams({ tab });
-    else setSearchParams({});
+    setSearchParams({ tab });
   };
 
   const [prompts, setPrompts] = useState(appPrompts);
@@ -60,6 +59,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [newUserEmail, setNewUserEmail] = useState('');
 
   const [newLink, setNewLink] = useState<Partial<ToolboxLink>>({ label: '', url: '', category: 'Writing', description: '' });
+  const [networkInfo, setNetworkInfo] = useState<{ ip: string, port: number } | null>(null);
+
+  React.useEffect(() => {
+    fetch('/api/network-info')
+      .then(res => res.json())
+      .then(data => setNetworkInfo(data))
+      .catch(err => console.error("Failed to fetch network info", err));
+  }, []);
 
   const handleAddDefaultLink = () => {
     if (!newLink.label || !newLink.url) return;
@@ -89,7 +96,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   React.useEffect(() => {
-    if (adminTargetId) handleSetActiveTab(AdminTab.LEDGER);
+    if (adminTargetId) handleSetActiveTab(AdminTab.ENTITIES);
   }, [adminTargetId]);
 
   const renderTabContent = () => {
@@ -277,13 +284,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
           </div>
         );
 
-      case AdminTab.LEDGER:
+      case AdminTab.ENTITIES:
         return data ? (
           <div className="h-full flex flex-col min-h-0 animate-in fade-in duration-500">
             <UnifiedDatabaseView data={data} onUpdateProject={onUpdateProject} onDeleteNote={onDeleteNote} onQuickUpdate={onQuickUpdate} onLinkClick={onLinkClick} adminTargetId={adminTargetId} onClearAdminTarget={onClearAdminTarget} hideHeader={true} />
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center p-20"><div className="text-center space-y-4"><Database size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Narrative Ledger.</p></div></div>
+          <div className="flex-1 flex items-center justify-center p-20"><div className="text-center space-y-4"><Database size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Entity Explorer.</p></div></div>
         );
 
       default: return null;
@@ -313,14 +320,32 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 {tab === AdminTab.NAVIGATION && <Layout size={18} />}
                 {tab === AdminTab.USERS && <User size={18} />}
                 {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
-                {tab === AdminTab.LEDGER && <Database size={18} />}
+                {tab === AdminTab.ENTITIES && <Database size={18} />}
               </div>
               {tab}
             </button>
           ))}
         </nav>
 
-        <div className="p-6 border-t border-slate-100 dark:border-slate-800">
+        <div className="p-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+          {networkInfo && (
+            <div className="flex flex-col items-center gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-500">
+              <div className="p-2 bg-white rounded-lg border border-slate-100">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`http://${networkInfo.ip}:${networkInfo.port}`)}`}
+                  alt="Local Access QR Code"
+                  className="w-24 h-24"
+                />
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Local Network Access</p>
+                <code className="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
+                  {networkInfo.ip}:{networkInfo.port}
+                </code>
+              </div>
+            </div>
+          )}
+
           <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl space-y-2">
             <p className="ph-label mb-0">User Level</p>
             <div className="flex items-center gap-2 text-indigo-600">
@@ -332,22 +357,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
       </aside>
 
       {/* Main Admin Content Area */}
-      <main className={`${!activeTab ? 'hidden lg:flex' : 'flex'} flex-1 flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar`}>
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar">
         <div className="flex-1 w-full max-w-5xl mx-auto p-0 md:p-8 min-h-full pb-40">
-          {activeTab && (
-            <button 
-              onClick={() => handleSetActiveTab(null)}
-              className="lg:hidden m-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
-            >
-              <ChevronRight size={14} className="rotate-180" /> Back to Admin
-            </button>
-          )}
-          {activeTab ? renderTabContent() : (
-            <div className="hidden lg:flex h-full flex-col items-center justify-center text-slate-300 space-y-4 py-20">
-              <Shield size={64} className="opacity-10" />
-              <p className="font-serif italic text-xl opacity-30">Select an admin module to configure</p>
-            </div>
-          )}
+          {renderTabContent()}
         </div>
       </main>
     </div>

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ProjectData, ProjectMetadata } from '../../types';
-import { Activity } from 'lucide-react';
 
 interface WikiTextProps {
   text: string;
@@ -18,31 +17,10 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
   const regex = /(@\w+|\[\[.*?\]\]|#\w+|!\w+|%\w+|\?\w+)/g;
   const parts = text.split(regex);
 
-  const getGhostReferences = (name: string) => {
-    if (!projectData?.ledger) return [];
-    const normalizedName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    return projectData.ledger
-      .filter(n => n.content.toLowerCase().includes(normalizedName))
-      .slice(0, 3);
-  };
-
   const handleMouseEnter = (e: React.MouseEvent, type: string, item: any, projectName?: string) => {
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     let content = null;
-    const ghosts = getGhostReferences(item.name || item.term || (typeof item === 'string' ? item : ''));
 
-    const ghostEl = ghosts.length > 0 && (
-      <div className="mt-3 pt-3 border-t border-slate-700/50 space-y-2">
-        <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-1">
-          <Activity size={10} /> Ghost References
-        </div>
-        {ghosts.map((g, idx) => (
-          <div key={idx} className="text-[10px] text-slate-400 italic leading-relaxed border-l border-slate-700 pl-2">
-            "{g.content.substring(0, 60)}..."
-          </div>
-        ))}
-      </div>
-    );
 
     if (type === 'character') {
       content = (
@@ -53,7 +31,6 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
           </div>
           <div className="text-xs text-slate-300">{item.role}</div>
           {item.description && <div className="text-xs mt-1 line-clamp-3">{item.description}</div>}
-          {ghostEl}
         </div>
       );
     } else if (type === 'location') {
@@ -65,7 +42,6 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
           </div>
           <div className="text-xs text-slate-300">{item.type}</div>
           {item.description && <div className="text-xs mt-1 line-clamp-3">{item.description}</div>}
-          {ghostEl}
         </div>
       );
     } else if (type === 'lore') {
@@ -74,14 +50,12 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
           <div className="font-bold">{item.term}</div>
           <div className="text-xs text-slate-300">{item.category}</div>
           {item.definition && <div className="text-xs mt-1 line-clamp-3">{item.definition}</div>}
-          {ghostEl}
         </div>
       );
     } else if (type === 'tag') {
       content = (
         <div className="space-y-1">
           <div className="font-bold text-sm">#{item}</div>
-          {ghostEl}
         </div>
       );
     }
