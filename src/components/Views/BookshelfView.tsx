@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ProjectMetadata, User } from '../../types';
-import { Plus, Trash2, BookOpen, Zap, Sparkles } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
 interface BookshelfViewProps {
@@ -11,18 +11,30 @@ interface BookshelfViewProps {
   onCreateProject: (title: string, author: string, useSample: boolean, shortName?: string) => void;
   onUploadProject: (file: File) => void;
   onDeleteProject: (id: string) => void;
+  onRefreshMetadata?: () => Promise<void>;
   onOpenDashboard: () => void;
   isAnalyzing: boolean;
 }
 
 export const BookshelfView: React.FC<BookshelfViewProps> = ({
-  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, isAnalyzing, currentUser
+  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onRefreshMetadata, isAnalyzing, currentUser
 }) => {
   const [isCreating, setIsCreating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newShortName, setNewShortName] = useState('');
   const [newAuthor, setNewAuthor] = useState(currentUser.name);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+
+  const handleRefresh = async () => {
+    if (!onRefreshMetadata || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await onRefreshMetadata();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 1000);
+    }
+  };
 
   const handleCreate = () => {
     if (!newTitle.trim()) return;
@@ -44,6 +56,20 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
             <h1 className="ph-section-title text-2xl md:text-4xl">My Library</h1>
             <p className="ph-section-subtitle">Manage the story worlds of your multiverse.</p>
           </div>
+          {onRefreshMetadata && (
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`ml-auto px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
+                isRefreshing 
+                  ? 'bg-indigo-100 text-indigo-400' 
+                  : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-indigo-600 border border-slate-200 dark:border-slate-700 shadow-sm'
+              }`}
+            >
+              <Database size={14} className={isRefreshing ? 'animate-spin' : ''} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh Library'}
+            </button>
+          )}
         </div>
       </header>
 
@@ -59,8 +85,21 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                   className={`h-64 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border overflow-hidden flex flex-col group hover:shadow-md transition-all cursor-pointer ${isActive ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-500/50'}`}
                 >
                   <div className="flex-1 p-6 flex flex-col justify-between relative">
+                    <div className="absolute top-6 right-6 flex items-center gap-2">
+                      {project.origin === 'cloud' ? (
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 text-indigo-500 rounded-lg" title="Synced to Cloud">
+                          <Cloud size={14} />
+                          <span className="text-[8px] font-black uppercase tracking-widest">Cloud</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 text-amber-500 rounded-lg" title="Local Storage Only">
+                          <CloudOff size={14} />
+                          <span className="text-[8px] font-black uppercase tracking-widest">Local</span>
+                        </div>
+                      )}
+                    </div>
                     <div>
-                      <h3 className={`font-black text-xl line-clamp-1 group-hover:text-indigo-600 transition-colors ${isActive ? 'text-indigo-600' : 'text-slate-900 dark:text-white'}`}>{project.title}</h3>
+                      <h3 className={`font-black text-xl line-clamp-1 pr-16 group-hover:text-indigo-600 transition-colors ${isActive ? 'text-indigo-600' : 'text-slate-900 dark:text-white'}`}>{project.title}</h3>
                       <p className="text-sm text-slate-500 dark:text-slate-400 italic">by {project.author}</p>
                     </div>
                     <div className="space-y-2">

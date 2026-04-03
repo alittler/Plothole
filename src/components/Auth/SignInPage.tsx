@@ -99,7 +99,7 @@ export const SignInPage: React.FC<{ appName?: string, isReady?: boolean }> = () 
               <div className="space-y-1.5 md:space-y-2">
                 <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Terminal ID</label>
                 <div className="relative group">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors" size={16} md:size={18} />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors" size={16} />
                   <input 
                     type="email"
                     value={email}
@@ -114,7 +114,7 @@ export const SignInPage: React.FC<{ appName?: string, isReady?: boolean }> = () 
               <div className="space-y-1.5 md:space-y-2">
                 <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Secure Passkey</label>
                 <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors" size={16} md:size={18} />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors" size={16} />
                   <input 
                     type="password"
                     value={password}

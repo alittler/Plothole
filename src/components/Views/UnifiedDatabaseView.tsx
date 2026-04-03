@@ -20,6 +20,14 @@ interface UnifiedDatabaseViewProps {
   hideHeader?: boolean;
 }
 
+interface Field {
+  key: string;
+  label: string;
+  type: string;
+  group: string;
+  readonly?: boolean;
+}
+
 enum Category {
   ALL = 'All Entities',
   CHARACTERS = 'Characters',
@@ -35,7 +43,7 @@ enum Category {
 // CATEGORY-SPECIFIC SCHEMAS (Standardized)
 // ==========================================
 
-const CHARACTER_FIELDS = [
+const CHARACTER_FIELDS: Field[] = [
   { key: 'name', label: 'Full Name', type: 'text', group: 'Identity' },
   { key: 'givenName', label: 'Given Name', type: 'text', group: 'Schema.org/Person' },
   { key: 'familyName', label: 'Family Name', type: 'text', group: 'Schema.org/Person' },
@@ -51,7 +59,7 @@ const CHARACTER_FIELDS = [
   { key: 'traits', label: 'Traits (csv)', type: 'text', group: 'Narrative' },
 ];
 
-const LOCATION_FIELDS = [
+const LOCATION_FIELDS: Field[] = [
   { key: 'name', label: 'Place Name', type: 'text', group: 'Identity' },
   { key: 'type', label: 'Place Type', type: 'text', group: 'GeoJSON/Place' },
   { key: 'icon', label: 'Marker Icon', type: 'text', group: 'GeoJSON/Place' },
@@ -65,7 +73,7 @@ const LOCATION_FIELDS = [
   { key: 'description', label: 'Description', type: 'long', group: 'Content' },
 ];
 
-const TIMELINE_FIELDS = [
+const TIMELINE_FIELDS: Field[] = [
   { key: 'title', label: 'Event Title', type: 'text', group: 'Identity' },
   { key: 'startDate', label: 'Start Date (ISO)', type: 'text', group: 'Schema.org/Event' },
   { key: 'endDate', label: 'End Date (ISO)', type: 'text', group: 'Schema.org/Event' },
@@ -77,7 +85,7 @@ const TIMELINE_FIELDS = [
   { key: 'description', label: 'Event Summary', type: 'long', group: 'Content' },
 ];
 
-const LORE_FIELDS = [
+const LORE_FIELDS: Field[] = [
   { key: 'term', label: 'Preferred Label', type: 'text', group: 'Identity' },
   { key: 'prefLabel', label: 'SKOS PrefLabel', type: 'text', group: 'Knowledge (SKOS)' },
   { key: 'altLabel', label: 'Alt Labels (csv)', type: 'text', group: 'Knowledge (SKOS)' },
@@ -89,7 +97,7 @@ const LORE_FIELDS = [
   { key: 'definition', label: 'Formal Definition', type: 'long', group: 'Content' },
 ];
 
-const SOURCE_FIELDS = [
+const SOURCE_FIELDS: Field[] = [
   { key: 'name', label: 'Source Title', type: 'text', group: 'Identity' },
   { key: 'dc_creator', label: 'Creator/Author', type: 'text', group: 'Dublin Core' },
   { key: 'dc_publisher', label: 'Publisher', type: 'text', group: 'Dublin Core' },
@@ -104,7 +112,7 @@ const SOURCE_FIELDS = [
   { key: 'content', label: 'Extracted Content', type: 'long', group: 'Content' },
 ];
 
-const RELATIONSHIP_FIELDS = [
+const RELATIONSHIP_FIELDS: Field[] = [
   { key: 'type', label: 'Relationship Label', type: 'text', group: 'Identity' },
   { key: 'sourceId', label: 'Source (ID)', type: 'text', group: 'Identity' },
   { key: 'targetId', label: 'Target (ID)', type: 'text', group: 'Identity' },
@@ -114,7 +122,7 @@ const RELATIONSHIP_FIELDS = [
   { key: 'description', label: 'Description', type: 'long', group: 'Content' },
 ];
 
-const UNIVERSAL_FIELDS = [
+const UNIVERSAL_FIELDS: Field[] = [
   { key: 'name', label: 'Primary Name', type: 'text', group: 'Identity' },
   { key: 'type', label: 'Classification', type: 'text', group: 'Identity' },
   { key: 'description', label: 'Core Description', type: 'long', group: 'Content' },

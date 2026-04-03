@@ -142,15 +142,7 @@ export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
           content: markdown,
           author: metadata.author,
           publicationYear: metadata.date?.split('-')[0],
-          guide: {
-            summary: metadata.summary,
-            topics: metadata.skos_tags?.related || []
-          },
-          // SKOS Mapping
-          prefLabel: metadata.title,
-          broader: metadata.skos_tags?.broader,
-          narrower: metadata.skos_tags?.narrower,
-          related: metadata.skos_tags?.related,
+          // SKOS Mapping removed as it's not in Source interface
           filename: uploadData.url,
           isAnalyzing: false
         };
@@ -214,6 +206,7 @@ export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
       const extractions = await smartExtractSources(smartPasteInput);
       const newSources: Source[] = await Promise.all(extractions.map(async ex => {
         let localUrl = '';
+        let isBroken = false;
         if (ex.url) {
           // 1. Validate Link first
           try {

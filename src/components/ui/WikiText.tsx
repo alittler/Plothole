@@ -85,7 +85,7 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
             if (!char && projectsMetadata) {
               for (const proj of projectsMetadata) {
                 if (proj.id === projectData?.id) continue;
-                const found = proj.characters?.find(c => c.name.toLowerCase().includes(name));
+                const found = (proj as any).characters?.find((c: any) => c.name.toLowerCase().includes(name));
                 if (found) {
                   char = found;
                   // Add missing properties for display if needed
@@ -204,7 +204,7 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
              if (!loc && projectsMetadata) {
               for (const proj of projectsMetadata) {
                 if (proj.id === projectData?.id) continue;
-                const foundLoc = proj.locations?.find(l => normalize(l.name) === tagSimple);
+                const foundLoc = (proj as any).locations?.find((l: any) => normalize(l.name) === tagSimple);
                 if (foundLoc) {
                   loc = foundLoc;
                   if (!loc.type) loc.type = 'Location';

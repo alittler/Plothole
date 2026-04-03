@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
-import { ManuscriptAnalysisResponse, Note, ProjectData, Character, Relationship, Artifact, LoreEntry, TimelineEvent, AnalysisOptions, Language, Plotline, MatrixCell, AppPrompts } from "../types";
+import { ManuscriptAnalysisResponse, Note, ProjectData, Character, Relationship, Artifact, LoreEntry, TimelineEvent, AnalysisOptions, AppPrompts, Language, Plotline, MatrixCell } from "../types";
 import { getAppPrompts, generateId, getApiKey, saveApiKey, getAppSettings } from "./storageService";
 
 let initializedApiKey: string | null = null;
@@ -163,6 +163,11 @@ export const DEFAULT_PROMPTS: AppPrompts = {
   STRUCTURAL_ANALYSIS: "Analyze for logical consistency and plot structure.",
   SENTIMENT: "Analyze emotional tone (-10 to 10) for events.",
   RELATIONSHIPS: "Identify relationships between characters.",
+  THEMES: "Extract primary themes.",
+  SOFT_ANCHORS: "Identify chronological anchors.",
+  PLOT_AUDIT: "Identify narrative inconsistencies.",
+  THEME_EXTRACTION: "Synthesize thematic elements.",
+  CONLANG_GEN: "Generate conlang vocabulary.",
   PROJECT_QA: "Answer the question using the provided context.",
   MISSPELLINGS_SCAN: 'Find misspellings of "{name}".',
   TOOLBOX_URL_ANALYSIS: "Analyze this URL for creative writer utility.",

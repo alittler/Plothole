@@ -1,4 +1,4 @@
-import { CalendarSystem, CalendarMonth } from '../types';
+import { CalendarSystem } from '../types';
 export { AdvancedCalendarEngine, type CalendarDate } from './advancedCalendarEngine';
 
 export const calculateDaysInYear = (months: CalendarMonth[]): number => {

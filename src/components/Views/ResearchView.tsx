@@ -36,16 +36,16 @@ interface ResearchViewProps {
 
   // Shared State
   const ideas = projectData.ideas || [];
-  const setIdeas = (newIdeas: Note[] | ((prev: Note[]) => Note[])) => {
+  const setIdeas = async (newIdeas: Note[] | ((prev: Note[]) => Note[])) => {
     const updated = typeof newIdeas === 'function' ? newIdeas(ideas) : newIdeas;
-    onUpdateProject({ ideas: updated });
+    await onUpdateProject({ ideas: updated });
   };
   
-  const setSources = (newSources: Source[] | ((prev: Source[]) => Source[])) => {
+  const setSources = async (newSources: Source[] | ((prev: Source[]) => Source[])) => {
     const currentSources = projectData.sources || [];
     const updated = typeof newSources === 'function' ? newSources(currentSources) : newSources;
     console.log("Saving sources to projectData:", updated.length);
-    onUpdateProject({ sources: updated });
+    await onUpdateProject({ sources: updated });
   };
 
   const sources = projectData.sources || [];

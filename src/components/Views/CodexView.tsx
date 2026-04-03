@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ProjectData } from '../../types';
+import { ProjectData, HierarchicalEntity } from '../../types';
 import { Book, Search, FileText, Settings, Languages, Box, Plus } from 'lucide-react';
 import { WikiText } from '../ui/WikiText';
 import { generateId } from '../../services/storageService';
@@ -53,12 +53,12 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
 
   const handleAddEntry = () => {
     if (activeTab === CodexTab.ARTIFACTS) {
-      const newArtifact = { 
-        id: generateId(), 
-        name: 'New Artifact', 
-        type: 'Item', 
-        tier: 3 as const, 
-        species: 'Relic', 
+      const newArtifact: HierarchicalEntity = {
+        id: generateId(),
+        name: 'New Artifact',
+        type: 'Artifact',
+        tier: 3,
+        species: 'Object',
         description: '',
         source: 'manual'
       };

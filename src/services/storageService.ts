@@ -245,6 +245,7 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
       return;
     } catch (e) {
       console.error("Cloud save failed, falling back to local:", e);
+      setServerHealth(false);
     }
   }
 
@@ -279,13 +280,15 @@ export const loadProjectById = async (id: string): Promise<ProjectData | null> =
       const res = await authFetch('/api/projects');
       if (res.ok) {
         const projects: ProjectData[] = await res.json();
-        return projects.find(p => p.id === id) || null;
+        const cloudProj = projects.find(p => p.id === id);
+        if (cloudProj) return cloudProj;
       }
     } catch (e) {
-      console.error("Cloud load failed, falling back to local:", e);
+      console.error("Cloud load failed:", e);
     }
   }
 
+  // Fallback to local
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_PROJECTS, 'readonly');
@@ -296,12 +299,16 @@ export const loadProjectById = async (id: string): Promise<ProjectData | null> =
 };
 
 export const getAllProjectsMetadata = async (): Promise<ProjectMetadata[]> => {
+  let cloudProjects: ProjectMetadata[] = [];
+  
   if (useCloudStorage && authFetch) {
     try {
+      console.log("[Storage] Fetching cloud projects...");
       const res = await authFetch('/api/projects');
       if (res.ok) {
         const projects: ProjectData[] = await res.json();
-        return projects.map(data => ({
+        console.log(`[Storage] Cloud fetch success: ${projects.length} projects`);
+        cloudProjects = projects.map(data => ({
           id: data.id,
           title: data.title,
           author: data.author || '',
@@ -311,21 +318,39 @@ export const getAllProjectsMetadata = async (): Promise<ProjectMetadata[]> => {
           locationCount: data.entities?.filter(e => e.type === 'Location').length || data.locations?.length || 0,
           commitCount: data.commits?.length || 0,
           backupCount: data.backups?.length || 0,
-          wordCount: data.wordCount || 0
+          wordCount: data.wordCount || 0,
+          origin: 'cloud'
         }));
+      } else {
+        console.warn(`[Storage] Cloud fetch failed with status: ${res.status}`);
       }
     } catch (e) {
-      console.error("Cloud metadata fetch failed, falling back to local:", e);
+      console.error("[Storage] Cloud metadata fetch error:", e);
     }
+  } else {
+    console.log(`[Storage] Skipping cloud fetch. useCloudStorage: ${useCloudStorage}, hasAuthFetch: ${!!authFetch}`);
   }
 
   const db = await getDB();
-  return new Promise((resolve) => {
+  const localProjects: ProjectMetadata[] = await new Promise((resolve) => {
     const tx = db.transaction(STORE_METADATA, 'readonly');
     const req = tx.objectStore(STORE_METADATA).getAll();
-    req.onsuccess = () => resolve(req.result || []);
+    req.onsuccess = () => {
+      const results = (req.result || []).map((m: ProjectMetadata) => ({ ...m, origin: 'local' as const }));
+      resolve(results);
+    };
     req.onerror = () => resolve([]);
   });
+
+  // Merge: Cloud versions take precedence for the same ID
+  const merged = [...cloudProjects];
+  for (const local of localProjects) {
+    if (!merged.some(c => c.id === local.id)) {
+      merged.push(local);
+    }
+  }
+
+  return merged.sort((a, b) => b.lastModified - a.lastModified);
 };
 
 export const deleteProject = async (id: string): Promise<void> => {
@@ -376,12 +401,15 @@ export const getAppSettings = async (): Promise<AppSettings | null> => {
 export const saveAppSettings = async (settings: AppSettings): Promise<void> => {
   if (useCloudStorage && authFetch) {
     try {
-      await authFetch('/api/globals/app_settings', {
+      const res = await authFetch('/api/globals/app_settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
       });
-    } catch (e) { /* ignore fallback */ }
+      if (!res.ok) setServerHealth(false);
+    } catch (e) { 
+      setServerHealth(false);
+    }
   }
 
   const db = await getDB();
@@ -413,12 +441,15 @@ export const getAppPrompts = async (): Promise<AppPrompts | null> => {
 export const saveAppPrompts = async (prompts: AppPrompts): Promise<void> => {
   if (useCloudStorage && authFetch) {
     try {
-      await authFetch('/api/globals/app_prompts', {
+      const res = await authFetch('/api/globals/app_prompts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(prompts)
       });
-    } catch (e) { /* ignore fallback */ }
+      if (!res.ok) setServerHealth(false);
+    } catch (e) { 
+      setServerHealth(false);
+    }
   }
 
   const db = await getDB();
@@ -457,9 +488,13 @@ export const saveGlobalNote = async (note: Note): Promise<void> => {
       });
       if (res.ok) {
         await new Promise(resolve => setTimeout(resolve, 100));
+      } else {
+        setServerHealth(false);
       }
       return;
-    } catch (e) { /* fallback */ }
+    } catch (e) { 
+      setServerHealth(false);
+    }
   }
 
   const notes = await getAllGlobalNotes();
@@ -521,12 +556,15 @@ export const getApiKey = async (name: string): Promise<string | null> => {
 export const saveApiKey = async (name: string, key: string): Promise<void> => {
   if (useCloudStorage && authFetch) {
     try {
-      await authFetch(`/api/globals/api_key_${name}`, {
+      const res = await authFetch(`/api/globals/api_key_${name}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key })
       });
-    } catch (e) { /* fallback */ }
+      if (!res.ok) setServerHealth(false);
+    } catch (e) { 
+      setServerHealth(false);
+    }
   }
 
   const db = await getDB();

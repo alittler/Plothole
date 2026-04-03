@@ -475,12 +475,12 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
-              <BookshelfView 
-                projects={projectsMetadata || []} 
-                activeProjectId={data.id || ''} 
-                currentUser={currentUser!} 
-                onSelectProject={onSelectProject || (async () => {})} 
-                onCreateProject={onCreateProject || (async () => {})} 
+              <BookshelfView
+                projects={projectsMetadata || []}
+                activeProjectId={data.id || ''}
+                currentUser={currentUser!}
+                onRefreshMetadata={async () => {}} // Placeholder for now, or we can pass it down if needed
+                onSelectProject={onSelectProject || (async () => {})}                onCreateProject={onCreateProject || (async () => {})} 
                 onUploadProject={onUploadProject || (async () => {})} 
                 onDeleteProject={onDeleteProject || (async () => {})} 
                 onOpenDashboard={onOpenDashboard || (() => {})} 

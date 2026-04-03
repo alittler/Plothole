@@ -47,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false, isServerConnected = true
 }) => {
   const { signOut } = useClerk();
-  const isCloudStorage = isCloudStorageActive() && isServerConnected;
+  const isCloudStorage = isCloudStorageActive();
   const [isSyncing, setIsSyncing] = React.useState(false);
 
   const handleSync = async () => {

@@ -363,7 +363,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">The Oracle Verbosity</label>
                   <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
-                    {(['concise', 'detailed'] as const).map(v => (
+                    {(['minimal', 'balanced', 'detailed'] as const).map(v => (
                       <button
                         key={v}
                         onClick={() => onUpdateUser({ preferences: { ...currentUser.preferences, aiVerbosity: v } })}

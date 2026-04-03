@@ -343,24 +343,42 @@ async function startServer() {
 
   // API Routes
   app.get('/api/config', (req: express.Request, res: express.Response) => {
+    console.log(`[Heartbeat] Ping from ${req.ip} at ${new Date().toLocaleTimeString()}`);
     res.json({
-      hasGeminiKey: !!(process.env.GEMINI_API_KEY),
+      hasGeminiKey: !!(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY),
       hasDb: !!(process.env.DATABASE_URL),
-      hasClerk: !!(process.env.VITE_CLERK_PUBLISHABLE_KEY),
+      hasClerk: !!(process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY),
       env: process.env.NODE_ENV || 'development',
+      serverTime: new Date().toISOString(),
+      status: 'healthy'
     });
   });
 
   app.get('/api/network-info', (req, res) => {
+    console.log(`[API] Network info requested from ${req.ip}`);
     res.json({
       ip: getLocalIp(),
       port: PORT
     });
   });
 
+  app.get('/api/debug-storage', async (req, res) => {
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
+    try {
+      const projects = await pool.query('SELECT id, user_id, title FROM projects');
+      const users = await pool.query('SELECT id, email FROM users');
+      res.json({ projects: projects.rows, users: users.rows });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
   // Protected API Routes
   app.get('/api/projects', async (req: any, res) => {
     const userId = req.auth?.userId || 'user-1';
+    console.log(`[API] Fetch projects request from user: ${userId}`);
+    
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const pool = getPool();
@@ -368,46 +386,39 @@ async function startServer() {
 
     try {
       const result = await pool.query('SELECT data FROM projects WHERE user_id = $1 ORDER BY last_modified DESC', [userId]);
+      console.log(`[API] Found ${result.rows.length} projects for user: ${userId}`);
       res.json(result.rows.map(row => row.data));
     } catch (err) {
+      console.error(`[API] ERROR fetching projects for ${userId}:`, err);
       res.status(500).json({ error: 'Failed to fetch projects' });
     }
   });
 
   app.post('/api/projects', async (req: any, res) => {
     const userId = req.auth?.userId || 'user-1';
+    console.log(`[API] Save project request from user: ${userId}`);
+    
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
 
     const project = req.body;
+    console.log(`[API] Saving project: ${project.id} (${project.title})`);
+    
     try {
       // Ensure user exists in our local table
-      await pool.query('INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [userId, 'user@example.com']); // Email would ideally come from clerk webhook or token
+      await pool.query('INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [userId, 'user@example.com']); 
 
-      await pool.query(
+      const result = await pool.query(
         'INSERT INTO projects (id, user_id, title, data, last_modified) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET data = $4, title = $3, last_modified = $5',
         [project.id, userId, project.title, project, Date.now()]
       );
-
-      // Send notification if it's a new project and Resend is configured
-      if (resend && !project.lastModified) {
-        try {
-          await resend.emails.send({
-            from: 'Plothole <onboarding@resend.dev>',
-            to: 'alittler86@gmail.com', // User's email from context
-            subject: 'New Project Created: ' + project.title,
-            html: `<p>You just created a new project in Plothole: <strong>${project.title}</strong></p>`
-          });
-        } catch (e) {
-          console.error("Failed to send email:", e);
-        }
-      }
-
+      
+      console.log(`[API] Project ${project.id} saved successfully to Postgres. Rows affected: ${result.rowCount}`);
       res.json({ success: true });
     } catch (err) {
-      console.error(err);
+      console.error(`[API] ERROR saving project ${project.id}:`, err);
       res.status(500).json({ error: 'Failed to save project' });
     }
   });

@@ -76,6 +76,26 @@ export interface HierarchicalEntity {
   nationality?: string;
   affiliation?: string;
   knowsAbout?: string[];
+  birthPlace?: string; // Legacy mapping
+  homeLocation?: string; // Legacy mapping
+
+  // Event / Timeline data
+  startDate?: string;
+  endDate?: string;
+  eventStatus?: string;
+  attendees?: any[];
+  duration?: string;
+
+  // Dublin Core / Bibliographic data
+  dc_creator?: string;
+  dc_publisher?: string;
+  dc_title?: string;
+  dc_date?: string;
+  bibtex_type?: string;
+  bibtex_journal?: string;
+  bibtex_volume?: string;
+  bibtex_number?: string;
+  bibtex_pages?: string;
 
   // SKOS Compatibility
   prefLabel?: string;
@@ -342,6 +362,7 @@ export interface TimelineEvent {
   charactersInvolved: string[]; // Maps to attendees
   location: string;
   source?: 'manual' | 'ai';
+  isSoftAnchor?: boolean;
 
   // Schema.org/Event Compatibility
   startDate?: string; // ISO-8601
@@ -388,6 +409,10 @@ export interface CalendarSystem {
   name: string;
   months: any[];
   eras: any[];
+  weekDays?: string[];
+  daysPerWeek?: number;
+  hoursPerDay?: number;
+  currentEpochDay?: number;
 }
 
 export interface Commit {
@@ -396,6 +421,28 @@ export interface Commit {
   hash: string;
   message: string;
   snapshot?: Chapter[];
+  diff?: string;
+}
+
+export type Language = string;
+
+export interface Plotline {
+  id: string;
+  title: string;
+  color: string;
+}
+
+export interface MatrixCell {
+  id: string;
+  content: string;
+  eventId?: string;
+  plotlineId?: string;
+}
+
+export interface CalendarMonth {
+  id: string;
+  name: string;
+  days: number;
 }
 
 export interface BackupStatus {
@@ -419,6 +466,7 @@ export interface ProjectMetadata {
   backupCount: number;
   wordCount: number;
   coverImage?: string;
+  origin?: 'cloud' | 'local';
 }
 
 export interface User {
@@ -451,6 +499,24 @@ export interface AppSettings {
 
 export interface AppPrompts {
   GENERAL_AND_CHARACTERS: string;
+  PLOT_MATRIX_ANALYSIS: string;
+  AI_MODEL: string;
+  NOTE_ENHANCEMENT: string;
+  PROCESS_RAW_NOTES: string;
+  TIMELINE: string;
+  LOCATIONS: string;
+  ARTIFACTS: string;
+  LORE: string;
+  STRUCTURAL_ANALYSIS: string;
+  THEMES: string;
+  RELATIONSHIPS: string;
+  SOFT_ANCHORS: string;
+  SENTIMENT: string;
+  PLOT_AUDIT: string;
+  THEME_EXTRACTION: string;
+  CONLANG_GEN: string;
+  PROJECT_QA: string;
+  [key: string]: string | undefined;
 }
 
 export interface ToolboxLink {
@@ -490,11 +556,14 @@ export interface ManuscriptAnalysisResponse {
   summary: string;
   themes: string[];
   characters: any[];
+  minorCharacters?: any[];
   locations: any[];
   timeline: any[];
   artifacts: any[];
   lore: any[];
   relationships?: any[];
+  coverDescription?: string;
+  referenceUrls?: string[];
 }
 
 export interface AnalysisOptions {

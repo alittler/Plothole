@@ -300,7 +300,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                       <p className="text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{commit.message}</p>
                       <div className="flex items-center justify-between">
-                        <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">{commit.diff}</span>
+                        <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">{(commit as any).diff}</span>
                         <button 
                           onClick={() => onRestoreCommit(commit)}
                           className="text-[8px] md:text-[10px] font-black text-white bg-indigo-600 px-2 md:px-3 py-1 rounded-lg uppercase tracking-widest hover:bg-indigo-700 transition-colors"

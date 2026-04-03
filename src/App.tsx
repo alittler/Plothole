@@ -71,6 +71,23 @@ const App: React.FC = () => {
   const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
   const { isSignedIn, getToken } = useAuth();
 
+  const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
+    try {
+      const token = await getToken();
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response;
+    } catch (err) {
+      console.error(`[Auth] Error fetching token for ${url}:`, err);
+      throw err;
+    }
+  }, [getToken]);
+
   const [projectsMetadata, setProjectsMetadata] = useState<ProjectMetadata[]>([]);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
@@ -132,10 +149,12 @@ const App: React.FC = () => {
 
   const refreshMetadata = useCallback(async () => {
     console.log('[App] Refreshing metadata...');
+    // Ensure storage is configured correctly based on current state
+    setCloudStorageEnabled(isSignedIn === true, fetchWithAuth);
     const meta = await getAllProjectsMetadata();
     console.log(`[App] Received ${meta.length} projects from storage`);
     setProjectsMetadata(meta);
-  }, []);
+  }, [isSignedIn, fetchWithAuth]);
 
   const handleManualSave = useCallback(async () => {
     if (!projectData) return;
@@ -194,14 +213,13 @@ const App: React.FC = () => {
   const updateProjectData = useCallback(async (updatesOrFn: Partial<ProjectData> | ((prev: ProjectData) => Partial<ProjectData>)) => {
     if (!projectData) return;
     
-    // Use functional update to ensure we always have the latest state for the merge
-    setProjectData(prev => {
-      if (!prev) return null;
-      
+    try {
+      // 1. Calculate updates
+      const prev = projectData;
       const updates = typeof updatesOrFn === 'function' ? updatesOrFn(prev) : updatesOrFn;
-      console.log("Project update requested:", updates);
+      console.log("[App] Project update requested:", Object.keys(updates));
 
-      // Auto-generate change log entry for notable entities
+      // 2. Auto-generate change log entry for notable entities
       let newLog: ChangeLogEntry | null = null;
       if (updates.characters && updates.characters.length !== prev.characters?.length) {
         const added = updates.characters.find(c => !prev.characters?.some(pc => pc.id === c.id));
@@ -214,20 +232,26 @@ const App: React.FC = () => {
         if (added) newLog = { id: generateId(), timestamp: Date.now(), entityType: 'Timeline', entityName: added.title, entityId: added.id, action: 'Created' };
       }
 
-      const baseUpdated = {
+      const baseUpdated: ProjectData = {
         ...prev,
         ...updates,
         changeLog: newLog ? [...(prev.changeLog || []), newLog] : prev.changeLog,
         lastModified: Date.now()
       };
 
-      // We handle Git and integrity in a separate effect or after this update if needed,
-      // but for immediate UI responsiveness, we return the merged state.
-      saveProjectData(baseUpdated as ProjectData);
-      return baseUpdated as ProjectData;
-    });
+      // 3. Update local state immediately for UI responsiveness
+      setProjectData(baseUpdated);
 
-    await refreshMetadata();
+      // 4. Persist to storage (Cloud/Local) and wait for confirmation
+      await saveProjectData(baseUpdated);
+      console.log("[App] Project data persisted successfully");
+
+      // 5. Refresh project list metadata
+      await refreshMetadata();
+    } catch (err) {
+      console.error("[App] FAILED to update project data:", err);
+      // We could add a global notification here
+    }
   }, [projectData, refreshMetadata]);
 
   const handleUpdateProcessedFiles = async () => {
@@ -439,9 +463,18 @@ const App: React.FC = () => {
   }, [appSettings.appName]);
 
   useEffect(() => {
+    // Wait for Clerk to determine auth status
+    if (!isClerkLoaded) return;
+
     const init = async () => {
       try {
-        console.log(`[Init] Initializing app data (isSignedIn: ${isSignedIn})`);
+        console.log(`[Init] Clerk loaded: ${isClerkLoaded}, SignedIn: ${isSignedIn}, UserId: ${clerkUser?.id}`);
+        
+        // Configure storage first
+        console.log(`[Init] Configuring storage. Cloud enabled: ${isSignedIn === true}`);
+        setCloudStorageEnabled(isSignedIn === true, fetchWithAuth);
+
+        console.log(`[Init] Fetching metadata...`);
         const [meta, notes, resources, prompts, settings] = await Promise.all([
           getAllProjectsMetadata(),
           getAllGlobalNotes(),
@@ -449,7 +482,9 @@ const App: React.FC = () => {
           getAppPrompts(),
           getAppSettings()
         ]);
-        setProjectsMetadata(meta);
+        
+        console.log(`[Init] Received ${meta?.length || 0} projects`);
+        setProjectsMetadata(meta || []);
         setGlobalNotes(notes);
         setGlobalResources(resources);
         if (prompts) setAppPromptsState(prev => ({ ...prev, ...prompts }));
@@ -483,7 +518,7 @@ const App: React.FC = () => {
       }
     };
     init();
-  }, [checkApiKey, isSignedIn]); // Added isSignedIn to trigger reload on login
+  }, [checkApiKey, isSignedIn, isClerkLoaded, fetchWithAuth]); // Re-run when auth state or Clerk status changes
 
 
   useEffect(() => {
@@ -575,37 +610,17 @@ const App: React.FC = () => {
     }
   };
 
-  const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
-    try {
-      const token = await getToken();
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          ...options.headers,
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      return response;
-    } catch (err) {
-      console.error(`[Auth] Error fetching token for ${url}:`, err);
-      throw err;
-    }
-  }, [getToken]);
-
-  // Sync StorageService with Auth
-  useEffect(() => {
-    setCloudStorageEnabled(isSignedIn === true, fetchWithAuth);
-  }, [isSignedIn, fetchWithAuth]);
-
   // Server Health Heartbeat
   useEffect(() => {
     const checkHealth = async () => {
       try {
         const res = await fetch('/api/config');
         const healthy = res.ok;
+        if (!healthy) console.warn("[Heartbeat] Server returned non-OK status:", res.status);
         setServerHealth(healthy);
         setIsServerConnected(healthy);
       } catch (e) {
+        console.error("[Heartbeat] Failed to reach server:", e);
         setServerHealth(false);
         setIsServerConnected(false);
       }
@@ -1087,12 +1102,12 @@ const handleRestoreCommit = async (commit: Commit) => {
 
     switch (currentView) {
       case ViewType.BOOKSHELF: 
-        return <BookshelfView 
-          projects={projectsMetadata} 
-          activeProjectId={projectData?.id || ''} 
-          currentUser={currentUser} 
-          onSelectProject={async (id) => { 
-            const d = await loadProjectById(id); 
+        return <BookshelfView
+          projects={projectsMetadata}
+          activeProjectId={projectData?.id || ''}
+          currentUser={currentUser}
+          onRefreshMetadata={refreshMetadata}
+          onSelectProject={async (id) => {            const d = await loadProjectById(id); 
             if (d) { 
               setProjectData(d); 
               setIsDashboardModalOpen(true);
