@@ -6,7 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { initDb, getPool } from './src/db.js';
-import { uploadToSupabase, supabase } from './src/services/supabaseService.js';
+import { uploadToAppwrite, storage as appwriteStorage } from './src/services/appwriteService.js';
 // @ts-ignore
 import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
 import { Resend } from 'resend';
@@ -91,18 +91,21 @@ async function startServer() {
   app.use('/uploads', express.static(uploadDir));
   app.use('/source-files', express.static(sourceFilesRootDir));
   
+  const uploadsBucket = process.env.APPWRITE_UPLOADS_BUCKET || 'uploads';
+  const sourceBucket = process.env.APPWRITE_SOURCE_BUCKET || 'source';
+
   // Local File Upload API
   app.post('/api/upload', upload.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     
-    if (supabase) {
+    if (appwriteStorage) {
       try {
         const fileContent = fs.readFileSync(req.file.path);
-        const url = await uploadToSupabase('uploads', req.file.filename, fileContent, req.file.mimetype);
+        const url = await uploadToAppwrite(uploadsBucket, req.file.filename, fileContent);
         fs.unlinkSync(req.file.path); // Clean up temp file
         return res.json({ url });
       } catch (err) {
-        console.error('Supabase upload failed:', err);
+        console.error('Appwrite upload failed:', err);
         return res.status(500).json({ error: 'Cloud upload failed' });
       }
     }
@@ -138,14 +141,16 @@ async function startServer() {
       }
     }
 
-    if (supabase) {
+    if (appwriteStorage) {
       try {
         const fileContent = fs.readFileSync(filePath);
-        const supabasePath = projectId ? `${projectId}/${filename}` : filename;
-        publicUrl = await uploadToSupabase('source', supabasePath, fileContent, req.file.mimetype);
+        // Prefix with projectId if available, but Appwrite IDs are simpler, 
+        // so we'll just use a safe version of the filename as the ID.
+        const appwriteFilename = projectId ? `${projectId}_${filename}` : filename;
+        publicUrl = await uploadToAppwrite(sourceBucket, appwriteFilename, fileContent);
         fs.unlinkSync(filePath); // Clean up local file after cloud upload
       } catch (err) {
-        console.error('Supabase source upload failed:', err);
+        console.error('Appwrite source upload failed:', err);
         return res.status(500).json({ error: 'Cloud source upload failed' });
       }
     }
@@ -185,24 +190,24 @@ async function startServer() {
       fs.writeFileSync(mdPath, content);
       mdUrl = projectId ? `/source-files/${projectId}/${mdFilename}` : `/source-files/${mdFilename}`;
       
-      if (supabase) {
+      if (appwriteStorage) {
         try {
-          const supabaseMdPath = projectId ? `${projectId}/${mdFilename}` : mdFilename;
-          mdUrl = await uploadToSupabase('source', supabaseMdPath, Buffer.from(content), 'text/markdown');
+          const appwriteMdFilename = projectId ? `${projectId}_${mdFilename}` : mdFilename;
+          mdUrl = await uploadToAppwrite(sourceBucket, appwriteMdFilename, Buffer.from(content));
           fs.unlinkSync(mdPath);
         } catch (err) {
-          console.error('Supabase MD upload failed:', err);
+          console.error('Appwrite MD upload failed:', err);
         }
       }
     }
 
-    if (supabase) {
+    if (appwriteStorage) {
       try {
-        const supabaseMetaPath = projectId ? `${projectId}/${metaFilename}` : metaFilename;
-        publicMetaUrl = await uploadToSupabase('source', supabaseMetaPath, Buffer.from(metaContent), 'application/json');
+        const appwriteMetaFilename = projectId ? `${projectId}_${metaFilename}` : metaFilename;
+        publicMetaUrl = await uploadToAppwrite(sourceBucket, appwriteMetaFilename, Buffer.from(metaContent));
         fs.unlinkSync(metaPath);
       } catch (err) {
-        console.error('Supabase Meta upload failed:', err);
+        console.error('Appwrite Meta upload failed:', err);
       }
     }
 
