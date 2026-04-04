@@ -1,4 +1,5 @@
-import { Client, Storage, InputFile } from 'node-appwrite';
+import { Client, Storage } from 'node-appwrite';
+import { InputFile } from 'node-appwrite/file';
 
 const endpoint = process.env.APPWRITE_ENDPOINT || '';
 const projectId = process.env.APPWRITE_PROJECT_ID || '';

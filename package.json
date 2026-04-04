@@ -21,6 +21,7 @@
     "@tiptap/starter-kit": "^3.20.6",
     "@vitejs/plugin-react": "^5.0.4",
     "@xyflow/react": "^12.10.1",
+    "appwrite": "^24.1.1",
     "better-sqlite3": "^12.4.1",
     "cors": "^2.8.6",
     "diff": "^8.0.4",
