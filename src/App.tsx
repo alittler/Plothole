@@ -1735,10 +1735,12 @@ const handleRestoreCommit = async (commit: Commit) => {
     </div>
   );
 
+  const [isGuest, setIsGuest] = useState(false);
+
   return (
     <>
-      {!isSignedIn ? (
-        <SignInPage />
+      {!isSignedIn && !isGuest ? (
+        <SignInPage onGuestAccess={() => setIsGuest(true)} />
       ) : (
         renderAppContent()
       )}
