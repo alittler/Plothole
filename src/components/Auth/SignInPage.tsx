@@ -1,43 +1,62 @@
 import React, { useState } from 'react';
-import { useSignIn } from '@clerk/clerk-react';
-import { motion } from 'motion/react';
-import { Sparkles, Shield, Mail, Lock, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import { useSignIn, useSignUp } from '@clerk/clerk-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Sparkles, Shield, Mail, Lock, Loader2, AlertCircle, ArrowRight, UserPlus, Key } from 'lucide-react';
 
 export const SignInPage: React.FC<{ appName?: string, isReady?: boolean }> = () => {
-  const { isLoaded, signIn, setActive } = useSignIn();
+  const { isLoaded: isSignInLoaded, signIn, setActive: setSignInActive } = useSignIn();
+  const { isLoaded: isSignUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
+  
+  const [isSignUpMode, setIsSignUpMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCustomSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded) return;
+    if (isSignUpMode ? !isSignUpLoaded : !isSignInLoaded) return;
 
     setIsPending(true);
     setError(null);
 
     try {
-      const result = await signIn.create({
-        identifier: email,
-        password,
-      });
+      if (isSignUpMode) {
+        const result = await signUp.create({
+          emailAddress: email,
+          password,
+        });
 
-      if (result.status === 'complete') {
-        await setActive({ session: result.createdSessionId });
+        if (result.status === 'complete') {
+          await setSignUpActive({ session: result.createdSessionId });
+        } else {
+          // This usually happens if email verification is required
+          setError('Verification required. Please check your email or use the official Clerk UI.');
+        }
       } else {
-        setError('Additional steps required. Please use the standard login.');
+        const result = await signIn.create({
+          identifier: email,
+          password,
+        });
+
+        if (result.status === 'complete') {
+          await setSignInActive({ session: result.createdSessionId });
+        } else {
+          setError('Additional steps required. Please use the standard login.');
+        }
       }
     } catch (err: any) {
-      setError(err.errors?.[0]?.message || 'Invalid credentials. Please try again.');
+      setError(err.errors?.[0]?.message || 'An error occurred. Please try again.');
     } finally {
       setIsPending(false);
     }
   };
 
   const handleSocialLogin = (strategy: 'oauth_google' | 'oauth_github') => {
-    if (!isLoaded) return;
-    signIn.authenticateWithRedirect({
+    const client = isSignUpMode ? signUp : signIn;
+    if (!client) return;
+    
+    client.authenticateWithRedirect({
       strategy,
       redirectUrl: '/sso-callback',
       redirectUrlComplete: '/'
@@ -73,11 +92,11 @@ export const SignInPage: React.FC<{ appName?: string, isReady?: boolean }> = () 
           </h1>
           <div className="h-px w-10 md:w-12 bg-indigo-500/50 mb-2 md:mb-4" />
           <p className="text-slate-400 text-[10px] md:text-sm font-bold uppercase tracking-[0.3em]">
-            Story Architect Terminal
+            {isSignUpMode ? 'Establish New Identity' : 'Story Architect Terminal'}
           </p>
         </div>
 
-        {/* Fully Custom Embedded Login Card */}
+        {/* Auth Card */}
         <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] md:rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-white/5 overflow-hidden p-6 md:p-10 space-y-6 md:space-y-8">
           <div className="grid grid-cols-1 gap-3">
             <button 
@@ -91,10 +110,12 @@ export const SignInPage: React.FC<{ appName?: string, isReady?: boolean }> = () 
 
           <div className="relative flex items-center justify-center">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100 dark:border-slate-800"></div></div>
-            <span className="relative px-4 bg-white dark:bg-slate-900 text-[8px] md:text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Manual Override</span>
+            <span className="relative px-4 bg-white dark:bg-slate-900 text-[8px] md:text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
+              {isSignUpMode ? 'Identity Genesis' : 'Manual Override'}
+            </span>
           </div>
 
-          <form onSubmit={handleCustomSubmit} className="space-y-4 md:space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
             <div className="space-y-3 md:space-y-4">
               <div className="space-y-1.5 md:space-y-2">
                 <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Terminal ID</label>
@@ -127,34 +148,57 @@ export const SignInPage: React.FC<{ appName?: string, isReady?: boolean }> = () 
               </div>
             </div>
 
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-3 p-2 md:p-3 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-xl border border-rose-100 dark:border-rose-900/30 text-[8px] md:text-[10px] font-bold uppercase tracking-wider"
-              >
-                <AlertCircle size={12} className="shrink-0" />
-                {error}
-              </motion.div>
-            )}
-
-            <button
-              type="submit"
-              disabled={!isLoaded || isPending}
-              className="w-full py-3.5 md:py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] md:text-xs shadow-lg shadow-indigo-600/20 transition-all active:scale-95 flex items-center justify-center gap-3"
-            >
-              {isPending ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <>Authorize Access <ArrowRight size={14} /></>
+            <AnimatePresence mode="wait">
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex items-center gap-3 p-2 md:p-3 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-xl border border-rose-100 dark:border-rose-900/30 text-[8px] md:text-[10px] font-bold uppercase tracking-wider"
+                >
+                  <AlertCircle size={12} className="shrink-0" />
+                  {error}
+                </motion.div>
               )}
-            </button>
+            </AnimatePresence>
+
+            <div className="space-y-4">
+              <button
+                type="submit"
+                disabled={isPending || (isSignUpMode ? !isSignUpLoaded : !isSignInLoaded)}
+                className="w-full py-3.5 md:py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] md:text-xs shadow-lg shadow-indigo-600/20 transition-all active:scale-95 flex items-center justify-center gap-3"
+              >
+                {isPending ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <>
+                    {isSignUpMode ? 'Create Identity' : 'Authorize Access'} 
+                    {isSignUpMode ? <UserPlus size={14} /> : <ArrowRight size={14} />}
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUpMode(!isSignUpMode);
+                  setError(null);
+                }}
+                className="w-full text-center text-slate-500 hover:text-indigo-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+              >
+                {isSignUpMode ? (
+                  <><Key size={12} /> Already have a terminal ID?</>
+                ) : (
+                  <><UserPlus size={12} /> Request new terminal ID</>
+                )}
+              </button>
+            </div>
           </form>
         </div>
 
         {/* Footer info */}
         <p className="mt-6 md:mt-8 text-center text-slate-600 text-[8px] md:text-[10px] font-black uppercase tracking-widest">
-          &copy; 2026 Narrative Intelligence Systems &bull; v1.0.5
+          &copy; 2026 Narrative Intelligence Systems &bull; v1.0.6
         </p>
       </motion.div>
     </div>
