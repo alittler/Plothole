@@ -423,11 +423,8 @@ async function startServer() {
 
   // Protected API Routes
   app.get('/api/projects', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
-    console.log(`[API] Fetch projects request from user: ${userId}`);
-    
+    const userId = req.auth?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
 
@@ -442,11 +439,8 @@ async function startServer() {
   });
 
   app.post('/api/projects', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
-    console.log(`[API] Save project request from user: ${userId}`);
-    
+    const userId = req.auth?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
 
@@ -471,8 +465,11 @@ async function startServer() {
   });
 
   app.delete('/api/projects/:id', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+    const userId = req.auth?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+
+
 
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
@@ -487,8 +484,11 @@ async function startServer() {
 
   // Global Notes
   app.get('/api/notes', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+    const userId = req.auth?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+
+
 
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
@@ -502,8 +502,11 @@ async function startServer() {
   });
 
   app.post('/api/notes', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+    const userId = req.auth?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+
+
 
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
@@ -524,9 +527,8 @@ async function startServer() {
 
   // App Globals (Settings, Prompts, etc.)
   app.get('/api/globals/:id', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
-    const pool = getPool();
-    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
+    const userId = req.auth?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
       const result = await pool.query('SELECT data FROM app_globals WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
@@ -541,9 +543,8 @@ async function startServer() {
   });
 
   app.post('/api/globals/:id', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
-    const pool = getPool();
-    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
+    const userId = req.auth?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const data = req.body;
     const now = Date.now();
@@ -564,8 +565,11 @@ async function startServer() {
   });
 
   app.post('/api/backup-email', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+    const userId = req.auth?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+
+
 
     const { projectTitle, wordCount, hash, backupData } = req.body;
     if (!resend) return res.status(503).json({ error: 'Resend not configured' });
