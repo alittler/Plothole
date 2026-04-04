@@ -118,7 +118,7 @@ export const SignInPage: React.FC<{ appName?: string, isReady?: boolean }> = () 
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
             <div className="space-y-3 md:space-y-4">
               <div className="space-y-1.5 md:space-y-2">
-                <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Terminal ID</label>
+                <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Email Address</label>
                 <div className="relative group">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors" size={16} />
                   <input 
@@ -133,7 +133,7 @@ export const SignInPage: React.FC<{ appName?: string, isReady?: boolean }> = () 
               </div>
 
               <div className="space-y-1.5 md:space-y-2">
-                <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Secure Passkey</label>
+                <label className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password</label>
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 transition-colors" size={16} />
                   <input 
@@ -187,9 +187,9 @@ export const SignInPage: React.FC<{ appName?: string, isReady?: boolean }> = () 
                 className="w-full text-center text-slate-500 hover:text-indigo-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
               >
                 {isSignUpMode ? (
-                  <><Key size={12} /> Already have a terminal ID?</>
+                  <><Key size={12} /> Already have an account? Sign In</>
                 ) : (
-                  <><UserPlus size={12} /> Request new terminal ID</>
+                  <><UserPlus size={12} /> Don't have an account? Sign Up</>
                 )}
               </button>
             </div>
@@ -198,7 +198,7 @@ export const SignInPage: React.FC<{ appName?: string, isReady?: boolean }> = () 
 
         {/* Footer info */}
         <p className="mt-6 md:mt-8 text-center text-slate-600 text-[8px] md:text-[10px] font-black uppercase tracking-widest">
-          &copy; 2026 Narrative Intelligence Systems &bull; v1.0.6
+          &copy; 2026 Narrative Intelligence Systems &bull; v1.0.7
         </p>
       </motion.div>
     </div>
