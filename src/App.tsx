@@ -1346,6 +1346,7 @@ const handleRestoreCommit = async (commit: Commit) => {
         hideDesktopActions={!isSidebarCollapsed}
         isFullscreen={isMapFullscreen}
         isServerConnected={isServerConnected}
+        isCloudStorage={isCloudStorageActive()}
       />
 
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">

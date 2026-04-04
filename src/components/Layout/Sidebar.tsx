@@ -26,6 +26,7 @@ interface SidebarProps {
   hideDesktopActions?: boolean;
   isFullscreen?: boolean;
   isServerConnected?: boolean;
+  isCloudStorage?: boolean;
 }
 
 interface NavItem {
@@ -44,10 +45,9 @@ interface SidebarSection {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, onSave, appName = 'PLOTHOLE',
-  sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false, isServerConnected = true
+  sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false, isServerConnected = true, isCloudStorage = false
 }) => {
   const { signOut } = useClerk();
-  const isCloudStorage = isCloudStorageActive();
   const [isSyncing, setIsSyncing] = React.useState(false);
 
   const handleSync = async () => {
