@@ -6,6 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { initDb, getPool } from './src/db.js';
+import { uploadToSupabase, supabase } from './src/services/supabaseService.js';
 // @ts-ignore
 import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
 import { Resend } from 'resend';
@@ -80,7 +81,7 @@ function getLocalIp() {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
   // Initialize DB
   await initDb();
@@ -91,8 +92,21 @@ async function startServer() {
   app.use('/source-files', express.static(sourceFilesRootDir));
   
   // Local File Upload API
-  app.post('/api/upload', upload.single('image'), (req, res) => {
+  app.post('/api/upload', upload.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    
+    if (supabase) {
+      try {
+        const fileContent = fs.readFileSync(req.file.path);
+        const url = await uploadToSupabase('uploads', req.file.filename, fileContent, req.file.mimetype);
+        fs.unlinkSync(req.file.path); // Clean up temp file
+        return res.json({ url });
+      } catch (err) {
+        console.error('Supabase upload failed:', err);
+        return res.status(500).json({ error: 'Cloud upload failed' });
+      }
+    }
+    
     res.json({ url: `/uploads/${req.file.filename}` });
   });
 
@@ -103,7 +117,7 @@ async function startServer() {
     const filename = req.file.filename;
     const projectDir = projectId ? path.join(sourceFilesRootDir, projectId) : sourceFilesRootDir;
     const filePath = path.join(projectDir, filename);
-    const publicUrl = projectId ? `/source-files/${projectId}/${filename}` : `/source-files/${filename}`;
+    let publicUrl = projectId ? `/source-files/${projectId}/${filename}` : `/source-files/${filename}`;
     let extractedText = '';
 
     // If it's a PDF, extract text on the server using pdf-parse
@@ -124,6 +138,18 @@ async function startServer() {
       }
     }
 
+    if (supabase) {
+      try {
+        const fileContent = fs.readFileSync(filePath);
+        const supabasePath = projectId ? `${projectId}/${filename}` : filename;
+        publicUrl = await uploadToSupabase('source', supabasePath, fileContent, req.file.mimetype);
+        fs.unlinkSync(filePath); // Clean up local file after cloud upload
+      } catch (err) {
+        console.error('Supabase source upload failed:', err);
+        return res.status(500).json({ error: 'Cloud source upload failed' });
+      }
+    }
+
     console.log('Source upload success:', filename, 'Project:', projectId);
     res.json({ 
       url: publicUrl,
@@ -133,7 +159,7 @@ async function startServer() {
   });
 
   // Sidecar Metadata API
-  app.post('/api/source-meta', (req, res) => {
+  app.post('/api/source-meta', async (req, res) => {
     const { filename, metadata, projectId, content } = req.body;
     if (!filename || !metadata) return res.status(400).json({ error: 'Filename and metadata required' });
 
@@ -144,19 +170,40 @@ async function startServer() {
     // Save Metadata Index (index.json)
     const metaFilename = `${baseName}.index.json`;
     const metaPath = path.join(projectDir, metaFilename);
-    const publicMetaUrl = projectId ? `/source-files/${projectId}/${metaFilename}` : `/source-files/${metaFilename}`;
+    let publicMetaUrl = projectId ? `/source-files/${projectId}/${metaFilename}` : `/source-files/${metaFilename}`;
 
     if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
 
-    fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
+    const metaContent = JSON.stringify(metadata, null, 2);
+    fs.writeFileSync(metaPath, metaContent);
 
-    let mdUrl = null;
+    let mdUrl: string | null = null;
     // Save Plaintext Sidecar (extracted.md)
     if (content) {
       const mdFilename = `${baseName}.extracted.md`;
       const mdPath = path.join(projectDir, mdFilename);
       fs.writeFileSync(mdPath, content);
       mdUrl = projectId ? `/source-files/${projectId}/${mdFilename}` : `/source-files/${mdFilename}`;
+      
+      if (supabase) {
+        try {
+          const supabaseMdPath = projectId ? `${projectId}/${mdFilename}` : mdFilename;
+          mdUrl = await uploadToSupabase('source', supabaseMdPath, Buffer.from(content), 'text/markdown');
+          fs.unlinkSync(mdPath);
+        } catch (err) {
+          console.error('Supabase MD upload failed:', err);
+        }
+      }
+    }
+
+    if (supabase) {
+      try {
+        const supabaseMetaPath = projectId ? `${projectId}/${metaFilename}` : metaFilename;
+        publicMetaUrl = await uploadToSupabase('source', supabaseMetaPath, Buffer.from(metaContent), 'application/json');
+        fs.unlinkSync(metaPath);
+      } catch (err) {
+        console.error('Supabase Meta upload failed:', err);
+      }
     }
 
     res.json({ success: true, url: publicMetaUrl, mdUrl });
@@ -543,19 +590,26 @@ async function startServer() {
     res.json({ status: 'delivered' });
   });
 
+  const isProd = process.env.NODE_ENV === 'production';
+
   // Vite middleware for development
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'spa',
-  });
-  app.use(vite.middlewares);
+  let vite: any;
+  if (!isProd) {
+    vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    // Serve static files from dist in production
+    app.use(express.static(path.resolve(__dirname, 'dist')));
+  }
 
   app.get('*', async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
       let template;
-      let isProd = process.env.NODE_ENV === 'production';
       
       if (!isProd) {
         // In development, let Vite handle the HTML transformation

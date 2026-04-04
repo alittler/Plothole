@@ -200,10 +200,10 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
       <Modal 
         isOpen={projectToDelete !== null} 
         onClose={() => setProjectToDelete(null)} 
-        onConfirm={() => {
+        onConfirm={async () => {
           if (projectToDelete) {
             console.log(`[BookshelfView] Confirming deletion of ${projectToDelete}`);
-            onDeleteProject(projectToDelete);
+            await onDeleteProject(projectToDelete);
             setProjectToDelete(null);
           }
         }}
@@ -212,10 +212,10 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
           <div className="flex gap-4">
             <button onClick={() => setProjectToDelete(null)} className="ph-button-secondary">Cancel</button>
             <button 
-              onClick={() => {
+              onClick={async () => {
                 if (projectToDelete) {
                   console.log(`[BookshelfView] Delete Forever clicked for ${projectToDelete}`);
-                  onDeleteProject(projectToDelete);
+                  await onDeleteProject(projectToDelete);
                   setProjectToDelete(null);
                 }
               }} 

@@ -169,14 +169,15 @@ const App: React.FC = () => {
       console.log(`[App] storageService.deleteProject(${id}) resolved`);
       await refreshMetadata();
       console.log('[App] refreshMetadata() resolved');
-      
+
       if (projectData?.id === id) {
         console.log(`[App] Deleting active project, clearing projectData`);
         setProjectData(null);
       }
       console.log(`[App] Deletion of project ${id} complete. Current projectData.id: ${projectData?.id}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(`[App] Failed to delete project ${id}:`, err);
+      alert(`Failed to delete project: ${err.message || String(err)}`);
     }
   }, [projectData?.id, refreshMetadata]);
 

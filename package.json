@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --exclude source --exclude public server.ts",
+    "start": "NODE_ENV=production tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
@@ -15,6 +16,7 @@
     "@clerk/clerk-sdk-node": "^5.1.6",
     "@google/genai": "^1.29.0",
     "@sentry/node": "^10.43.0",
+    "@supabase/supabase-js": "^2.101.1",
     "@tailwindcss/vite": "^4.1.14",
     "@tiptap/react": "^3.20.6",
     "@tiptap/starter-kit": "^3.20.6",
