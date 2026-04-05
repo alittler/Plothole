@@ -4,7 +4,6 @@ import { HashRouter } from 'react-router-dom';
 import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App.tsx';
 import './index.css';
-import './lib/appwrite.ts';
 
 const PUBLISHABLE_KEY = (import.meta as any).env.VITE_CLERK_PUBLISHABLE_KEY || 
                         (import.meta as any).env.VITE_PUBLIC_CLERK_PUBLISHABLE_KEY ||

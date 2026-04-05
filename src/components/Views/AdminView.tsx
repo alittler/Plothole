@@ -5,7 +5,7 @@ import {
   Shield, Sparkles, Save, Database, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, Globe, Loader2, RotateCcw, Target, Wrench
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, Globe, Loader2, RotateCcw, Target, Wrench, Upload
 } from 'lucide-react';
 
 import { UnifiedDatabaseView } from './UnifiedDatabaseView';
@@ -186,6 +186,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <button onClick={() => onSavePrompts(prompts)} className="w-full py-4 bg-amber-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-amber-700 transition-all shadow-xl shadow-amber-600/20 flex items-center justify-center gap-3"><Save size={20} /> Update AI Schema</button>
               </div>
             </section>
+
+            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-cyan-600 text-white rounded-2xl shadow-lg shadow-cyan-600/20"><Upload size={28} /></div>
+                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">S3 Upload Test</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Test AWS S3 file upload and storage.</p></div>
+              </div>
+              <FileUploadTest />
+            </section>
           </div>
         );
 
@@ -362,6 +370,177 @@ export const AdminView: React.FC<AdminViewProps> = ({
           {renderTabContent()}
         </div>
       </main>
+    </div>
+  );
+};
+
+const FileUploadTest: React.FC = () => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (file: File) => {
+    setIsUploading(true);
+    setError(null);
+    setUploadedUrl(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setUploadedUrl(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleUpload(file);
+    }
+  };
+
+  const handleCreateDummyFile = async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#6366f1';
+      ctx.fillRect(0, 0, 200, 200);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('S3 Upload Test', 100, 100);
+      ctx.fillText(new Date().toLocaleString(), 100, 130);
+    }
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], 'test-upload.png', { type: 'image/png' });
+        handleUpload(file);
+      }
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex flex-col gap-4">
+          <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Upload Method</h3>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-cyan-700 disabled:opacity-50 transition-all shadow-xl shadow-cyan-600/20 flex items-center justify-center gap-3"
+          >
+            {isUploading ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
+            {isUploading ? 'Uploading...' : 'Choose File'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={handleFileSelect}
+            disabled={isUploading}
+            className="hidden"
+            accept="image/*"
+          />
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Auto-Generate Test File</h3>
+          <button
+            onClick={handleCreateDummyFile}
+            disabled={isUploading}
+            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3"
+          >
+            {isUploading ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
+            {isUploading ? 'Creating...' : 'Create Dummy Image'}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl flex items-start gap-3">
+          <AlertCircle size={20} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-black text-sm text-red-900 dark:text-red-200 uppercase">Upload Failed</p>
+            <p className="text-xs text-red-700 dark:text-red-300 mt-1">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {uploadedUrl && (
+        <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl space-y-4">
+          <div className="flex items-center gap-3">
+            <Check size={20} className="text-emerald-600 dark:text-emerald-400" />
+            <p className="font-black text-sm text-emerald-900 dark:text-emerald-200 uppercase">Upload Successful!</p>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">File URL</label>
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="text"
+                  value={uploadedUrl}
+                  readOnly
+                  className="flex-1 bg-white dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-xs font-mono truncate"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(uploadedUrl);
+                  }}
+                  className="p-2 hover:bg-emerald-100 dark:hover:bg-emerald-800 rounded-xl transition"
+                  title="Copy to clipboard"
+                >
+                  <Copy size={16} className="text-emerald-600 dark:text-emerald-400" />
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">Preview</label>
+              <img
+                src={uploadedUrl}
+                alt="Uploaded file"
+                className="mt-2 max-w-full max-h-64 rounded-xl border border-emerald-200 dark:border-emerald-800"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.open(uploadedUrl, '_blank')}
+                className="flex-1 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm uppercase hover:bg-emerald-700 transition flex items-center justify-center gap-2"
+              >
+                <Download size={16} /> Open in New Tab
+              </button>
+              <button
+                onClick={() => {
+                  setUploadedUrl(null);
+                  setError(null);
+                }}
+                className="flex-1 py-2 bg-slate-600 text-white rounded-lg font-bold text-sm uppercase hover:bg-slate-700 transition"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
