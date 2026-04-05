@@ -12,8 +12,8 @@ export const getPool = () => {
     }
     pool = new Pool({
       connectionString,
-      ssl: {
-        rejectUnauthorized: false // Required for Neon
+      ssl: connectionString.includes('localhost') ? false : {
+        rejectUnauthorized: false // Required for Neon and RDS with self-signed/provider certs
       }
     });
   }

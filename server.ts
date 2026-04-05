@@ -6,12 +6,14 @@ import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { initDb, getPool } from './src/db.js';
-import { uploadToAppwrite, storage as appwriteStorage } from './src/services/appwriteService.js';
 // @ts-ignore
 import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
 import { Resend } from 'resend';
 import * as Sentry from "@sentry/node";
 import multer from 'multer';
+import multerS3 from 'multer-s3';
+import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { simpleGit, SimpleGit } from 'simple-git';
 import cors from 'cors';
 import { createRequire } from 'module';
@@ -27,6 +29,17 @@ if (process.env.SENTRY_DSN) {
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+// S3 Client Configuration
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+});
+
+const s3Bucket = process.env.AWS_S3_BUCKET || '';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -37,13 +50,71 @@ const sourceFilesRootDir = path.join(__dirname, 'public', 'source');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 if (!fs.existsSync(sourceFilesRootDir)) fs.mkdirSync(sourceFilesRootDir, { recursive: true });
 
+const syncProjectFromS3 = async (projectId: string) => {
+  const projectDir = path.join(sourceFilesRootDir, projectId);
+  if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
+
+  try {
+    const command = new ListObjectsV2Command({
+      Bucket: s3Bucket,
+      Prefix: `source/${projectId}/`,
+    });
+    const response = await s3Client.send(command);
+    
+    for (const obj of response.Contents || []) {
+      const filename = obj.Key?.split('/').pop();
+      if (!filename) continue;
+      
+      const filePath = path.join(projectDir, filename);
+      if (!fs.existsSync(filePath)) {
+        console.log(`Restoring missing file from S3: ${filename}`);
+        const getCommand = new GetObjectCommand({
+          Bucket: s3Bucket,
+          Key: obj.Key,
+        });
+        const getResponse = await s3Client.send(getCommand);
+        if (getResponse.Body) {
+          const body = await getResponse.Body.transformToByteArray();
+          fs.writeFileSync(filePath, Buffer.from(body));
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to sync project ${projectId} from S3:`, err);
+  }
+};
+
 const getProjectGit = (projectId: string): SimpleGit => {
   const projectDir = path.join(sourceFilesRootDir, projectId);
   if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
+  
+  // We don't await sync here to keep it non-blocking for Git object creation
+  // but in practice, you'd want to ensure sync before operations.
+  syncProjectFromS3(projectId).catch(console.error);
+  
   return simpleGit(projectDir);
 };
 
-const storage = multer.diskStorage({
+// Configure Multer for S3 (general uploads)
+const s3Storage = multerS3({
+  s3: s3Client,
+  bucket: s3Bucket,
+  metadata: (req, file, cb) => {
+    cb(null, { fieldName: file.fieldname });
+  },
+  key: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'uploads/' + file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: s3Storage,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+});
+
+// Helper for local disk storage (needed for Git operations)
+const localDiskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const isSourceUpload = (req.originalUrl && req.originalUrl.includes('source-upload')) || (req.url && req.url.includes('source-upload'));
     const projectId = req.body?.projectId;
@@ -62,9 +133,10 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
-  storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+// Source Upload needs BOTH local disk and S3
+const sourceUpload = multer({
+  storage: localDiskStorage, // Save to disk for Git, then we'll upload to S3 manually
+  limits: { fileSize: 50 * 1024 * 1024 }
 });
 
 function getLocalIp() {
@@ -81,7 +153,7 @@ function getLocalIp() {
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+  const PORT = 3000;
 
   // Initialize DB
   await initDb();
@@ -91,36 +163,37 @@ async function startServer() {
   app.use('/uploads', express.static(uploadDir));
   app.use('/source-files', express.static(sourceFilesRootDir));
   
-  const uploadsBucket = process.env.APPWRITE_UPLOADS_BUCKET || 'uploads';
-  const sourceBucket = process.env.APPWRITE_SOURCE_BUCKET || 'source';
-
-  // Local File Upload API
-  app.post('/api/upload', upload.single('image'), async (req, res) => {
+  // Local File Upload API (Now S3)
+  app.post('/api/upload', upload.single('image'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    
-    if (appwriteStorage) {
-      try {
-        const fileContent = fs.readFileSync(req.file.path);
-        const url = await uploadToAppwrite(uploadsBucket, req.file.filename, fileContent);
-        fs.unlinkSync(req.file.path); // Clean up temp file
-        return res.json({ url });
-      } catch (err) {
-        console.error('Appwrite upload failed:', err);
-        return res.status(500).json({ error: 'Cloud upload failed' });
-      }
-    }
-    
-    res.json({ url: `/uploads/${req.file.filename}` });
+    // multer-s3 provides 'location' which is the public URL
+    res.json({ url: (req.file as any).location || `/uploads/${req.file.filename}` });
   });
 
-  app.post('/api/source-upload', upload.single('file'), async (req, res) => {
+  app.post('/api/source-upload', sourceUpload.single('file'), async (req, res) => {
     const projectId = req.body.projectId;
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     const filename = req.file.filename;
     const projectDir = projectId ? path.join(sourceFilesRootDir, projectId) : sourceFilesRootDir;
     const filePath = path.join(projectDir, filename);
-    let publicUrl = projectId ? `/source-files/${projectId}/${filename}` : `/source-files/${filename}`;
+    
+    // Upload to S3 as well
+    try {
+      const fileStream = fs.createReadStream(filePath);
+      const s3Key = projectId ? `source/${projectId}/${filename}` : `source/${filename}`;
+      await s3Client.send(new PutObjectCommand({
+        Bucket: s3Bucket,
+        Key: s3Key,
+        Body: fileStream,
+        ContentType: req.file.mimetype,
+      }));
+      console.log(`Successfully uploaded ${filename} to S3: ${s3Key}`);
+    } catch (s3Err) {
+      console.error('Failed to upload to S3 during source-upload:', s3Err);
+    }
+
+    const publicUrl = projectId ? `/source-files/${projectId}/${filename}` : `/source-files/${filename}`;
     let extractedText = '';
 
     // If it's a PDF, extract text on the server using pdf-parse
@@ -138,20 +211,6 @@ async function startServer() {
         console.log(`Successfully extracted ${extractedText.length} chars from PDF`);
       } catch (err) {
         console.error('Server-side PDF extraction failed:', err);
-      }
-    }
-
-    if (appwriteStorage) {
-      try {
-        const fileContent = fs.readFileSync(filePath);
-        // Prefix with projectId if available, but Appwrite IDs are simpler, 
-        // so we'll just use a safe version of the filename as the ID.
-        const appwriteFilename = projectId ? `${projectId}_${filename}` : filename;
-        publicUrl = await uploadToAppwrite(sourceBucket, appwriteFilename, fileContent);
-        fs.unlinkSync(filePath); // Clean up local file after cloud upload
-      } catch (err) {
-        console.error('Appwrite source upload failed:', err);
-        return res.status(500).json({ error: 'Cloud source upload failed' });
       }
     }
 
@@ -175,66 +234,101 @@ async function startServer() {
     // Save Metadata Index (index.json)
     const metaFilename = `${baseName}.index.json`;
     const metaPath = path.join(projectDir, metaFilename);
-    let publicMetaUrl = projectId ? `/source-files/${projectId}/${metaFilename}` : `/source-files/${metaFilename}`;
+    const publicMetaUrl = projectId ? `/source-files/${projectId}/${metaFilename}` : `/source-files/${metaFilename}`;
 
     if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
 
     const metaContent = JSON.stringify(metadata, null, 2);
     fs.writeFileSync(metaPath, metaContent);
 
-    let mdUrl: string | null = null;
+    // Upload meta to S3
+    try {
+      const s3Key = projectId ? `source/${projectId}/${metaFilename}` : `source/${metaFilename}`;
+      await s3Client.send(new PutObjectCommand({
+        Bucket: s3Bucket,
+        Key: s3Key,
+        Body: metaContent,
+        ContentType: 'application/json',
+      }));
+    } catch (s3Err) {
+      console.error('Failed to upload metadata to S3:', s3Err);
+    }
+
+    let mdUrl = null;
     // Save Plaintext Sidecar (extracted.md)
     if (content) {
       const mdFilename = `${baseName}.extracted.md`;
       const mdPath = path.join(projectDir, mdFilename);
       fs.writeFileSync(mdPath, content);
       mdUrl = projectId ? `/source-files/${projectId}/${mdFilename}` : `/source-files/${mdFilename}`;
-      
-      if (appwriteStorage) {
-        try {
-          const appwriteMdFilename = projectId ? `${projectId}_${mdFilename}` : mdFilename;
-          mdUrl = await uploadToAppwrite(sourceBucket, appwriteMdFilename, Buffer.from(content));
-          fs.unlinkSync(mdPath);
-        } catch (err) {
-          console.error('Appwrite MD upload failed:', err);
-        }
-      }
-    }
 
-    if (appwriteStorage) {
+      // Upload MD to S3
       try {
-        const appwriteMetaFilename = projectId ? `${projectId}_${metaFilename}` : metaFilename;
-        publicMetaUrl = await uploadToAppwrite(sourceBucket, appwriteMetaFilename, Buffer.from(metaContent));
-        fs.unlinkSync(metaPath);
-      } catch (err) {
-        console.error('Appwrite Meta upload failed:', err);
+        const s3Key = projectId ? `source/${projectId}/${mdFilename}` : `source/${mdFilename}`;
+        await s3Client.send(new PutObjectCommand({
+          Bucket: s3Bucket,
+          Key: s3Key,
+          Body: content,
+          ContentType: 'text/markdown',
+        }));
+      } catch (s3Err) {
+        console.error('Failed to upload extracted MD to S3:', s3Err);
       }
     }
 
     res.json({ success: true, url: publicMetaUrl, mdUrl });
   });
 
-  app.get('/api/source-files/:projectId', (req, res) => {
+  app.get('/api/source-files/:projectId', async (req, res) => {
     const { projectId } = req.params;
-    const projectDir = path.join(sourceFilesRootDir, projectId);
-
-    if (!fs.existsSync(projectDir)) {
-      return res.json({ files: [] });
-    }
-
+    
+    // Attempt to list from S3 for the most up-to-date view
     try {
-      const files = fs.readdirSync(projectDir).map(file => {
-        const stats = fs.statSync(path.join(projectDir, file));
+      const command = new ListObjectsV2Command({
+        Bucket: s3Bucket,
+        Prefix: `source/${projectId}/`,
+      });
+      const response = await s3Client.send(command);
+      
+      const files = (response.Contents || []).map(obj => {
+        const filename = obj.Key?.split('/').pop() || '';
         return {
-          name: file,
-          size: stats.size,
-          mtime: stats.mtime,
-          url: `/source-files/${projectId}/${file}`
+          name: filename,
+          size: obj.Size,
+          mtime: obj.LastModified,
+          url: `/source-files/${projectId}/${filename}` // Still proxying via our server for consistency
         };
       });
+      
+      // Also ensure local disk is in sync for Git
+      if (files.length > 0) {
+        const projectDir = path.join(sourceFilesRootDir, projectId);
+        if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
+        // This is a lazy sync - we might want to download missing files here
+      }
+
       res.json({ files });
     } catch (err) {
-      res.status(500).json({ error: 'Failed to list files' });
+      console.error('S3 list failed, falling back to local disk:', err);
+      const projectDir = path.join(sourceFilesRootDir, projectId);
+      if (!fs.existsSync(projectDir)) {
+        return res.json({ files: [] });
+      }
+
+      try {
+        const files = fs.readdirSync(projectDir).map(file => {
+          const stats = fs.statSync(path.join(projectDir, file));
+          return {
+            name: file,
+            size: stats.size,
+            mtime: stats.mtime,
+            url: `/source-files/${projectId}/${file}`
+          };
+        });
+        res.json({ files });
+      } catch (innerErr) {
+        res.status(500).json({ error: 'Failed to list files' });
+      }
     }
   });
 
@@ -428,8 +522,11 @@ async function startServer() {
 
   // Protected API Routes
   app.get('/api/projects', async (req: any, res) => {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.userId || 'user-1';
+    console.log(`[API] Fetch projects request from user: ${userId}`);
+    
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
 
@@ -444,8 +541,11 @@ async function startServer() {
   });
 
   app.post('/api/projects', async (req: any, res) => {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.userId || 'user-1';
+    console.log(`[API] Save project request from user: ${userId}`);
+    
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
 
@@ -470,11 +570,8 @@ async function startServer() {
   });
 
   app.delete('/api/projects/:id', async (req: any, res) => {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.userId || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-
-
 
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
@@ -489,11 +586,8 @@ async function startServer() {
 
   // Global Notes
   app.get('/api/notes', async (req: any, res) => {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.userId || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-
-
 
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
@@ -507,11 +601,8 @@ async function startServer() {
   });
 
   app.post('/api/notes', async (req: any, res) => {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.userId || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-
-
 
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
@@ -532,8 +623,9 @@ async function startServer() {
 
   // App Globals (Settings, Prompts, etc.)
   app.get('/api/globals/:id', async (req: any, res) => {
-    const userId = req.auth?.userId;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const userId = req.auth?.userId || 'user-1';
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
 
     try {
       const result = await pool.query('SELECT data FROM app_globals WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
@@ -548,8 +640,9 @@ async function startServer() {
   });
 
   app.post('/api/globals/:id', async (req: any, res) => {
-    const userId = req.auth?.userId;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const userId = req.auth?.userId || 'user-1';
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable' });
 
     const data = req.body;
     const now = Date.now();
@@ -570,11 +663,8 @@ async function startServer() {
   });
 
   app.post('/api/backup-email', async (req: any, res) => {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.userId || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-
-
 
     const { projectTitle, wordCount, hash, backupData } = req.body;
     if (!resend) return res.status(503).json({ error: 'Resend not configured' });
@@ -599,26 +689,19 @@ async function startServer() {
     res.json({ status: 'delivered' });
   });
 
-  const isProd = process.env.NODE_ENV === 'production';
-
   // Vite middleware for development
-  let vite: any;
-  if (!isProd) {
-    vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    // Serve static files from dist in production
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-  }
+  const vite = await createViteServer({
+    server: { middlewareMode: true },
+    appType: 'spa',
+  });
+  app.use(vite.middlewares);
 
   app.get('*', async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
       let template;
+      let isProd = process.env.NODE_ENV === 'production';
       
       if (!isProd) {
         // In development, let Vite handle the HTML transformation

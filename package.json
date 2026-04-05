@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --exclude source --exclude public server.ts",
-    "start": "NODE_ENV=production tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1024.0",
+    "@aws-sdk/lib-storage": "^3.1024.0",
+    "@aws-sdk/s3-request-presigner": "^3.1024.0",
     "@clerk/clerk-react": "^5.61.3",
     "@clerk/clerk-sdk-node": "^5.1.6",
     "@google/genai": "^1.29.0",
@@ -21,7 +23,6 @@
     "@tiptap/starter-kit": "^3.20.6",
     "@vitejs/plugin-react": "^5.0.4",
     "@xyflow/react": "^12.10.1",
-    "appwrite": "^24.1.1",
     "better-sqlite3": "^12.4.1",
     "cors": "^2.8.6",
     "diff": "^8.0.4",
@@ -38,7 +39,7 @@
     "memfs": "^4.57.1",
     "motion": "^12.23.24",
     "multer": "^2.1.1",
-    "node-appwrite": "^23.1.0",
+    "multer-s3": "^3.0.1",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.5.207",
     "pg": "^8.20.0",
