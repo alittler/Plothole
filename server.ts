@@ -110,7 +110,13 @@ const s3Storage = multerS3({
 
 const upload = multer({ 
   storage: s3Storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (req, file, cb) => {
+    console.log(`Multer fileFilter - file: ${file.originalname}, mimetype: ${file.mimetype}`);
+    cb(null, true);
+  }
+}).on('error', (err) => {
+  console.error('Multer error:', err);
 });
 
 // Helper for local disk storage (needed for Git operations)
@@ -165,9 +171,14 @@ async function startServer() {
   
   // Local File Upload API (Now S3)
   app.post('/api/upload', upload.single('image'), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    // multer-s3 provides 'location' which is the public URL
-    res.json({ url: (req.file as any).location || `/uploads/${req.file.filename}` });
+    if (!req.file) {
+      console.error('Upload failed: No file in request');
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const location = (req.file as any).location;
+    console.log('File uploaded successfully. S3 location:', location);
+    console.log('File object:', { filename: req.file.filename, mimetype: req.file.mimetype, size: req.file.size });
+    res.json({ url: location || `/uploads/${req.file.filename}` });
   });
 
   app.post('/api/source-upload', sourceUpload.single('file'), async (req, res) => {
