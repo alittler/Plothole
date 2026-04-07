@@ -21,6 +21,7 @@
     "@tailwindcss/vite": "^4.1.14",
     "@tiptap/react": "^3.20.6",
     "@tiptap/starter-kit": "^3.20.6",
+    "@vercel/toolbar": "^0.2.2",
     "@vitejs/plugin-react": "^5.0.4",
     "@xyflow/react": "^12.10.1",
     "better-sqlite3": "^12.4.1",
