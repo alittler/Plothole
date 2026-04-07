@@ -176,19 +176,6 @@ async function startServer() {
   app.use('/uploads', express.static(uploadDir));
   app.use('/source-files', express.static(sourceFilesRootDir));
   
-  // Serve static assets from dist/ in production
-  const distDir = process.env.NODE_ENV === 'production' 
-    ? path.join(process.cwd(), 'dist')
-    : path.resolve(__dirname, 'dist');
-  if (fs.existsSync(distDir)) {
-    app.use(express.static(distDir, { 
-      setHeaders: (res, path) => {
-        if (path.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
-        if (path.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
-      }
-    }));
-  }
-  
   // Local File Upload API (Now S3)
   app.post('/api/upload', upload.single('image'), async (req, res) => {
     if (!req.file) {
@@ -887,6 +874,19 @@ async function startServer() {
     appType: 'spa',
   });
   app.use(vite.middlewares);
+
+  // Serve static assets from dist/ in production (before catch-all route)
+  const distDir = process.env.NODE_ENV === 'production' 
+    ? path.join(process.cwd(), 'dist')
+    : path.resolve(__dirname, 'dist');
+  if (fs.existsSync(distDir)) {
+    app.use(express.static(distDir, { 
+      setHeaders: (res, path) => {
+        if (path.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+        if (path.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
+      }
+    }));
+  }
 
   app.get('*', async (req, res, next) => {
     const url = req.originalUrl;
