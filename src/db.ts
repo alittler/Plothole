@@ -31,6 +31,7 @@ export const initDb = async () => {
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
         name TEXT,
+        username TEXT UNIQUE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -39,6 +40,8 @@ export const initDb = async () => {
         user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
         title TEXT NOT NULL,
         data JSONB NOT NULL,
+        is_wiki_public BOOLEAN DEFAULT false,
+        enable_wiki BOOLEAN DEFAULT true,
         last_modified TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );

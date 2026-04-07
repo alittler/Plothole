@@ -869,6 +869,152 @@ async function startServer() {
     res.json({ status: 'delivered' });
   });
 
+  // Username management
+  app.post('/api/user/username', async (req: any, res) => {
+    if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
+    
+    const { username } = req.body;
+    if (!username || !/^[a-zA-Z0-9_-]{3,20}$/.test(username)) {
+      return res.status(400).json({ error: 'Username must be 3-20 alphanumeric characters' });
+    }
+
+    try {
+      const pool = getPool();
+      if (!pool) return res.status(500).json({ error: 'Database unavailable' });
+      
+      await pool.query(
+        'UPDATE users SET username = $1 WHERE id = $2',
+        [username, req.auth.userId]
+      );
+      res.json({ success: true });
+    } catch (err: any) {
+      if (err.code === '23505') {
+        return res.status(400).json({ error: 'Username already taken' });
+      }
+      console.error(err);
+      res.status(500).json({ error: 'Failed to update username' });
+    }
+  });
+
+  app.get('/api/user/username', async (req: any, res) => {
+    if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
+    
+    try {
+      const pool = getPool();
+      if (!pool) return res.status(500).json({ error: 'Database unavailable' });
+      
+      const result = await pool.query(
+        'SELECT username FROM users WHERE id = $1',
+        [req.auth.userId]
+      );
+      res.json({ username: result.rows[0]?.username || null });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to fetch username' });
+    }
+  });
+
+  // Public wiki endpoints (no auth required)
+  app.get('/api/wiki/:username/:bookName', async (req, res) => {
+    const { username, bookName } = req.params;
+    
+    try {
+      const pool = getPool();
+      if (!pool) return res.status(500).json({ error: 'Database unavailable' });
+      
+      const result = await pool.query(
+        `SELECT p.id, p.title, p.data, p.is_wiki_public, p.enable_wiki, u.username, u.name
+         FROM projects p
+         JOIN users u ON p.user_id = u.id
+         WHERE u.username = $1 AND p.title ILIKE $2 AND p.is_wiki_public = true AND p.enable_wiki = true`,
+        [username, bookName]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Book not found or not public' });
+      }
+
+      const project = result.rows[0];
+      res.json({
+        title: project.title,
+        author: project.name,
+        synopsis: project.data.synopsis || '',
+        characters: project.data.characters || [],
+        worldBuilding: project.data.worldBuilding || [],
+        timeline: project.data.timeline || []
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to fetch wiki data' });
+    }
+  });
+
+  app.get('/api/wiki/:username', async (req, res) => {
+    const { username } = req.params;
+    
+    try {
+      const pool = getPool();
+      if (!pool) return res.status(500).json({ error: 'Database unavailable' });
+      
+      const result = await pool.query(
+        `SELECT u.username, u.name, p.id, p.title
+         FROM users u
+         LEFT JOIN projects p ON u.id = p.user_id AND p.is_wiki_public = true AND p.enable_wiki = true
+         WHERE u.username = $1`,
+        [username]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const userData = result.rows[0];
+      const books = result.rows.filter(r => r.id).map(r => ({ id: r.id, title: r.title }));
+      
+      res.json({
+        username: userData.username,
+        author: userData.name,
+        books
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to fetch user profile' });
+    }
+  });
+
+  // Update wiki visibility for a project
+  app.post('/api/projects/:projectId/wiki-settings', async (req: any, res) => {
+    if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
+    
+    const { projectId } = req.params;
+    const { is_wiki_public, enable_wiki } = req.body;
+
+    try {
+      const pool = getPool();
+      if (!pool) return res.status(500).json({ error: 'Database unavailable' });
+      
+      // Verify ownership
+      const owner = await pool.query(
+        'SELECT user_id FROM projects WHERE id = $1',
+        [projectId]
+      );
+      
+      if (owner.rows[0]?.user_id !== req.auth.userId) {
+        return res.status(403).json({ error: 'Not authorized' });
+      }
+
+      await pool.query(
+        'UPDATE projects SET is_wiki_public = $1, enable_wiki = $2 WHERE id = $3',
+        [is_wiki_public, enable_wiki, projectId]
+      );
+      
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to update wiki settings' });
+    }
+  });
+
   // Vite middleware for development only
   let vite: any = null;
   if (process.env.NODE_ENV !== 'production') {
