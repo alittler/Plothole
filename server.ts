@@ -177,9 +177,16 @@ async function startServer() {
   app.use('/source-files', express.static(sourceFilesRootDir));
   
   // Serve static assets from dist/ in production
-  const distDir = path.resolve(__dirname, 'dist');
+  const distDir = process.env.NODE_ENV === 'production' 
+    ? path.join(process.cwd(), 'dist')
+    : path.resolve(__dirname, 'dist');
   if (fs.existsSync(distDir)) {
-    app.use(express.static(distDir));
+    app.use(express.static(distDir, { 
+      setHeaders: (res, path) => {
+        if (path.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+        if (path.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
+      }
+    }));
   }
   
   // Local File Upload API (Now S3)
