@@ -31,7 +31,7 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 
 // S3 Client Configuration
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.AWS_REGION || 'us-west-2',
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
@@ -39,6 +39,14 @@ const s3Client = new S3Client({
 });
 
 const s3Bucket = process.env.AWS_S3_BUCKET || '';
+const isS3Configured = !!(
+  process.env.AWS_ACCESS_KEY_ID && 
+  process.env.AWS_SECRET_ACCESS_KEY && 
+  process.env.AWS_S3_BUCKET &&
+  process.env.AWS_REGION
+);
+
+console.log(`[S3] Initializing with region: ${process.env.AWS_REGION || 'us-west-2'} (Bucket: ${s3Bucket})`);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,6 +59,7 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 if (!fs.existsSync(sourceFilesRootDir)) fs.mkdirSync(sourceFilesRootDir, { recursive: true });
 
 const syncProjectFromS3 = async (projectId: string) => {
+  if (!isS3Configured) return;
   const projectDir = path.join(sourceFilesRootDir, projectId);
   if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
 
@@ -108,17 +117,6 @@ const s3Storage = multerS3({
   }
 });
 
-const upload = multer({ 
-  storage: s3Storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
-  fileFilter: (req, file, cb) => {
-    console.log(`Multer fileFilter - file: ${file.originalname}, mimetype: ${file.mimetype}`);
-    cb(null, true);
-  }
-}).on('error', (err) => {
-  console.error('Multer error:', err);
-});
-
 // Helper for local disk storage (needed for Git operations)
 const localDiskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -143,6 +141,15 @@ const localDiskStorage = multer.diskStorage({
 const sourceUpload = multer({
   storage: localDiskStorage, // Save to disk for Git, then we'll upload to S3 manually
   limits: { fileSize: 50 * 1024 * 1024 }
+});
+
+const upload = multer({ 
+  storage: isS3Configured ? s3Storage : localDiskStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (req, file, cb) => {
+    console.log(`Multer fileFilter - file: ${file.originalname}, mimetype: ${file.mimetype}`);
+    cb(null, true);
+  }
 });
 
 function getLocalIp() {
@@ -170,67 +177,122 @@ async function startServer() {
   app.use('/source-files', express.static(sourceFilesRootDir));
   
   // Local File Upload API (Now S3)
-  app.post('/api/upload', upload.single('image'), (req, res) => {
+  app.post('/api/upload', upload.single('image'), async (req, res) => {
     if (!req.file) {
       console.error('Upload failed: No file in request');
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    const location = (req.file as any).location;
-    console.log('File uploaded successfully. S3 location:', location);
-    console.log('File object:', { filename: req.file.filename, mimetype: req.file.mimetype, size: req.file.size });
-    res.json({ url: location || `/uploads/${req.file.filename}` });
+
+    try {
+      // Generate a presigned URL for S3 files
+      if (isS3Configured && (req.file as any).key) {
+        const key = (req.file as any).key;
+        try {
+          const command = new GetObjectCommand({
+            Bucket: s3Bucket,
+            Key: key,
+          });
+          const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
+          const url = await getSignedUrl(s3Client, command, { expiresIn });
+          console.log('File uploaded to S3. Presigned URL generated:', key);
+          return res.json({ url });
+        } catch (signErr) {
+          console.error('Failed to generate presigned URL:', signErr);
+          // Fallback: Construct direct S3 URL if signing fails
+          const fallbackUrl = `https://${s3Bucket}.s3.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${key}`;
+          console.log('Falling back to direct S3 URL:', fallbackUrl);
+          return res.json({ url: fallbackUrl, presigned: false });
+        }
+      }
+
+      // Fallback to local storage if S3 not configured
+      const location = (req.file as any).location;
+      console.log('File uploaded successfully. URL:', location || `/uploads/${req.file.filename}`);
+      res.json({ url: location || `/uploads/${req.file.filename}` });
+    } catch (err) {
+      console.error('Error in upload endpoint:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: `Upload processing failed: ${errorMessage}` });
+    }
   });
 
   app.post('/api/source-upload', sourceUpload.single('file'), async (req, res) => {
-    const projectId = req.body.projectId;
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
-    const filename = req.file.filename;
-    const projectDir = projectId ? path.join(sourceFilesRootDir, projectId) : sourceFilesRootDir;
-    const filePath = path.join(projectDir, filename);
-    
-    // Upload to S3 as well
     try {
-      const fileStream = fs.createReadStream(filePath);
+      const projectId = req.body.projectId;
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+      const filename = req.file.filename;
+      const projectDir = projectId ? path.join(sourceFilesRootDir, projectId) : sourceFilesRootDir;
+      const filePath = path.join(projectDir, filename);
+      
+      let presignedUrl = null;
       const s3Key = projectId ? `source/${projectId}/${filename}` : `source/${filename}`;
-      await s3Client.send(new PutObjectCommand({
-        Bucket: s3Bucket,
-        Key: s3Key,
-        Body: fileStream,
-        ContentType: req.file.mimetype,
-      }));
-      console.log(`Successfully uploaded ${filename} to S3: ${s3Key}`);
-    } catch (s3Err) {
-      console.error('Failed to upload to S3 during source-upload:', s3Err);
-    }
 
-    const publicUrl = projectId ? `/source-files/${projectId}/${filename}` : `/source-files/${filename}`;
-    let extractedText = '';
+      // Upload to S3 as well if configured
+      if (isS3Configured) {
+        try {
+          const fileStream = fs.createReadStream(filePath);
+          await s3Client.send(new PutObjectCommand({
+            Bucket: s3Bucket,
+            Key: s3Key,
+            Body: fileStream,
+            ContentType: req.file.mimetype,
+          }));
+          console.log(`Successfully uploaded ${filename} to S3: ${s3Key}`);
 
-    // If it's a PDF, extract text on the server using pdf-parse
-    if (req.file.mimetype === 'application/pdf' || filename.endsWith('.pdf')) {
-      try {
-        console.log('Extracting text from PDF:', filename);
-        const dataBuffer = fs.readFileSync(filePath);
-        
-        // Handle both function and object exports
-        const parseFn = typeof pdf === 'function' ? pdf : (pdf as any).PDFParse;
-        if (typeof parseFn !== 'function') throw new Error('PDF parse function not found in module');
-        
-        const data = await parseFn(dataBuffer);
-        extractedText = data.text;
-        console.log(`Successfully extracted ${extractedText.length} chars from PDF`);
-      } catch (err) {
-        console.error('Server-side PDF extraction failed:', err);
+          // Generate presigned URL
+          try {
+            const command = new GetObjectCommand({
+              Bucket: s3Bucket,
+              Key: s3Key,
+            });
+            const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
+            presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+          } catch (signErr) {
+            console.error('Failed to generate presigned URL for source-upload:', signErr);
+            // Fallback: Construct direct S3 URL if signing fails
+            presignedUrl = `https://${s3Bucket}.s3.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${s3Key}`;
+            console.log('Using direct S3 URL fallback:', presignedUrl);
+          }
+        } catch (s3Err) {
+          console.error('Failed to upload to S3 during source-upload:', s3Err);
+        }
+      } else {
+        console.log(`Skipping S3 upload for ${filename} as S3 is not configured.`);
       }
-    }
 
-    console.log('Source upload success:', filename, 'Project:', projectId);
-    res.json({ 
-      url: publicUrl,
-      filename: filename,
-      extractedText: extractedText
-    });
+      const publicUrl = presignedUrl || (projectId ? `/source-files/${projectId}/${filename}` : `/source-files/${filename}`);
+      let extractedText = '';
+
+      // If it's a PDF, extract text on the server using pdf-parse
+      if (req.file.mimetype === 'application/pdf' || filename.endsWith('.pdf')) {
+        try {
+          console.log('Extracting text from PDF:', filename);
+          const dataBuffer = fs.readFileSync(filePath);
+          
+          // Handle both function and object exports
+          const parseFn = typeof pdf === 'function' ? pdf : (pdf as any).PDFParse;
+          if (typeof parseFn !== 'function') throw new Error('PDF parse function not found in module');
+          
+          const data = await parseFn(dataBuffer);
+          extractedText = data.text;
+          console.log(`Successfully extracted ${extractedText.length} chars from PDF`);
+        } catch (err) {
+          console.error('Server-side PDF extraction failed:', err);
+        }
+      }
+
+      console.log('Source upload success:', filename, 'Project:', projectId);
+      res.json({ 
+        url: publicUrl,
+        filename: filename,
+        extractedText: extractedText
+      });
+    } catch (err) {
+      console.error('Error in source-upload endpoint:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: `Source upload failed: ${errorMessage}` });
+    }
   });
 
   // Sidecar Metadata API
@@ -245,7 +307,7 @@ async function startServer() {
     // Save Metadata Index (index.json)
     const metaFilename = `${baseName}.index.json`;
     const metaPath = path.join(projectDir, metaFilename);
-    const publicMetaUrl = projectId ? `/source-files/${projectId}/${metaFilename}` : `/source-files/${metaFilename}`;
+    let publicMetaUrl = projectId ? `/source-files/${projectId}/${metaFilename}` : `/source-files/${metaFilename}`;
 
     if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
 
@@ -261,6 +323,18 @@ async function startServer() {
         Body: metaContent,
         ContentType: 'application/json',
       }));
+
+      // Generate presigned URL for metadata
+      try {
+        const command = new GetObjectCommand({
+          Bucket: s3Bucket,
+          Key: s3Key,
+        });
+        const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
+        publicMetaUrl = await getSignedUrl(s3Client, command, { expiresIn });
+      } catch (err) {
+        console.error('Failed to generate presigned URL for metadata:', err);
+      }
     } catch (s3Err) {
       console.error('Failed to upload metadata to S3:', s3Err);
     }
@@ -282,6 +356,18 @@ async function startServer() {
           Body: content,
           ContentType: 'text/markdown',
         }));
+
+        // Generate presigned URL for markdown
+        try {
+          const command = new GetObjectCommand({
+            Bucket: s3Bucket,
+            Key: s3Key,
+          });
+          const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
+          mdUrl = await getSignedUrl(s3Client, command, { expiresIn });
+        } catch (err) {
+          console.error('Failed to generate presigned URL for markdown:', err);
+        }
       } catch (s3Err) {
         console.error('Failed to upload extracted MD to S3:', s3Err);
       }
@@ -517,6 +603,74 @@ async function startServer() {
       ip: getLocalIp(),
       port: PORT
     });
+  });
+
+  app.get('/api/aws-status', async (req, res) => {
+    try {
+      if (!isS3Configured) {
+        return res.json({
+          configured: false,
+          region: process.env.AWS_REGION || 'us-west-2',
+          bucket: s3Bucket || 'Not configured',
+          error: 'S3 credentials or bucket name missing in .env'
+        });
+      }
+
+      // Quick check if we can list objects (verifies credentials/bucket access)
+      const command = new ListObjectsV2Command({
+        Bucket: s3Bucket,
+        MaxKeys: 1
+      });
+      await s3Client.send(command);
+
+      res.json({
+        configured: true,
+        region: process.env.AWS_REGION || 'us-west-2',
+        bucket: s3Bucket,
+        connected: true
+      });
+    } catch (err) {
+      console.error('AWS status check failed:', err);
+      res.json({
+        configured: true,
+        region: process.env.AWS_REGION || 'us-west-2',
+        bucket: s3Bucket,
+        connected: false,
+        error: err instanceof Error ? err.message : 'Unknown AWS error'
+      });
+    }
+  });
+
+  // Generate presigned URL for any S3 object
+  app.post('/api/presigned-url', async (req, res) => {
+    try {
+      if (!isS3Configured) {
+        return res.status(400).json({ 
+          error: 'S3 is not configured. Set AWS credentials in .env' 
+        });
+      }
+
+      const { key } = req.body;
+      if (!key) {
+        return res.status(400).json({ error: 'S3 key is required' });
+      }
+
+      const command = new GetObjectCommand({
+        Bucket: s3Bucket,
+        Key: key,
+      });
+
+      const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
+      const url = await getSignedUrl(s3Client, command, { expiresIn });
+
+      res.json({ url });
+    } catch (err) {
+      console.error('Failed to generate presigned URL:', err);
+      res.status(500).json({ 
+        error: 'Failed to generate presigned URL',
+        details: err instanceof Error ? err.message : 'Unknown error'
+      });
+    }
   });
 
   app.get('/api/debug-storage', async (req, res) => {
