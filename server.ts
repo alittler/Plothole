@@ -984,12 +984,19 @@ async function startServer() {
 
   // Fetch wiki settings for a project
   app.get('/api/projects/:projectId/wiki-settings', async (req: any, res) => {
-    if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
-    
     const { projectId } = req.params;
+    
+    if (!req.auth?.userId) {
+      console.log(`[Wiki] GET settings unauthorized for project ${projectId}`);
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
     try {
       const pool = getPool();
-      if (!pool) return res.status(500).json({ error: 'Database unavailable' });
+      if (!pool) {
+        console.error(`[Wiki] Database unavailable for project ${projectId}`);
+        return res.status(500).json({ error: 'Database unavailable' });
+      }
       
       // Verify ownership
       const project = await pool.query(
@@ -998,6 +1005,7 @@ async function startServer() {
       );
       
       if (project.rows.length === 0) {
+        console.log(`[Wiki] Project not found: ${projectId} for user ${req.auth.userId}`);
         return res.status(404).json({ error: 'Project not found' });
       }
 
@@ -1007,21 +1015,27 @@ async function startServer() {
         username: project.rows[0].username
       });
     } catch (err) {
-      console.error(err);
+      console.error(`[Wiki] Error fetching settings for project ${projectId}:`, err);
       res.status(500).json({ error: 'Failed to fetch wiki settings' });
     }
   });
 
   // Update wiki visibility for a project
   app.post('/api/projects/:projectId/wiki-settings', async (req: any, res) => {
-    if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
-    
     const { projectId } = req.params;
     const { is_wiki_public, enable_wiki } = req.body;
+    
+    if (!req.auth?.userId) {
+      console.log(`[Wiki] POST settings unauthorized for project ${projectId}`);
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
     try {
       const pool = getPool();
-      if (!pool) return res.status(500).json({ error: 'Database unavailable' });
+      if (!pool) {
+        console.error(`[Wiki] Database unavailable for project ${projectId}`);
+        return res.status(500).json({ error: 'Database unavailable' });
+      }
       
       // Verify ownership
       const owner = await pool.query(
@@ -1030,6 +1044,7 @@ async function startServer() {
       );
       
       if (owner.rows[0]?.user_id !== req.auth.userId) {
+        console.log(`[Wiki] User ${req.auth.userId} not authorized to edit project ${projectId}`);
         return res.status(403).json({ error: 'Not authorized' });
       }
 
@@ -1038,9 +1053,10 @@ async function startServer() {
         [is_wiki_public, enable_wiki, projectId]
       );
       
+      console.log(`[Wiki] Updated settings for project ${projectId}: wiki_public=${is_wiki_public}, wiki_enabled=${enable_wiki}`);
       res.json({ success: true });
     } catch (err) {
-      console.error(err);
+      console.error(`[Wiki] Error updating settings for project ${projectId}:`, err);
       res.status(500).json({ error: 'Failed to update wiki settings' });
     }
   });

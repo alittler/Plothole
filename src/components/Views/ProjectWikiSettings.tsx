@@ -32,7 +32,10 @@ export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
   const fetchWikiSettings = async () => {
     try {
       const resp = await doFetch(`/api/projects/${projectId}/wiki-settings`);
-      if (!resp.ok) throw new Error('Failed to fetch wiki settings');
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(`HTTP ${resp.status}: ${errorData.error || 'Failed to fetch wiki settings'}`);
+      }
       const data = await resp.json();
       setIsWikiEnabled(data.enable_wiki !== false);
       setIsWikiPublic(data.is_wiki_public === true);
@@ -40,8 +43,9 @@ export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
         setWikiUrl(`plothole.click/${data.username}/${encodeURIComponent(projectTitle)}`);
       }
     } catch (err) {
-      console.error('Failed to fetch wiki settings:', err);
-      setError('Failed to load wiki settings');
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('[WikiSettings] Failed to fetch wiki settings:', errorMsg);
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -67,11 +71,16 @@ export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
         })
       });
 
-      if (!resp.ok) throw new Error('Failed to save wiki settings');
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(`HTTP ${resp.status}: ${errorData.error || 'Failed to save wiki settings'}`);
+      }
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save settings');
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('[WikiSettings] Failed to save wiki settings:', errorMsg);
+      setError(errorMsg);
     } finally {
       setIsSaving(false);
     }
