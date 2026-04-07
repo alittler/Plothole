@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch --exclude source --exclude public server.ts",
     "build": "vite build",
+    "start": "node -r tsx/cjs server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
