@@ -1740,9 +1740,11 @@ const handleRestoreCommit = async (commit: Commit) => {
   );
 
   // Detect public wiki routes (/{username} or /{username}/{bookname})
+  // Note: With HashRouter, routes are in location.hash, not pathname
   const isPublicWikiRoute = () => {
-    const pathname = location.pathname.slice(1); // Remove leading /
-    const parts = pathname.split('/').filter(Boolean); // Split by / and remove empty strings
+    // HashRouter puts the path in the hash
+    const hashPath = location.hash.slice(1); // Remove leading #
+    const parts = hashPath.split('/').filter(Boolean); // Split by / and remove empty strings
     
     // Exclude app view routes (these are ViewType names)
     const viewTypeValues = Object.values(ViewType);

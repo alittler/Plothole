@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { BookOpen, User, Map, Clock, Users, Loader2, AlertCircle } from 'lucide-react';
 
 interface WikiData {
@@ -12,13 +12,20 @@ interface WikiData {
 }
 
 export const WikiPageView: React.FC = () => {
-  const { username, bookName } = useParams<{ username: string; bookName: string }>();
+  const location = useLocation();
   const [wikiData, setWikiData] = useState<WikiData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!username || !bookName) return;
+    // Extract username and bookName from hash route: /#/username/bookname
+    const hashPath = location.hash.slice(1); // Remove leading #
+    const parts = hashPath.split('/').filter(Boolean);
+    
+    if (parts.length < 2) return;
+    
+    const username = parts[0];
+    const bookName = parts.slice(1).join('/'); // Rejoin in case book name has slashes
 
     const fetchWiki = async () => {
       setIsLoading(true);
@@ -38,7 +45,7 @@ export const WikiPageView: React.FC = () => {
     };
 
     fetchWiki();
-  }, [username, bookName]);
+  }, [location.hash]);
 
   if (isLoading) {
     return (

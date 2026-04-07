@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { BookOpen, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 
 interface PublicBook {
@@ -9,19 +9,27 @@ interface PublicBook {
 }
 
 export const PublicProfileView: React.FC = () => {
-  const { username } = useParams<{ username: string }>();
+  const location = useLocation();
+  const [username, setUsername] = useState('');
   const [books, setBooks] = useState<PublicBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!username) return;
+    // Extract username from hash route: /#/username
+    const hashPath = location.hash.slice(1); // Remove leading #
+    const parts = hashPath.split('/').filter(Boolean);
+    
+    if (parts.length === 0) return;
+    
+    const extractedUsername = parts[0];
+    setUsername(extractedUsername);
 
     const fetchProfile = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const resp = await fetch(`/api/wiki/${username}`);
+        const resp = await fetch(`/api/wiki/${extractedUsername}`);
         if (!resp.ok) {
           throw new Error('Profile not found');
         }
@@ -35,7 +43,7 @@ export const PublicProfileView: React.FC = () => {
     };
 
     fetchProfile();
-  }, [username]);
+  }, [location.hash]);
 
   if (isLoading) {
     return (

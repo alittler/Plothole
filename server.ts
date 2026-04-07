@@ -957,7 +957,7 @@ async function startServer() {
       if (!pool) return res.status(500).json({ error: 'Database unavailable' });
       
       const result = await pool.query(
-        `SELECT u.username, u.name, p.id, p.title
+        `SELECT u.username, u.name, p.id, p.title, p.data
          FROM users u
          LEFT JOIN projects p ON u.id = p.user_id AND p.is_wiki_public = true AND p.enable_wiki = true
          WHERE u.username = $1`,
@@ -969,7 +969,13 @@ async function startServer() {
       }
 
       const userData = result.rows[0];
-      const books = result.rows.filter(r => r.id).map(r => ({ id: r.id, title: r.title }));
+      const books = result.rows
+        .filter(r => r.id)
+        .map(r => ({ 
+          id: r.id, 
+          title: r.title,
+          synopsis: (r.data?.synopsis || 'No synopsis provided') as string
+        }));
       
       res.json({
         username: userData.username,
