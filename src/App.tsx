@@ -1120,7 +1120,8 @@ const handleRestoreCommit = async (commit: Commit) => {
           onUploadProject={handleUploadProject} 
           onDeleteProject={handleDeleteProject} 
           onOpenDashboard={() => setIsDashboardModalOpen(true)} 
-          isAnalyzing={isAnalyzing} 
+          isAnalyzing={isAnalyzing}
+          fetchWithAuth={fetchWithAuth}
         />;
 
       case ViewType.NOTEPAD: 

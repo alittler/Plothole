@@ -5,12 +5,14 @@ interface ProjectWikiSettingsProps {
   projectId: string;
   projectTitle: string;
   onClose: () => void;
+  fetchWithAuth?: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
   projectId,
   projectTitle,
-  onClose
+  onClose,
+  fetchWithAuth
 }) => {
   const [isWikiEnabled, setIsWikiEnabled] = useState(true);
   const [isWikiPublic, setIsWikiPublic] = useState(false);
@@ -20,13 +22,16 @@ export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
   const [success, setSuccess] = useState(false);
   const [wikiUrl, setWikiUrl] = useState('');
 
+  // Use provided fetchWithAuth or fallback to plain fetch
+  const doFetch = fetchWithAuth || fetch.bind(window);
+
   useEffect(() => {
     fetchWikiSettings();
   }, [projectId]);
 
   const fetchWikiSettings = async () => {
     try {
-      const resp = await fetch(`/api/projects/${projectId}/wiki-settings`);
+      const resp = await doFetch(`/api/projects/${projectId}/wiki-settings`);
       if (!resp.ok) throw new Error('Failed to fetch wiki settings');
       const data = await resp.json();
       setIsWikiEnabled(data.enable_wiki !== false);
@@ -53,7 +58,7 @@ export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
     setSuccess(false);
 
     try {
-      const resp = await fetch(`/api/projects/${projectId}/wiki-settings`, {
+      const resp = await doFetch(`/api/projects/${projectId}/wiki-settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

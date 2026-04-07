@@ -15,10 +15,11 @@ interface BookshelfViewProps {
   onRefreshMetadata?: () => Promise<void>;
   onOpenDashboard: () => void;
   isAnalyzing: boolean;
+  fetchWithAuth?: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 export const BookshelfView: React.FC<BookshelfViewProps> = ({
-  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onRefreshMetadata, isAnalyzing, currentUser
+  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onRefreshMetadata, isAnalyzing, currentUser, fetchWithAuth
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -265,6 +266,7 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
               setWikiSettingsProjectId(null);
               setWikiSettingsProjectTitle('');
             }}
+            fetchWithAuth={fetchWithAuth}
           />
         )}
       </Modal>
