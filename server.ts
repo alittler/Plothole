@@ -605,6 +605,20 @@ async function startServer() {
     });
   });
 
+  app.get('/api/version', (req, res) => {
+    const { execSync } = require('child_process');
+    try {
+      const commitHash = execSync('git rev-parse --short HEAD', { 
+        cwd: __dirname,
+        encoding: 'utf-8' 
+      }).trim();
+      res.json({ commit: commitHash });
+    } catch (err) {
+      console.error('Failed to get commit hash:', err);
+      res.json({ commit: 'unknown' });
+    }
+  });
+
   app.get('/api/aws-status', async (req, res) => {
     try {
       if (!isS3Configured) {

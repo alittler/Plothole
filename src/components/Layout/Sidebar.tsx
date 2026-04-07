@@ -49,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { signOut } = useClerk();
   const [isSyncing, setIsSyncing] = React.useState(false);
+  const [commitHash, setCommitHash] = React.useState<string | null>(null);
 
   const handleSync = async () => {
     if (!onSave || isSyncing) return;
@@ -59,6 +60,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       setTimeout(() => setIsSyncing(false), 1000);
     }
   };
+
+  // Fetch commit hash on mount
+  React.useEffect(() => {
+    const fetchCommitHash = async () => {
+      try {
+        const response = await fetch('/api/version');
+        const data = await response.json();
+        setCommitHash(data.commit);
+      } catch (err) {
+        console.error('Failed to fetch commit hash:', err);
+      }
+    };
+    fetchCommitHash();
+  }, []);
 
   // Close mobile sidebar on Escape key
   React.useEffect(() => {
@@ -281,6 +296,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => window.innerWidth < 1024 && onClose()}
           className="p-4 border-t border-slate-800/50"
         >
+          {!isCollapsed && commitHash && (
+            <div className="text-[10px] text-slate-600 dark:text-slate-500 mb-3 px-4 font-mono">
+              Commit: <span className="text-amber-400">{commitHash}</span>
+            </div>
+          )}
           <div className={`flex items-center gap-3 px-4 py-2 ${isCollapsed ? 'justify-center px-0' : ''}`}>
             {!isCollapsed && (
               <div 
