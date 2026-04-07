@@ -176,6 +176,12 @@ async function startServer() {
   app.use('/uploads', express.static(uploadDir));
   app.use('/source-files', express.static(sourceFilesRootDir));
   
+  // Serve static assets from dist/ in production
+  const distDir = path.resolve(__dirname, 'dist');
+  if (fs.existsSync(distDir)) {
+    app.use(express.static(distDir));
+  }
+  
   // Local File Upload API (Now S3)
   app.post('/api/upload', upload.single('image'), async (req, res) => {
     if (!req.file) {
