@@ -4,8 +4,16 @@ import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 import { execSync } from 'child_process';
 import license from 'rollup-plugin-license';
+import fs from 'fs';
 
-const commitHash = execSync('git rev-parse --short HEAD').toString().trim();
+let commitHash = 'dev';
+try {
+  if (fs.existsSync('.git')) {
+    commitHash = execSync('git rev-parse --short HEAD').toString().trim();
+  }
+} catch (e) {
+  commitHash = 'dev';
+}
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
