@@ -869,12 +869,15 @@ async function startServer() {
     res.json({ status: 'delivered' });
   });
 
-  // Vite middleware for development
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'spa',
-  });
-  app.use(vite.middlewares);
+  // Vite middleware for development only
+  let vite: any = null;
+  if (process.env.NODE_ENV !== 'production') {
+    vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  }
 
   // Serve static assets from dist/ in production (before catch-all route)
   const distDir = process.env.NODE_ENV === 'production' 
@@ -882,9 +885,9 @@ async function startServer() {
     : path.resolve(__dirname, 'dist');
   if (fs.existsSync(distDir)) {
     app.use(express.static(distDir, { 
-      setHeaders: (res, path) => {
-        if (path.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
-        if (path.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+        if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
       }
     }));
   }
@@ -896,7 +899,7 @@ async function startServer() {
       let template;
       let isProd = process.env.NODE_ENV === 'production';
       
-      if (!isProd) {
+      if (!isProd && vite) {
         // In development, let Vite handle the HTML transformation
         template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
         template = await vite.transformIndexHtml(url, template);
