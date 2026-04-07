@@ -536,7 +536,7 @@ export const generateConlangWord = async (language: Language, word: string): Pro
   const model = prompts.AI_MODEL || "gemini-3-flash-preview";
   const response = await ai.models.generateContent({
     model,
-    contents: `Construct word for "${word}" based on phonology rules of ${language.name}`,
+    contents: `Construct word for "${word}" based on phonology rules of ${language}`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
