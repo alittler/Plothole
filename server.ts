@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
-import { initDb, getPool } from './src/db.js';
+import { initDb, getPool } from './src/db.ts';
 // @ts-ignore
 import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
 import { Resend } from 'resend';
