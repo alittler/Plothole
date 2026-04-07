@@ -120,3 +120,4 @@ Plothole relies on several incredible open-source projects. A comprehensive mani
 <div align="center">
 Built with ❤️ for Storytellers.
 </div>
+# Force rebuild
