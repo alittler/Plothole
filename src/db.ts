@@ -56,6 +56,20 @@ export const initDb = async () => {
       );
     `);
 
+    // Add wiki columns to projects table if they don't exist
+    try {
+      await p.query(`
+        ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS is_wiki_public BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS enable_wiki BOOLEAN DEFAULT true;
+      `);
+    } catch (err: any) {
+      // Columns might already exist, which is fine
+      if (err.code !== '42701') { // 42701 = column already exists
+        console.warn("Note: Could not add wiki columns (may already exist):", err.message);
+      }
+    }
+
     // App Globals table
     await p.query(`
       CREATE TABLE IF NOT EXISTS app_globals (

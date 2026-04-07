@@ -1055,9 +1055,11 @@ async function startServer() {
       
       console.log(`[Wiki] Updated settings for project ${projectId}: wiki_public=${is_wiki_public}, wiki_enabled=${enable_wiki}`);
       res.json({ success: true });
-    } catch (err) {
-      console.error(`[Wiki] Error updating settings for project ${projectId}:`, err);
-      res.status(500).json({ error: 'Failed to update wiki settings' });
+    } catch (err: any) {
+      const errorMsg = err?.message || String(err);
+      console.error(`[Wiki] Error updating settings for project ${projectId}:`, errorMsg);
+      console.error(`[Wiki] Full error:`, err);
+      res.status(500).json({ error: `Failed to update wiki settings: ${errorMsg}` });
     }
   });
 
