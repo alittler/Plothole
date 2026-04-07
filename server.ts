@@ -982,6 +982,36 @@ async function startServer() {
     }
   });
 
+  // Fetch wiki settings for a project
+  app.get('/api/projects/:projectId/wiki-settings', async (req: any, res) => {
+    if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
+    
+    const { projectId } = req.params;
+    try {
+      const pool = getPool();
+      if (!pool) return res.status(500).json({ error: 'Database unavailable' });
+      
+      // Verify ownership
+      const project = await pool.query(
+        'SELECT p.is_wiki_public, p.enable_wiki, u.username FROM projects p JOIN users u ON p.user_id = u.id WHERE p.id = $1 AND p.user_id = $2',
+        [projectId, req.auth.userId]
+      );
+      
+      if (project.rows.length === 0) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      res.json({
+        is_wiki_public: project.rows[0].is_wiki_public || false,
+        enable_wiki: project.rows[0].enable_wiki !== false,
+        username: project.rows[0].username
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to fetch wiki settings' });
+    }
+  });
+
   // Update wiki visibility for a project
   app.post('/api/projects/:projectId/wiki-settings', async (req: any, res) => {
     if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });

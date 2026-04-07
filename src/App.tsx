@@ -45,6 +45,8 @@ import { ToolboxView } from './components/Views/ToolboxView';
 import ResearchView from './components/Views/ResearchView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
+import { WikiPageView } from './components/Views/WikiPageView';
+import { PublicProfileView } from './components/Views/PublicProfileView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
@@ -1736,11 +1738,33 @@ const handleRestoreCommit = async (commit: Commit) => {
     </div>
   );
 
+  // Detect public wiki routes (/{username} or /{username}/{bookname})
+  const isPublicWikiRoute = () => {
+    const pathname = location.pathname.slice(1); // Remove leading /
+    const parts = pathname.split('/').filter(Boolean); // Split by / and remove empty strings
+    
+    // Exclude app view routes (these are ViewType names)
+    const viewTypeValues = Object.values(ViewType);
+    if (parts.length === 0 || viewTypeValues.includes(parts[0] as ViewType)) {
+      return false;
+    }
+    
+    // Public wiki routes: /{username} or /{username}/{bookname}
+    return parts.length === 1 || parts.length === 2;
+  };
+
   const [isGuest, setIsGuest] = useState(false);
 
   return (
     <>
-      {!isSignedIn && !isGuest ? (
+      {isPublicWikiRoute() ? (
+        // Render public wiki pages without authentication
+        location.pathname.split('/').filter(Boolean).length === 2 ? (
+          <WikiPageView />
+        ) : (
+          <PublicProfileView />
+        )
+      ) : !isSignedIn && !isGuest ? (
         <SignInPage onGuestAccess={() => setIsGuest(true)} />
       ) : (
         renderAppContent()

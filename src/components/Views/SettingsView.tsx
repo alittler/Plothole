@@ -49,12 +49,61 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [archiveFiles, setArchiveFiles] = React.useState<{ name: string, size: number, mtime: Date, url: string }[]>([]);
   const [previewFile, setPreviewFile] = React.useState<{ name: string, content: string, type: string } | null>(null);
   const [isLoadingArchive, setIsLoadingArchive] = React.useState(false);
+  
+  // Wiki feature state
+  const [username, setUsername] = React.useState('');
+  const [isLoadingUsername, setIsLoadingUsername] = React.useState(false);
+  const [usernameSaved, setUsernameSaved] = React.useState(false);
 
   React.useEffect(() => {
     if (activeTab === SettingsTab.ARCHIVE && projectData) {
       fetchArchiveFiles();
     }
+    if (activeTab === SettingsTab.PROFILE) {
+      fetchUsername();
+    }
   }, [activeTab, projectData]);
+
+  const fetchUsername = async () => {
+    try {
+      const resp = await fetch('/api/user/username');
+      if (resp.ok) {
+        const data = await resp.json();
+        setUsername(data.username || '');
+      }
+    } catch (err) {
+      console.error('Failed to fetch username:', err);
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    if (!username || !/^[a-zA-Z0-9_-]{3,20}$/.test(username)) {
+      alert('Username must be 3-20 alphanumeric characters (no spaces)');
+      return;
+    }
+
+    setIsLoadingUsername(true);
+    try {
+      const resp = await fetch('/api/user/username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      
+      if (resp.ok) {
+        setUsernameSaved(true);
+        setTimeout(() => setUsernameSaved(false), 2000);
+      } else {
+        const err = await resp.json();
+        alert(err.error || 'Failed to save username');
+      }
+    } catch (err) {
+      console.error('Error saving username:', err);
+      alert('Failed to save username');
+    } finally {
+      setIsLoadingUsername(false);
+    }
+  };
 
   const fetchArchiveFiles = async () => {
     if (!projectData) return;
@@ -218,6 +267,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     onChange={(e) => onUpdateUser({ email: e.target.value })}
                     className="w-full px-5 py-3 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all text-sm font-bold"
                   />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Wiki Username</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                      placeholder="e.g., storyteller_123"
+                      className="flex-1 px-5 py-3 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all text-sm font-bold"
+                    />
+                    <button
+                      onClick={handleSaveUsername}
+                      disabled={isLoadingUsername}
+                      className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      {isLoadingUsername ? 'Saving...' : usernameSaved ? '✓ Saved' : 'Save'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400">Your public wiki URL: plothole.click/{username || 'username'}</p>
                 </div>
               </div>
             </section>

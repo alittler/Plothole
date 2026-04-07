@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ProjectMetadata, User } from '../../types';
-import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database, Globe } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { ProjectWikiSettings } from './ProjectWikiSettings';
 
 interface BookshelfViewProps {
   projects: ProjectMetadata[];
@@ -25,6 +26,8 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
   const [newShortName, setNewShortName] = useState('');
   const [newAuthor, setNewAuthor] = useState(currentUser.name);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [wikiSettingsProjectId, setWikiSettingsProjectId] = useState<string | null>(null);
+  const [wikiSettingsProjectTitle, setWikiSettingsProjectTitle] = useState('');
 
   const handleRefresh = async () => {
     if (!onRefreshMetadata || isRefreshing) return;
@@ -113,20 +116,33 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className={`p-4 border-t flex items-center justify-between ${isActive ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800'}`}>
+                  <div className={`p-4 border-t flex items-center justify-between gap-2 ${isActive ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800'}`}>
                     <div className={`flex items-center gap-2 font-bold text-sm ${isActive ? 'text-indigo-700 dark:text-indigo-400' : 'text-indigo-600'}`}>
                       <BookOpen size={16} />
                       {isActive ? 'Active World' : 'Open World'}
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setProjectToDelete(project.id);
-                      }}
-                      className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setWikiSettingsProjectId(project.id);
+                          setWikiSettingsProjectTitle(project.title);
+                        }}
+                        className="p-2 text-slate-400 hover:text-emerald-500 transition-colors"
+                        title="Wiki Settings"
+                      >
+                        <Globe size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProjectToDelete(project.id);
+                        }}
+                        className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -230,6 +246,27 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
         <p className="text-slate-600 dark:text-slate-400 font-serif italic">
           Are you sure you want to delete this story world? This action cannot be undone and all associated manuscript data will be lost.
         </p>
+      </Modal>
+
+      <Modal 
+        isOpen={wikiSettingsProjectId !== null} 
+        onClose={() => {
+          setWikiSettingsProjectId(null);
+          setWikiSettingsProjectTitle('');
+        }} 
+        title={`Wiki Settings: ${wikiSettingsProjectTitle}`}
+        maxWidth="max-w-2xl"
+      >
+        {wikiSettingsProjectId && (
+          <ProjectWikiSettings 
+            projectId={wikiSettingsProjectId}
+            projectTitle={wikiSettingsProjectTitle}
+            onClose={() => {
+              setWikiSettingsProjectId(null);
+              setWikiSettingsProjectTitle('');
+            }}
+          />
+        )}
       </Modal>
     </div>
   );
