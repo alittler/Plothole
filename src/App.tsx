@@ -16,6 +16,7 @@ import {
   saveAppSettings,
   generateId,
   exportProjectPlothole,
+  exportVaultAsZip,
   generateSHA256,
   setCloudStorageEnabled,
   isCloudStorageActive,
@@ -978,6 +979,22 @@ const handleRestoreCommit = async (commit: Commit) => {
     }
   };
 
+  const handleExportVault = async () => {
+    try {
+      addTask('Exporting Vault');
+      await exportVaultAsZip(
+        globalNotes,
+        generateId(8),
+        currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : 'Unknown Author',
+        projectsMetadata
+      );
+    } catch (e) {
+      handleError(e);
+    } finally {
+      removeTask('Exporting Vault');
+    }
+  };
+
   const handleToggleCanon = async (noteId: string, isCanon: boolean) => {
     let targetNote: Note | undefined;
     
@@ -1253,7 +1270,7 @@ const handleRestoreCommit = async (commit: Commit) => {
               setIsAnalyzing(false);
               removeTask('Analyzing Project');
             });
-        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p)} isGeneratingCover={isGeneratingCover} onUpdateProcessedFiles={handleUpdateProcessedFiles} isUpdatingProcessed={isUpdatingProcessed} onLinkClick={handleLinkClick} 
+        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onExportVault={handleExportVault} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p)} isGeneratingCover={isGeneratingCover} onUpdateProcessedFiles={handleUpdateProcessedFiles} isUpdatingProcessed={isUpdatingProcessed} onLinkClick={handleLinkClick} 
          onUpdateProject={updateProjectData} 
          onSave={handleManualSave}
          currentUser={currentUser} 

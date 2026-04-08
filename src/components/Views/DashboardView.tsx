@@ -6,7 +6,7 @@ import {
   Activity, Ghost, PinOff, Edit2,
   BarChart3, TrendingUp, AlertOctagon, History, ShieldCheck, 
   CloudUpload, Mail, CheckCircle, XCircle, ShieldAlert,
-  Download, Image as ImageIcon, Save, Cpu, Loader2, Database,
+  Download, Image as ImageIcon, Save, Cpu, Loader2, Database, Archive,
   CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -29,6 +29,7 @@ interface DashboardViewProps {
   error: string | null;
   onExport: () => void;
   onExportProject: (project: ProjectData) => void;
+  onExportVault: () => void;
   onAnalyzeText: (text: string) => void;
   onRestoreHistory: () => void;
   onRestoreCommit: (commit: Commit) => void;
@@ -45,7 +46,7 @@ interface DashboardViewProps {
   }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, isExporting,
+  projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, onExportVault, isExporting,
   onUpdateProcessedFiles, isUpdatingProcessed = false, onLinkClick, onUpdateProject, onSave, currentUser
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -167,6 +168,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               <Download size={16} />
               <span className="hidden sm:inline">Export</span>
+            </button>
+            <button
+              onClick={onExportVault}
+              className="ph-button-secondary p-2 md:p-3 rounded-2xl text-xs md:text-sm font-bold flex items-center gap-2 flex-wrap justify-center"
+              title="Backup all your notes and account metadata"
+            >
+              <Archive size={16} />
+              <span className="hidden sm:inline">Vault</span>
             </button>
             {onSave && (
               <button
