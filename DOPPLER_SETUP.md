@@ -5,11 +5,12 @@ This document guides you through setting up the Doppler sync automation with Git
 ## What is the Doppler Sync?
 
 The repository now includes an automated system that:
-- **Pulls secrets from Doppler** - Fetches all environment variables from your Doppler project
-- **Syncs to .env** - Updates your local .env file with the latest values
-- **Runs on schedule** - Automatically syncs every 6 hours via GitHub Actions
-- **Creates backups** - Always backs up the current .env before syncing
-- **Tracks changes** - Shows detailed logs of what was added, updated, or removed
+- **Pulls secrets from Doppler** - Fetches all environment variables from your Doppler project.
+- **Syncs to .env** - Updates your local .env file with the latest values.
+- **AI-Powered Repo Description** - Uses Gemini to generate a punchy "About" description for GitHub based on your actual code features.
+- **Auto-Tags** - Automatically identifies and updates your GitHub Repository Topics (tags).
+- **Runs on schedule/push** - Stays updated automatically.
+- **Creates backups** - Always backs up the current .env before syncing.
 
 ## Prerequisites
 
@@ -113,9 +114,14 @@ The following environment variables are synced from Doppler:
 - The .env file matches your current Doppler config
 
 ### Sync shows unexpected changes
-- Run `npm run sync:doppler` locally to debug
-- Check that you're using the correct Doppler config
-- Compare with `.env.sync-backup` to see what changed
+- Run `npm run sync:doppler` locally to debug.
+- Check that you're using the correct Doppler config.
+- Compare with `.env.sync-backup` to see what changed.
+
+### GitHub Description/Tags aren't updating
+- Ensure the GitHub Action has **Read and write permissions** (Settings -> Actions -> General).
+- Make sure `GEMINI_API_KEY` is set in your Doppler config.
+- Verify your `GH_TOKEN` or `GITHUB_TOKEN` is valid in the workflow.
 
 ## Local Testing
 

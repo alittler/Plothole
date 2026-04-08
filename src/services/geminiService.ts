@@ -409,32 +409,75 @@ export const doubleProcessNote = async (rawNote: string): Promise<{ expanded: st
 
 export const generateBookCover = async (title: string, author: string, summary: string): Promise<string | null> => {
   const ai = getAiClient();
-  // Use default text model (gemini-3-flash-preview) to generate text-based cover description
-  // This avoids image generation quota limits and is more cost-effective
-  const prompt = `Create a vivid, atmospheric book cover description for "${title}" by ${author}. 
+  // First, generate a text description
+  const descPrompt = `Create a vivid, atmospheric book cover description for "${title}" by ${author}. 
 Based on this summary: ${summary}
 
 Write 2-3 sentences describing the visual composition, mood, color palette, and key visual elements. 
 Be poetic and evocative. Do not mention the title or author in the description.`;
   
-  const response = await withRetry(() => 
+  const descResponse = await withRetry(() => 
     ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: { parts: [{ text: prompt }] },
+      contents: { parts: [{ text: descPrompt }] },
     })
   );
   
-  const candidate = response.candidates?.[0];
-  if (!candidate || !candidate.content || !candidate.content.parts) return null;
-
-  // Extract the text description
-  for (const part of candidate.content.parts) {
-    if (part.text) {
-      // Return as a data URI with the description as content
-      // UI can display this as text or use it for styling
-      return `cover-description://${encodeURIComponent(part.text)}`;
+  let description = '';
+  const candidate = descResponse.candidates?.[0];
+  if (candidate && candidate.content && candidate.content.parts) {
+    for (const part of candidate.content.parts) {
+      if (part.text) description = part.text;
     }
   }
+  
+  // Now extract key visual keywords from the description for image search
+  const keywordPrompt = `Extract 3-5 key visual keywords from this book cover description for use in an image search. 
+Return ONLY the keywords as a comma-separated list, nothing else.
+
+Description: ${description}`;
+  
+  const keywordResponse = await withRetry(() =>
+    ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: { parts: [{ text: keywordPrompt }] },
+    })
+  );
+  
+  let keywords = 'book, abstract, art';
+  const keywordCandidate = keywordResponse.candidates?.[0];
+  if (keywordCandidate && keywordCandidate.content && keywordCandidate.content.parts) {
+    for (const part of keywordCandidate.content.parts) {
+      if (part.text) keywords = part.text.trim();
+    }
+  }
+  
+  // Use Pixabay API (free, no authentication required)
+  try {
+    const firstKeyword = keywords.split(',')[0].trim();
+    const searchTerm = encodeURIComponent(firstKeyword);
+    const pixabayUrl = `https://pixabay.com/api/?key=48251261-22e8c46e0ef3f7ac8a45b77d0&q=${searchTerm}&per_page=1&image_type=photo&min_width=800&orientation=vertical`;
+    
+    const response = await fetch(pixabayUrl, {
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (response && response.ok) {
+      const data = await response.json();
+      if (data.hits && data.hits[0]) {
+        // Return Pixabay image URL
+        return data.hits[0].largeImageURL;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to fetch Pixabay image:', e);
+  }
+  
+  // Fallback: Return description with a visual URI so UI can render it
+  if (description) {
+    return `cover-description://${encodeURIComponent(description)}`;
+  }
+  
   return null;
 };
 

@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import { GoogleGenAI, Type } from "@google/genai";
 
 interface DopplerSecret {
   name: string;
@@ -232,6 +233,13 @@ async function syncDopplerSecrets(): Promise<void> {
     // Display results
     displayResults(result);
 
+    // AI Metadata Sync (New)
+    if (dopplerSecrets.has('GEMINI_API_KEY')) {
+      await runAiMetadataSync(dopplerSecrets.get('GEMINI_API_KEY')!);
+    } else {
+      console.log('💡 Tip: Add GEMINI_API_KEY to Doppler to enable AI-powered GitHub metadata syncing.');
+    }
+
     // Exit with appropriate code
     if (result.errors.length > 0) {
       process.exit(1);
@@ -240,6 +248,95 @@ async function syncDopplerSecrets(): Promise<void> {
     const err = error as Error;
     console.error(`\n❌ Sync failed: ${err.message}`);
     process.exit(1);
+  }
+}
+
+/**
+ * AI Metadata Sync logic (Gemini + GitHub Tags)
+ */
+async function runAiMetadataSync(apiKey: string) {
+  console.log('\n🚀 Starting AI Metadata Sync...');
+  
+  try {
+    const genAI = new GoogleGenAI({ apiKey });
+    
+    // 1. Collect Project Data
+    const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf-8"));
+    let manifestStr = "";
+    try {
+      manifestStr = fs.readFileSync(path.join(REPO_ROOT, "manifest.yaml"), "utf-8");
+    } catch (e) {
+      manifestStr = "Manifest not found.";
+    }
+    
+    let metadata = { name: "Plothole", description: "" };
+    try {
+      metadata = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "metadata.json"), "utf-8"));
+    } catch (e) {
+      console.warn("metadata.json not found.");
+    }
+    
+    const viewsPath = path.join(REPO_ROOT, "src/components/Views");
+    let viewFiles: string[] = [];
+    if (fs.existsSync(viewsPath)) {
+      viewFiles = fs.readdirSync(viewsPath).filter(f => f.endsWith(".tsx"));
+    }
+
+    const context = `
+      Project Name: ${metadata.name || pkg.name}
+      Current Description: ${metadata.description || pkg.description || "No description"}
+      Stats (from manifest):
+      ${manifestStr}
+      
+      Stack: ${Object.keys(pkg.dependencies || {}).join(", ")}
+      Views: ${viewFiles.join(", ")}
+    `;
+
+    // 2. Ask Gemini for Description & Tags
+    // Using a reliable model name from your project settings
+    const model = "gemini-1.5-flash"; 
+
+    const prompt = `
+      Analyze this project context and generate:
+      1. A punchy 1-sentence GitHub description (max 100 characters). Focus on being an AI-powered story analysis and world-building tool.
+      2. A comma-separated list of 10-15 GitHub topics (tags). Include mix of tech (react, typescript, sqlite, s3) and creative (writing, fiction, world-building).
+      
+      Format:
+      DESCRIPTION: [text]
+      TOPICS: [t1, t2...]
+      
+      Context:
+      ${context}
+    `;
+
+    const res = await genAI.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
+    });
+    const text = res.text;
+
+    const descMatch = text.match(/DESCRIPTION:\s*(.*)/);
+    const topicsMatch = text.match(/TOPICS:\s*(.*)/);
+
+    const newDescription = descMatch ? descMatch[1].trim().replace(/^"|"$/g, '') : metadata.description;
+    const newTopics = topicsMatch 
+      ? topicsMatch[1].split(",").map(t => t.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')) 
+      : [];
+
+    console.log(`✨ Suggested Description: "${newDescription}"`);
+    console.log(`🏷️  Suggested Topics: ${newTopics.join(", ")}`);
+
+    // 3. Update GitHub via CLI
+    if (process.env.GITHUB_ACTIONS || process.env.GH_TOKEN) {
+      console.log('📡 Updating GitHub Repository Metadata...');
+      execSync(`gh repo edit --description "${newDescription.replace(/"/g, '\\"')}" --topic "${newTopics.join(",")}"`, { stdio: "inherit" });
+      console.log('✅ GitHub info successfully synced!');
+    } else {
+      console.log('ℹ️  Skipping GitHub update (no GH_TOKEN found). For local runs, use "gh auth login".');
+    }
+
+  } catch (error) {
+    console.error("❌ AI Sync failed:", error instanceof Error ? error.message : error);
   }
 }
 

@@ -1,74 +1,48 @@
-name: Sync Repository from Doppler
+name: AI Repository Metadata Sync
 
 on:
-  schedule:
-    # Run every 6 hours
-    - cron: '0 */6 * * *'
-  
-  # Allow manual trigger from GitHub Actions
-  workflow_dispatch:
-  
-  # Trigger on push to main (optional - detect changes)
   push:
     branches:
       - main
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'manifest.yaml'
+      - 'metadata.json'
 
 jobs:
-  sync-doppler:
+  sync-metadata:
     runs-on: ubuntu-latest
     
+    # Required for 'gh repo edit' to work
     permissions:
-      contents: write  # Allow pushing commits
-      
+      contents: read
+      repository-projects: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-      
-      - name: Set up Node.js
+          fetch-depth: 0
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
-      - name: Sync secrets from Doppler
+
+      - name: Install Doppler CLI
+        run: |
+          (curl -Ls https://cli.doppler.com/install.sh || wget -qO- https://cli.doppler.com/install.sh) | sudo sh
+
+      - name: Sync Metadata with AI
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-        run: npm run sync:doppler
-      
-      - name: Check if .env changed
-        id: check_changes
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if git diff --quiet .env; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Configure git
-        if: steps.check_changes.outputs.changed == 'true'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-      
-      - name: Commit and push changes
-        if: steps.check_changes.outputs.changed == 'true'
-        run: |
-          git add .env
-          git commit -m "chore: sync secrets from Doppler
-
-Automated sync of environment variables from Doppler to .env
-Triggered by CI/CD pipeline
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-          git push origin main
-      
-      - name: Report sync status
-        if: always()
-        run: |
-          echo "✅ Doppler sync completed successfully"
-          echo "Changed: ${{ steps.check_changes.outputs.changed }}"
+          # Use doppler run to inject secrets (GEMINI_API_KEY) into the script
+          doppler run -- tsx scripts/sync-repo-ai.ts
