@@ -99,7 +99,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex-shrink-0">
               <div className="w-32 h-48 md:w-40 md:h-56 ph-panel shadow-xl overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
                 {projectData.coverImage ? (
-                  <img src={projectData.coverImage} className="w-full h-full object-cover" alt="Cover" referrerPolicy="no-referrer" />
+                  projectData.coverImage.startsWith('cover-description://') ? (
+                    // Display text-based cover description
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 p-3">
+                      <p className="text-xs text-slate-200 italic text-center leading-relaxed">
+                        {decodeURIComponent(projectData.coverImage.replace('cover-description://', ''))}
+                      </p>
+                    </div>
+                  ) : (
+                    // Display image-based cover (legacy)
+                    <img src={projectData.coverImage} className="w-full h-full object-cover" alt="Cover" referrerPolicy="no-referrer" />
+                  )
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-slate-200 dark:bg-slate-800">
                     <button

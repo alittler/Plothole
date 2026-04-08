@@ -409,16 +409,31 @@ export const doubleProcessNote = async (rawNote: string): Promise<{ expanded: st
 
 export const generateBookCover = async (title: string, author: string, summary: string): Promise<string | null> => {
   const ai = getAiClient();
-  const prompt = `Book cover for "${title}" by ${author}. Summary: ${summary}. Atmospheric, high quality, no text.`;
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: { parts: [{ text: prompt }] },
-  });
+  // Use cheaper gemini-2-flash model to generate a text-based cover description
+  // This avoids image generation quota limits and is more cost-effective
+  const prompt = `Create a vivid, atmospheric book cover description for "${title}" by ${author}. 
+Based on this summary: ${summary}
+
+Write 2-3 sentences describing the visual composition, mood, color palette, and key visual elements. 
+Be poetic and evocative. Do not mention the title or author in the description.`;
+  
+  const response = await withRetry(() => 
+    ai.models.generateContent({
+      model: 'gemini-2-flash',
+      contents: { parts: [{ text: prompt }] },
+    })
+  );
+  
   const candidate = response.candidates?.[0];
   if (!candidate || !candidate.content || !candidate.content.parts) return null;
 
+  // Extract the text description
   for (const part of candidate.content.parts) {
-    if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
+    if (part.text) {
+      // Return as a data URI with the description as content
+      // UI can display this as text or use it for styling
+      return `cover-description://${encodeURIComponent(part.text)}`;
+    }
   }
   return null;
 };
