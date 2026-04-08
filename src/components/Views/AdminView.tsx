@@ -5,7 +5,7 @@ import {
   Shield, Sparkles, Save, Database, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, Globe, Loader2, RotateCcw, Target, Wrench, Upload
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book
 } from 'lucide-react';
 
 import { UnifiedDatabaseView } from './UnifiedDatabaseView';
@@ -40,7 +40,8 @@ enum AdminTab {
   NAVIGATION = 'Navigation',
   USERS = 'Users',
   TOOLBOX = 'Toolbox',
-  ENTITIES = 'Entity Explorer'
+  ENTITIES = 'Entity Explorer',
+  CARD_EXAMPLES = 'Card Examples & Backup'
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
@@ -301,6 +302,224 @@ export const AdminView: React.FC<AdminViewProps> = ({
           <div className="flex-1 flex items-center justify-center p-20"><div className="text-center space-y-4"><Database size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Entity Explorer.</p></div></div>
         );
 
+      case AdminTab.CARD_EXAMPLES:
+        return (
+          <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 animate-in fade-in duration-500">
+            <div className="max-w-6xl mx-auto p-8 space-y-8">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Card Types & Backup Structure</h2>
+                <p className="text-slate-600 dark:text-slate-400 font-serif italic">Example of each card type and how they're structured in project exports</p>
+              </div>
+
+              {/* Character Card Example */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                    <User size={20} className="text-indigo-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">CHARACTER CARD</h3>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm uppercase tracking-widest text-slate-600 dark:text-slate-400">Visual Example</h4>
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">Eleanor Valorian</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Role:</strong> Paladin</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Job:</strong> Knight Commander</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">Fierce warrior devoted to protecting the realm. Bears a mysterious scar...</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm uppercase tracking-widest text-slate-600 dark:text-slate-400">Backup Structure (JSON)</h4>
+                    <pre className="bg-slate-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto">
+{`{
+  "id": "char_001",
+  "name": "Eleanor Valorian",
+  "role": "Paladin",
+  "job": "Knight Commander",
+  "description": "Fierce warrior...",
+  "associatedLocationId": "loc_001"
+}`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Card Example */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                    <MapPin size={20} className="text-green-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">LOCATION CARD</h3>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm uppercase tracking-widest text-slate-600 dark:text-slate-400">Visual Example</h4>
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">The Citadel of Ashenmarch</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Type:</strong> Fortress</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">Imposing stone fortress perched on a mountain peak, home to the kingdom's military...</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm uppercase tracking-widest text-slate-600 dark:text-slate-400">Backup Structure (JSON)</h4>
+                    <pre className="bg-slate-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto">
+{`{
+  "id": "loc_001",
+  "name": "The Citadel of Ashenmarch",
+  "type": "Fortress",
+  "description": "Imposing stone fortress...",
+  "mapImage": "url-to-image"
+}`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Artifact Card Example */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                    <Archive size={20} className="text-amber-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">ARTIFACT CARD</h3>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm uppercase tracking-widest text-slate-600 dark:text-slate-400">Visual Example</h4>
+                    <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">Excalibur's Echo</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Type:</strong> Legendary Sword</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">A mystical blade forged in starlight, said to cut through illusions...</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm uppercase tracking-widest text-slate-600 dark:text-slate-400">Backup Structure (JSON)</h4>
+                    <pre className="bg-slate-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto">
+{`{
+  "id": "art_001",
+  "name": "Excalibur's Echo",
+  "type": "Legendary Sword",
+  "description": "A mystical blade...",
+  "rarity": "Unique"
+}`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lore Card Example */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                    <Book size={20} className="text-purple-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">LORE CARD</h3>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm uppercase tracking-widest text-slate-600 dark:text-slate-400">Visual Example</h4>
+                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">The First Age</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Category:</strong> History</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">The ancient epoch when the world was young and the gods still walked among mortals...</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm uppercase tracking-widest text-slate-600 dark:text-slate-400">Backup Structure (JSON)</h4>
+                    <pre className="bg-slate-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto">
+{`{
+  "id": "lore_001",
+  "term": "The First Age",
+  "category": "History",
+  "definition": "The ancient epoch...",
+  "tags": ["ancient", "gods"]
+}`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline Card Example */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                    <Clock size={20} className="text-blue-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">TIMELINE CARD</h3>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm uppercase tracking-widest text-slate-600 dark:text-slate-400">Visual Example</h4>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">The Great Schism</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Year:</strong> 1432 (Second Age)</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">The kingdom split into three nations, each vying for control of the throne...</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-sm uppercase tracking-widest text-slate-600 dark:text-slate-400">Backup Structure (JSON)</h4>
+                    <pre className="bg-slate-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto">
+{`{
+  "id": "evt_001",
+  "title": "The Great Schism",
+  "date": "1432 (Second Age)",
+  "description": "The kingdom split...",
+  "era": "Second Age"
+}`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Export Structure */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                    <Download size={20} className="text-slate-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">PROJECT EXPORT STRUCTURE</h3>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">When you export a project, all cards are included in the backup file under these top-level collections:</p>
+                  <pre className="bg-slate-900 text-green-400 text-xs p-4 rounded-lg overflow-x-auto">
+{`{
+  "id": "project_id",
+  "title": "My Story",
+  "author": "Author Name",
+  
+  // All card collections
+  "characters": [ ... ],
+  "locations": [ ... ],
+  "artifacts": [ ... ],
+  "lore": [ ... ],
+  "timeline": [ ... ],
+  "entities": [ ... ],
+  
+  // Other project data
+  "notes": [ ... ],
+  "proseDocuments": [ ... ],
+  "chapters": [ ... ],
+  "relationships": [ ... ],
+  
+  // Metadata
+  "lastModified": 1712606522,
+  "wordCount": 15234,
+  "charCount": 98234
+}`}
+                  </pre>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-900 dark:text-blue-200">
+                      <strong>💾 Backup Location:</strong> When you export or auto-backup your project, all cards are saved in a single JSON file. Cards are organized by type and can be selectively restored or migrated to other projects.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       default: return null;
     }
   };
@@ -329,6 +548,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 {tab === AdminTab.USERS && <User size={18} />}
                 {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
                 {tab === AdminTab.ENTITIES && <Database size={18} />}
+                {tab === AdminTab.CARD_EXAMPLES && <FileText size={18} />}
               </div>
               {tab}
             </button>
