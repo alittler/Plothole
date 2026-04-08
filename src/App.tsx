@@ -17,6 +17,8 @@ import {
   generateId,
   exportProjectPlothole,
   exportVaultAsZip,
+  importVaultFromZip,
+  unpackProject,
   generateSHA256,
   setCloudStorageEnabled,
   isCloudStorageActive,
@@ -1022,14 +1024,53 @@ const handleRestoreCommit = async (commit: Commit) => {
     setIsAnalyzing(true);
     addTask('uploading-project');
     try {
+      // Handle Vault (.pvoid) files
+      if (file.name.endsWith('.pvoid')) {
+        const vaultData = await importVaultFromZip(file);
+        // Merge vault notes into global notes
+        const newNotes = vaultData.notes.map(note => ({
+          id: note.id,
+          content: note.content,
+          tags: note.tags,
+          anchor_target: note.anchor_target,
+          note_type: note.note_type,
+          created: new Date().toISOString(),
+          modified: new Date().toISOString()
+        }));
+        
+        // Add new notes to global notes
+        const existingIds = new Set(globalNotes.map(n => n.id));
+        const notesToAdd = newNotes.filter(n => !existingIds.has(n.id));
+        
+        const updatedNotes = [...globalNotes, ...notesToAdd];
+        setGlobalNotes(updatedNotes);
+        
+        // Save each new note
+        for (const note of notesToAdd) {
+          await saveGlobalNote(note);
+        }
+        
+        setProcessingStatus(`Imported ${notesToAdd.length} notes from Vault`);
+        return;
+      }
+      
+      // Handle Book (.plothole) files (ZIP format)
+      if (file.name.endsWith('.plothole')) {
+        const projectData = await unpackProject(file);
+        if (projectData) {
+          projectData.author = currentUser.name;
+          await saveProjectData(projectData);
+          setProjectData(projectData);
+          await refreshMetadata();
+          setCurrentView(ViewType.DASHBOARD);
+          return;
+        }
+      }
+      
       const text = await file.text();
       let data: any;
       
       if (file.name.endsWith('.json')) {
-        data = JSON.parse(text);
-        data.author = currentUser.name;
-      } else if (file.name.endsWith('.plothole')) {
-        // .plothole files are JSON (for now)
         data = JSON.parse(text);
         data.author = currentUser.name;
       } else {
