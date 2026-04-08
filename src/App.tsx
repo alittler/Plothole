@@ -714,13 +714,40 @@ const handleRestoreCommit = async (commit: Commit) => {
         { id: 'CH-ARTHUR', name: 'Arthur Penhaligon', role: 'Protagonist', job: 'Junior Archivist', description: 'A curious and determined young man with an uncanny ability to read ancient scripts.', traits: ['Curious', 'Determined'], source: 'manual' as const },
         { id: 'CH-VAELEN', name: 'Admin Vaelen', role: 'Antagonist', job: 'High Architect', description: 'The cold, calculating ruler of the Citadel.', traits: ['Cold', 'Calculating'], source: 'manual' as const },
         { id: 'CH-ELARA', name: 'Elara Vane', role: 'Ally', job: 'Information Broker', description: 'A resourceful survivor from the Lower Wards.', traits: ['Resourceful', 'Cynical'], source: 'manual' as const },
-        { id: 'CH-SILAS', name: 'Master Silas', role: 'Mentor', job: 'Senior Archivist', description: 'A wise and secretive mentor who knows the truth.', traits: ['Wise', 'Secretive'], source: 'manual' as const }
+        { id: 'CH-SILAS', name: 'Master Silas', role: 'Mentor', job: 'Senior Archivist', description: 'A wise and secretive mentor who knows the truth.', traits: ['Wise', 'Secretive'], source: 'manual' as const },
+        { id: 'CH-KESS', name: 'Kessandra Mohr', role: 'Ally', job: 'Memory Thief', description: 'A skilled operative who steals valuable memories for the black market. Torn between survival and morality.', traits: ['Cunning', 'Pragmatic', 'Conflicted'], source: 'manual' as const }
       ];
 
       const locations = [
         { id: 'LOC-GREAT-ARCHIVE', name: 'The Great Archive', description: 'The heart of the Obsidian Citadel, containing all recorded memories.', type: 'Library', source: 'manual' as const },
         { id: 'LOC-LOWER-WARDS', name: 'The Lower Wards', description: 'The smog-filled streets where the memory-less are cast aside.', type: 'District', source: 'manual' as const },
-        { id: 'LOC-OBSIDIAN-SPIRE', name: 'The Obsidian Spire', description: 'Vaelen\'s seat of power, piercing the gray clouds.', type: 'Tower', source: 'manual' as const }
+        { id: 'LOC-OBSIDIAN-SPIRE', name: 'The Obsidian Spire', description: 'Vaelen\'s seat of power, piercing the gray clouds.', type: 'Tower', source: 'manual' as const },
+        { id: 'LOC-DEEP-VAULTS', name: 'The Deep Vaults', description: 'Ancient underground chambers rumored to contain pre-Plague knowledge and artifacts.', type: 'Underground', source: 'manual' as const },
+        { id: 'LOC-MEMORY-MARKETS', name: 'Memory Markets', description: 'Bustling trading hub in the Lower Wards where memories and information exchange hands.', type: 'Marketplace', source: 'manual' as const }
+      ];
+
+      const artifacts = [
+        { id: 'ART-CHRONOS-KEY', name: 'Chronos Key', description: 'A relic that can unlock memory vaults. Hums with a rhythmic pulse. Crafted before the Mnemonic Plague.', type: 'Artifact', significance: 'Crucial', source: 'manual' as const },
+        { id: 'ART-MEMORY-VIAL', name: 'Golden Memory Vial', description: 'Vials containing memories from the First Age before the Plague. Glow with bioluminescent gold light.', type: 'Artifact', significance: 'Rare', source: 'manual' as const },
+        { id: 'ART-LEXICON', name: 'Ancient Lexicon', description: 'A dictionary of the First Language containing codes that stabilize Echo-Walkers.', type: 'Artifact', significance: 'Critical', source: 'manual' as const },
+        { id: 'ART-MEMORY-WEAVE', name: 'Memory Weave Pendant', description: 'Worn by high-ranking archivists, grants limited Echo-Walking ability and memory restoration.', type: 'Artifact', significance: 'Uncommon', source: 'manual' as const },
+        { id: 'ART-TRUTH-SCROLL', name: 'The Founding Scroll', description: 'A hidden scroll revealing the truth about the Mnemonic Plague—that it was not a disaster but a weapon.', type: 'Artifact', significance: 'Legendary', source: 'manual' as const }
+      ];
+
+      const lore = [
+        { id: 'LORE-MNEMONIC-PLAGUE', name: 'The Mnemonic Plague', content: 'Three centuries ago, a catastrophic event wiped the collective memory of civilization. Official records claim it was a natural disaster. In reality, it was engineered by the First High Architects as a tool to reshape society and eliminate dissent.', tags: ['History', 'Mystery'], source: 'manual' as const },
+        { id: 'LORE-ECHO-WALKERS', name: 'Echo-Walkers and the Void', content: 'Echo-Walkers are individuals capable of entering others\' minds and experiencing their memories. Those untrained risk the Void—a state of complete memory loss that erases all sense of identity. The Chronos Key and ancient stabilization techniques can prevent this fate.', tags: ['Magic System', 'Danger'], source: 'manual' as const },
+        { id: 'LORE-THE-WEAVER', name: 'The Great Weaver', content: 'A figure of legend from before the Plague who supposedly spun the first memory strings at the dawn of time. May have been the architect of the original society\'s memory system. Some believe The Weaver still exists in spectral form.', tags: ['Mythology', 'Speculation'], source: 'manual' as const },
+        { id: 'LORE-MNEMOS-CURRENCY', name: 'Mnemos: Memory as Currency', content: 'In the post-Plague world, memories became the primary currency. Extracted memories of the elite are stored in vials and traded. Those with more memory strength (Mnemos) have greater social status and access to resources.', tags: ['Economy', 'Society'], source: 'manual' as const },
+        { id: 'LORE-FIRST-AGE', name: 'The First Age Before Memory', content: 'Largely lost to the Plague, the First Age was a world where civilization depended on a unified memory system. Records suggest advanced technology, complex social structures, and knowledge now considered impossible. Only fragments remain in the Deep Vaults.', tags: ['Lost Civilization', 'History'], source: 'manual' as const }
+      ];
+
+      const timeline = [
+        { id: 'TL-FIRST-AGE', date: '0', period: 'The First Age', description: 'Civilization at its height. Memory system operates perfectly. The Weaver constructs the foundational memory architecture.', status: 'Unknown' as const },
+        { id: 'TL-THE-PLAGUE', date: '0-300YBP', period: 'The Mnemonic Plague', description: 'A catastrophic event wipes the collective memory. Official history begins here. Survivors rebuild, creating the Citadel under the rule of the First High Architects.', status: 'Documented' as const },
+        { id: 'TL-CITADEL-FOUNDED', date: '300YBP', period: 'Founding of the Citadel', description: 'The Great Archive is constructed. Memory becomes the foundation of society. The tiered class system emerges based on memory strength.', status: 'Documented' as const },
+        { id: 'TL-GREAT-FIRE', date: '10YBP', period: 'The West Wing Burning', description: 'Vaelen orders the destruction of the West Wing of the Archive to eliminate knowledge of dissent and rebellion. Thousands of memories are lost forever.', status: 'Suspected' as const },
+        { id: 'TL-PRESENT-DAY', date: 'Now', period: 'The Echo Awakens', description: 'Arthur discovers the Chronos Key. The Echo manifests. The truth of the Founding begins to unravel. The Citadel\'s carefully constructed reality faces its greatest threat.', status: 'In Progress' as const }
       ];
 
       const proseDocuments = [
@@ -761,14 +788,19 @@ const handleRestoreCommit = async (commit: Commit) => {
           { id: 'CH-VAELEN', name: 'Admin Vaelen', tier: 1, species: 'Human', type: 'Character', description: 'The cold, calculating ruler of the Citadel.', motivation: 'Maintain total control of memory.', conflict: 'Fear of a second Mnemonic Plague.', location_id: 'LOC-OBSIDIAN-SPIRE' },
           { id: 'CH-ELARA', name: 'Elara Vane', tier: 2, species: 'Human', type: 'Character', primary_trait: 'Resourceful survivor and information broker.', location_id: 'LOC-LOWER-WARDS' },
           { id: 'CH-SILAS', name: 'Master Silas', tier: 2, species: 'Human', type: 'Character', primary_trait: 'Wise and secretive mentor.', location_id: 'LOC-GREAT-ARCHIVE' },
+          { id: 'CH-KESS', name: 'Kessandra Mohr', tier: 2, species: 'Human', type: 'Character', primary_trait: 'Skilled operative caught between survival and morality.', location_id: 'LOC-MEMORY-MARKETS' },
           { id: 'CH-ECHO', name: 'The Echo', tier: 3, species: 'Spectral Entity', type: 'Character' },
           { id: 'LOC-GREAT-ARCHIVE', name: 'The Great Archive', tier: 1, species: 'Structure', type: 'Location', description: 'The heart of the Obsidian Citadel.' },
           { id: 'LOC-LOWER-WARDS', name: 'The Lower Wards', tier: 3, species: 'District', type: 'Location' },
-          { id: 'LOC-OBSIDIAN-SPIRE', name: 'The Obsidian Spire', tier: 1, species: 'Structure', type: 'Location', description: 'Vaelen\'s seat of power.' }
+          { id: 'LOC-OBSIDIAN-SPIRE', name: 'The Obsidian Spire', tier: 1, species: 'Structure', type: 'Location', description: 'Vaelen\'s seat of power.' },
+          { id: 'LOC-DEEP-VAULTS', name: 'The Deep Vaults', tier: 2, species: 'Underground', type: 'Location', description: 'Ancient chambers beneath the Citadel.' },
+          { id: 'LOC-MEMORY-MARKETS', name: 'Memory Markets', tier: 2, species: 'Marketplace', type: 'Location', description: 'Heart of trade in the Lower Wards.' }
         ],
         characters,
         locations,
-        timeline: [],
+        artifacts,
+        lore,
+        timeline,
         relationships: [],
         notes: [],
         manuscript: fullManuscript,
