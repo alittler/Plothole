@@ -44,7 +44,8 @@ export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
 
   const slugify = (text: string) => {
     return text
-      .replace(/[^a-zA-Z0-9]+/g, '_') // Replace all non-alphanumeric chars with _
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_') // Replace all non-alphanumeric chars with _
       .replace(/^_+|_+$/g, '');       // Trim leading/trailing underscores
   };
 
@@ -155,37 +156,50 @@ export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
               )}
             </div>
             
-            <div className="space-y-3">
-              <div className="text-[11px] font-mono bg-black/20 p-3 rounded-xl break-all border border-white/10">
-                {wikiUrl}
+            <div className="flex flex-col md:flex-row gap-6 items-center">
+              {/* URL and Buttons */}
+              <div className="flex-1 space-y-3 w-full">
+                <div className="text-[11px] font-mono bg-black/20 p-3 rounded-xl break-all border border-white/10">
+                  {wikiUrl}
+                </div>
+                
+                <div className="flex gap-2">
+                  <a
+                    href={wikiUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-white text-indigo-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-50 transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Visit
+                  </a>
+                  <button
+                    onClick={handleCopyLink}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-400 transition-colors border border-white/10"
+                  >
+                    {copySuccess ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
-              
-              <div className="flex gap-2">
-                <a
-                  href={wikiUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-white text-indigo-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-50 transition-colors"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  Visit
-                </a>
-                <button
-                  onClick={handleCopyLink}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-400 transition-colors border border-white/10"
-                >
-                  {copySuccess ? (
-                    <>
-                      <Check className="w-3.5 h-3.5" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      Copy
-                    </>
-                  )}
-                </button>
+
+              {/* QR Code */}
+              <div className="shrink-0 bg-white p-2 rounded-2xl shadow-inner shadow-black/5">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(wikiUrl)}&bgcolor=ffffff&color=4f46e5`}
+                  alt="Wiki QR Code"
+                  className="w-[100px] h-[100px] block"
+                  loading="lazy"
+                />
               </div>
             </div>
           </div>

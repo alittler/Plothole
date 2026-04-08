@@ -889,22 +889,25 @@ async function startServer() {
   // Username management
   app.post('/api/user/username', async (req: any, res) => {
     if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
-    
+
     const { username } = req.body;
-    if (!username || !/^[a-zA-Z0-9_-]{3,20}$/.test(username)) {
+    const lowercaseUsername = username?.toLowerCase();
+
+    if (!lowercaseUsername || !/^[a-z0-9_-]{3,20}$/.test(lowercaseUsername)) {
       return res.status(400).json({ error: 'Username must be 3-20 alphanumeric characters' });
     }
 
     try {
       const pool = getPool();
       if (!pool) return res.status(500).json({ error: 'Database unavailable' });
-      
+
       await pool.query(
         'UPDATE users SET username = $1 WHERE id = $2',
-        [username, req.auth.userId]
+        [lowercaseUsername, req.auth.userId]
       );
       res.json({ success: true });
     } catch (err: any) {
+
       if (err.code === '23505') {
         return res.status(400).json({ error: 'Username already taken' });
       }

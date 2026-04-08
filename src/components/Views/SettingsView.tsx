@@ -81,7 +81,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleSaveUsername = async () => {
-    if (!username || !/^[a-zA-Z0-9_-]{3,20}$/.test(username)) {
+    const lowercaseUsername = username.toLowerCase();
+    if (!lowercaseUsername || !/^[a-z0-9_-]{3,20}$/.test(lowercaseUsername)) {
       alert('Username must be 3-20 alphanumeric characters (no spaces)');
       return;
     }
@@ -91,13 +92,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       const resp = await doFetch('/api/user/username', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
+        body: JSON.stringify({ username: lowercaseUsername })
       });
       
       if (resp.ok) {
         setUsernameSaved(true);
         // Update local user state as well
-        onUpdateUser({ ...currentUser, username });
+        onUpdateUser({ ...currentUser, username: lowercaseUsername });
         setTimeout(() => setUsernameSaved(false), 2000);
       } else {
         const err = await resp.json();
