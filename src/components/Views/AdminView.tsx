@@ -424,6 +424,129 @@ entities:
                 </div>
               </div>
             </section>
+
+            {/* Vault (.pvoid) Section */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-purple-600 text-white rounded-2xl shadow-lg shadow-purple-600/20"><Archive size={28} /></div>
+                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">.pvoid Format</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Master vault containing global notes and account-wide metadata.</p></div>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Overview</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    A <code className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-mono text-xs">.pvoid</code> file is a ZIP archive containing your author-level Vault: all global notes, tags, account metadata, and a reference list of all your projects. This acts as a "Single Source of Truth" for notes that can be referenced across multiple Books.
+                  </p>
+                </div>
+
+                {/* Vault Directory Structure */}
+                <div>
+                  <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Directory Structure</h3>
+                  <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-6 font-mono text-xs text-slate-300 overflow-x-auto">
+                    <pre>{`.pvoid/
+├── manifest.yaml              # Vault metadata & book inventory
+├── account/
+│   ├── notes.yaml             # All global notes with unique IDs
+│   ├── tags.yaml              # Tag definitions & metadata
+│   └── metadata.yaml          # Author/account information
+└── history.diff               # Version control / edit history`}</pre>
+                  </div>
+                </div>
+
+                {/* Sample Vault Manifest */}
+                <div>
+                  <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Sample manifest.yaml</h3>
+                  <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-6 font-mono text-xs text-slate-300 overflow-x-auto">
+                    <pre>{`# Plothole Vault Manifest
+version: "1.0"
+vault_id: "vault_author_001"
+author: "Jane Doe"
+created: "2024-01-01T00:00:00Z"
+modified: "2024-01-20T14:22:00Z"
+
+statistics:
+  note_count: 42
+  tag_count: 8
+  books: 3
+
+books:
+  - id: "book_avatar_id"
+    title: "Avatar Project"
+    last_backup: "2024-01-20T10:00:00Z"
+  - id: "book_memories_id"
+    title: "Memories of the Void"
+    last_backup: "2024-01-19T15:30:00Z"`}</pre>
+                  </div>
+                </div>
+
+                {/* Vault Manifest Fields */}
+                <div>
+                  <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Manifest Fields</h3>
+                  <div className="space-y-3">
+                    {[
+                      { field: 'vault_id', desc: 'Unique vault identifier for this author' },
+                      { field: 'author', desc: 'Author/account name' },
+                      { field: 'created', desc: 'ISO 8601 vault creation timestamp' },
+                      { field: 'modified', desc: 'ISO 8601 last modification timestamp' },
+                      { field: 'statistics', desc: 'Counts of notes, tags, and linked books' },
+                      { field: 'books', desc: 'Array of book IDs and titles backed up from this vault' }
+                    ].map(item => (
+                      <div key={item.field} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest font-mono">{item.field}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Vault Notes Schema */}
+                <div>
+                  <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Notes Schema</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Each note in <code className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-mono text-xs">account/notes.yaml</code> contains:</p>
+                  <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-6 font-mono text-xs text-slate-300 overflow-x-auto">
+                    <pre>{`notes:
+  - id: "note_001"              # Unique vault-wide ID
+    content: "Character notes"
+    created: "2024-01-01T10:00:00Z"
+    modified: "2024-01-20T14:00:00Z"
+    tags: []                     # Tag IDs (managed by app)
+    anchor_target: "char_001"    # Optional: Entity ID (character, location, etc.)
+    note_type: "global"          # "global" or "ephemeral"
+  
+  - id: "note_002"
+    content: "Temporary thoughts"
+    tags: ["avatar"]
+    anchor_target: null
+    note_type: "ephemeral"       # Ephemeral notes stay in vault only`}</pre>
+                  </div>
+                </div>
+
+                {/* Book-Vault Relationship */}
+                <div className="p-6 bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                  <h3 className="text-sm font-black text-purple-900 dark:text-purple-200 uppercase tracking-wider mb-3">Book-Vault Relationship</h3>
+                  <div className="space-y-3 text-sm text-purple-800 dark:text-purple-300">
+                    <p>
+                      When you back up a <strong>Book (.plothole)</strong>, it includes <strong>referenced_notes</strong>: cached copies of notes from the Vault that are relevant to that project.
+                    </p>
+                    <p>
+                      Books are <strong>self-contained</strong>. If you share a .plothole file with someone else, they can read the notes without needing your .pvoid Vault.
+                    </p>
+                    <p>
+                      <strong>Sync behavior:</strong> Book backups are snapshots. If you edit a note in the Vault and then back up a Book, the next backup will include the updated note cached inside the .plothole file.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Vault Export & Import */}
+                <div className="p-6 bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                  <h3 className="text-sm font-black text-purple-900 dark:text-purple-200 uppercase tracking-wider mb-2">Export & Import</h3>
+                  <p className="text-sm text-purple-800 dark:text-purple-300">
+                    Use the <strong>Export Vault</strong> button to backup all your global notes and account metadata into a <code className="bg-white dark:bg-slate-900 px-2 py-1 rounded font-mono text-xs">.pvoid</code> file. Import .pvoid files to restore your Vault on another device or as a backup.
+                  </p>
+                </div>
+              </div>
+            </section>
           </div>
         );
 
