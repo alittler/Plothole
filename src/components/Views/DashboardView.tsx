@@ -282,6 +282,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   );
 };
 
+const QuickStat = ({ icon: Icon, label, value }: { icon: any; label: string; value: string | number }) => (
+  <div className="flex flex-col items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+    <Icon size={16} className="text-indigo-600 dark:text-indigo-400" />
+    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</span>
+    <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{value}</span>
+  </div>
+);
+
 const StatCard = ({ icon: Icon, label, value, color }: any) => (
   <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-3 md:gap-4 hover:shadow-md transition-shadow">
     <div className={`p-3 md:p-4 rounded-xl md:rounded-2xl bg-slate-50 dark:bg-slate-950 ${color} shadow-inner`}>
