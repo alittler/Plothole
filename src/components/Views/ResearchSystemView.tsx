@@ -126,13 +126,14 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   };
 
   const handleInspirationImageUrl = (url: string) => {
+    console.log('Image uploaded successfully. URL:', url);
     setNewInspirationImage(url);
     setInspirationImageError('');
   };
 
   const handleInspirationImageError = (error: string) => {
-    setInspirationImageError(error);
     console.error('Inspiration image upload error:', error);
+    setInspirationImageError(error);
   };
 
   // Keyboard shortcuts for delete modal
@@ -156,6 +157,10 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [noteToDelete, onDeleteNote, onDeleteAllNotes]);
+
+  React.useEffect(() => {
+    console.log('Inspirations in data:', data.inspirations);
+  }, [data.inspirations]);
 
   const handleAdd = () => {
     if (!newNote.trim()) return;
@@ -311,8 +316,8 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
         </header>
       )}
 
-      <div className="flex-1 overflow-y-auto relative p-0 md:p-8 paper-texture">
-        <div className="max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-none md:rounded-3xl overflow-hidden flex flex-col paper-texture">
+      <div className={`flex-1 overflow-y-auto relative p-0 md:p-8 ${viewMode === NotepadView.STREAM ? 'paper-texture' : ''}`}>
+        <div className={`max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-none md:rounded-3xl overflow-hidden flex flex-col ${viewMode === NotepadView.STREAM ? 'paper-texture' : ''}`}>
           {viewMode === NotepadView.STREAM ? (
             <>
               {/* Spacer to push content below fixed leather header */}
