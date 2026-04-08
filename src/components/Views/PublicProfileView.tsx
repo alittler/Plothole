@@ -91,7 +91,7 @@ export const PublicProfileView: React.FC = () => {
           {books.map((book) => (
             <Link
               key={book.id}
-              to={`/${username}/${encodeURIComponent(book.title)}`}
+              to={`/${username}/${book.title.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')}`}
               className="group bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 hover:shadow-lg hover:border-indigo-400 dark:hover:border-indigo-600 transition-all duration-200"
             >
               <div className="flex items-start gap-4">

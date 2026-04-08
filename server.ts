@@ -934,19 +934,24 @@ async function startServer() {
   // Public wiki endpoints (no auth required)
   app.get('/api/wiki/:username/:bookName', async (req, res) => {
     const { username, bookName } = req.params;
-    
+
     try {
       const pool = getPool();
       if (!pool) return res.status(500).json({ error: 'Database unavailable' });
-      
+
+      // Match against slugified title: replace non-alphanumeric with _, trim _, and compare case-insensitively
       const result = await pool.query(
         `SELECT p.id, p.title, p.data, p.is_wiki_public, p.enable_wiki, u.username, u.name
          FROM projects p
          JOIN users u ON p.user_id = u.id
-         WHERE u.username = $1 AND p.title ILIKE $2 AND p.is_wiki_public = true AND p.enable_wiki = true`,
+         WHERE u.username = $1 
+           AND (
+             p.title ILIKE $2 OR 
+             trim(both '_' from regexp_replace(p.title, '[^a-zA-Z0-9]+', '_', 'g')) ILIKE $2
+           )
+           AND p.is_wiki_public = true AND p.enable_wiki = true`,
         [username, bookName]
       );
-
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Book not found or not public' });
       }
@@ -963,7 +968,7 @@ async function startServer() {
 
       res.json({
         title: project.title,
-        author: project.name,
+        author: project.data.author || project.name,
         synopsis: project.data.synopsis || '',
         characters: settings.includeCharacters !== false ? (project.data.characters || []) : [],
         worldBuilding: [

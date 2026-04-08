@@ -42,6 +42,12 @@ export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
     setTimeout(() => setCopySuccess(false), 2000);
   };
 
+  const slugify = (text: string) => {
+    return text
+      .replace(/[^a-zA-Z0-9]+/g, '_') // Replace all non-alphanumeric chars with _
+      .replace(/^_+|_+$/g, '');       // Trim leading/trailing underscores
+  };
+
   const fetchWikiSettings = async () => {
     try {
       const resp = await doFetch(`/api/projects/${projectId}/wiki-settings`);
@@ -66,7 +72,8 @@ export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
       if (data.username) {
         // Use the actual domain or current origin
         const baseUrl = window.location.origin;
-        setWikiUrl(`${baseUrl}/${data.username}/${encodeURIComponent(projectTitle)}`);
+        const slugifiedTitle = slugify(projectTitle);
+        setWikiUrl(`${baseUrl}/${data.username}/${slugifiedTitle}`);
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
