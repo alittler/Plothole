@@ -11,7 +11,6 @@ import { ImageUploadInput } from '../ui/ImageUploadInput';
 enum NotepadView {
   STREAM = 'Stream',
   PROSE = 'Prose',
-  WORKSPACE = 'Workspace',
   INSPIRATION = 'Inspiration'
 }
 import { generateId } from '../../services/storageService';
@@ -88,6 +87,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   const [newInspirationImage, setNewInspirationImage] = React.useState('');
   const [showInspirationForm, setShowInspirationForm] = React.useState(false);
   const [inspirationImageError, setInspirationImageError] = React.useState('');
+  const [editingInspirationId, setEditingInspirationId] = React.useState<string | null>(null);
 
   const handleAddInspiration = () => {
     if (!newInspirationTitle.trim()) {
@@ -134,6 +134,21 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   const handleInspirationImageError = (error: string) => {
     console.error('Inspiration image upload error:', error);
     setInspirationImageError(error);
+  };
+
+  const handleUpdateInspiration = (id: string, updates: Partial<any>) => {
+    const updated = data.inspirations?.map(inspo => 
+      inspo.id === id ? { ...inspo, ...updates } : inspo
+    ) || [];
+    onUpdateProject?.({ inspirations: updated });
+  };
+
+  const handleDeleteInspiration = (id: string) => {
+    if (!confirm('Delete this inspiration?')) return;
+    onUpdateProject?.({
+      inspirations: data.inspirations?.filter(i => i.id !== id)
+    });
+    setEditingInspirationId(null);
   };
 
   // Keyboard shortcuts for delete modal
@@ -274,7 +289,6 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                     className={`ph-tab ${viewMode === v ? 'ph-tab-active' : 'ph-tab-inactive'}`}
                   >
                   {v === NotepadView.STREAM && <Zap size={14} />}
-                    {v === NotepadView.WORKSPACE && <LayoutGrid size={14} />}
                     {v === NotepadView.INSPIRATION && <Lightbulb size={14} />}
                     {v}
                   </button>
@@ -527,6 +541,67 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                   </div>
                 )}
                 
+                {editingInspirationId && data.inspirations?.find(i => i.id === editingInspirationId) && (
+                   (() => {
+                     const inspo = data.inspirations!.find(i => i.id === editingInspirationId)!;
+                     return (
+                       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl mb-8 border-2 border-indigo-500 dark:border-indigo-400 animate-in fade-in slide-in-from-top-4">
+                         <div className="flex items-center justify-between gap-2 mb-4">
+                           <h3 className="font-bold text-slate-900 dark:text-white text-lg">Edit Inspiration</h3>
+                           <button 
+                             onClick={() => setEditingInspirationId(null)}
+                             className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                           >
+                             <X size={20} />
+                           </button>
+                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                           <div className="md:col-span-2">
+                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Title</label>
+                             <input 
+                               type="text" 
+                               value={inspo.title}
+                               onChange={(e) => handleUpdateInspiration(inspo.id, { title: e.target.value })}
+                               className="ph-input w-full"
+                             />
+                           </div>
+                           <div className="md:col-span-2">
+                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Description & Tags (use #)</label>
+                             <textarea 
+                               value={inspo.description || ''}
+                               onChange={(e) => handleUpdateInspiration(inspo.id, { description: e.target.value })}
+                               className="ph-input w-full h-24 resize-none"
+                             />
+                           </div>
+                           <div className="md:col-span-2">
+                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">External Link (Optional)</label>
+                             <input 
+                               type="text" 
+                               value={inspo.url || ''}
+                               onChange={(e) => handleUpdateInspiration(inspo.id, { url: e.target.value })}
+                               className="ph-input w-full"
+                             />
+                           </div>
+                         </div>
+                         <div className="flex justify-end gap-3">
+                           <button 
+                             onClick={() => handleDeleteInspiration(inspo.id)}
+                             className="px-6 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl font-bold hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                           >
+                             Delete
+                           </button>
+                           <button 
+                             onClick={() => setEditingInspirationId(null)}
+                             className="px-6 py-2 bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-400 dark:hover:bg-slate-500 transition-colors"
+                           >
+                             Done
+                           </button>
+                         </div>
+                       </div>
+                     );
+                   })()
+                 )}
+
                 <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
                   {!(data.inspirations?.length) && !showInspirationForm && (
                     <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4">
@@ -548,18 +623,21 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                       <div className="p-4">
                         <div className="flex items-start justify-between mb-2 gap-2">
                           <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-tighter text-sm">{inspo.title}</h3>
-                          <button 
-                            onClick={() => {
-                              if(confirm('Delete this inspiration?')) {
-                                onUpdateProject?.({
-                                  inspirations: data.inspirations?.filter(i => i.id !== inspo.id)
-                                });
-                              }
-                            }}
-                            className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          >
-                            <Trash size={16} />
-                          </button>
+<div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                               <button 
+                                 onClick={() => setEditingInspirationId(inspo.id)}
+                                 className="text-slate-300 hover:text-indigo-500 transition-colors"
+                                 title="Edit"
+                               >
+                                 <Edit2 size={16} />
+                               </button>
+                               <button 
+                                 onClick={() => handleDeleteInspiration(inspo.id)}
+                                 className="text-slate-300 hover:text-red-500 transition-colors"
+                               >
+                                 <Trash size={16} />
+                               </button>
+                             </div>
                         </div>
                         {inspo.description && (
                           <p className="text-xs text-slate-600 dark:text-slate-400 font-serif mb-4 whitespace-pre-wrap">{inspo.description}</p>
