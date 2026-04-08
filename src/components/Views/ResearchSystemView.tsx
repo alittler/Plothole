@@ -316,7 +316,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
         </header>
       )}
 
-      <div className={`flex-1 overflow-y-auto relative p-0 md:p-8 ${viewMode === NotepadView.STREAM ? 'paper-texture' : ''}`}>
+      <div className="flex-1 overflow-y-auto relative p-0 md:p-8">
         <div className={`max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-none md:rounded-3xl overflow-hidden flex flex-col ${viewMode === NotepadView.STREAM ? 'paper-texture' : ''}`}>
           {viewMode === NotepadView.STREAM ? (
             <>
