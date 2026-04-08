@@ -165,7 +165,18 @@ export const exportProjectPlothole = async (project: ProjectData) => {
                       `===================================================================\n`;
   zip.file('history.diff', diffContent);
 
-  // 4. manifest.yaml
+  // 4. manifest.yaml with referenced_notes
+  // Collect notes linked to this project's entities or with project-relevant tags
+  const referencedNotes = (project.notes || []).map(note => ({
+    origin_id: note.id || generateId(8),
+    content: note.content,
+    sync_status: 'synced' as const,
+    last_vault_sync: timestamp,
+    note_type: (note.note_type || 'global') as 'global' | 'ephemeral',
+    tags: note.tags || [],
+    anchor_target: note.anchor_target || null
+  }));
+
   const manifest: ProjectManifest = {
     id: project.id,
     title: project.title,
@@ -181,7 +192,8 @@ export const exportProjectPlothole = async (project: ProjectData) => {
       tier3: entities.filter(e => e.tier === 3).length,
       assets: 0,
       word_count: manuscript.split(/\s+/).length
-    }
+    },
+    referenced_notes: referencedNotes.length > 0 ? referencedNotes : undefined
   };
   zip.file('manifest.yaml', yaml.dump(manifest));
 
@@ -200,6 +212,157 @@ export const exportProjectPlothole = async (project: ProjectData) => {
 };
 
 export const exportProjectModular = exportProjectPlothole;
+
+// ==========================================
+// VAULT EXPORT/IMPORT (NEW BACKUP SYSTEM)
+// ==========================================
+
+interface VaultManifest {
+  version: string;
+  vault_id: string;
+  author: string;
+  created: string;
+  modified: string;
+  statistics: {
+    note_count: number;
+    tag_count: number;
+    books: number;
+  };
+  books: Array<{
+    id: string;
+    title: string;
+    last_backup: string;
+  }>;
+}
+
+export const exportVaultAsZip = async (
+  globalNotes: Note[],
+  vaultId: string = 'vault_' + generateId(8),
+  author: string = 'Unknown Author',
+  projectsMetadata: ProjectMetadata[] = []
+) => {
+  const zip = new JSZip();
+  const timestamp = new Date().toISOString();
+
+  // 1. Create account/ folder with notes.yaml
+  const accountFolder = zip.folder('account');
+  
+  // Prepare notes with unique IDs
+  const notesData = globalNotes.map(note => ({
+    id: note.id || generateId(8),
+    content: note.content,
+    created: note.created || timestamp,
+    modified: note.modified || timestamp,
+    tags: note.tags || [],
+    anchor_target: note.anchor_target || null,
+    note_type: note.note_type || 'global'
+  }));
+
+  accountFolder?.file('notes.yaml', yaml.dump({ notes: notesData }));
+
+  // 2. Create tags.yaml (extract unique tags from notes)
+  const uniqueTags = new Set<string>();
+  globalNotes.forEach(note => {
+    (note.tags || []).forEach(tag => uniqueTags.add(tag));
+  });
+  const tagsData = Array.from(uniqueTags).map(tag => ({
+    id: generateId(8),
+    name: tag,
+    color: '#6366f1'
+  }));
+  accountFolder?.file('tags.yaml', yaml.dump({ tags: tagsData }));
+
+  // 3. Create metadata.yaml
+  accountFolder?.file('metadata.yaml', yaml.dump({
+    vault_id: vaultId,
+    author,
+    created: timestamp,
+    version: '1.0'
+  }));
+
+  // 4. Create manifest.yaml with book inventory
+  const manifest: VaultManifest = {
+    version: '1.0',
+    vault_id: vaultId,
+    author,
+    created: timestamp,
+    modified: timestamp,
+    statistics: {
+      note_count: globalNotes.length,
+      tag_count: uniqueTags.size,
+      books: projectsMetadata.length
+    },
+    books: projectsMetadata.map(proj => ({
+      id: proj.id,
+      title: proj.title,
+      last_backup: proj.lastModified ? new Date(proj.lastModified).toISOString() : timestamp
+    }))
+  };
+  zip.file('manifest.yaml', yaml.dump(manifest));
+
+  // 5. Create history.diff baseline
+  const diffContent = `\n===================================================================\n` +
+                      `Vault Baseline Established: ${timestamp}\n` +
+                      `Author: ${author}\n` +
+                      `Notes: ${globalNotes.length}\n` +
+                      `===================================================================\n`;
+  zip.file('history.diff', diffContent);
+
+  // Generate and download
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${author.replace(/\s+/g, '_')}_Vault.pvoid`;
+  link.click();
+  URL.revokeObjectURL(url);
+
+  return { manifest, noteCount: globalNotes.length };
+};
+
+interface VaultData {
+  manifest: VaultManifest;
+  notes: Array<{
+    id: string;
+    content: string;
+    tags: string[];
+    anchor_target: string | null;
+    note_type: 'global' | 'ephemeral';
+  }>;
+  tags: Array<{
+    id: string;
+    name: string;
+    color: string;
+  }>;
+}
+
+export const importVaultFromZip = async (blob: Blob): Promise<VaultData> => {
+  const zip = await JSZip.loadAsync(blob);
+
+  // Load manifest
+  const manifestRaw = await zip.file('manifest.yaml')?.async('text');
+  const manifest = yaml.load(manifestRaw || '') as VaultManifest;
+
+  // Load notes
+  const notesRaw = await zip.file('account/notes.yaml')?.async('text');
+  const { notes } = (yaml.load(notesRaw || '') || { notes: [] }) as { notes: any[] };
+
+  // Load tags
+  const tagsRaw = await zip.file('account/tags.yaml')?.async('text');
+  const { tags } = (yaml.load(tagsRaw || '') || { tags: [] }) as { tags: any[] };
+
+  return {
+    manifest,
+    notes: notes.map(note => ({
+      id: note.id || generateId(8),
+      content: note.content,
+      tags: note.tags || [],
+      anchor_target: note.anchor_target || null,
+      note_type: note.note_type || 'global'
+    })),
+    tags: tags || []
+  };
+};
 
 // ==========================================
 // DIFFERENTIAL SYNC LOGIC
@@ -651,6 +814,17 @@ export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
   const sidecarRaw = await zip.file('assets/sidecar.yaml')?.async('text');
   const { assets } = (yaml.load(sidecarRaw || '') || { assets: [] }) as { assets: AssetMetadata[] };
 
+  // Load referenced notes from manifest
+  const restoredNotes: Note[] = (manifest.referenced_notes || []).map(refNote => ({
+    id: refNote.origin_id,
+    content: refNote.content,
+    tags: refNote.tags,
+    anchor_target: refNote.anchor_target,
+    note_type: refNote.note_type,
+    created: new Date().toISOString(),
+    modified: new Date().toISOString()
+  }));
+
   return {
     manifest,
     entities,
@@ -666,7 +840,7 @@ export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
     locations: [],
     timeline: [],
     relationships: [],
-    notes: [],
+    notes: restoredNotes,
     themes: [],
     calendars: []
   };

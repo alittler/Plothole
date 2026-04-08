@@ -125,6 +125,7 @@ export interface ProjectManifest {
   created_at: string;
   last_modified: string;
   summary: string;
+  vault_origin?: string;
   counts: {
     entities: number;
     tier1: number;
@@ -133,6 +134,15 @@ export interface ProjectManifest {
     assets: number;
     word_count: number;
   };
+  referenced_notes?: Array<{
+    origin_id: string;
+    content: string;
+    sync_status: 'synced' | 'diverged' | 'local';
+    last_vault_sync: string;
+    note_type: 'global' | 'ephemeral';
+    tags: string[];
+    anchor_target: string | null;
+  }>;
 }
 
 export interface LoreEntry {
