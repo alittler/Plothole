@@ -2,13 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ProjectData, AppPrompts, ToolboxLink, ProjectMetadata, Note, AppSettings, ViewType, User as AppUser } from '../../types';
 import { 
-  Shield, Sparkles, Save, Database, Trash2, Check, Copy, Edit2, 
+  Shield, Sparkles, Save, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
   UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3
 } from 'lucide-react';
 
-import { UnifiedDatabaseView } from './UnifiedDatabaseView';
 import { CardCatalogueView } from './CardCatalogueView';
 import { generateId } from '../../services/storageService';
 
@@ -21,19 +20,10 @@ interface AdminViewProps {
   onSavePrompts: (prompts: AppPrompts) => void;
   projectsMetadata: ProjectMetadata[];
   onUpdateProject: (updates: Partial<ProjectData>) => void;
-  onDeleteNote?: (id: string) => Promise<void>;
-  onFullArchive: () => void;
-  globalResources: ToolboxLink[];
-  onAddGlobalResource: (resource: ToolboxLink) => void;
-  onDeleteGlobalResource: (id: string) => void;
-  onToggleViewVisibility: (viewId: string) => void;
   onDeleteGlobalNote: (id: string) => void;
   onLinkClick: (type: string, id: string) => void;
   onChangeView: (view: ViewType) => void;
-  onQuickUpdate: (type: string, id: string, key: string, value: any) => void;
   currentUser: AppUser;
-  adminTargetId?: string | null;
-  onClearAdminTarget?: () => void;
 }
 
 enum AdminTab {
@@ -41,12 +31,11 @@ enum AdminTab {
   NAVIGATION = 'Navigation',
   USERS = 'Users',
   TOOLBOX = 'Toolbox',
-  ENTITIES = 'Entity Explorer',
   CARD_CATALOGUE = 'Card Catalogue'
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
-  data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteNote, onDeleteGlobalNote, onLinkClick, onChangeView, onQuickUpdate, currentUser, adminTargetId, onClearAdminTarget
+  data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote, onLinkClick, onChangeView, currentUser
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<AdminTab>(adminTargetId ? AdminTab.ENTITIES : (searchParams.get('tab') as AdminTab) || AdminTab.SYSTEM);
@@ -294,15 +283,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
           </div>
         );
 
-      case AdminTab.ENTITIES:
-        return data ? (
-          <div className="h-full flex flex-col min-h-0 animate-in fade-in duration-500">
-            <UnifiedDatabaseView data={data} onUpdateProject={onUpdateProject} onDeleteNote={onDeleteNote} onQuickUpdate={onQuickUpdate} onLinkClick={onLinkClick} adminTargetId={adminTargetId} onClearAdminTarget={onClearAdminTarget} hideHeader={true} />
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center p-20"><div className="text-center space-y-4"><Database size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Entity Explorer.</p></div></div>
-        );
-
       case AdminTab.CARD_CATALOGUE:
         return data ? (
           <div className="h-full flex flex-col min-h-0 animate-in fade-in duration-500">
@@ -339,7 +319,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 {tab === AdminTab.NAVIGATION && <Layout size={18} />}
                 {tab === AdminTab.USERS && <User size={18} />}
                 {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
-                {tab === AdminTab.ENTITIES && <Database size={18} />}
                 {tab === AdminTab.CARD_CATALOGUE && <Grid3x3 size={18} />}
               </div>
               {tab}

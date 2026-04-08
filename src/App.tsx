@@ -45,7 +45,6 @@ import { ToolboxView } from './components/Views/ToolboxView';
 import ResearchView from './components/Views/ResearchView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
-import { CardCatalogueView } from './components/Views/CardCatalogueView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
@@ -1296,11 +1295,6 @@ const handleRestoreCommit = async (commit: Commit) => {
           onSaveSettings={async (s) => { setAppSettings(s); await saveAppSettings(s); }}
           onSavePrompts={async (p) => { setAppPromptsState(p); await saveAppPrompts(p); }} 
           onUpdateProject={updateProjectData}
-          onFullArchive={() => exportFullArchive(globalNotes)}
-          globalResources={[]}
-          onAddGlobalResource={async () => {}}
-          onDeleteGlobalResource={async () => {}}
-          onToggleViewVisibility={() => {}}
           projectsMetadata={projectsMetadata}
           onDeleteGlobalNote={async id => {
             setGlobalNotes(prev => prev.filter(n => n.id !== id));
@@ -1308,10 +1302,7 @@ const handleRestoreCommit = async (commit: Commit) => {
           }}
           onLinkClick={handleLinkClick}
           onChangeView={setCurrentView}
-          onQuickUpdate={handleQuickUpdate}
           currentUser={currentUser}
-          adminTargetId={adminTargetId}
-          onClearAdminTarget={() => setAdminTargetId(null)}
           />;
       case ViewType.SETTINGS:
         const handleClearGlobalNotes = async () => {
