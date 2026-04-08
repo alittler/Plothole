@@ -18,9 +18,9 @@ export const WikiPageView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Extract username and bookName from hash route: /#/username/bookname
-    const hashPath = location.hash.slice(1); // Remove leading #
-    const parts = hashPath.split('/').filter(Boolean);
+    // Extract username and bookName from route: /username/bookname
+    const path = location.pathname;
+    const parts = path.split('/').filter(Boolean);
     
     if (parts.length < 2) return;
     
@@ -45,7 +45,7 @@ export const WikiPageView: React.FC = () => {
     };
 
     fetchWiki();
-  }, [location.hash]);
+  }, [location.pathname]);
 
   if (isLoading) {
     return (

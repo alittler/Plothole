@@ -1104,13 +1104,15 @@ const handleRestoreCommit = async (commit: Commit) => {
     }
 
     switch (currentView) {
-      case ViewType.BOOKSHELF: 
+      case ViewType.BOOKSHELF:
         return <BookshelfView
           projects={projectsMetadata}
           activeProjectId={projectData?.id || ''}
           currentUser={currentUser}
           onRefreshMetadata={refreshMetadata}
-          onSelectProject={async (id) => {            const d = await loadProjectById(id); 
+          fetchWithAuth={fetchWithAuth}
+          onSelectProject={async (id) => {
+            const d = await loadProjectById(id); 
             if (d) { 
               setProjectData(d); 
               setIsDashboardModalOpen(true);
@@ -1121,17 +1123,19 @@ const handleRestoreCommit = async (commit: Commit) => {
           onDeleteProject={handleDeleteProject} 
           onOpenDashboard={() => setIsDashboardModalOpen(true)} 
           isAnalyzing={isAnalyzing}
-          fetchWithAuth={fetchWithAuth}
         />;
 
-      case ViewType.NOTEPAD: 
-        return <ResearchSystemView 
-          currentView={currentView} 
-          onChangeView={setCurrentView} 
-          data={{...projectData, notes: globalNotes} as any} 
-          projectsMetadata={projectsMetadata} 
-          currentUser={currentUser} 
-          onAddNote={async n => { 
+      case ViewType.NOTEPAD:
+        return <ResearchSystemView
+          currentView={currentView}
+          onChangeView={setCurrentView}
+          data={{...projectData, notes: globalNotes} as any}
+          projectsMetadata={projectsMetadata}
+          currentUser={currentUser}
+          activeTasks={activeTasks}
+          fetchWithAuth={fetchWithAuth}
+          onAddNote={async n => {
+
             let noteToSave = { ...n };
             if (projectData) {
               const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1291,7 +1295,19 @@ const handleRestoreCommit = async (commit: Commit) => {
           await clearAllGlobalNotes();
           setGlobalNotes([]);
         };
-        return <SettingsView projectData={projectData} globalNotes={globalNotes} onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} onClearGlobalNotes={handleClearGlobalNotes} currentUser={currentUser} onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} onUpdateProject={d => updateProjectData(d)} onChangeView={setCurrentView} onLinkClick={handleLinkClick} />;
+        return <SettingsView 
+          projectData={projectData} 
+          globalNotes={globalNotes} 
+          onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} 
+          onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} 
+          onClearGlobalNotes={handleClearGlobalNotes} 
+          currentUser={currentUser} 
+          onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} 
+          onUpdateProject={d => updateProjectData(d)} 
+          onChangeView={setCurrentView} 
+          onLinkClick={handleLinkClick} 
+          fetchWithAuth={fetchWithAuth}
+        />;
 
       case ViewType.RESEARCH:
         return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onDeleteNote={handleDeleteNote} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
@@ -1350,6 +1366,7 @@ const handleRestoreCommit = async (commit: Commit) => {
         isFullscreen={isMapFullscreen}
         isServerConnected={isServerConnected}
         isCloudStorage={isCloudStorageActive()}
+        lastModified={projectData?.lastModified}
       />
 
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
@@ -1740,11 +1757,10 @@ const handleRestoreCommit = async (commit: Commit) => {
   );
 
   // Detect public wiki routes (/{username} or /{username}/{bookname})
-  // Note: With HashRouter, routes are in location.hash, not pathname
   const isPublicWikiRoute = () => {
-    // HashRouter puts the path in the hash
-    const hashPath = location.hash.slice(1); // Remove leading #
-    const parts = hashPath.split('/').filter(Boolean); // Split by / and remove empty strings
+    // BrowserRouter puts the path in the pathname
+    const path = location.pathname;
+    const parts = path.split('/').filter(Boolean); // Split by / and remove empty strings
     
     // Exclude app view routes (these are ViewType names)
     const viewTypeValues = Object.values(ViewType);
@@ -1753,6 +1769,7 @@ const handleRestoreCommit = async (commit: Commit) => {
     }
     
     // Public wiki routes: /{username} or /{username}/{bookname}
+    // We expect the first part to be the username
     return parts.length === 1 || parts.length === 2;
   };
 

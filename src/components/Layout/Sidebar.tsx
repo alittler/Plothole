@@ -27,6 +27,7 @@ interface SidebarProps {
   isFullscreen?: boolean;
   isServerConnected?: boolean;
   isCloudStorage?: boolean;
+  lastModified?: number;
 }
 
 interface NavItem {
@@ -45,11 +46,12 @@ interface SidebarSection {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, onSave, appName = 'PLOTHOLE',
-  sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false, isServerConnected = true, isCloudStorage = false
+  sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false, isServerConnected = true, isCloudStorage = false, lastModified
 }) => {
   const { signOut } = useClerk();
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [commitHash, setCommitHash] = React.useState<string | null>(null);
+  const [sourceHash, setSourceHash] = React.useState<string | null>(null);
 
   const handleSync = async () => {
     if (!onSave || isSyncing) return;
@@ -61,18 +63,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
-  // Fetch commit hash on mount
+  // Fetch version info on mount
   React.useEffect(() => {
-    const fetchCommitHash = async () => {
+    const fetchVersion = async () => {
       try {
-        const response = await fetch('/api/version');
+        const response = await fetch(`/api/version?t=${Date.now()}`);
         const data = await response.json();
         setCommitHash(data.commit);
+        setSourceHash(data.sourceHash);
       } catch (err) {
-        console.error('Failed to fetch commit hash:', err);
+        console.error('Failed to fetch version info:', err);
       }
     };
-    fetchCommitHash();
+    fetchVersion();
   }, []);
 
   // Close mobile sidebar on Escape key
@@ -296,9 +299,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => window.innerWidth < 1024 && onClose()}
           className="p-4 border-t border-slate-800/50"
         >
-          {!isCollapsed && commitHash && (
-            <div className="text-[10px] text-slate-600 dark:text-slate-500 mb-3 px-4 font-mono">
-              Commit: <span className="text-amber-400">{commitHash}</span>
+          {!isCollapsed && (
+            <div className="text-[10px] text-slate-600 dark:text-slate-500 mb-3 px-4 font-mono flex items-center whitespace-nowrap">
+              {sourceHash && (
+                <>
+                  <span className="text-emerald-400" title="Source/App Last Modified Hash">
+                    {sourceHash}
+                  </span>
+                  <span className="text-slate-700 mx-2">|</span>
+                </>
+              )}
+              {commitHash && (
+                <a 
+                  href={`https://github.com/alittler/Plothole/commit/${commitHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-amber-400 hover:text-amber-300 transition-colors"
+                  title="App Build Commit"
+                >
+                  {commitHash}
+                </a>
+              )}
             </div>
           )}
           <div className={`flex items-center gap-3 px-4 py-2 ${isCollapsed ? 'justify-center px-0' : ''}`}>

@@ -570,6 +570,11 @@ async function startServer() {
     }
   });
 
+  // Health check endpoint (for Render/Uptime monitors to keep instance awake)
+  app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+  });
+
   // Clerk Middleware
   const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || 
                               process.env.VITE_CLERK_PUBLISHABLE_KEY || 
@@ -608,15 +613,27 @@ async function startServer() {
 
   app.get('/api/version', (req, res) => {
     const { execSync } = require('child_process');
+    const fs = require('fs');
     try {
       const commitHash = execSync('git rev-parse --short HEAD', { 
         cwd: __dirname,
         encoding: 'utf-8' 
       }).trim();
-      res.json({ commit: commitHash });
+      
+      // Get mtime of server.ts as a "source version"
+      const stats = fs.statSync(__filename);
+      const sourceHash = Math.floor(stats.mtimeMs).toString(16).slice(-7);
+
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      res.json({ 
+        commit: commitHash,
+        sourceHash: sourceHash
+      });
     } catch (err) {
-      console.error('Failed to get commit hash:', err);
-      res.json({ commit: 'unknown' });
+      console.error('Failed to get version info:', err);
+      res.json({ commit: 'unknown', sourceHash: 'unknown' });
     }
   });
 
@@ -935,13 +952,27 @@ async function startServer() {
       }
 
       const project = result.rows[0];
+      const settings = project.data.wikiSettings || {
+        includeCharacters: true,
+        includeLocations: true,
+        includeTimeline: true,
+        includeLore: true,
+        includeArtifacts: true,
+        includeManuscript: false
+      };
+
       res.json({
         title: project.title,
         author: project.name,
         synopsis: project.data.synopsis || '',
-        characters: project.data.characters || [],
-        worldBuilding: project.data.worldBuilding || [],
-        timeline: project.data.timeline || []
+        characters: settings.includeCharacters !== false ? (project.data.characters || []) : [],
+        worldBuilding: [
+          ...(settings.includeLocations !== false ? (project.data.locations || []) : []),
+          ...(settings.includeLore !== false ? (project.data.lore || []) : []),
+          ...(settings.includeArtifacts !== false ? (project.data.artifacts || []) : [])
+        ],
+        timeline: settings.includeTimeline !== false ? (project.data.timeline || []) : [],
+        manuscript: settings.includeManuscript === true ? (project.data.chapters || []) : []
       });
     } catch (err) {
       console.error(err);
@@ -1006,7 +1037,7 @@ async function startServer() {
       
       // Verify ownership
       const project = await pool.query(
-        'SELECT p.is_wiki_public, p.enable_wiki, u.username FROM projects p JOIN users u ON p.user_id = u.id WHERE p.id = $1 AND p.user_id = $2',
+        'SELECT p.is_wiki_public, p.enable_wiki, p.data, u.username FROM projects p JOIN users u ON p.user_id = u.id WHERE p.id = $1 AND p.user_id = $2',
         [projectId, req.auth.userId]
       );
       
@@ -1018,7 +1049,8 @@ async function startServer() {
       res.json({
         is_wiki_public: project.rows[0].is_wiki_public || false,
         enable_wiki: project.rows[0].enable_wiki !== false,
-        username: project.rows[0].username
+        username: project.rows[0].username,
+        wikiSettings: project.rows[0].data?.wikiSettings || null
       });
     } catch (err) {
       console.error(`[Wiki] Error fetching settings for project ${projectId}:`, err);
@@ -1029,7 +1061,7 @@ async function startServer() {
   // Update wiki visibility for a project
   app.post('/api/projects/:projectId/wiki-settings', async (req: any, res) => {
     const { projectId } = req.params;
-    const { is_wiki_public, enable_wiki } = req.body;
+    const { is_wiki_public, enable_wiki, wikiSettings } = req.body;
     
     if (!req.auth?.userId) {
       console.log(`[Wiki] POST settings unauthorized for project ${projectId}`);
@@ -1043,20 +1075,29 @@ async function startServer() {
         return res.status(500).json({ error: 'Database unavailable' });
       }
       
-      // Verify ownership
-      const owner = await pool.query(
-        'SELECT user_id FROM projects WHERE id = $1',
+      // Verify ownership and get current data
+      const projectResult = await pool.query(
+        'SELECT user_id, data FROM projects WHERE id = $1',
         [projectId]
       );
       
-      if (owner.rows[0]?.user_id !== req.auth.userId) {
+      const project = projectResult.rows[0];
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+
+      if (project.user_id !== req.auth.userId) {
         console.log(`[Wiki] User ${req.auth.userId} not authorized to edit project ${projectId}`);
         return res.status(403).json({ error: 'Not authorized' });
       }
 
+      // Merge wikiSettings into the JSONB data
+      const updatedData = {
+        ...project.data,
+        wikiSettings: wikiSettings || project.data.wikiSettings
+      };
+
       await pool.query(
-        'UPDATE projects SET is_wiki_public = $1, enable_wiki = $2 WHERE id = $3',
-        [is_wiki_public, enable_wiki, projectId]
+        'UPDATE projects SET is_wiki_public = $1, enable_wiki = $2, data = $3 WHERE id = $4',
+        [is_wiki_public, enable_wiki, updatedData, projectId]
       );
       
       console.log(`[Wiki] Updated settings for project ${projectId}: wiki_public=${is_wiki_public}, wiki_enabled=${enable_wiki}`);

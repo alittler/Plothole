@@ -258,6 +258,15 @@ export interface ProjectData {
     edges: any[];
   };
 
+  wikiSettings?: {
+    includeCharacters?: boolean;
+    includeLocations?: boolean;
+    includeTimeline?: boolean;
+    includeLore?: boolean;
+    includeArtifacts?: boolean;
+    includeManuscript?: boolean;
+  };
+
   // Map settings
   rootMapImage?: string;
   isRealWorldMap?: boolean;

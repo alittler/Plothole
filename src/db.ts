@@ -66,7 +66,19 @@ export const initDb = async () => {
     } catch (err: any) {
       // Columns might already exist, which is fine
       if (err.code !== '42701') { // 42701 = column already exists
-        console.warn("Note: Could not add wiki columns (may already exist):", err.message);
+        console.warn("Note: Could not add wiki columns to projects (may already exist):", err.message);
+      }
+    }
+
+    // Add username column to users table if it doesn't exist
+    try {
+      await p.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS username TEXT UNIQUE;
+      `);
+    } catch (err: any) {
+      if (err.code !== '42701') {
+        console.warn("Note: Could not add username column to users (may already exist):", err.message);
       }
     }
 

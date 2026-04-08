@@ -38,11 +38,12 @@ interface ResearchSystemViewProps {
   onSelectProject?: (id: string) => Promise<void>;
   onOpenDashboard?: () => void;
   isAnalyzing?: boolean;
+  fetchWithAuth?: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   currentView, onChangeView, data, projectsMetadata, currentUser, onAddNote, onAddIdeaToProject, onToggleCanon, onDeleteNote, onDeleteAllNotes, onLinkClick, onAddDoubleProcessedNote, activeTasks, onUpdateProject, semanticSearchEnabled, isEmbedded,
-  onCreateProject, onUploadProject, onDeleteProject, onSelectProject, onOpenDashboard, isAnalyzing: isAnalyzingProp
+  onCreateProject, onUploadProject, onDeleteProject, onSelectProject, onOpenDashboard, isAnalyzing: isAnalyzingProp, fetchWithAuth
 }) => {
   const [viewMode, setNotepadView] = React.useState<NotepadView>(NotepadView.STREAM);
   const [newNote, setNewNote] = React.useState('');
@@ -482,10 +483,12 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                 onRefreshMetadata={async () => {}} // Placeholder for now, or we can pass it down if needed
                 onSelectProject={onSelectProject || (async () => {})}                onCreateProject={onCreateProject || (async () => {})} 
                 onUploadProject={onUploadProject || (async () => {})} 
-                onDeleteProject={onDeleteProject || (async () => {})} 
-                onOpenDashboard={onOpenDashboard || (() => {})} 
-                isAnalyzing={isAnalyzingProp || false} 
-              />
+                onDeleteProject={onDeleteProject || (async () => {})}
+                onOpenDashboard={onOpenDashboard || (() => {})}
+                isAnalyzing={isAnalyzingProp || false}
+                fetchWithAuth={fetchWithAuth}
+                />
+
             </div>
           )}
         </div>

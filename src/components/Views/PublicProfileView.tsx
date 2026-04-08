@@ -16,9 +16,9 @@ export const PublicProfileView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Extract username from hash route: /#/username
-    const hashPath = location.hash.slice(1); // Remove leading #
-    const parts = hashPath.split('/').filter(Boolean);
+    // Extract username from route: /username
+    const path = location.pathname;
+    const parts = path.split('/').filter(Boolean);
     
     if (parts.length === 0) return;
     
@@ -43,7 +43,7 @@ export const PublicProfileView: React.FC = () => {
     };
 
     fetchProfile();
-  }, [location.hash]);
+  }, [location.pathname]);
 
   if (isLoading) {
     return (

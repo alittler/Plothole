@@ -126,10 +126,15 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setWikiSettingsProjectId(project.id);
-                          setWikiSettingsProjectTitle(project.title);
+                          if (wikiSettingsProjectId === project.id) {
+                            setWikiSettingsProjectId(null);
+                            setWikiSettingsProjectTitle('');
+                          } else {
+                            setWikiSettingsProjectId(project.id);
+                            setWikiSettingsProjectTitle(project.title);
+                          }
                         }}
-                        className="p-2 text-slate-400 hover:text-emerald-500 transition-colors"
+                        className={`p-2 transition-colors ${wikiSettingsProjectId === project.id ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg' : 'text-slate-400 hover:text-emerald-500'}`}
                         title="Wiki Settings"
                       >
                         <Globe size={18} />

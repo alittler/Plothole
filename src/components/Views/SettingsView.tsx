@@ -32,10 +32,11 @@ interface SettingsViewProps {
   onUpdateProject: (d: Partial<ProjectData>) => void;
   onChangeView: (v: ViewType) => void;
   onLinkClick?: (type: string, id: string) => void;
+  fetchWithAuth?: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
-  currentUser, onUpdateUser, onFactoryReset, projectData, onUpdateProject, onChangeView, onLinkClick, globalNotes, onClearGlobalNotes
+  currentUser, onUpdateUser, onFactoryReset, projectData, onUpdateProject, onChangeView, onLinkClick, globalNotes, onClearGlobalNotes, fetchWithAuth
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as SettingsTab) || SettingsTab.PROFILE;
@@ -50,6 +51,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [previewFile, setPreviewFile] = React.useState<{ name: string, content: string, type: string } | null>(null);
   const [isLoadingArchive, setIsLoadingArchive] = React.useState(false);
   
+  // Use provided fetchWithAuth or fallback to plain fetch
+  const doFetch = fetchWithAuth || fetch.bind(window);
+
   // Wiki feature state
   const [username, setUsername] = React.useState('');
   const [isLoadingUsername, setIsLoadingUsername] = React.useState(false);
@@ -66,7 +70,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const fetchUsername = async () => {
     try {
-      const resp = await fetch('/api/user/username');
+      const resp = await doFetch('/api/user/username');
       if (resp.ok) {
         const data = await resp.json();
         setUsername(data.username || '');
@@ -84,7 +88,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     setIsLoadingUsername(true);
     try {
-      const resp = await fetch('/api/user/username', {
+      const resp = await doFetch('/api/user/username', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username })
@@ -92,6 +96,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       
       if (resp.ok) {
         setUsernameSaved(true);
+        // Update local user state as well
+        onUpdateUser({ ...currentUser, username });
         setTimeout(() => setUsernameSaved(false), 2000);
       } else {
         const err = await resp.json();
@@ -286,7 +292,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       {isLoadingUsername ? 'Saving...' : usernameSaved ? '✓ Saved' : 'Save'}
                     </button>
                   </div>
-                  <p className="text-xs text-slate-400">Your public wiki URL: plothole.click/{username || 'username'}</p>
+                  <p className="text-xs text-slate-400 flex items-center gap-2">
+                    Your public profile URL: 
+                    <a 
+                      href={`//${window.location.host}/${username}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 hover:text-indigo-500 font-bold flex items-center gap-1 group"
+                    >
+                      {window.location.host}/{username || 'username'}
+                      <LinkIcon size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </a>
+                  </p>
                 </div>
               </div>
             </section>
