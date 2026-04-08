@@ -1338,9 +1338,6 @@ const handleRestoreCommit = async (commit: Commit) => {
       case ViewType.CODEX:
         return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;
 
-      case ViewType.CARD_CATALOGUE:
-        return projectData ? <CardCatalogueView currentView={currentView} onChangeView={setCurrentView} data={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} projectsMetadata={projectsMetadata} currentUser={currentUser} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Card Catalogue.</div>;
-
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
 

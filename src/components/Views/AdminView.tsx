@@ -5,10 +5,11 @@ import {
   Shield, Sparkles, Save, Database, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3
 } from 'lucide-react';
 
 import { UnifiedDatabaseView } from './UnifiedDatabaseView';
+import { CardCatalogueView } from './CardCatalogueView';
 import { generateId } from '../../services/storageService';
 
 interface AdminViewProps {
@@ -40,7 +41,8 @@ enum AdminTab {
   NAVIGATION = 'Navigation',
   USERS = 'Users',
   TOOLBOX = 'Toolbox',
-  ENTITIES = 'Entity Explorer'
+  ENTITIES = 'Entity Explorer',
+  CARD_CATALOGUE = 'Card Catalogue'
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
@@ -301,6 +303,15 @@ export const AdminView: React.FC<AdminViewProps> = ({
           <div className="flex-1 flex items-center justify-center p-20"><div className="text-center space-y-4"><Database size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Entity Explorer.</p></div></div>
         );
 
+      case AdminTab.CARD_CATALOGUE:
+        return data ? (
+          <div className="h-full flex flex-col min-h-0 animate-in fade-in duration-500">
+            <CardCatalogueView data={data} onUpdateProject={onUpdateProject} onLinkClick={onLinkClick} />
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-20"><div className="text-center space-y-4"><Grid3x3 size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Card Catalogue.</p></div></div>
+        );
+
       default: return null;
     }
   };
@@ -329,6 +340,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 {tab === AdminTab.USERS && <User size={18} />}
                 {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
                 {tab === AdminTab.ENTITIES && <Database size={18} />}
+                {tab === AdminTab.CARD_CATALOGUE && <Grid3x3 size={18} />}
               </div>
               {tab}
             </button>
