@@ -31,7 +31,8 @@ enum AdminTab {
   NAVIGATION = 'Navigation',
   USERS = 'Users',
   TOOLBOX = 'Toolbox',
-  CARD_CATALOGUE = 'Card Catalogue'
+  CARD_CATALOGUE = 'Card Catalogue',
+  PLOTHOLE_FORMAT = 'File Format'
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
@@ -288,6 +289,144 @@ export const AdminView: React.FC<AdminViewProps> = ({
           <div className="flex-1 flex items-center justify-center p-20"><div className="text-center space-y-4"><Grid3x3 size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Card Catalogue.</p></div></div>
         );
 
+      case AdminTab.PLOTHOLE_FORMAT:
+        return (
+          <div className="max-w-5xl mx-auto space-y-8 py-8 animate-in fade-in duration-500">
+            {/* Format Overview */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-600/20"><Archive size={28} /></div>
+                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">.plothole Format</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Portable project container structure and specification.</p></div>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Overview</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    A <code className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-mono text-xs">.plothole</code> file is a ZIP archive containing your complete project structure, including metadata, entities, source materials, and version history. This format enables easy sharing, backup, and migration between systems.
+                  </p>
+                </div>
+
+                {/* Directory Structure */}
+                <div>
+                  <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Directory Structure</h3>
+                  <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-6 font-mono text-xs text-slate-300 overflow-x-auto">
+                    <pre>{`.plothole/
+├── manifest.yaml              # Project metadata & entity index
+├── entities.yaml              # Complete entity definitions
+├── database/
+│   ├── chapters.yaml          # Manuscript chapters
+│   ├── characters.yaml        # Character entities
+│   ├── locations.yaml         # Location entities
+│   ├── items.yaml             # Items & artifacts
+│   ├── lore.yaml              # Worldbuilding entries
+│   └── timeline.yaml          # Timeline events
+├── source/
+│   ├── inspirations/          # Image & reference files
+│   ├── research/              # Research documents
+│   └── notes/                 # Associated notes
+└── history.diff               # Version control / edit history`}</pre>
+                  </div>
+                </div>
+
+                {/* Sample Manifest */}
+                <div>
+                  <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Sample manifest.yaml</h3>
+                  <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-6 font-mono text-xs text-slate-300 overflow-x-auto">
+                    <pre>{`# Plothole Project Manifest
+version: "1.0"
+projectId: "proj_abc123xyz"
+title: "The Forgotten Codex"
+author: "Jane Doe"
+created: "2024-01-15T10:30:00Z"
+modified: "2024-01-20T14:22:00Z"
+
+statistics:
+  wordCount: 2512
+  chapters: 3
+  characters: 5
+  locations: 5
+  items: 5
+  lore: 5
+  timeline: 5
+
+entities:
+  characters:
+    - id: "char_001"
+      name: "Kessandra Mohr"
+      role: "Memory Thief"
+    - id: "char_002"
+      name: "Eris Thane"
+      role: "Timeline Guardian"
+  locations:
+    - id: "loc_001"
+      name: "The Memory Archive"
+      type: "Place"
+  timeline:
+    - id: "evt_001"
+      title: "The First Age"
+      date: "Year 0"`}</pre>
+                  </div>
+                </div>
+
+                {/* Manifest Fields */}
+                <div>
+                  <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Manifest Fields</h3>
+                  <div className="space-y-3">
+                    {[
+                      { field: 'version', desc: 'Plothole format version' },
+                      { field: 'projectId', desc: 'Unique project identifier' },
+                      { field: 'title', desc: 'Project name' },
+                      { field: 'author', desc: 'Project creator' },
+                      { field: 'created', desc: 'ISO 8601 creation timestamp' },
+                      { field: 'modified', desc: 'ISO 8601 last modification timestamp' },
+                      { field: 'statistics', desc: 'Aggregate counts of project entities' },
+                      { field: 'entities', desc: 'Index of all entities by type and id' }
+                    ].map(item => (
+                      <div key={item.field} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest font-mono">{item.field}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Database Files */}
+                <div>
+                  <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Database Files</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Each file in the <code className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-mono text-xs">database/</code> directory stores entities as YAML:</p>
+                  <div className="space-y-2">
+                    {[
+                      { file: 'chapters.yaml', content: 'Manuscript chapters with content, word count, and metadata' },
+                      { file: 'characters.yaml', content: 'Character profiles with traits, roles, backgrounds' },
+                      { file: 'locations.yaml', content: 'Geographic and physical locations with descriptions' },
+                      { file: 'items.yaml', content: 'Items and artifacts with properties and significance' },
+                      { file: 'lore.yaml', content: 'Worldbuilding entries, history, and lore' },
+                      { file: 'timeline.yaml', content: 'Timeline events with dates and descriptions' }
+                    ].map(item => (
+                      <div key={item.file} className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-900/30 flex items-start gap-3">
+                        <FileText size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-black text-slate-900 dark:text-white font-mono">{item.file}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">{item.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Export & Import */}
+                <div className="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                  <h3 className="text-sm font-black text-indigo-900 dark:text-indigo-200 uppercase tracking-wider mb-2">Export & Import</h3>
+                  <p className="text-sm text-indigo-800 dark:text-indigo-300">
+                    Use the export function to generate a <code className="bg-white dark:bg-slate-900 px-2 py-1 rounded font-mono text-xs">.plothole</code> file of your current project. Import .plothole files to restore projects or migrate between installations.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        );
+
       default: return null;
     }
   };
@@ -316,6 +455,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 {tab === AdminTab.USERS && <User size={18} />}
                 {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
                 {tab === AdminTab.CARD_CATALOGUE && <Grid3x3 size={18} />}
+                {tab === AdminTab.PLOTHOLE_FORMAT && <Archive size={18} />}
               </div>
               {tab}
             </button>
