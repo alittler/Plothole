@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType, User } from '../../types';
-import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, GitBranch, Wrench } from 'lucide-react';
+import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, GitBranch, Wrench, Grid3x3 } from 'lucide-react';
 import { UserButton, useClerk } from '@clerk/clerk-react';
 import { isCloudStorageActive } from '../../services/storageService';
 
@@ -97,6 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.MAP, label: 'Atlas', icon: Map, projectOnly: true },
     { id: ViewType.TIMELINE, label: 'History', icon: Calendar, projectOnly: true },
     { id: ViewType.CODEX, label: 'Codex', icon: Book, projectOnly: true },
+    { id: ViewType.CARD_CATALOGUE, label: 'Card Catalogue', icon: Grid3x3, projectOnly: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
     { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
@@ -110,7 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
       {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX, ViewType.CARD_CATALOGUE].includes(i.id))
       },
       {
         title: 'System',

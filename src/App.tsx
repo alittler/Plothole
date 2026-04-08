@@ -45,6 +45,7 @@ import { ToolboxView } from './components/Views/ToolboxView';
 import ResearchView from './components/Views/ResearchView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
+import { CardCatalogueView } from './components/Views/CardCatalogueView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
@@ -52,7 +53,7 @@ import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool, Trash2, Loader2 } from 'lucide-react';
-import { SignedIn, SignedOut, useUser, UserButton, useAuth } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, useUser, useAuth } from '@clerk/clerk-react';
 import { SignInPage } from './components/Auth/SignInPage';
 
 const DEMO_USER: User = {
@@ -1336,6 +1337,9 @@ const handleRestoreCommit = async (commit: Commit) => {
 
       case ViewType.CODEX:
         return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;
+
+      case ViewType.CARD_CATALOGUE:
+        return projectData ? <CardCatalogueView currentView={currentView} onChangeView={setCurrentView} data={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} projectsMetadata={projectsMetadata} currentUser={currentUser} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Card Catalogue.</div>;
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;

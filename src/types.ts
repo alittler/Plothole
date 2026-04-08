@@ -24,6 +24,7 @@ export enum ViewType {
   SEMANTIC_EDITOR = 'SemanticEditor',
   STORY_ARCHITECT = 'StoryArchitect',
   CODEX = 'Codex',
+  CARD_CATALOGUE = 'CardCatalogue',
   WORLD_HUB = 'WorldHub',
   WORKSPACE_HUB = 'WorkspaceHub',
   SYSTEM_HUB = 'SystemHub'
