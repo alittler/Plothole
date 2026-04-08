@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ProjectData, Note, User, ViewType, ChangeLogEntry, AppSettings } from '../../types';
+import { ProjectData, Note, User as AppUser, ViewType, ChangeLogEntry, AppSettings } from '../../types';
 import { 
   Settings, User as UserIcon, Database, Shield, Code, Check, 
   ChevronRight, History, Activity, Hash, Archive, FileCode,
   Link as LinkIcon, Sparkles, Copy, Trash2, Download, FileText, X,
-  User, MapPin, Book, Clock, Upload, AlertCircle
+  MapPin, Book, Clock, Upload, AlertCircle
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
@@ -29,8 +29,8 @@ interface SettingsViewProps {
   onImportProject: (d: ProjectData) => void;
   onFactoryReset: () => void;
   onClearGlobalNotes?: () => void;
-  currentUser: User;
-  onUpdateUser: (u: Partial<User>) => void;
+  currentUser: AppUser;
+  onUpdateUser: (u: Partial<AppUser>) => void;
   onUpdateProject: (d: Partial<ProjectData>) => void;
   onChangeView: (v: ViewType) => void;
   onLinkClick?: (type: string, id: string) => void;
