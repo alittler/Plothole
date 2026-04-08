@@ -38,7 +38,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
   data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote, onLinkClick, onChangeView, currentUser
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<AdminTab>(adminTargetId ? AdminTab.ENTITIES : (searchParams.get('tab') as AdminTab) || AdminTab.SYSTEM);
+  const [activeTab, setActiveTab] = useState<AdminTab>((searchParams.get('tab') as AdminTab) || AdminTab.SYSTEM);
 
   const handleSetActiveTab = (tab: AdminTab) => {
     setActiveTab(tab);
@@ -85,10 +85,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setSettings(updatedSettings);
     onSaveSettings(updatedSettings);
   };
-
-  React.useEffect(() => {
-    if (adminTargetId) handleSetActiveTab(AdminTab.ENTITIES);
-  }, [adminTargetId]);
 
   const renderTabContent = () => {
     switch (activeTab) {
