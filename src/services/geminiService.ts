@@ -409,7 +409,7 @@ export const doubleProcessNote = async (rawNote: string): Promise<{ expanded: st
 
 export const generateBookCover = async (title: string, author: string, summary: string): Promise<string | null> => {
   const ai = getAiClient();
-  // Use cheaper gemini-2-flash model to generate a text-based cover description
+  // Use default text model (gemini-3-flash-preview) to generate text-based cover description
   // This avoids image generation quota limits and is more cost-effective
   const prompt = `Create a vivid, atmospheric book cover description for "${title}" by ${author}. 
 Based on this summary: ${summary}
@@ -419,7 +419,7 @@ Be poetic and evocative. Do not mention the title or author in the description.`
   
   const response = await withRetry(() => 
     ai.models.generateContent({
-      model: 'gemini-2-flash',
+      model: 'gemini-3-flash-preview',
       contents: { parts: [{ text: prompt }] },
     })
   );
