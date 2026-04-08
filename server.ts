@@ -12,7 +12,7 @@ import { Resend } from 'resend';
 import * as Sentry from "@sentry/node";
 import multer from 'multer';
 import multerS3 from 'multer-s3';
-import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, PutBucketLifecycleConfigurationCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { default as simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
@@ -51,6 +51,47 @@ console.log(`[S3] Initializing with region: ${process.env.AWS_REGION || 'us-west
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Configure S3 Lifecycle Policy for test uploads (3 day expiration)
+const setupS3LifecyclePolicy = async () => {
+  if (!isS3Configured) {
+    console.log('[S3] Lifecycle policy setup skipped (S3 not configured)');
+    return;
+  }
+
+  try {
+    const lifecycleConfig = {
+      Rules: [
+        {
+          Id: 'delete-test-uploads-3days',
+          Status: 'Enabled',
+          Filter: { Prefix: 'uploads/test-' },
+          Expiration: { Days: 3 },
+        },
+        {
+          Id: 'delete-temp-files-7days',
+          Status: 'Enabled',
+          Filter: { Prefix: 'temp/' },
+          Expiration: { Days: 7 },
+        },
+      ],
+    };
+
+    const command = new PutBucketLifecycleConfigurationCommand({
+      Bucket: s3Bucket,
+      LifecycleConfiguration: lifecycleConfig,
+    });
+
+    await s3Client.send(command);
+    console.log('[S3] Lifecycle policy configured: test uploads delete after 3 days, temp files after 7 days');
+  } catch (err) {
+    // Lifecycle policy setup is non-critical, so we just log and continue
+    console.warn('[S3] Failed to setup lifecycle policy (non-critical):', err instanceof Error ? err.message : err);
+  }
+};
+
+// Initialize lifecycle policy on startup
+setupS3LifecyclePolicy().catch(console.error);
 
 // Configure Multer for local storage
 const uploadDir = path.join(__dirname, 'public', 'uploads');
@@ -114,7 +155,10 @@ const s3Storage = multerS3({
   },
   key: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'uploads/' + file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    // Prefix test uploads with 'test-' so they match lifecycle policy for 3-day deletion
+    const isTestMode = process.env.NODE_ENV === 'development' || req.body?.isTest === 'true';
+    const prefix = isTestMode ? 'uploads/test-' : 'uploads/';
+    cb(null, prefix + file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
