@@ -183,6 +183,24 @@ const App: React.FC = () => {
     }
   }, [projectData?.id, refreshMetadata]);
 
+  const handleEditProject = useCallback(async (id: string, title: string, author: string, shortName: string) => {
+    console.log(`[App] Requesting edit of project: ${id}`);
+    try {
+      // If editing the active project, update it and save
+      if (projectData?.id === id) {
+        const updated = {...projectData, title, author, shortName};
+        setProjectData(updated);
+        await saveProjectData(updated);
+      }
+      // Always refresh metadata to sync changes
+      await refreshMetadata();
+      console.log(`[App] Edit of project ${id} complete`);
+    } catch (err: any) {
+      console.error(`[App] Failed to edit project ${id}:`, err);
+      alert(`Failed to edit project: ${err.message || String(err)}`);
+    }
+  }, [projectData, refreshMetadata]);
+
   const performImageCleanup = useCallback(async () => {
     // Collect all active image URLs across all projects
     const allProjectsMeta = await getAllProjectsMetadata();
@@ -734,8 +752,8 @@ const handleRestoreCommit = async (commit: Commit) => {
 
       newProject = {
         ...newProject,
-        title: title || 'The Obsidian Citadel',
-        shortName: shortName || 'Citadel',
+        title: title || 'Sample Project',
+        shortName: shortName || 'Sample',
         summary: 'In a world where memories are currency, a young archivist discovers a forgotten vault that could rewrite history—or erase it entirely.',
         themes: ['Memory', 'Power', 'Legacy', 'Sacrifice'],
         entities: [
@@ -1118,9 +1136,13 @@ const handleRestoreCommit = async (commit: Commit) => {
               setIsDashboardModalOpen(true);
             } 
           }} 
+          onDeselectProject={() => {
+            setProjectData(null);
+          }}
           onCreateProject={handleCreateProject} 
           onUploadProject={handleUploadProject} 
-          onDeleteProject={handleDeleteProject} 
+          onDeleteProject={handleDeleteProject}
+          onEditProject={handleEditProject}
           onOpenDashboard={() => setIsDashboardModalOpen(true)} 
           isAnalyzing={isAnalyzing}
         />;
@@ -1449,16 +1471,6 @@ const handleRestoreCommit = async (commit: Commit) => {
 
         {/* Desktop Floating Action Buttons */}
         <div className="hidden lg:flex fixed bottom-8 right-8 flex-row items-center gap-4 z-[1000]">
-          {currentUser.role === 'admin' && (
-            <button
-              onClick={() => setIsAdminNoteOpen(!isAdminNoteOpen)}
-              className={`p-4 rounded-2xl shadow-2xl transition-all flex items-center justify-center hover:scale-110 ${isAdminNoteOpen ? 'bg-amber-600 text-white' : 'bg-slate-900 text-amber-500 hover:bg-slate-800'}`}
-              title="Admin Notes"
-            >
-              <PenTool size={24} />
-            </button>
-          )}
-          
           <button
             onClick={() => setIsAiOpen(!isAiOpen)}
             className={`p-4 rounded-2xl shadow-2xl transition-all flex items-center justify-center hover:scale-110 ${isAiOpen ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}

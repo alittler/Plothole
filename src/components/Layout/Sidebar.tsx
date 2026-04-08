@@ -91,8 +91,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   
   const allNavItems: NavItem[] = [
     { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
-    { id: ViewType.RESEARCH, label: 'Research', icon: Search, projectOnly: true },
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
+    { id: ViewType.RESEARCH, label: 'Research', icon: Search, projectOnly: true },
     { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
     { id: ViewType.MAP, label: 'Atlas', icon: Map, projectOnly: true },
     { id: ViewType.TIMELINE, label: 'History', icon: Calendar, projectOnly: true },
@@ -106,11 +106,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const baseSections: SidebarSection[] = [
       {
         title: 'Workspace',
-        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.RESEARCH, ViewType.BOOKSHELF].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.BOOKSHELF].includes(i.id))
       },
       {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(i.id))
       },
       {
         title: 'System',
@@ -153,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`
         fixed inset-x-0 top-0 z-[1001] lg:relative lg:inset-y-0 lg:left-0 shrink-0
         bg-slate-950 text-slate-400 flex flex-col transition-all duration-500 ease-in-out border-b lg:border-b-0 lg:border-r border-slate-800/50
-        rounded-b-[3rem] lg:rounded-b-none
+        rounded-b-3xl lg:rounded-b-none
         ${isOpen ? 'translate-y-0 pointer-events-auto max-h-[calc(100vh-12rem)]' : '-translate-y-full lg:translate-y-0 pointer-events-none lg:pointer-events-auto lg:max-h-none'}
         ${isFullscreen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-none' : isCollapsed ? 'lg:w-20' : 'lg:w-64 md:w-72'}
       `}>
@@ -167,9 +167,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button onClick={onToggleCollapse} className="hidden lg:block p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white">
                 {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
               </button>
-              <div className="lg:hidden">
-                <UserButton afterSignOutUrl={window.location.origin} />
-              </div>
             </div>
           </div>
           {!isCollapsed && activeProjectTitle && (
@@ -193,26 +190,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </p>
             </div>
           )}
-          {!isCollapsed && isCloudStorage && hasActiveProject && (
-            <button 
-              onClick={handleSync}
-              disabled={isSyncing}
-              className={`mt-2 mx-1 px-3 py-2 rounded-xl flex items-center justify-between border transition-all ${isSyncing ? 'bg-indigo-500 text-white border-indigo-400 shadow-lg shadow-indigo-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400'}`}
-            >
-              <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-white animate-spin' : 'bg-indigo-500'}`} />
-                <span className="text-[10px] font-black uppercase tracking-widest">{isSyncing ? 'Syncing...' : 'Synced to Cloud'}</span>
-              </div>
-              <Database size={12} className={isSyncing ? 'animate-bounce' : ''} />
-            </button>
-          )}
+
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
           {sections.map((section, sIdx) => {
             const visibleItems = section.items.filter(item => {
               if (item.adminOnly && currentUser.role !== 'admin') return false;
-              if (item.projectOnly && !hasActiveProject) return false;
+              // Don't filter out projectOnly items - show them disabled instead
               return true;
             });
 
@@ -235,18 +220,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         key={item.id}
                         onClick={() => {
                           if (!isDisabled) {
-                            onChangeView(item.id);
-                            if (window.innerWidth < 1024) onClose();
+                            if (currentView === item.id) {
+                              // If clicking the active view, toggle sidebar collapse on desktop or close on mobile
+                              if (window.innerWidth >= 1024) {
+                                onToggleCollapse();
+                              } else {
+                                onClose();
+                              }
+                            } else {
+                              // Switch to the clicked view
+                              onChangeView(item.id);
+                              if (window.innerWidth < 1024) onClose();
+                            }
                           }
                         }}
                         disabled={isDisabled}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group 
                           ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''}
                           ${!isActive && !isDisabled ? 'hover:bg-slate-900 hover:text-slate-200' : ''}
-                          ${isDisabled ? 'opacity-30 cursor-not-allowed grayscale' : ''}
+                          ${isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''}
                         `}
                       >
-                        <item.icon size={18} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'} transition-colors`} />
+                        <item.icon size={18} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />
                         {!isCollapsed && <span className="font-bold text-sm">{item.label}</span>}
                       </button>
                     );
@@ -279,7 +274,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className={`w-full flex items-center gap-3 px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
                 title="GitHub Repository"
               >
-                <GitBranch size={14} className="text-slate-700 group-hover:text-indigo-400 transition-colors" />
+                <GitBranch size={14} className="text-slate-700 group-hover:text-amber-500 transition-colors" />
                 {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest">GitHub</span>}
               </a>
 
@@ -288,7 +283,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className={`w-full flex items-center gap-3 px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
                 title="Open Source Licenses"
               >
-                <Shield size={14} className="text-slate-700 group-hover:text-indigo-400 transition-colors" />
+                <Shield size={14} className="text-slate-700 group-hover:text-amber-500 transition-colors" />
                 {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest">Licenses</span>}
               </button>
             </div>
@@ -349,6 +344,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <PenTool size={18} />
                 </button>
               )}
+              <button
+                onClick={() => {
+                  onToggleAi();
+                  if (window.innerWidth < 1024) onClose();
+                }}
+                className={`lg:hidden p-2 rounded-lg transition-colors ${isAiOpen ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
+                title="Summon The Oracle"
+              >
+                <Sparkles size={18} className={isAiOpen ? 'animate-spin' : ''} />
+              </button>
               <UserButton afterSignOutUrl={window.location.origin} />
             </div>
           </div>

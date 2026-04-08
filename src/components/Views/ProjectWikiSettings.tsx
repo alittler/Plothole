@@ -159,7 +159,7 @@ export const ProjectWikiSettings: React.FC<ProjectWikiSettingsProps> = ({
             <div className="flex flex-col md:flex-row gap-6 items-center">
               {/* URL and Buttons */}
               <div className="flex-1 space-y-3 w-full">
-                <div className="text-[11px] font-mono bg-black/20 p-3 rounded-xl break-all border border-white/10">
+                <div className="text-xs font-mono bg-black/20 p-3 rounded-xl break-all border border-white/10">
                   {wikiUrl}
                 </div>
                 

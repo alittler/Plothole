@@ -195,7 +195,7 @@ export const StoryArchitectView: React.FC<StoryArchitectViewProps> = ({
                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">{char.description}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {char.traits.map(trait => (
-                        <span key={trait} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest rounded-md">{trait}</span>
+                        <span key={trait} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest rounded-lg">{trait}</span>
                       ))}
                     </div>
                   </div>

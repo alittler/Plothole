@@ -154,7 +154,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, proje
             }}
             placeholder="Ask about your story..."
             rows={1}
-            className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-2xl px-4 py-3 pr-10 focus:ring-2 focus:ring-indigo-500 text-base text-slate-900 dark:text-white resize-none"
+            className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-2xl px-4 py-3 pr-10 focus:ring-2 focus:ring-indigo-500 text-sm text-slate-900 dark:text-white resize-none"
           />
           <button 
             onClick={handleSend}

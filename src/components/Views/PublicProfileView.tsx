@@ -99,7 +99,7 @@ export const PublicProfileView: React.FC = () => {
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-black text-slate-900 dark:text-white text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                  <h3 className="font-black text-slate-900 dark:text-white text-lg group-hover:text-indigo-600 dark:group-hover:text-amber-500 transition-colors truncate">
                     {book.title}
                   </h3>
                   <p className="text-slate-600 dark:text-slate-400 text-sm mt-2 line-clamp-3">

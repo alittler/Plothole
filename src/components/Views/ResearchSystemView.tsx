@@ -1,16 +1,18 @@
 import React from 'react';
 import { ViewType, Note, ProjectData, ProjectMetadata, User } from '../../types';
-import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe, PenTool, LayoutGrid } from 'lucide-react';
+import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe, PenTool, LayoutGrid, Lightbulb, Image as ImageIcon, Trash } from 'lucide-react';
 import { StackedPaper } from '../ui/StackedPaper';
 import { WikiText } from '../ui/WikiText';
 import { RichEditor } from '../ui/RichEditor';
 import { semanticSearchNotes } from '../../services/geminiService';
 import { BookshelfView } from './BookshelfView';
+import { ImageUploadInput } from '../ui/ImageUploadInput';
 
 enum NotepadView {
   STREAM = 'Stream',
   PROSE = 'Prose',
-  WORKSPACE = 'Workspace'
+  WORKSPACE = 'Workspace',
+  INSPIRATION = 'Inspiration'
 }
 import { generateId } from '../../services/storageService';
 
@@ -77,6 +79,60 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
     if (!confirm('Delete this document?')) return;
     onUpdateProject?.({ proseDocuments: proseDocs.filter(d => d.id !== id) });
     if (selectedProseId === id) setSelectedProseId(null);
+  };
+
+  // Inspiration board handlers
+  const [newInspirationTitle, setNewInspirationTitle] = React.useState('');
+  const [newInspirationDesc, setNewInspirationDesc] = React.useState('');
+  const [newInspirationUrl, setNewInspirationUrl] = React.useState('');
+  const [newInspirationImage, setNewInspirationImage] = React.useState('');
+  const [showInspirationForm, setShowInspirationForm] = React.useState(false);
+  const [inspirationImageError, setInspirationImageError] = React.useState('');
+
+  const handleAddInspiration = () => {
+    if (!newInspirationTitle.trim()) {
+      alert('Please enter a title for this inspiration');
+      return;
+    }
+    if (!newInspirationImage.trim()) {
+      alert('Please upload an image');
+      return;
+    }
+    
+    const extractedTags = newInspirationDesc.match(/#\w+/g)?.map(t => t.slice(1)) || [];
+    
+    const newInspo = {
+      id: generateId(),
+      title: newInspirationTitle.trim(),
+      description: newInspirationDesc,
+      imageUrl: newInspirationImage,
+      url: newInspirationUrl,
+      tags: extractedTags,
+      timestamp: Date.now()
+    };
+    
+    console.log('Adding inspiration:', newInspo);
+    
+    onUpdateProject?.({
+      inspirations: [newInspo, ...(data.inspirations || [])]
+    });
+    
+    setNewInspirationTitle('');
+    setNewInspirationDesc('');
+    setNewInspirationUrl('');
+    setNewInspirationImage('');
+    setInspirationImageError('');
+    setShowInspirationForm(false);
+  };
+
+  const handleInspirationImageUrl = (url: string) => {
+    setNewInspirationImage(url);
+    setInspirationImageError('');
+  };
+
+  const handleInspirationImageError = (error: string) => {
+    setInspirationImageError(error);
+    console.error('Inspiration image upload error:', error);
   };
 
   // Keyboard shortcuts for delete modal
@@ -212,8 +268,9 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                     onClick={() => setNotepadView(v)}
                     className={`ph-tab ${viewMode === v ? 'ph-tab-active' : 'ph-tab-inactive'}`}
                   >
-                    {v === NotepadView.STREAM && <Zap size={14} />}
+                  {v === NotepadView.STREAM && <Zap size={14} />}
                     {v === NotepadView.WORKSPACE && <LayoutGrid size={14} />}
+                    {v === NotepadView.INSPIRATION && <Lightbulb size={14} />}
                     {v}
                   </button>
                 ))}
@@ -393,6 +450,144 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                 </div>
               </div>
             </>
+          ) : viewMode === NotepadView.INSPIRATION ? (
+            <div className="flex-1 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-900 dark:to-slate-800 overflow-y-auto p-8 lg:p-12">
+              <div className="max-w-6xl mx-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Inspiration Board</h2>
+                  <button 
+                    onClick={() => setShowInspirationForm(!showInspirationForm)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
+                  >
+                    {showInspirationForm ? <X size={16} /> : <Plus size={16} />} {showInspirationForm ? 'Cancel' : 'Add Inspiration'}
+                  </button>
+                </div>
+                
+                {showInspirationForm && (
+                  <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl mb-8 border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Title</label>
+                        <input type="text" value={newInspirationTitle} onChange={e => setNewInspirationTitle(e.target.value)} className="ph-input w-full" placeholder="E.g., Gothic Castle Reference" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Image</label>
+                        <ImageUploadInput
+                          onImageUrl={handleInspirationImageUrl}
+                          onError={handleInspirationImageError}
+                          filename="inspiration"
+                          showPreview={true}
+                        />
+                        {newInspirationImage && (
+                          <div className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                            <CheckCircle size={14} /> Image ready
+                          </div>
+                        )}
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Description & Tags (use #)</label>
+                        <textarea value={newInspirationDesc} onChange={e => setNewInspirationDesc(e.target.value)} className="ph-input w-full h-24 resize-none" placeholder="Notes about this inspiration... #Oakhaven" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">External Link (Optional)</label>
+                        <input type="text" value={newInspirationUrl} onChange={e => setNewInspirationUrl(e.target.value)} className="ph-input w-full" placeholder="https://en.wikipedia.org/wiki/..." />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-3">
+                      <button 
+                        onClick={() => {
+                          setNewInspirationTitle('');
+                          setNewInspirationDesc('');
+                          setNewInspirationUrl('');
+                          setNewInspirationImage('');
+                          setInspirationImageError('');
+                          setShowInspirationForm(false);
+                        }}
+                        className="px-6 py-2 bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-400 dark:hover:bg-slate-500 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={handleAddInspiration}
+                        disabled={!newInspirationTitle.trim() || !newInspirationImage.trim()}
+                        className={`px-6 py-2 rounded-xl font-bold transition-colors ${
+                          newInspirationTitle.trim() && newInspirationImage.trim()
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        Save Inspiration
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
+                  {!(data.inspirations?.length) && !showInspirationForm && (
+                    <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4">
+                      <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
+                        <ImageIcon size={32} className="text-slate-300" />
+                      </div>
+                      <p className="text-slate-400 font-serif italic">Your mood board is empty. Add some inspirations to build your world's aesthetic.</p>
+                    </div>
+                  )}
+                  
+                  {data.inspirations?.map((inspo) => (
+                    <div key={inspo.id} className="break-inside-avoid bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-slate-200 dark:border-slate-700 group">
+                      {inspo.imageUrl && (
+                        <div className="relative">
+                          <img src={inspo.imageUrl} alt={inspo.title} className="w-full h-auto object-cover" loading="lazy" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <div className="flex items-start justify-between mb-2 gap-2">
+                          <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-tighter text-sm">{inspo.title}</h3>
+                          <button 
+                            onClick={() => {
+                              if(confirm('Delete this inspiration?')) {
+                                onUpdateProject?.({
+                                  inspirations: data.inspirations?.filter(i => i.id !== inspo.id)
+                                });
+                              }
+                            }}
+                            className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          >
+                            <Trash size={16} />
+                          </button>
+                        </div>
+                        {inspo.description && (
+                          <p className="text-xs text-slate-600 dark:text-slate-400 font-serif mb-4 whitespace-pre-wrap">{inspo.description}</p>
+                        )}
+                        {inspo.url && (
+                          <a href={inspo.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-500 hover:text-indigo-600 flex items-center gap-1 mb-4 truncate bg-indigo-50 dark:bg-indigo-900/20 py-1 px-2 rounded">
+                            <Globe size={10} /> {inspo.url.replace(/^https?:\/\//, '')}
+                          </a>
+                        )}
+                        <div className="flex flex-wrap gap-1 mt-auto">
+                          {inspo.tags?.map(tag => {
+                            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const tagSimple = normalize(tag);
+                            const colors: { [key: string]: string } = {
+                              world: 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200',
+                              character: 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-200',
+                              plot: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200',
+                              setting: 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200',
+                              magic: 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200',
+                            };
+                            return (
+                              <span key={tag} className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${colors[tagSimple] || 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}>
+                                #{tag}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           ) : viewMode === NotepadView.PROSE ? (
             <div className="flex-1 bg-slate-100 dark:bg-slate-900 overflow-hidden flex flex-col relative">
               {activeProse ? (

@@ -131,7 +131,7 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
                          const isInline = !className?.includes('language-');
                          if (isInline && content.startsWith('Source:')) {
                            return (
-                             <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800 mx-0.5 cursor-help" title={content}>
+                             <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800 mx-0.5 cursor-help" title={content}>
                                <BookOpen size={10} className="mr-1" /> {content.split(':').pop()?.trim()}
                              </span>
                            );
@@ -171,7 +171,7 @@ export const StenoChatPanel: React.FC<StenoChatPanelProps> = ({
           }}
           placeholder="Ask anything..."
           rows={1}
-          className="flex-1 bg-slate-50 dark:bg-slate-950 border-none rounded-xl px-4 py-3 text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none"
+          className="flex-1 bg-slate-50 dark:bg-slate-950 border-none rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none"
         />
         <button 
           onClick={() => handleSendMessage()}

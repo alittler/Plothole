@@ -126,14 +126,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               )}
             </div>
-            <p className="text-base md:text-xl text-slate-500 dark:text-slate-400 font-serif italic">by {projectData.author}</p>
+            <p className="text-sm md:text-xl text-slate-500 dark:text-slate-400 font-serif italic">by {projectData.author}</p>
           </div>
         </header>
 
         <div className="flex flex-col md:flex-row items-center gap-4">
           <div className="ph-panel p-4 flex-1 w-full text-left rounded-2xl">
             <span className="ph-label">Story Summary</span>
-            <p className="text-slate-700 dark:text-slate-300 line-clamp-3 text-xs md:text-base leading-relaxed font-serif">{projectData.summary || 'No summary generated yet.'}</p>
+            <p className="text-slate-700 dark:text-slate-300 line-clamp-3 text-xs md:text-sm leading-relaxed font-serif">{projectData.summary || 'No summary generated yet.'}</p>
           </div>
           
           <div className="ph-tab-container self-stretch overflow-x-auto no-scrollbar shrink-0">
@@ -376,7 +376,7 @@ const StatCard = ({ icon: Icon, label, value, color }: any) => (
     </div>
     <div className="min-w-0">
       <span className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5 md:mb-1 truncate">{label}</span>
-      <span className="text-base md:text-2xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight truncate">{value}</span>
+      <span className="text-sm md:text-2xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight truncate">{value}</span>
     </div>
   </div>
 );
@@ -422,11 +422,11 @@ const BlueprintCard = ({ img, onEdit }: { img: { id: string; url: string; label:
       <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">{img.label}</h4>
       <div className="flex items-center gap-4 pt-2 border-t border-indigo-200/30 dark:border-indigo-800/20">
         <div className="flex flex-col">
-          <span className="text-[7px] font-black text-slate-400 uppercase">Res</span>
+          <span className="text-[9px] font-black text-slate-400 uppercase">Res</span>
           <span className="text-[9px] font-mono text-slate-600 dark:text-slate-400">1024x1024</span>
         </div>
         <div className="flex flex-col">
-          <span className="text-[7px] font-black text-slate-400 uppercase">Enc</span>
+          <span className="text-[9px] font-black text-slate-400 uppercase">Enc</span>
           <span className="text-[9px] font-mono text-slate-600 dark:text-slate-400">UTF-8</span>
         </div>
       </div>

@@ -355,7 +355,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               </div>
 
-              <div className="p-8 bg-red-50 dark:bg-red-900/10 rounded-[2rem] border border-red-100 dark:border-red-900/30">
+              <div className="p-8 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30">
                 <h3 className="font-black text-red-600 dark:text-red-400 mb-2 uppercase text-xs tracking-[0.2em]">Factory Reset</h3>
                 <p className="text-sm text-red-700 dark:text-red-300/70 mb-6 font-medium">This will permanently delete all projects, characters, manuscripts, and notes. This action cannot be undone.</p>
                 <button
@@ -371,7 +371,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       case SettingsTab.PREFERENCES:
         return (
-          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-10 animate-in fade-in duration-500">
+          <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-10 animate-in fade-in duration-500">
             <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
               <div className="p-4 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
                 <Settings size={28} />
@@ -481,7 +481,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       case SettingsTab.ARCHIVE:
         return projectData ? (
-          <section className="h-full flex flex-col bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in duration-500">
+          <section className="h-full flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in duration-500">
             <div className="p-10 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 relative z-10">
               <div className="flex items-center gap-4">
                 <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20">
@@ -523,7 +523,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         <div className="flex items-center gap-3 overflow-hidden">
                           {file.name.endsWith('.json') ? <Code size={16} className={previewFile?.name === file.name ? 'text-white' : 'text-amber-500'} /> : file.name.endsWith('.md') ? <FileText size={16} className={previewFile?.name === file.name ? 'text-white' : 'text-indigo-500'} /> : <Database size={16} className={previewFile?.name === file.name ? 'text-white' : 'text-slate-400'} />}
                           <div className="truncate">
-                            <div className="text-[11px] font-bold truncate">{file.name}</div>
+                            <div className="text-xs font-bold truncate">{file.name}</div>
                             <div className={`text-[8px] uppercase font-black tracking-widest mt-0.5 ${previewFile?.name === file.name ? 'text-indigo-200' : 'text-slate-400'}`}>{(file.size / 1024).toFixed(1)} KB</div>
                           </div>
                         </div>
@@ -561,7 +561,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         </button>
                       </div>
                       {previewFile.type === 'json' ? (
-                        <pre className="text-[11px] font-mono text-amber-600 dark:text-amber-400 bg-slate-50 dark:bg-slate-950 p-8 rounded-[2rem] overflow-x-auto border border-slate-100 dark:border-slate-800 whitespace-pre-wrap leading-relaxed">
+                        <pre className="text-xs font-mono text-amber-600 dark:text-amber-400 bg-slate-50 dark:bg-slate-950 p-8 rounded-2xl overflow-x-auto border border-slate-100 dark:border-slate-800 whitespace-pre-wrap leading-relaxed">
                           {JSON.stringify(JSON.parse(previewFile.content), null, 2)}
                         </pre>
                       ) : (
@@ -590,7 +590,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       case SettingsTab.AUDIT:
         return projectData ? (
-          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
+          <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
             <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
               <div className="p-4 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
                 <History size={28} />
@@ -609,7 +609,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       {getEntityIcon(log.entityType)}
                     </div>
                     <div className="space-y-1">
-                      <div className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                      <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
                         {log.action} {log.entityType}
                         {log.entityId && <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">#{log.entityId}</span>}
                       </div>
@@ -642,7 +642,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       case SettingsTab.MANIFEST:
         return projectData ? (
-          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-10 animate-in fade-in duration-500">
+          <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-10 animate-in fade-in duration-500">
             <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
               <div className="p-4 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl">
                 <FileCode size={28} />
@@ -654,21 +654,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Container ID</div>
                 <div className="text-xs font-mono font-bold text-slate-900 dark:text-white truncate">#{projectData.id}</div>
               </div>
-              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Integrity Hash</div>
                 <div className="text-xs font-mono font-bold text-emerald-500 truncate">{projectData.integrityHash?.slice(0, 16)}...</div>
               </div>
-              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Last Sync</div>
                 <div className="text-xs font-bold text-slate-900 dark:text-white">{new Date(projectData.lastModified).toLocaleTimeString()}</div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between p-8 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
               <div className="space-y-1">
                 <h3 className="font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase text-sm tracking-tight">
                   <Shield size={18} className="text-indigo-500" /> Semantic Security
@@ -692,7 +692,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       case SettingsTab.RAW:
         return projectData ? (
-          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
+          <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-8">
               <div className="flex items-center gap-4">
                 <div className="p-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl">
@@ -724,7 +724,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6">
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 p-6">
               <textarea
                 readOnly
                 value={rawMarkdownDump}
@@ -737,7 +737,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       case SettingsTab.EXPORT:
         return projectData ? (
-          <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-10 animate-in fade-in duration-500">
+          <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-10 animate-in fade-in duration-500">
             <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
               <div className="p-4 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl">
                 <Download size={28} />
@@ -751,7 +751,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <button 
                 onClick={handleExportDocx}
-                className="flex flex-col items-center justify-center p-12 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] hover:border-indigo-500/50 hover:bg-indigo-50/10 transition-all group"
+                className="flex flex-col items-center justify-center p-12 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl hover:border-indigo-500/50 hover:bg-indigo-50/10 transition-all group"
               >
                 <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <FileCode size={32} />
@@ -766,7 +766,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   const blob = new Blob([dataStr], { type: 'application/json' });
                   saveAs(blob, `${projectData.title.replace(/\s+/g, '_')}_Backup.json`);
                 }}
-                className="flex flex-col items-center justify-center p-12 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] hover:border-emerald-500/50 hover:bg-emerald-50/10 transition-all group"
+                className="flex flex-col items-center justify-center p-12 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl hover:border-emerald-500/50 hover:bg-emerald-50/10 transition-all group"
               >
                 <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Database size={32} />

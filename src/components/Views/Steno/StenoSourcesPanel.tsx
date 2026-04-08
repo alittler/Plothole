@@ -356,7 +356,7 @@ export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
                           e.stopPropagation();
                           handleCancelIngestion(source.id);
                         }}
-                        className="p-1 bg-red-100 text-red-500 rounded-md hover:bg-red-200 transition-colors"
+                        className="p-1 bg-red-100 text-red-500 rounded-lg hover:bg-red-200 transition-colors"
                         title="Cancel Ingestion"
                       >
                         <X size={10} />

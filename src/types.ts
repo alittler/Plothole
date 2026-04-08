@@ -226,6 +226,7 @@ export interface ProjectData {
   chapters?: Chapter[];
   notes: Note[];
   ideas?: Idea[];
+  inspirations?: Inspiration[];
   themes: string[];
   proseDocuments?: ProseDocument[];
   semanticDocuments?: SemanticDocument[];
@@ -390,6 +391,16 @@ export interface Note {
   isCanon?: boolean;
   expandedContent?: string;
   metaSummary?: string;
+}
+
+export interface Inspiration {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  url?: string;
+  tags: string[];
+  timestamp: number;
 }
 
 export interface ProseDocument {

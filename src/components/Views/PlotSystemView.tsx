@@ -284,7 +284,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                 </div>
               </div>
 
-              <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-slate-800 overflow-hidden">
+              <div className="bg-slate-900 rounded-2xl p-8 md:p-12 shadow-2xl border border-slate-800 overflow-hidden">
                 <pre className="font-mono text-xs md:text-sm leading-relaxed text-emerald-400/90 overflow-x-auto whitespace-pre-wrap">
                   {data.history_diff || 'No revision history recorded yet.'}
                 </pre>

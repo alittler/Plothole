@@ -104,7 +104,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       case AdminTab.SYSTEM:
         return (
           <div className="max-w-5xl mx-auto space-y-8 py-8 animate-in fade-in duration-500">
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
                 <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20"><Settings size={28} /></div>
                 <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">App Configuration</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Core system parameters and performance limits.</p></div>
@@ -116,7 +116,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               <button onClick={() => onSaveSettings(settings)} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3"><Save size={20} /> Update Configuration</button>
             </section>
 
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
                 <div className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20"><Archive size={28} /></div>
                 <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Data Storage & Formats</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">How the system ingests and mirrors your research.</p></div>
@@ -160,14 +160,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
                         <div className="mt-1 p-1 bg-indigo-500/20 text-indigo-400 rounded-lg"><Code size={12} /></div>
                         <div>
                           <p className="text-[10px] font-black text-slate-200 uppercase tracking-widest">Index Sidecar</p>
-                          <p className="text-[11px] text-slate-500">filename.ext.index.json</p>
+                          <p className="text-xs text-slate-500">filename.ext.index.json</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <div className="mt-1 p-1 bg-emerald-500/20 text-emerald-400 rounded-lg"><FileText size={12} /></div>
                         <div>
                           <p className="text-[10px] font-black text-slate-200 uppercase tracking-widest">Prose Sidecar</p>
-                          <p className="text-[11px] text-slate-500">filename.ext.extracted.md</p>
+                          <p className="text-xs text-slate-500">filename.ext.extracted.md</p>
                         </div>
                       </div>
                     </div>
@@ -176,7 +176,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </div>
             </section>
 
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
                 <div className="p-4 bg-amber-500 text-white rounded-2xl shadow-lg shadow-amber-500/20"><Cpu size={28} /></div>
                 <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">AI Intelligence Schema</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Define global extraction logic and system instructions.</p></div>
@@ -187,7 +187,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </div>
             </section>
 
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
                 <div className="p-4 bg-cyan-600 text-white rounded-2xl shadow-lg shadow-cyan-600/20"><Upload size={28} /></div>
                 <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">S3 Upload Test</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Test AWS S3 file upload and storage.</p></div>
@@ -200,12 +200,12 @@ export const AdminView: React.FC<AdminViewProps> = ({
       case AdminTab.NAVIGATION:
         return (
           <div className="max-w-5xl mx-auto py-8 animate-in fade-in duration-500 space-y-8">
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800">
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8 mb-8">
                 <div className="p-4 bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-600/20"><Layout size={28} /></div>
                 <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Navigation & Routing</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Configure workspace layout and view access.</p></div>
               </div>
-              <div className="p-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
+              <div className="p-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
                 <Layout size={48} className="mx-auto text-slate-200 mb-4" />
                 <p className="text-slate-400 font-serif italic text-lg">Dynamic navigation ordering and permissions coming soon.</p>
               </div>
@@ -216,13 +216,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
       case AdminTab.TOOLBOX:
         return (
           <div className="max-w-5xl mx-auto py-8 animate-in fade-in duration-500 space-y-8">
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
                 <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20"><Wrench size={28} /></div>
                 <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Toolbox Defaults</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Global resources for every story architect.</p></div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-800/50 p-8 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div className="space-y-4">
                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tool Label</label><input type="text" value={newLink.label} onChange={e => setNewLink({...newLink, label: e.target.value})} placeholder="e.g. RhymeZone" className="bg-white dark:bg-slate-900 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
                   <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Resource URL</label><input type="text" value={newLink.url} onChange={e => setNewLink({...newLink, url: e.target.value})} placeholder="https://..." className="bg-white dark:bg-slate-900 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
@@ -237,7 +237,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               <div className="space-y-3">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Active Global Tools</h3>
                 {settings.defaultToolboxLinks?.map(link => (
-                  <div key={link.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 group">
+                  <div key={link.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800 group">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-white dark:bg-slate-900 rounded-xl text-indigo-600 shadow-sm"><LinkIcon size={18} /></div>
                       <div>
@@ -249,7 +249,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   </div>
                 ))}
                 {(!settings.defaultToolboxLinks || settings.defaultToolboxLinks.length === 0) && (
-                  <div className="py-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
+                  <div className="py-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
                     <Activity size={48} className="mx-auto text-slate-200 mb-4 opacity-20" />
                     <p className="text-slate-400 font-serif italic text-lg">No global resources configured.</p>
                   </div>
@@ -262,7 +262,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       case AdminTab.USERS:
         return (
           <div className="max-w-5xl mx-auto py-8 animate-in fade-in duration-500 space-y-8">
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 shadow-sm border border-slate-200 dark:border-slate-800">
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8 mb-8">
                 <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-600/20"><User size={28} /></div>
                 <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Identity Management</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Manage authorized collaborators and roles.</p></div>
@@ -347,7 +347,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </div>
               <div className="text-center">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Local Network Access</p>
-                <code className="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
+                <code className="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg">
                   {networkInfo.ip}:{networkInfo.port}
                 </code>
               </div>

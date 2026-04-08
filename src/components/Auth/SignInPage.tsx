@@ -93,7 +93,7 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
       >
         {/* Branding Header */}
         <div className="flex flex-col items-center mb-6 md:mb-10 text-center px-4">
-          <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-3xl md:rounded-[2.5rem] flex items-center justify-center shadow-2xl mb-4 md:mb-6 relative">
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-3xl md:rounded-2xl flex items-center justify-center shadow-2xl mb-4 md:mb-6 relative">
             <Shield size={32} className="md:size-[40px] text-slate-950" />
             <div className="absolute -top-1 -right-1">
               <div className="p-1.5 bg-indigo-600 rounded-full text-white shadow-lg">
@@ -112,7 +112,7 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
         </div>
 
         {/* Auth Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] md:rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-white/5 overflow-hidden p-6 md:p-10 space-y-6 md:space-y-8">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-white/5 overflow-hidden p-6 md:p-10 space-y-6 md:space-y-8">
           <AnimatePresence mode="wait">
             {verifying ? (
               <motion.form 
@@ -192,7 +192,7 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="architect@plothole.ai"
-                          className="w-full pl-10 md:pl-12 pr-4 py-3 md:py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-[12px] md:text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                          className="w-full pl-10 md:pl-12 pr-4 py-3 md:py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-xs md:text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
                           required
                         />
                       </div>
@@ -207,7 +207,7 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-10 md:pl-12 pr-4 py-3 md:py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-[12px] md:text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                          className="w-full pl-10 md:pl-12 pr-4 py-3 md:py-3.5 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-xs md:text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
                           required
                         />
                       </div>

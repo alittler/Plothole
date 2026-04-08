@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ProjectMetadata, User } from '../../types';
-import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database, Globe } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database, Globe, Edit2, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { ProjectWikiSettings } from './ProjectWikiSettings';
 
@@ -12,6 +12,8 @@ interface BookshelfViewProps {
   onCreateProject: (title: string, author: string, useSample: boolean, shortName?: string) => void;
   onUploadProject: (file: File) => void;
   onDeleteProject: (id: string) => void;
+  onEditProject?: (id: string, title: string, author: string, shortName: string) => Promise<void>;
+  onDeselectProject?: () => void;
   onRefreshMetadata?: () => Promise<void>;
   onOpenDashboard: () => void;
   isAnalyzing: boolean;
@@ -19,7 +21,7 @@ interface BookshelfViewProps {
 }
 
 export const BookshelfView: React.FC<BookshelfViewProps> = ({
-  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onRefreshMetadata, isAnalyzing, currentUser, fetchWithAuth
+  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onEditProject, onDeselectProject, onRefreshMetadata, isAnalyzing, currentUser, fetchWithAuth
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -27,6 +29,10 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
   const [newShortName, setNewShortName] = useState('');
   const [newAuthor, setNewAuthor] = useState(currentUser.name);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [projectToEdit, setProjectToEdit] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editShortName, setEditShortName] = useState('');
+  const [editAuthor, setEditAuthor] = useState('');
   const [wikiSettingsProjectId, setWikiSettingsProjectId] = useState<string | null>(null);
   const [wikiSettingsProjectTitle, setWikiSettingsProjectTitle] = useState('');
 
@@ -74,6 +80,15 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
               {isRefreshing ? 'Refreshing...' : 'Refresh Library'}
             </button>
           )}
+          {activeProjectId && onDeselectProject && (
+            <button
+              onClick={onDeselectProject}
+              className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all bg-white dark:bg-slate-800 text-slate-500 hover:text-red-600 border border-slate-200 dark:border-slate-700 shadow-sm"
+            >
+              <X size={14} />
+              Clear Selection
+            </button>
+          )}
         </div>
       </header>
 
@@ -85,10 +100,12 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
               return (
                 <div
                   key={project.id}
-                  onClick={() => onSelectProject(project.id)}
-                  className={`h-64 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border overflow-hidden flex flex-col group hover:shadow-md transition-all cursor-pointer ${isActive ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-500/50'}`}
+                  className={`h-64 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border overflow-hidden flex flex-col group hover:shadow-md transition-all ${isActive ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-500/50'}`}
                 >
-                  <div className="flex-1 p-6 flex flex-col justify-between relative">
+                  <div 
+                    onClick={() => onSelectProject(project.id)}
+                    className="flex-1 p-6 flex flex-col justify-between relative cursor-pointer"
+                  >
                     <div className="absolute top-6 right-6 flex items-center gap-2">
                       {project.origin === 'cloud' ? (
                         <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 text-indigo-500 rounded-lg" title="Synced to Cloud">
@@ -123,6 +140,22 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                       {isActive ? 'Active World' : 'Open World'}
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const proj = projects.find(p => p.id === project.id);
+                          if (proj) {
+                            setProjectToEdit(project.id);
+                            setEditTitle(proj.title);
+                            setEditAuthor(proj.author);
+                            setEditShortName(proj.shortName || '');
+                          }
+                        }}
+                        className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
+                        title="Edit Project"
+                      >
+                        <Edit2 size={18} />
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -173,7 +206,7 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
 
               <div className="flex gap-3 h-14">
                 <button
-                  onClick={() => onCreateProject('The Obsidian Citadel', currentUser.name, true, 'Citadel')}
+                  onClick={() => onCreateProject('Sample Project', currentUser.name, true, 'Sample')}
                   className="flex-1 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex items-center justify-center gap-2 hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-500/5 transition-all group"
                 >
                   <Sparkles size={14} className="text-slate-400 group-hover:text-amber-600" />
@@ -274,6 +307,39 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
             fetchWithAuth={fetchWithAuth}
           />
         )}
+      </Modal>
+
+      <Modal 
+        isOpen={projectToEdit !== null} 
+        onClose={() => setProjectToEdit(null)} 
+        onConfirm={async () => {
+          if (projectToEdit && onEditProject) {
+            await onEditProject(projectToEdit, editTitle, editAuthor, editShortName);
+            setProjectToEdit(null);
+          }
+        }}
+        title="Edit Story World" 
+        footer={<button onClick={async () => {
+          if (projectToEdit && onEditProject) {
+            await onEditProject(projectToEdit, editTitle, editAuthor, editShortName);
+            setProjectToEdit(null);
+          }
+        }} className="ph-button-primary">Save Changes</button>}
+      >
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <label className="ph-label">Story Title</label>
+            <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="e.g. The Last Archivist" className="ph-input w-full" autoFocus />
+          </div>
+          <div className="space-y-1">
+            <label className="ph-label">Short Name (for tagging)</label>
+            <input type="text" value={editShortName} onChange={e => setEditShortName(e.target.value)} placeholder="e.g. Archivist" className="ph-input w-full" />
+          </div>
+          <div className="space-y-1">
+            <label className="ph-label">Author</label>
+            <input type="text" value={editAuthor} onChange={e => setEditAuthor(e.target.value)} placeholder="Your Name" className="ph-input w-full" />
+          </div>
+        </div>
       </Modal>
     </div>
   );

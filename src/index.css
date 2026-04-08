@@ -24,22 +24,60 @@
 
 /* Plothole Unified Design System (PH-UDS) Utilities */
 @layer components {
+  /* Border Radius Scale (4-Level) */
+  .ph-rounded-sharp {
+    @apply rounded-lg;
+  }
+
+  .ph-rounded-default {
+    @apply rounded-2xl;
+  }
+
+  .ph-rounded-smooth {
+    @apply rounded-3xl;
+  }
+
+  .ph-rounded-pill {
+    @apply rounded-full;
+  }
+
+  /* Typography Scale (5-Level) */
+  .ph-text-caption {
+    @apply text-[9px] font-medium;
+  }
+
+  .ph-text-label {
+    @apply text-[10px] font-black uppercase tracking-widest;
+  }
+
+  .ph-text-body {
+    @apply text-sm font-medium;
+  }
+
+  .ph-text-heading {
+    @apply text-lg font-black;
+  }
+
+  .ph-text-hero {
+    @apply text-2xl font-black tracking-tight;
+  }
+
   /* Panels & Cards */
   .ph-panel {
-    @apply bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-slate-200/50 dark:border-slate-800/50 overflow-hidden;
+    @apply bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/50 dark:border-slate-800/50 overflow-hidden;
   }
 
   .ph-panel-glass {
-    @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-white/5 overflow-hidden;
+    @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 dark:border-white/5 overflow-hidden;
   }
 
   /* Navigation & Tabs */
   .ph-tab-container {
-    @apply flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-fit items-center;
+    @apply flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-fit items-center;
   }
 
   .ph-tab {
-    @apply px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap;
+    @apply px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap;
   }
 
   .ph-tab-active {
@@ -52,25 +90,38 @@
 
   /* Buttons */
   .ph-button-primary {
-    @apply px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none;
+    @apply px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/20 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .ph-button-secondary {
-    @apply px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none;
+    @apply px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .ph-button-accent {
+    @apply px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg shadow-amber-600/20 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .ph-button-success {
+    @apply px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .ph-button-danger {
+    @apply px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg shadow-rose-600/20 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .ph-button-ghost {
-    @apply p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all flex items-center justify-center gap-2;
+    @apply p-2 text-slate-400 hover:text-amber-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all flex items-center justify-center gap-2;
   }
 
   /* Inputs */
   .ph-input {
-    @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none px-4 py-3 shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white;
+    @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none px-4 py-3 shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white;
   }
 
   .ph-label {
     @apply text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 mb-2 block;
   }
+
 
   /* Typography Headers */
   .ph-section-title {
@@ -78,7 +129,7 @@
   }
 
   .ph-section-subtitle {
-    @apply text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em];
+    @apply text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest;
   }
 }
 

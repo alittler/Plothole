@@ -326,7 +326,7 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
               <div className="py-20 text-center space-y-4"><Database size={48} className="mx-auto text-slate-200 dark:text-slate-800" /><p className="text-slate-400 font-serif italic text-lg">No entities found.</p></div>
             ) : (
               allEntities.map(entity => (
-                <div key={entity.id} onClick={() => setSelectedId(entity.id === selectedId ? null : entity.id)} className={`group relative bg-white dark:bg-slate-900 border transition-all duration-300 rounded-[2rem] overflow-hidden cursor-pointer ${selectedId === entity.id ? 'border-indigo-500 shadow-2xl ring-4 ring-indigo-500/5' : 'border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 shadow-sm'}`}>
+                <div key={entity.id} onClick={() => setSelectedId(entity.id === selectedId ? null : entity.id)} className={`group relative bg-white dark:bg-slate-900 border transition-all duration-300 rounded-2xl overflow-hidden cursor-pointer ${selectedId === entity.id ? 'border-indigo-500 shadow-2xl ring-4 ring-indigo-500/5' : 'border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 shadow-sm'}`}>
                   <div className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-4">

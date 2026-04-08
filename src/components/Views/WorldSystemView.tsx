@@ -37,7 +37,8 @@ interface WorldSystemViewProps {
 enum WorldTab {
   MAP = 'Interactive Map',
   LOCATIONS = 'Locations List',
-  INVENTORY = 'Inventory'
+  INVENTORY = 'Inventory',
+  RECIPE_BOOK = 'Recipe Book'
 }
 
 export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
@@ -182,6 +183,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   {tab === WorldTab.MAP && <MapIcon size={14} />}
                   {tab === WorldTab.LOCATIONS && <MapPin size={14} />}
                   {tab === WorldTab.INVENTORY && <Box size={14} />}
+                  {tab === WorldTab.RECIPE_BOOK && <Book size={14} />}
                   {tab}
                 </button>
               ))}
@@ -200,7 +202,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 {(!data.rootMapImage && !data.isRealWorldMap && !currentMapParentId) ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
                     <div className="space-y-2">
-                      <div className="w-20 h-20 bg-indigo-600 text-white rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl shadow-indigo-600/20 mb-6">
+                      <div className="w-20 h-20 bg-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-indigo-600/20 mb-6">
                         <MapIcon size={40} />
                       </div>
                       <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Initialize Atlas</h2>
@@ -210,7 +212,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
                       <button 
                         onClick={() => onUpdateProject({ isRealWorldMap: true })}
-                        className="group p-8 bg-white dark:bg-slate-800 rounded-[3rem] border border-slate-100 dark:border-slate-700 shadow-xl hover:border-blue-500 transition-all flex flex-col items-center gap-4 text-center"
+                        className="group p-8 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-xl hover:border-blue-500 transition-all flex flex-col items-center gap-4 text-center"
                       >
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-600 rounded-3xl group-hover:scale-110 transition-transform">
                           <Globe size={32} />
@@ -221,7 +223,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         </div>
                       </button>
 
-                      <label className="group p-8 bg-white dark:bg-slate-800 rounded-[3rem] border border-slate-100 dark:border-slate-700 shadow-xl hover:border-emerald-500 transition-all flex flex-col items-center gap-4 text-center cursor-pointer">
+                      <label className="group p-8 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-xl hover:border-emerald-500 transition-all flex flex-col items-center gap-4 text-center cursor-pointer">
                         <div className="p-4 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 rounded-3xl group-hover:scale-110 transition-transform">
                           <MapIcon size={32} />
                         </div>
@@ -350,7 +352,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     </div>
 
                     {isScaleOpen && (
-                      <div className="absolute bottom-24 left-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-[2rem] shadow-2xl border border-white/20 w-64 space-y-3 z-40 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                      <div className="absolute bottom-24 left-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-white/20 w-64 space-y-3 z-40 animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest"><Search size={12} /> Scale Calibration</div>
                           <button onClick={() => setIsScaleOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={14} /></button>
@@ -378,7 +380,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                             return currentImg ? <img src={currentImg} className="w-full h-full object-cover" alt="" /> : <Globe className="w-6 h-6 text-emerald-500" />;
                           })()}
                         </div>
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-sm py-0.5 text-[7px] font-black text-white uppercase tracking-tighter text-center">Layers</div>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-sm py-0.5 text-[9px] font-black text-white uppercase tracking-tighter text-center">Layers</div>
                       </button>
 
                       {isLayersOpen && (
@@ -392,7 +394,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                               <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
                                 {data.rootMapImage ? <img src={data.rootMapImage} className="w-full h-full object-cover opacity-60 group-hover:opacity-100" alt="" /> : <Globe className="w-5 h-5 text-slate-400" />}
                               </div>
-                              <div className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-[6px] font-black text-white uppercase text-center">Root</div>
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-[9px] font-black text-white uppercase text-center">Root</div>
                             </button>
                           )}
                           {data.locations.filter(l => l.mapImage && l.id !== currentMapParentId).map(mapLoc => (
@@ -405,7 +407,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                               <div className="w-full h-full bg-slate-200 dark:bg-slate-800">
                                 <img src={mapLoc.mapImage} className="w-full h-full object-cover opacity-60 group-hover:opacity-100" alt="" />
                               </div>
-                              <div className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-[6px] font-black text-white uppercase text-center truncate px-1">{mapLoc.name}</div>
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-[9px] font-black text-white uppercase text-center truncate px-1">{mapLoc.name}</div>
                             </button>
                           ))}
                         </div>
@@ -514,6 +516,176 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       <p className="text-sm text-slate-500 line-clamp-2 mt-2 font-serif italic">{art.description || 'No description.'}</p>
                     </div>
                   ))}
+                </div>
+              </section>
+            )}
+
+            {activeTab === WorldTab.RECIPE_BOOK && (
+              <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl"><Book size={24} /></div>
+                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Recipe Book</h2><p className="text-sm text-slate-500 uppercase font-bold tracking-widest">Meals, Drinks & Culinary Creations</p></div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Herb Roasted Chicken */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🍗</span>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Herb Roasted Chicken</h3>
+                      </div>
+                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded">Main</span>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">A classic savory dish with rosemary, thyme, and garlic.</p>
+                    <div className="space-y-2 mb-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
+                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                        <li>• 1 whole chicken</li>
+                        <li>• Fresh rosemary & thyme</li>
+                        <li>• 4 cloves garlic</li>
+                        <li>• Butter, salt & pepper</li>
+                      </ul>
+                    </div>
+                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
+                      <a href="https://www.simplyrecipes.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">simplyrecipes.com</a>
+                    </div>
+                  </div>
+
+                  {/* Wild Berry Tart */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🫐</span>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Wild Berry Tart</h3>
+                      </div>
+                      <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 dark:bg-rose-900/30 px-2 py-1 rounded">Dessert</span>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">Elegant pastry filled with fresh berries and cream.</p>
+                    <div className="space-y-2 mb-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
+                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                        <li>• Puff pastry sheet</li>
+                        <li>• Mixed fresh berries</li>
+                        <li>• Heavy cream</li>
+                        <li>• Honey & vanilla</li>
+                      </ul>
+                    </div>
+                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
+                      <a href="https://www.foodnetwork.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">foodnetwork.com</a>
+                    </div>
+                  </div>
+
+                  {/* Spiced Apple Mead */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🍷</span>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Spiced Apple Mead</h3>
+                      </div>
+                      <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded">Drink</span>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">Honey wine infused with cinnamon, cloves, and apple.</p>
+                    <div className="space-y-2 mb-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
+                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                        <li>• Honey & water</li>
+                        <li>• Apple juice</li>
+                        <li>• Cinnamon stick</li>
+                        <li>• Whole cloves</li>
+                      </ul>
+                    </div>
+                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
+                      <a href="https://www.homebrewing.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">homebrewing.com</a>
+                    </div>
+                  </div>
+
+                  {/* Mushroom Soup */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🍲</span>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Mushroom Soup</h3>
+                      </div>
+                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded">Starter</span>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">Creamy woodland mushroom soup with fresh herbs.</p>
+                    <div className="space-y-2 mb-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
+                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                        <li>• Mixed mushrooms</li>
+                        <li>• Heavy cream</li>
+                        <li>• Vegetable stock</li>
+                        <li>• Onions & garlic</li>
+                      </ul>
+                    </div>
+                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
+                      <a href="https://www.bonappetit.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">bonappetit.com</a>
+                    </div>
+                  </div>
+
+                  {/* Honey Bread */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🍞</span>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Honey Bread</h3>
+                      </div>
+                      <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded">Bread</span>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">Sweet, golden loaf sweetened with wildflower honey.</p>
+                    <div className="space-y-2 mb-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
+                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                        <li>• All-purpose flour</li>
+                        <li>• Honey & butter</li>
+                        <li>• Eggs & milk</li>
+                        <li>• Yeast & salt</li>
+                      </ul>
+                    </div>
+                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
+                      <a href="https://www.kingarthurbaking.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">kingarthurbaking.com</a>
+                    </div>
+                  </div>
+
+                  {/* Mint Tea */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🍵</span>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Mint Tea</h3>
+                      </div>
+                      <span className="text-[10px] font-black text-cyan-500 uppercase tracking-widest bg-cyan-50 dark:bg-cyan-900/30 px-2 py-1 rounded">Drink</span>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">Refreshing herbal infusion of fresh mint and honey.</p>
+                    <div className="space-y-2 mb-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
+                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                        <li>• Fresh mint leaves</li>
+                        <li>• Hot water</li>
+                        <li>• Honey</li>
+                        <li>• Lemon (optional)</li>
+                      </ul>
+                    </div>
+                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
+                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
+                      <a href="https://www.thespruceeats.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">thespruceeats.com</a>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-3">
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">📖 About Your Recipe Book</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Keep track of recipes found throughout your story world. Each recipe includes basic ingredients and a source URL for reference. Perfect for worldbuilding - what do people in your world eat and drink?
+                  </p>
                 </div>
               </section>
             )}

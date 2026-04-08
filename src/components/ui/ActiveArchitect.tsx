@@ -35,7 +35,7 @@ export const ActiveArchitect: React.FC<ActiveArchitectProps> = ({ tasks }) => {
           
           <div className="flex flex-col">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">The Oracle is Thinking</span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-white whitespace-nowrap">{task}</span>
               <div className="flex gap-0.5">
                 <div className="w-1 h-1 bg-indigo-500 rounded-full animate-pulse" />
@@ -43,9 +43,12 @@ export const ActiveArchitect: React.FC<ActiveArchitectProps> = ({ tasks }) => {
                 <div className="w-1 h-1 bg-indigo-500 rounded-full animate-pulse [animation-delay:0.4s]" />
               </div>
             </div>
+            {task.toLowerCase().includes('analyz') && (
+              <span className="text-[9px] text-slate-400 mt-1 italic">This can take a few minutes...</span>
+            )}
           </div>
 
-          <div className="ml-2 px-2 py-0.5 bg-indigo-600 rounded-md">
+          <div className="ml-2 px-2 py-0.5 bg-indigo-600 rounded-lg">
             <Sparkles size={10} className="text-white animate-pulse" />
           </div>
         </div>
