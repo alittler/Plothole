@@ -79,7 +79,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [projectData]);
 
   const stats = useMemo(() => {
-    const totalWords = (projectData.chapters || []).reduce((acc, c) => acc + (c.wordCount || 0), 0);
+    const totalWords = projectData.wordCount || (projectData.chapters || []).reduce((acc, c) => acc + (c.wordCount || 0), 0);
     
     const unplacedPins = (projectData.locations || []).filter(l => !l.x && !l.y);
     const paradoxes = detectTemporalParadoxes(projectData);
