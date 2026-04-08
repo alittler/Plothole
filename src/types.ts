@@ -327,6 +327,15 @@ export interface Character {
   primary_trait?: string;
   location_id?: string;
 
+  // Physical and biographical details (from AI analysis)
+  physicalFeatures?: string; // Height, weight, build, distinctive marks
+  style?: string; // Clothing, appearance style
+  strengths?: string; // Character strengths
+  weaknesses?: string; // Character weaknesses
+  nickname?: string; // Alternate names/nicknames
+  birthday?: string; // Birth date
+  age?: string; // Age or age range
+
   // Schema.org/Person Compatibility
   givenName?: string;
   familyName?: string;
