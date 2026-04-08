@@ -4,7 +4,8 @@ import { ProjectData, Note, User, ViewType, ChangeLogEntry, AppSettings } from '
 import { 
   Settings, User as UserIcon, Database, Shield, Code, Check, 
   ChevronRight, History, Activity, Hash, Archive, FileCode,
-  Link as LinkIcon, Sparkles, Copy, Trash2, Download, FileText, X
+  Link as LinkIcon, Sparkles, Copy, Trash2, Download, FileText, X,
+  User, MapPin, Book, Clock, Upload, AlertCircle
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
@@ -18,7 +19,8 @@ enum SettingsTab {
   AUDIT = 'Audit Log',
   MANIFEST = 'Manifest',
   RAW = 'Raw',
-  EXPORT = 'Export'
+  EXPORT = 'Export',
+  CARD_EXAMPLES = 'Card Examples'
 }
 
 interface SettingsViewProps {
@@ -223,6 +225,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       case SettingsTab.MANIFEST: return <FileCode size={18} />;
       case SettingsTab.RAW: return <Code size={18} />;
       case SettingsTab.EXPORT: return <Download size={18} />;
+      case SettingsTab.CARD_EXAMPLES: return <Book size={18} />;
     }
   };
 
@@ -734,6 +737,214 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </section>
         ) : null;
+
+      case SettingsTab.CARD_EXAMPLES:
+        return (
+          <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Sample Data Gallery</h2>
+                <p className="text-slate-600 dark:text-slate-400 font-serif italic">Complete example project with 5+ cards of every type, showing exactly how your data will look</p>
+              </div>
+
+              {/* CHARACTERS */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                    <User size={20} className="text-indigo-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">CHARACTERS</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { name: "Eleanor Valorian", role: "Paladin", job: "Knight Commander", desc: "Fierce warrior devoted to protecting the realm. Bears a mysterious scar across her shoulder blade." },
+                    { name: "Theon Darksbane", role: "Rogue", job: "Shadow Master", desc: "Master of deception and stealth. Commands the Thieves' Guild from the shadows of the capital." },
+                    { name: "Lyra Willowbrook", role: "Mage", job: "Head Archmage", desc: "Ancient mage who discovered the secrets of crystalline magic. Mentors the next generation of wizards." },
+                    { name: "Marcus Ironheart", role: "Ranger", job: "Forest Warden", desc: "Skilled tracker and archer. Protects the Whisperwood Forest from poachers and dark creatures." },
+                    { name: "Isolde Silverwind", role: "Cleric", job: "Priestess of Dawn", desc: "Devoted to healing and light magic. Founded the Order of the Sacred Dawn in the northern provinces." }
+                  ].map((char, i) => (
+                    <div key={i} className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">{char.name}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Role:</strong> {char.role}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Job:</strong> {char.job}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">{char.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* LOCATIONS */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                    <MapPin size={20} className="text-green-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">LOCATIONS</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { name: "The Citadel of Ashenmarch", type: "Fortress", desc: "Imposing stone fortress perched on a mountain peak. Home to the kingdom's military and royal family." },
+                    { name: "Whisperwood Forest", type: "Wilderness", desc: "Ancient forest shrouded in perpetual mist. Inhabited by elves and forbidden magical creatures." },
+                    { name: "Port Valorian", type: "Coastal City", desc: "Bustling trade hub where merchants from across the realm conduct business. Known for its skyline of white towers." },
+                    { name: "The Obsidian Tower", type: "Dungeon", desc: "Crumbling dark tower in the wastelands. Rumored to contain artifacts of immense power and danger." },
+                    { name: "Silverhall Academy", type: "Institution", desc: "Premier magical academy where young mages train in the arcane arts. Founded over three centuries ago." }
+                  ].map((loc, i) => (
+                    <div key={i} className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">{loc.name}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Type:</strong> {loc.type}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">{loc.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ARTIFACTS */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                    <Upload size={20} className="text-amber-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">ARTIFACTS</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { name: "Excalibur's Echo", type: "Legendary Sword", rarity: "Unique", desc: "Mystical blade forged in starlight. Cuts through illusions and reflects magic back upon casters." },
+                    { name: "Crown of Eternal Wisdom", type: "Relic", rarity: "Artifact", desc: "Ancient crown that grants visions of the future. Worn by monarchs throughout the ages." },
+                    { name: "The Obsidian Grimoire", type: "Spell Book", rarity: "Artifact", desc: "Leather-bound tome containing forbidden magic. Each spell requires a dangerous sacrifice to cast." },
+                    { name: "Pendulum of Lost Time", type: "Magical Item", rarity: "Artifact", desc: "Swings backward through moments. Used to rewind actions or glimpse past events." },
+                    { name: "Wings of the Phoenix", type: "Armor Piece", rarity: "Legendary", desc: "Shimmering wings that grant the wearer temporary flight. Regenerates once per day." }
+                  ].map((art, i) => (
+                    <div key={i} className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">{art.name}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Type:</strong> {art.type} • <strong>Rarity:</strong> {art.rarity}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">{art.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* LORE */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                    <Book size={20} className="text-purple-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">LORE</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { term: "The First Age", category: "History", def: "The ancient epoch when the world was young and gods still walked among mortals, gifting humans with magic." },
+                    { term: "The Sundering", category: "Mythology", def: "Catastrophic event that split the continent into multiple islands and reshaped the magical grid." },
+                    { term: "Crystalline Magic", category: "Magic System", def: "Form of magic channeled through living crystals. Amplifies caster power but requires constant focus." },
+                    { term: "The Pact of Stars", category: "Political", def: "Ancient agreement between five kingdoms to maintain peace and share magical knowledge equally." },
+                    { term: "Shadowborn Curse", category: "Mythology", def: "Dark blessing that allows a soul to exist in shadow form. Comes with insatiable hunger for life force." }
+                  ].map((lore, i) => (
+                    <div key={i} className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">{lore.term}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Category:</strong> {lore.category}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">{lore.def}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* TIMELINE */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                    <Clock size={20} className="text-blue-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">TIMELINE EVENTS</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { title: "The Great Schism", date: "1432 (Second Age)", desc: "The kingdom split into three nations, each vying for control of the throne and magical resources." },
+                    { title: "Rise of the Thieves' Guild", date: "1589 (Second Age)", desc: "Theon Darksbane founded the shadowy organization that would control trade in the capital for centuries." },
+                    { title: "The War of Eternal Night", date: "1701 (Second Age)", desc: "Catastrophic conflict where shadow mages attempted to plunge the world into permanent darkness." },
+                    { title: "Rediscovery of Crystalline Magic", date: "1812 (Third Age)", desc: "Lyra Willowbrook unlocked the secrets of crystal magic, revolutionizing magical practice forever." },
+                    { title: "The Pact Renewal", date: "1920 (Third Age)", desc: "All five kingdoms reaffirmed their ancient agreements and established the Council of Sages." }
+                  ].map((evt, i) => (
+                    <div key={i} className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">{evt.title}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Year:</strong> {evt.date}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">{evt.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ENTITIES */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-900 flex items-center justify-center">
+                    <Sparkles size={20} className="text-rose-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">ENTITIES & CONCEPTS</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { name: "The Order of the Sacred Dawn", type: "Organization", tier: "A", desc: "Religious order dedicated to healing and protection. Maintains temples across all five kingdoms." },
+                    { name: "Thieves' Guild", type: "Criminal Organization", tier: "A", desc: "Underground network controlling illegal trade and information networks. Operates from Port Valorian." },
+                    { name: "The Council of Sages", type: "Government", tier: "S", desc: "Supreme governing body representing all five kingdoms. Makes decisions affecting all magical regulation." },
+                    { name: "Shadowborn", type: "Race/Species", tier: "A", desc: "Rare beings who exist partially in shadow. Feared and hunted by many, but revered in ancient texts." },
+                    { name: "The Crystalline Network", type: "Phenomenon", tier: "S", desc: "Ancient magical infrastructure connecting all points of power. Only recently rediscovered and partially understood." }
+                  ].map((ent, i) => (
+                    <div key={i} className="bg-rose-50 dark:bg-rose-900/20 rounded-xl p-4 space-y-2">
+                      <p className="font-bold text-slate-900 dark:text-white">{ent.name}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300"><strong>Type:</strong> {ent.type} • <strong>Tier:</strong> {ent.tier}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">{ent.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* DATA STRUCTURE */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                    <FileCode size={20} className="text-slate-600" />
+                  </div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white">PROJECT BACKUP STRUCTURE</h3>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">When exporting your project, all cards and data are saved in this structure:</p>
+                  <pre className="bg-slate-900 text-green-400 text-xs p-4 rounded-lg overflow-x-auto font-mono">
+{`{
+  "id": "proj_abc123",
+  "title": "The Realm of Valoris",
+  "author": "Your Name",
+  
+  // Card collections (30 total cards shown above)
+  "characters": [ 5 entries ],
+  "locations": [ 5 entries ],
+  "artifacts": [ 5 entries ],
+  "lore": [ 5 entries ],
+  "timeline": [ 5 entries ],
+  "entities": [ 5 entries ],
+  
+  // Story content
+  "notes": [ ... ],
+  "proseDocuments": [ ... ],
+  "chapters": [ ... ],
+  "ideas": [ ... ],
+  "inspirations": [ ... ],
+  
+  // Metadata
+  "lastModified": 1712606522,
+  "wordCount": 25847,
+  "characterCount": 156234
+}`}
+                  </pre>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-900 dark:text-blue-200">
+                      <strong>📊 Data Organization:</strong> Each card type is stored in its own array. When you export your project, all 30+ example cards above would be included in the backup file and can be restored or migrated to other projects.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
 
       case SettingsTab.EXPORT:
         return projectData ? (
