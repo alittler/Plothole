@@ -254,61 +254,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
             <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-                <div className="p-4 bg-purple-600 text-white rounded-2xl shadow-lg shadow-purple-600/20"><Maximize2 size={28} /></div>
-                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">View Mode Control</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Force mobile or desktop view in the browser for testing.</p></div>
-              </div>
-              <div className="space-y-4">
-                <p className="text-sm text-slate-600 dark:text-slate-400">Current Mode: <span className="font-bold text-slate-900 dark:text-white capitalize">{settings.forceViewMode || 'auto'}</span></p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <button
-                    onClick={() => {
-                      const updated = { ...settings, forceViewMode: 'auto' };
-                      setSettings(updated);
-                      onSaveSettings(updated);
-                    }}
-                    className={`py-3 px-4 rounded-xl font-bold uppercase tracking-widest transition-all ${
-                      (settings.forceViewMode || 'auto') === 'auto'
-                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    Auto
-                  </button>
-                  <button
-                    onClick={() => {
-                      const updated = { ...settings, forceViewMode: 'mobile' };
-                      setSettings(updated);
-                      onSaveSettings(updated);
-                    }}
-                    className={`py-3 px-4 rounded-xl font-bold uppercase tracking-widest transition-all ${
-                      settings.forceViewMode === 'mobile'
-                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    Mobile (375px)
-                  </button>
-                  <button
-                    onClick={() => {
-                      const updated = { ...settings, forceViewMode: 'desktop' };
-                      setSettings(updated);
-                      onSaveSettings(updated);
-                    }}
-                    className={`py-3 px-4 rounded-xl font-bold uppercase tracking-widest transition-all ${
-                      settings.forceViewMode === 'desktop'
-                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    Desktop (Full)
-                  </button>
-                </div>
-                <p className="text-[10px] text-slate-500 font-mono">Mobile view simulates a 375px viewport width for testing responsive design.</p>
-              </div>
-            </section>
-
-            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
-              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
                 <div className="p-4 bg-cyan-600 text-white rounded-2xl shadow-lg shadow-cyan-600/20"><Upload size={28} /></div>
                 <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">S3 Upload Test</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Test AWS S3 file upload and storage.</p></div>
               </div>
