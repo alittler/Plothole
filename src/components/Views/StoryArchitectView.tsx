@@ -109,26 +109,26 @@ export const StoryArchitectView: React.FC<StoryArchitectViewProps> = ({
   return (
     <div className="h-full overflow-y-auto bg-stone-50 dark:bg-slate-950 p-4 md:p-8 font-sans">
       <div className="max-w-6xl mx-auto space-y-8">
-        <header className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <header className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 md:p-0">
           <div className="flex items-center gap-6">
             <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20">
               <Zap size={32} />
             </div>
-            <div>
+            <div className="hidden sm:block">
               <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white uppercase">Story Architect</h1>
               <p className="text-slate-500 dark:text-slate-400">Transform raw manuscripts into structured story databases.</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <label className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer flex items-center gap-2 border border-slate-200 dark:border-slate-700">
-              <Upload size={14} /> Upload JSON
+              <Upload size={14} /> <span className="hidden sm:inline">Upload JSON</span>
               <input type="file" className="hidden" accept=".json" onChange={handleJsonUpload} />
             </label>
             {previewData && (
               <>
                 <button 
                   onClick={handleDownloadPreview}
-                  className="px-4 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-800 flex items-center gap-2"
+                  className="px-4 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-800 flex items-center gap-2 hidden sm:flex"
                 >
                   <Download size={14} /> Download JSON
                 </button>
@@ -136,7 +136,7 @@ export const StoryArchitectView: React.FC<StoryArchitectViewProps> = ({
                   onClick={handleCommitProject}
                   className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
                 >
-                  <Save size={16} /> Commit to Library
+                  <Save size={16} /> <span className="hidden sm:inline">Commit to Library</span>
                 </button>
               </>
             )}

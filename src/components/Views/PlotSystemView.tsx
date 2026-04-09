@@ -111,13 +111,16 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="p-0 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm z-10 shrink-0">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 p-4 md:p-0">
-          <div className="space-y-1 text-center md:text-left">
+      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm z-10 shrink-0">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1 text-center md:text-left hidden sm:block">
             <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
               <Calendar size={32} className="text-indigo-600" /> Plot & Timeline
             </h1>
             <p className="ph-section-subtitle">Chronicle the events and rhythms of your narrative.</p>
+          </div>
+          <div className="sm:hidden flex items-center gap-3">
+            <Calendar size={24} className="text-indigo-600" />
           </div>
           <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
             {Object.values(PlotTab).map(tab => (
@@ -125,11 +128,12 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`ph-tab ${activeTab === tab ? "ph-tab-active" : "ph-tab-inactive"}`}
+                title={tab}
               >
                 {tab === PlotTab.TIMELINE && <List size={14} />}
                 {tab === PlotTab.CALENDAR && <Clock size={14} />}
                 {tab === PlotTab.REVISIONS && <FileText size={14} />}
-                {tab}
+                <span className="hidden sm:inline">{tab}</span>
               </button>
             ))}
           </div>

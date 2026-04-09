@@ -47,14 +47,14 @@ export const ToolboxView: React.FC<ToolboxViewProps> = ({
             <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-lg">
               <Wrench size={32} />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 hidden sm:block">
               <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">WRITER'S TOOLBOX</h1>
               <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">A collection of resources to aid your creative process.</p>
             </div>
           </div>
           <button 
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors hidden sm:flex"
           >
             <RotateCcw size={14} /> Reset to Defaults
           </button>

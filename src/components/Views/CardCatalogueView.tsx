@@ -137,10 +137,10 @@ export const CardCatalogueView: React.FC<CardCatalogueViewProps> = ({
   return (
     <div className="flex-1 bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-6 shrink-0">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 md:p-6 shrink-0">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-4 mb-6">
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white">Card Catalogue</h1>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white hidden sm:block">Card Catalogue</h1>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setDisplayMode(displayMode === 'grid' ? 'list' : 'grid')}

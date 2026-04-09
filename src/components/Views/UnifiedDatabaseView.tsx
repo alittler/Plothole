@@ -290,14 +290,17 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
       {!hideHeader && (
         <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 hidden sm:flex">
               <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg"><Database size={24} /></div>
               <div><h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Entity Explorer</h1><p className="text-xs text-slate-500 uppercase font-black tracking-widest">Universal Database Explorer</p></div>
             </div>
+            <div className="sm:hidden flex items-center gap-3">
+              <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg"><Database size={20} /></div>
+            </div>
             <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               <div className="relative flex-1 lg:flex-none"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} /><input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search database..." className="w-full lg:w-64 pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 outline-none"><option value="name">Sort: A-Z</option><option value="type">Sort: Type</option><option value="recent">Sort: Recent</option><option value="date">Sort: Date</option><option value="id">Sort: ID</option></select>
-              <button onClick={handleAddNew} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"><Plus size={16} /> Add New</button>
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 outline-none hidden sm:block"><option value="name">Sort: A-Z</option><option value="type">Sort: Type</option><option value="recent">Sort: Recent</option><option value="date">Sort: Date</option><option value="id">Sort: ID</option></select>
+              <button onClick={handleAddNew} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 hidden sm:flex"><Plus size={16} /> Add New</button>
             </div>
           </div>
         </header>

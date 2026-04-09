@@ -218,13 +218,16 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   return (
     <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
       <div className={`transition-all duration-700 ease-in-out overflow-hidden shrink-0 ${isFullscreen ? 'max-h-0 opacity-0' : 'max-h-64 opacity-100'}`}>
-        <header className="p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10">
+        <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="space-y-1 text-center md:text-left">
+            <div className="space-y-1 text-center md:text-left hidden sm:block">
               <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
                 <Globe size={32} className="text-indigo-600" /> World Atlas
               </h1>
               <p className="ph-section-subtitle">Map the geography and artifacts of your story world.</p>
+            </div>
+            <div className="sm:hidden flex items-center gap-3">
+              <Globe size={24} className="text-indigo-600" />
             </div>
             <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
               {Object.values(WorldTab).map(tab => (
@@ -232,12 +235,13 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`ph-tab ${activeTab === tab ? "ph-tab-active" : "ph-tab-inactive"}`}
+                  title={tab}
                 >
                   {tab === WorldTab.MAP && <MapIcon size={14} />}
                   {tab === WorldTab.LOCATIONS && <MapPin size={14} />}
                   {tab === WorldTab.INVENTORY && <Box size={14} />}
                   {tab === WorldTab.RECIPE_BOOK && <Book size={14} />}
-                  {tab}
+                  <span className="hidden sm:inline">{tab}</span>
                 </button>
               ))}
             </div>

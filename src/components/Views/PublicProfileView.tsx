@@ -74,12 +74,15 @@ export const PublicProfileView: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-12 md:px-8">
-          <div className="flex items-center gap-3 mb-4">
+        <div className="max-w-6xl mx-auto px-4 py-6 md:py-12 md:px-8">
+          <div className="flex items-center gap-3 mb-4 hidden sm:flex">
             <Sparkles className="w-8 h-8 text-indigo-600" />
             <h1 className="text-4xl font-black text-slate-900 dark:text-white">{username}</h1>
           </div>
-          <p className="text-slate-600 dark:text-slate-400 text-lg">
+          <div className="sm:hidden mb-4">
+            <Sparkles className="w-6 h-6 text-indigo-600" />
+          </div>
+          <p className="text-slate-600 dark:text-slate-400 text-lg hidden sm:block">
             {books.length} {books.length === 1 ? 'book' : 'books'} to explore
           </p>
         </div>
