@@ -550,6 +550,7 @@ export interface AppSettings {
   sidebarOrder?: ViewType[];
   bottomNavOrder?: ViewType[];
   defaultToolboxLinks?: ToolboxLink[];
+  forceViewMode?: 'auto' | 'mobile' | 'desktop';
 }
 
 export interface AppPrompts {

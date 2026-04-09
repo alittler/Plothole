@@ -1936,7 +1936,11 @@ const handleRestoreCommit = async (commit: Commit) => {
       ) : !isSignedIn && !isGuest ? (
         <SignInPage onGuestAccess={() => setIsGuest(true)} />
       ) : (
-        renderAppContent()
+        <div className="flex items-center justify-center min-h-screen bg-slate-950" style={appSettings.forceViewMode === 'mobile' ? { padding: '0 auto' } : {}}>
+          <div style={appSettings.forceViewMode === 'mobile' ? { width: '375px', height: '100vh', maxHeight: '100vh', overflow: 'hidden', boxShadow: '0 0 40px rgba(0,0,0,0.5)', borderRadius: '16px' } : {}}>
+            {renderAppContent()}
+          </div>
+        </div>
       )}
     </>
   );
