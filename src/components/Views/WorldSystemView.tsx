@@ -251,7 +251,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
       <div className="flex-1 min-h-0 overflow-hidden relative">
         <div className="h-full w-full flex flex-col items-center p-4 md:p-8 relative">
-          <div className={`h-full w-full flex flex-col ${isFullscreen ? 'max-w-none' : 'max-w-6xl'} ${activeTab !== WorldTab.MAP ? 'space-y-12 overflow-y-auto pb-12' : ''}`}>
+          <div className={`h-full w-full flex flex-col ${isFullscreen ? 'max-w-none' : 'max-w-6xl'} ${activeTab !== WorldTab.MAP ? 'space-y-12 overflow-y-auto pb-40' : ''}`}>
             
             {activeTab === WorldTab.MAP && (
               <div className="flex-1 min-h-0 relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-100 dark:bg-slate-900 w-full flex flex-col">
