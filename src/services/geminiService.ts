@@ -481,6 +481,42 @@ Description: ${description}`;
   return null;
 };
 
+export const generateCharacterPhysicalDescription = async (character: { name: string; role: string; age?: string; job?: string; traits?: string[]; description?: string }): Promise<string> => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  
+  const traitsText = character.traits?.length ? character.traits.join(', ') : 'various traits';
+  const ageText = character.age ? `Age: ${character.age}. ` : '';
+  const roleText = character.role ? `Role: ${character.role}. ` : '';
+  
+  const prompt = `Generate a detailed physical description for a character with these attributes:
+Name: ${character.name}
+${ageText}${roleText}Job: ${character.job || 'unknown'}
+Traits: ${traitsText}
+Current description: ${character.description || 'none provided'}
+
+Write a vivid 2-3 sentence physical description including height, build, distinctive features, and overall appearance. 
+Make it specific and evocative. Focus on visual details that bring the character to life.`;
+
+  const response = await withRetry(() =>
+    ai.models.generateContent({
+      model,
+      contents: { parts: [{ text: prompt }] },
+    })
+  );
+  
+  let description = '';
+  const candidate = response.candidates?.[0];
+  if (candidate && candidate.content && candidate.content.parts) {
+    for (const part of candidate.content.parts) {
+      if (part.text) description = part.text;
+    }
+  }
+  
+  return description.trim();
+};
+
 export const processRawNotes = async (text: string): Promise<{content: string, category: string, tags: string[], analysis: string}[]> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();

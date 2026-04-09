@@ -545,6 +545,89 @@ books:
                     Use the <strong>Export Vault</strong> button to backup all your global notes and account metadata into a <code className="bg-white dark:bg-slate-900 px-2 py-1 rounded font-mono text-xs">.pvoid</code> file. Import .pvoid files to restore your Vault on another device or as a backup.
                   </p>
                 </div>
+
+                {/* Manuscript Analysis Section */}
+                <div className="border-t border-slate-200 dark:border-slate-800 pt-8">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="p-4 bg-amber-600 text-white rounded-2xl shadow-lg shadow-amber-600/20"><Book size={28} /></div>
+                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Manuscript Analysis</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">What details the app extracts when processing your manuscript.</p></div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Extracted Details</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">When you process or sync your manuscript, the AI analyzes the text and extracts the following details:</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[
+                          { title: 'Title & Summary', desc: 'Project name and executive summary of the story' },
+                          { title: 'Cover Description', desc: 'Poetic visual description for generating cover art' },
+                          { title: 'Characters', desc: 'Names, roles, jobs, traits, physical features, strengths, weaknesses' },
+                          { title: 'Character Relationships', desc: 'Bonds between characters (rivals, spouses, mentors, etc.)' },
+                          { title: 'Themes', desc: 'Primary narrative themes and recurring motifs' },
+                          { title: 'Timeline Events', desc: 'Dated story events with characters involved and locations' },
+                          { title: 'Locations', desc: 'Settings with descriptions and classifications' },
+                          { title: 'Artifacts & Items', desc: 'Inanimate objects, weapons, relics, and their significance' },
+                          { title: 'Worldbuilding Terms', desc: 'Unique concepts, magic systems, terminology specific to your world' },
+                          { title: 'Character Importance', desc: 'Determined by first mention in text (main characters appear early)' }
+                        ].map(item => (
+                          <div key={item.title} className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                            <p className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-widest mb-1">{item.title}</p>
+                            <p className="text-xs text-amber-800 dark:text-amber-300">{item.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Character Details Extracted</h3>
+                      <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-6 font-mono text-xs text-slate-300 overflow-x-auto">
+                        <pre>{`Character Fields Extracted:
+├── name               # Character name
+├── role               # Story role (Protagonist, Antagonist, Supporting, Minor)
+├── job                # Profession or occupation
+├── description        # General character description
+├── traits             # Array of personality traits
+├── age                # Age or age range
+├── birthday           # Birth date if mentioned
+├── birthplace         # Birth location if mentioned
+├── residence          # Current residence if known
+├── physicalFeatures   # Height, weight, build, distinctive marks
+├── style              # Clothing, fashion, appearance style
+├── strengths          # Character abilities and strengths
+├── weaknesses         # Vulnerabilities and weaknesses
+├── nickname           # Alternate names or aliases
+├── firstMentionOffset # Character position in text (determines importance)
+└── source             # "ai" or "manual" (origin of data)`}</pre>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Main Characters (Level 1)</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                        Main characters are those who appear earliest in your manuscript. The app automatically generates physical descriptions for main characters if they are missing, ensuring complete character profiles.
+                      </p>
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
+                        <p className="text-xs text-blue-900 dark:text-blue-300">
+                          <strong>Auto-Generation:</strong> When you process a manuscript, if a main character lacks physical description details, the app will generate them using the other extracted data (age, role, traits, etc.). This ensures all level 1 characters have complete profiles.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Analysis Process</h3>
+                      <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-2 list-decimal list-inside">
+                        <li>You upload or edit your manuscript</li>
+                        <li>App detects changes (Smart Sync)</li>
+                        <li>AI analyzes manuscript in chunks (for large files)</li>
+                        <li>Details are extracted using the unified analysis schema</li>
+                        <li>New characters are added; existing ones are merged with new data</li>
+                        <li>For main characters without physical descriptions, AI generates them</li>
+                        <li>Timeline, locations, artifacts, and lore are updated</li>
+                        <li>Project summary and themes are refreshed</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
           </div>

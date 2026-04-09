@@ -25,7 +25,7 @@ import {
   setServerHealth
   } from './services/storageService';
   import { 
-  analyzeStoryText, generateBookCover, doubleProcessNote, extractThemesFromNotes, extractSoftAnchors, auditPlotThreads,
+  analyzeStoryText, generateBookCover, generateCharacterPhysicalDescription, doubleProcessNote, extractThemesFromNotes, extractSoftAnchors, auditPlotThreads,
   DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid, analyzeRelationships, unifiedAnalysisSchema, detectManuscriptStructure
   } from './services/geminiService';
 import { initGitForProject, commitToGit, getGitLog, updateIntegrityHash } from './services/versioningService';
@@ -320,20 +320,70 @@ const App: React.FC = () => {
 
       if (analysis.characters.length > 0) {
         const existingChars = [...projectData.characters];
-        analysis.characters.forEach(nc => {
+        
+        // Identify main characters (those with earliest firstMentionOffset)
+        const charsWithOffset = analysis.characters.filter(c => c.firstMentionOffset !== undefined);
+        const mainCharacterCount = Math.max(1, Math.floor(charsWithOffset.length * 0.2)); // Top 20% are "main"
+        const sortedByOffset = [...charsWithOffset].sort((a, b) => (a.firstMentionOffset || Infinity) - (b.firstMentionOffset || Infinity));
+        const mainCharacterNames = new Set(sortedByOffset.slice(0, mainCharacterCount).map(c => c.name.toLowerCase()));
+        
+        // Process each analyzed character
+        for (const nc of analysis.characters) {
           const idx = existingChars.findIndex(ec => ec.name.toLowerCase() === nc.name.toLowerCase());
+          const isMainCharacter = mainCharacterNames.has(nc.name.toLowerCase());
+          
           if (idx >= 0) {
             // Update existing character: prefer new data for job/role if current is empty
             existingChars[idx] = { 
               ...existingChars[idx], 
               job: existingChars[idx].job || nc.job || '',
               role: (existingChars[idx].role === 'Supporting' || existingChars[idx].role === 'Minor') ? (nc.role || existingChars[idx].role) : existingChars[idx].role,
-              description: existingChars[idx].description.length < 10 ? (nc.description || existingChars[idx].description) : existingChars[idx].description
+              description: existingChars[idx].description.length < 10 ? (nc.description || existingChars[idx].description) : existingChars[idx].description,
+              firstMentionOffset: nc.firstMentionOffset || existingChars[idx].firstMentionOffset
             };
+            
+            // Auto-generate physical description for main characters if missing
+            if (isMainCharacter && (!existingChars[idx].physicalFeatures || existingChars[idx].physicalFeatures.length < 20)) {
+              try {
+                setProcessingStatus(`Generating physical description for ${nc.name}...`);
+                const physicalDesc = await generateCharacterPhysicalDescription({
+                  name: existingChars[idx].name,
+                  role: existingChars[idx].role,
+                  age: existingChars[idx].age,
+                  job: existingChars[idx].job,
+                  traits: existingChars[idx].traits,
+                  description: existingChars[idx].description
+                });
+                existingChars[idx].physicalFeatures = physicalDesc;
+              } catch (err) {
+                console.warn(`Failed to generate description for ${nc.name}:`, err);
+              }
+            }
           } else {
             existingChars.push(nc);
+            
+            // Auto-generate physical description for new main characters if missing
+            if (isMainCharacter && (!nc.physicalFeatures || nc.physicalFeatures.length < 20)) {
+              try {
+                setProcessingStatus(`Generating physical description for ${nc.name}...`);
+                const physicalDesc = await generateCharacterPhysicalDescription({
+                  name: nc.name,
+                  role: nc.role,
+                  age: nc.age,
+                  job: nc.job,
+                  traits: nc.traits,
+                  description: nc.description
+                });
+                const charIdx = existingChars.findIndex(c => c.name === nc.name);
+                if (charIdx >= 0) {
+                  existingChars[charIdx].physicalFeatures = physicalDesc;
+                }
+              } catch (err) {
+                console.warn(`Failed to generate description for ${nc.name}:`, err);
+              }
+            }
           }
-        });
+        }
         updates.characters = existingChars;
       }
 
