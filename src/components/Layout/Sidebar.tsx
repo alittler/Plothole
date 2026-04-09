@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType, User } from '../../types';
-import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, Wrench } from 'lucide-react';
+import { LayoutGrid, Layout, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, Wrench } from 'lucide-react';
 import { UserButton, useClerk } from '@clerk/clerk-react';
 import { isCloudStorageActive } from '../../services/storageService';
 
@@ -52,6 +52,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [commitHash, setCommitHash] = React.useState<string | null>(null);
   const [sourceHash, setSourceHash] = React.useState<string | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement>(null);
 
   const handleSync = async () => {
     if (!onSave || isSyncing) return;
@@ -88,6 +90,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isMenuOpen]);
   
   const allNavItems: NavItem[] = [
     { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
@@ -132,6 +147,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
     })).filter(s => s.items.length > 0);
   }, [sidebarOrder]);
 
+  const handleNavItemClick = (item: NavItem) => {
+    const isDisabled = item.projectOnly && !hasActiveProject;
+    if (!isDisabled) {
+      if (currentView === item.id) {
+        // If clicking the active view, toggle sidebar collapse on desktop
+        if (window.innerWidth >= 1024) {
+          onToggleCollapse();
+        }
+      } else {
+        // Switch to the clicked view
+        onChangeView(item.id);
+      }
+      setIsMenuOpen(false);
+    }
+  };
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -170,6 +201,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
               </button>
+              {isCollapsed && (
+                <div className="relative hidden lg:block" ref={menuRef}>
+                  <button
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white"
+                    title="Show Pages"
+                  >
+                    <Layout size={20} />
+                  </button>
+                  {isMenuOpen && (
+                    <div className="absolute left-full top-0 ml-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 w-24 max-h-96 overflow-y-auto p-2 custom-scrollbar">
+                      {sections.map((section) => (
+                        <div key={section.title} className="space-y-1 mb-3 last:mb-0">
+                          {section.items.map(item => {
+                            const isActive = currentView === item.id;
+                            const isDisabled = item.projectOnly && !hasActiveProject;
+                            return (
+                              <button
+                                key={item.id}
+                                title={item.label}
+                                onClick={() => handleNavItemClick(item)}
+                                disabled={isDisabled}
+                                className={`w-full flex items-center justify-center p-3 rounded-xl transition-all group ${
+                                  isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''
+                                } ${
+                                  !isActive && !isDisabled ? 'hover:bg-slate-800 hover:text-slate-200' : ''
+                                } ${
+                                  isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''
+                                }`}
+                              >
+                                <item.icon size={24} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           {!isCollapsed && activeProjectTitle && (
@@ -221,23 +292,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     return (
                       <button
                         key={item.id}
-                        title={isCollapsed ? item.label : undefined}
-                        onClick={() => {
-                          if (!isDisabled) {
-                            if (currentView === item.id) {
-                              // If clicking the active view, toggle sidebar collapse on desktop or close on mobile
-                              if (window.innerWidth >= 1024) {
-                                onToggleCollapse();
-                              } else {
-                                onClose();
-                              }
-                            } else {
-                              // Switch to the clicked view
-                              onChangeView(item.id);
-                              if (window.innerWidth < 1024) onClose();
-                            }
-                          }
-                        }}
+                        title={item.label}
+                        onClick={() => handleNavItemClick(item)}
                         disabled={isDisabled}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group 
                           ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''}
