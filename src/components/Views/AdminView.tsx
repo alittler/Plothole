@@ -840,9 +840,9 @@ books:
   };
 
   return (
-    <div className="h-full flex bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
+    <div className="h-full flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
       {/* Admin Secondary Sidebar */}
-      <aside className={`${activeTab ? 'hidden lg:flex' : 'flex'} w-full lg:w-64 md:w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col shrink-0 transition-all duration-300`}>
+      <aside className={`${activeTab ? 'hidden md:flex' : 'flex'} w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col shrink-0 transition-all duration-300`}>
         <div className="p-8 border-b border-slate-100 dark:border-slate-800 space-y-1">
           <h1 className="ph-section-title text-xl flex items-center gap-3">
             <Shield size={20} className="text-indigo-600" /> Admin
@@ -901,7 +901,7 @@ books:
 
       {/* Main Admin Content Area */}
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar">
-        <div className="flex-1 w-full max-w-5xl mx-auto p-0 md:p-8 min-h-full pb-40">
+        <div className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8 min-h-full pb-40">
           {renderTabContent()}
         </div>
       </main>
