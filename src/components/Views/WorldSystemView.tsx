@@ -965,6 +965,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                           className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
+                      <p className="text-[10px] text-slate-500 mt-2">For real-world maps using geodesic coordinates</p>
                     </div>
                   )}
 
@@ -992,6 +993,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                           className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                       </div>
+                      <p className="text-[10px] text-slate-500 mt-2">For fictional maps using Euclidean plane coordinates</p>
                     </div>
                   )}
                 </div>
