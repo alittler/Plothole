@@ -276,99 +276,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-          {sections.map((section, sIdx) => {
-            const visibleItems = section.items.filter(item => {
-              if (item.adminOnly && currentUser.role !== 'admin') return false;
-              // Don't filter out projectOnly items - show them disabled instead
-              return true;
-            });
-
-            if (visibleItems.length === 0) return null;
-
-            return (
-              <div key={sIdx} className="space-y-2">
-                {!isCollapsed && section.title !== 'Workspace' && (
-                  <h3 className="px-4 text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-4">
-                    {section.title}
-                  </h3>
-                )}
-                <div className="space-y-1">
-                  {visibleItems.map(item => {
-                    const isActive = currentView === item.id;
-                    const isDisabled = item.projectOnly && !hasActiveProject;
-                    
-                    return (
-                      <button
-                        key={item.id}
-                        title={item.label}
-                        onClick={() => handleNavItemClick(item)}
-                        disabled={isDisabled}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group 
-                          ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''}
-                          ${!isActive && !isDisabled ? 'hover:bg-slate-900 hover:text-slate-200' : ''}
-                          ${isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''}
-                          ${isCollapsed ? 'justify-center px-0' : ''}
-                        `}
-                      >
-                        <item.icon size={18} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />
-                        {!isCollapsed && <span className="font-bold text-sm">{item.label}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto p-4 flex flex-wrap gap-2 content-start custom-scrollbar">
+          {sections.flatMap((section) => 
+            section.items.map(item => {
+              const isDisabled = item.projectOnly && !hasActiveProject;
+              if (item.adminOnly && currentUser.role !== 'admin') return null;
+              
+              const isActive = currentView === item.id;
+              
+              return (
+                <button
+                  key={item.id}
+                  title={item.label}
+                  onClick={() => handleNavItemClick(item)}
+                  disabled={isDisabled}
+                  className={`flex items-center justify-center p-2 rounded-xl transition-all group 
+                    ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''}
+                    ${!isActive && !isDisabled ? 'hover:bg-slate-900 hover:text-slate-200' : ''}
+                    ${isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''}
+                  `}
+                >
+                  <item.icon size={36} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />
+                </button>
+              );
+            }).filter(Boolean)
+          )}
 
           {/* Persistent Footer Items */}
           <div 
             onClick={() => window.innerWidth < 1024 && onClose()}
-            className="space-y-1 pt-4 border-t border-slate-800/50"
+            className="w-full flex flex-wrap gap-2"
           >
             <button
               onClick={(e) => { e.stopPropagation(); signOut(); }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 hover:bg-rose-900/20 hover:text-rose-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
+              className="flex items-center justify-center p-2 rounded-xl text-slate-500 hover:bg-rose-900/20 hover:text-rose-400 transition-all group"
               title="Sign Out"
             >
-              <LogOut size={18} className="text-slate-500 group-hover:text-rose-400 transition-colors" />
-              {!isCollapsed && <span className="font-bold text-sm">Sign Out</span>}
+              <LogOut size={36} className="text-slate-500 group-hover:text-rose-400 transition-colors" />
             </button>
 
-            <div className="pt-2 flex flex-col gap-0.5">
-              <button
-                onClick={(e) => { e.stopPropagation(); onOpenLicenses(); }}
-                className={`w-full flex items-center gap-3 px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
-                title="Open Source Licenses"
-              >
-                <Shield size={14} className="text-slate-700 group-hover:text-amber-500 transition-colors" />
-                {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest">Licenses</span>}
-              </button>
-
-              {!isCollapsed && (
-                <div className="text-[10px] text-slate-600 dark:text-slate-500 mt-2 px-4 font-mono flex items-center whitespace-nowrap flex-wrap gap-1">
-                  {sourceHash && (
-                    <>
-                      <span className="text-emerald-400" title="Source/App Last Modified Hash">
-                        {sourceHash}
-                      </span>
-                      <span className="text-slate-700">|</span>
-                    </>
-                  )}
-                  {commitHash && (
-                    <a 
-                      href={`https://github.com/alittler/Plothole/commit/${commitHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-amber-400 hover:text-amber-300 transition-colors"
-                      title="App Build Commit"
-                    >
-                      {commitHash}
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenLicenses(); }}
+              className="flex items-center justify-center p-2 rounded-lg text-slate-600 hover:text-slate-400 transition-all group"
+              title="Open Source Licenses"
+            >
+              <Shield size={36} className="text-slate-700 group-hover:text-amber-500 transition-colors" />
+            </button>
           </div>
         </nav>
 
