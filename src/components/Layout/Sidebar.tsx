@@ -221,33 +221,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <Layout size={20} />
                   </button>
-                                  {isMenuOpen && (
+                                                  {isMenuOpen && (
                     <div className="absolute left-full top-0 ml-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 flex flex-wrap gap-1 p-2 custom-scrollbar max-w-xs">
-                      {sections.map((section) => (
-                        <div key={section.title} className="flex gap-1">
-                          {section.items.map(item => {
-                            const isActive = currentView === item.id;
-                            const isDisabled = item.projectOnly && !hasActiveProject;
-                            return (
-                              <button
-                                key={item.id}
-                                title={item.label}
-                                onClick={() => handleNavItemClick(item)}
-                                disabled={isDisabled}
-                                className={`flex items-center justify-center p-1 rounded-xl transition-all group ${
-                                  isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''
-                                } ${
-                                  !isActive && !isDisabled ? 'hover:bg-slate-800 hover:text-slate-200' : ''
-                                } ${
-                                  isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''
-                                }`}
-                              >
-                                <item.icon size={36} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ))}
+                      {sections.flatMap((section) => 
+                        section.items.map(item => {
+                          const isActive = currentView === item.id;
+                          const isDisabled = item.projectOnly && !hasActiveProject;
+                          return (
+                            <button
+                              key={item.id}
+                              title={item.label}
+                              onClick={() => handleNavItemClick(item)}
+                              disabled={isDisabled}
+                              className={`flex items-center justify-center p-1 rounded-xl transition-all group ${
+                                isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''
+                              } ${
+                                !isActive && !isDisabled ? 'hover:bg-slate-800 hover:text-slate-200' : ''
+                              } ${
+                                isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''
+                              }`}
+                            >
+                              <item.icon size={36} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />
+                            </button>
+                          );
+                        })
+                      )}
                     </div>
                   )}
                 </div>
