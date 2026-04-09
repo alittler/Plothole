@@ -221,10 +221,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <Layout size={20} />
                   </button>
-                  {isMenuOpen && (
-                    <div className="absolute left-full top-0 ml-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 w-24 max-h-96 overflow-y-auto p-2 custom-scrollbar">
+                                  {isMenuOpen && (
+                    <div className="absolute left-full top-0 ml-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 flex flex-wrap gap-1 p-2 custom-scrollbar max-w-xs">
                       {sections.map((section) => (
-                        <div key={section.title} className="space-y-1 mb-3 last:mb-0">
+                        <div key={section.title} className="flex gap-1">
                           {section.items.map(item => {
                             const isActive = currentView === item.id;
                             const isDisabled = item.projectOnly && !hasActiveProject;
@@ -234,7 +234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 title={item.label}
                                 onClick={() => handleNavItemClick(item)}
                                 disabled={isDisabled}
-                                className={`w-full flex items-center justify-center p-2 rounded-xl transition-all group ${
+                                className={`flex items-center justify-center p-1 rounded-xl transition-all group ${
                                   isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''
                                 } ${
                                   !isActive && !isDisabled ? 'hover:bg-slate-800 hover:text-slate-200' : ''
@@ -242,7 +242,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''
                                 }`}
                               >
-                                <item.icon size={18} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />
+                                <item.icon size={36} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />
                               </button>
                             );
                           })}
