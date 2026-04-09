@@ -220,7 +220,7 @@ export const CardCatalogueView: React.FC<CardCatalogueViewProps> = ({
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 pb-40">
         <div className="max-w-7xl mx-auto">
           {filteredCards.length === 0 ? (
             <div className="py-20 flex flex-col items-center justify-center text-center space-y-4">

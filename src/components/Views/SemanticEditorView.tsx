@@ -106,7 +106,7 @@ export const SemanticEditorView: React.FC<SemanticEditorViewProps> = ({ projectD
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden pb-40">
         {/* Sidebar */}
         <div className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">

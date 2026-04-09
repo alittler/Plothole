@@ -323,8 +323,8 @@ export const UnifiedDatabaseView: React.FC<UnifiedDatabaseViewProps> = ({
           </div>
         </aside>
 
-        <div className="flex-1 min-w-0 overflow-y-auto p-4 lg:p-8 space-y-4 custom-scrollbar">
-          <div className="space-y-4 pb-20">
+        <div className="flex-1 min-w-0 overflow-y-auto p-4 lg:p-8 space-y-4 pb-40 custom-scrollbar">
+          <div className="space-y-4">
             {allEntities.length === 0 ? (
               <div className="py-20 text-center space-y-4"><Database size={48} className="mx-auto text-slate-200 dark:text-slate-800" /><p className="text-slate-400 font-serif italic text-lg">No entities found.</p></div>
             ) : (

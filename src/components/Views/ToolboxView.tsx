@@ -40,7 +40,7 @@ export const ToolboxView: React.FC<ToolboxViewProps> = ({
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950">
+    <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950 pb-40">
       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mb-8">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-6">
           <div className="flex items-center gap-6">

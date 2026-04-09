@@ -107,7 +107,7 @@ export const StoryArchitectView: React.FC<StoryArchitectViewProps> = ({
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-stone-50 dark:bg-slate-950 p-4 md:p-8 font-sans">
+    <div className="h-full overflow-y-auto bg-stone-50 dark:bg-slate-950 p-4 md:p-8 pb-40 font-sans">
       <div className="max-w-6xl mx-auto space-y-8">
         <header className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 md:p-0">
           <div className="flex items-center gap-6">
