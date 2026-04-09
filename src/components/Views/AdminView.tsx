@@ -5,7 +5,7 @@ import {
   Shield, Sparkles, Save, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3, GripVertical, Eye, EyeOff, Users, Calendar
 } from 'lucide-react';
 
 import { CardCatalogueView } from './CardCatalogueView';
@@ -48,6 +48,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   const [prompts, setPrompts] = useState(appPrompts);
   const [settings, setSettings] = useState(appSettings);
+  const [sidebarOrder, setSidebarOrder] = useState<ViewType[]>(appSettings.sidebarOrder || []);
+  const [bottomNavOrder, setBottomNavOrder] = useState<ViewType[]>(appSettings.bottomNavOrder || []);
   const [newUserEmail, setNewUserEmail] = useState('');
 
   const [newLink, setNewLink] = useState<Partial<ToolboxLink>>({ label: '', url: '', category: 'Writing', description: '' });
@@ -86,6 +88,81 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setSettings(updatedSettings);
     onSaveSettings(updatedSettings);
   };
+
+  const getViewLabel = (view: ViewType): string => {
+    const labels: Record<ViewType, string> = {
+      [ViewType.DASHBOARD]: 'Dashboard',
+      [ViewType.NOTEPAD]: 'Notepad',
+      [ViewType.BOOKSHELF]: 'Library',
+      [ViewType.CHARACTERS]: 'Characters',
+      [ViewType.MAP]: 'Atlas',
+      [ViewType.TIMELINE]: 'History',
+      [ViewType.CODEX]: 'Codex',
+      [ViewType.RESEARCH]: 'Research',
+      [ViewType.TOOLBOX]: 'Toolbox',
+      [ViewType.SETTINGS]: 'Settings',
+      [ViewType.ADMIN]: 'Admin'
+    };
+    return labels[view] || view;
+  };
+
+  const getViewIcon = (view: ViewType) => {
+    const iconMap: Record<ViewType, any> = {
+      [ViewType.DASHBOARD]: Grid3x3,
+      [ViewType.NOTEPAD]: FileText,
+      [ViewType.BOOKSHELF]: Book,
+      [ViewType.CHARACTERS]: Users,
+      [ViewType.MAP]: Globe,
+      [ViewType.TIMELINE]: Calendar,
+      [ViewType.CODEX]: Book,
+      [ViewType.RESEARCH]: Target,
+      [ViewType.TOOLBOX]: Wrench,
+      [ViewType.SETTINGS]: Settings,
+      [ViewType.ADMIN]: Shield
+    };
+    const Icon = iconMap[view];
+    return Icon ? <Icon size={18} /> : null;
+  };
+
+  const moveSidebarItem = (index: number, direction: 'up' | 'down') => {
+    const newOrder = [...sidebarOrder];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= newOrder.length) return;
+    [newOrder[index], newOrder[swapIndex]] = [newOrder[swapIndex], newOrder[index]];
+    setSidebarOrder(newOrder);
+  };
+
+  const moveBottomNavItem = (index: number, direction: 'up' | 'down') => {
+    const newOrder = [...bottomNavOrder];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= newOrder.length) return;
+    [newOrder[index], newOrder[swapIndex]] = [newOrder[swapIndex], newOrder[index]];
+    setBottomNavOrder(newOrder);
+  };
+
+  const toggleBottomNavItem = (view: ViewType) => {
+    const index = bottomNavOrder.indexOf(view);
+    if (index > -1) {
+      setBottomNavOrder(bottomNavOrder.filter(v => v !== view));
+    } else {
+      setBottomNavOrder([...bottomNavOrder, view]);
+    }
+  };
+
+  const saveSidebarOrder = () => {
+    const updatedSettings = { ...settings, sidebarOrder };
+    setSettings(updatedSettings);
+    onSaveSettings(updatedSettings);
+  };
+
+  const saveBottomNavOrder = () => {
+    const updatedSettings = { ...settings, bottomNavOrder };
+    setSettings(updatedSettings);
+    onSaveSettings(updatedSettings);
+  };
+
+  const allViews = Object.values(ViewType);
+  const hiddenBottomNavItems = allViews.filter(v => !bottomNavOrder.includes(v) && v !== ViewType.RESEARCH);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -188,15 +265,130 @@ export const AdminView: React.FC<AdminViewProps> = ({
       case AdminTab.NAVIGATION:
         return (
           <div className="max-w-5xl mx-auto py-8 animate-in fade-in duration-500 space-y-8">
-            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800">
+            {/* Sidebar Order */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
               <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8 mb-8">
                 <div className="p-4 bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-600/20"><Layout size={28} /></div>
-                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Navigation & Routing</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Configure workspace layout and view access.</p></div>
+                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Sidebar Navigation Order</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Reorder page links in sidebar and mobile menu.</p></div>
               </div>
-              <div className="p-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
-                <Layout size={48} className="mx-auto text-slate-200 mb-4" />
-                <p className="text-slate-400 font-serif italic text-lg">Dynamic navigation ordering and permissions coming soon.</p>
+              
+              <div className="space-y-2">
+                {sidebarOrder.length === 0 ? (
+                  <p className="text-slate-500 italic py-6 text-center">No pages configured</p>
+                ) : (
+                  sidebarOrder.map((view, index) => (
+                    <div key={view} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 group hover:border-emerald-400 transition-colors">
+                      <div className="flex items-center gap-3 flex-1">
+                        <GripVertical size={16} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                        {getViewIcon(view)}
+                        <span className="font-bold text-slate-900 dark:text-white">{getViewLabel(view)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => moveSidebarItem(index, 'up')}
+                          disabled={index === 0}
+                          className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Move up"
+                        >
+                          <ChevronRight size={16} className="rotate-90" />
+                        </button>
+                        <button
+                          onClick={() => moveSidebarItem(index, 'down')}
+                          disabled={index === sidebarOrder.length - 1}
+                          className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Move down"
+                        >
+                          <ChevronRight size={16} className="-rotate-90" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
+              <button onClick={saveSidebarOrder} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
+                <Save size={18} /> Save Sidebar Order
+              </button>
+            </section>
+
+            {/* Bottom Nav Order */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8 mb-8">
+                <div className="p-4 bg-purple-600 text-white rounded-2xl shadow-lg shadow-purple-600/20"><Layout size={28} /></div>
+                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Bottom Navigation Order</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Configure mobile bottom nav links and order.</p></div>
+              </div>
+              
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-100 dark:border-slate-800 space-y-3">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Visible Links (middle one is always inflated)</h3>
+                {bottomNavOrder.length === 0 ? (
+                  <p className="text-slate-500 italic py-4 text-center">No pages shown in bottom nav</p>
+                ) : (
+                  bottomNavOrder.map((view, index) => (
+                    <div key={view} className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 group hover:border-purple-400 transition-colors">
+                      <div className="flex items-center gap-3 flex-1">
+                        <GripVertical size={16} className="text-slate-300 group-hover:text-purple-500 transition-colors" />
+                        {getViewIcon(view)}
+                        <span className="font-bold text-slate-900 dark:text-white">{getViewLabel(view)}</span>
+                        {index === Math.floor(bottomNavOrder.length / 2) && (
+                          <span className="ml-2 text-[10px] font-black bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-full uppercase">Inflated</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => moveBottomNavItem(index, 'up')}
+                          disabled={index === 0}
+                          className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Move up"
+                        >
+                          <ChevronRight size={16} className="rotate-90" />
+                        </button>
+                        <button
+                          onClick={() => moveBottomNavItem(index, 'down')}
+                          disabled={index === bottomNavOrder.length - 1}
+                          className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Move down"
+                        >
+                          <ChevronRight size={16} className="-rotate-90" />
+                        </button>
+                        <button
+                          onClick={() => toggleBottomNavItem(view)}
+                          className="p-2 hover:bg-rose-100 dark:hover:bg-rose-900/20 text-rose-500 rounded-lg transition-colors"
+                          title="Hide from bottom nav"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {hiddenBottomNavItems.length > 0 && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-100 dark:border-slate-800 space-y-3">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Hidden Links</h3>
+                  <div className="space-y-2">
+                    {hiddenBottomNavItems.map(view => (
+                      <div key={view} className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 opacity-50">
+                        <div className="flex items-center gap-3">
+                          <EyeOff size={16} className="text-slate-400" />
+                          {getViewIcon(view)}
+                          <span className="font-bold text-slate-900 dark:text-white">{getViewLabel(view)}</span>
+                        </div>
+                        <button
+                          onClick={() => toggleBottomNavItem(view)}
+                          className="p-2 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 text-emerald-500 rounded-lg transition-colors"
+                          title="Show in bottom nav"
+                        >
+                          <EyeOff size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button onClick={saveBottomNavOrder} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20">
+                <Save size={18} /> Save Bottom Nav Order
+              </button>
             </section>
           </div>
         );
