@@ -1065,3 +1065,32 @@ Return a JSON array of objects:
     return [];
   }
 };
+
+export const analyzeSourceForCodex = async (sourceContent: string, question: string): Promise<string> => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+
+  const prompt = `
+You are a knowledge extraction assistant helping build a Story Codex from reference materials.
+
+SOURCE MATERIAL:
+${sourceContent.substring(0, 8000)}
+
+USER QUESTION:
+${question}
+
+Provide a helpful, concise answer based on the source material that could help populate the Story Codex (systems, settings, characters, lore, artifacts, etc.). Focus on extracting factual information that would be useful for worldbuilding or understanding the story context.
+  `;
+
+  try {
+    const response = await withRetry(() => ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
+    }));
+    return response.text;
+  } catch (err) {
+    console.error("Source Analysis Error:", err);
+    throw new Error("Failed to analyze source material. Please try again.");
+  }
+};

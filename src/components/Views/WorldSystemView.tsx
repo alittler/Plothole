@@ -42,6 +42,26 @@ enum WorldTab {
   RECIPE_BOOK = 'Recipe Book'
 }
 
+// Parse directional coordinates like "51.5280° N, 123.1207° W" to +/- format
+function parseDirectionalCoordinates(input: string): { lat: number; lng: number } | null {
+  const coordRegex = /(\d+\.?\d*)\s*°?\s*([NSns])?[,\s]+(\d+\.?\d*)\s*°?\s*([EWew])?/;
+  const match = input.trim().match(coordRegex);
+  
+  if (!match) return null;
+  
+  let lat = parseFloat(match[1]);
+  const latDir = match[2]?.toUpperCase();
+  let lng = parseFloat(match[3]);
+  const lngDir = match[4]?.toUpperCase();
+  
+  // Apply direction to latitude
+  if (latDir === 'S') lat = -lat;
+  // Apply direction to longitude
+  if (lngDir === 'W') lng = -lng;
+  
+  return { lat, lng };
+}
+
 export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   data, 
   onUpdateProject, 
@@ -525,21 +545,71 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     </div>
                     <button onClick={() => onAddLocation({ id: generateId(), name: 'New Location', description: '', type: 'City', source: 'manual' })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"><Plus size={14} /> New Location</button>
                   </div>
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                    {data.locations.map(loc => (
-                      <div key={loc.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative hover:shadow-md transition-all">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
-                          <div className="flex items-center gap-2">
-                            {!loc.mapImage && <button onClick={() => onUpdateLocation({ ...loc, mapImage: DEFAULT_MAP, type: 'Region' })} className="text-slate-400 hover:text-emerald-500 transition-colors" title="Turn into Map Link"><MapIcon size={14} /></button>}
-                            <button onClick={() => handleOpenLocationEdit(loc)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
-                            <button onClick={() => onUpdateLocation({ ...loc, x: undefined, y: undefined, parentId: undefined, mapId: undefined, mapImage: undefined })} className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
-                          </div>
+                  <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                    {/* Manuscript Locations Group */}
+                    {data.locations.filter(l => l.source === 'ai').length > 0 && (
+                      <div>
+                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 pl-1">📚 From Manuscript</h4>
+                        <div className="space-y-3">
+                          {data.locations.filter(l => l.source === 'ai').map(loc => (
+                            <div key={loc.id} className="bg-blue-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-blue-200 dark:border-slate-700 shadow-sm group relative hover:shadow-md transition-all">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">{loc.type}</span>
+                                <div className="flex items-center gap-2">
+                                  {!loc.mapImage && <button onClick={() => onUpdateLocation({ ...loc, mapImage: DEFAULT_MAP, type: 'Region' })} className="text-slate-400 hover:text-blue-500 transition-colors" title="Turn into Map Link"><MapIcon size={14} /></button>}
+                                  <button onClick={() => handleOpenLocationEdit(loc)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
+                                </div>
+                              </div>
+                              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{loc.name}</h3>
+                              <p className="text-xs text-slate-500 line-clamp-2 mt-2 font-serif italic">{loc.description || 'No description yet.'}</p>
+                            </div>
+                          ))}
                         </div>
-                        <h3 className="font-bold text-slate-900 dark:text-white text-sm">{loc.name}</h3>
-                        <p className="text-xs text-slate-500 line-clamp-2 mt-2 font-serif italic">{loc.description || 'No description yet.'}</p>
                       </div>
-                    ))}
+                    )}
+                    
+                    {/* Manual Locations Group */}
+                    {data.locations.filter(l => l.source !== 'ai').length > 0 && (
+                      <div>
+                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 pl-1">✋ Custom Locations</h4>
+                        <div className="space-y-3">
+                          {data.locations.filter(l => l.source !== 'ai').map(loc => (
+                            <div key={loc.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative hover:shadow-md transition-all">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
+                                <div className="flex items-center gap-2">
+                                  {!loc.mapImage && <button onClick={() => onUpdateLocation({ ...loc, mapImage: DEFAULT_MAP, type: 'Region' })} className="text-slate-400 hover:text-emerald-500 transition-colors" title="Turn into Map Link"><MapIcon size={14} /></button>}
+                                  <button onClick={() => handleOpenLocationEdit(loc)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
+                                  <button 
+                                    onClick={(e) => {
+                                      try {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onUpdateProject({ locations: data.locations.filter(l => l.id !== loc.id) });
+                                      } catch (err) {
+                                        console.error('Error deleting location:', err);
+                                      }
+                                    }} 
+                                    className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{loc.name}</h3>
+                              <p className="text-xs text-slate-500 line-clamp-2 mt-2 font-serif italic">{loc.description || 'No description yet.'}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {data.locations.length === 0 && (
+                      <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+                        <MapIcon size={32} className="text-slate-300" />
+                        <p className="text-slate-400 font-serif italic text-sm">No locations yet. Add one from your manuscript or create a custom location.</p>
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -944,14 +1014,19 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   {addLocationMethod === 'coords' && (
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Latitude</label>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Latitude (N/S)</label>
                         <input
                           type="text"
                           value={locationLat}
                           onChange={(e) => {
                             const input = e.target.value.trim();
-                            // Parse comma-separated coordinates: "lat, lng" or just "lat"
-                            if (input.includes(',')) {
+                            // Try parsing as directional coordinates first
+                            const directionalResult = parseDirectionalCoordinates(input);
+                            if (directionalResult) {
+                              setLocationLat(directionalResult.lat.toString());
+                              setLocationLng(directionalResult.lng.toString());
+                            } else if (input.includes(',')) {
+                              // Parse comma-separated coordinates: "lat, lng" or just "lat"
                               const parts = input.split(',').map(s => s.trim());
                               const lat = parseFloat(parts[0]);
                               const lng = parseFloat(parts[1]);
@@ -961,12 +1036,12 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                               setLocationLat(input);
                             }
                           }}
-                          placeholder="e.g., 48.8566 or 48.8566, 2.3522"
+                          placeholder="e.g., 48.8566 or 51.5280° N, 123.1207° W"
                           className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Longitude</label>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Longitude (E/W)</label>
                         <input
                           type="text"
                           value={locationLng}
@@ -978,7 +1053,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                           className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-2">For real-world maps using geodesic coordinates. Paste "lat, lng" into Latitude field.</p>
+                       <p className="text-[10px] text-slate-500 mt-2">Latitude uses N (North) / S (South), Longitude uses E (East) / W (West). Supports "lat, lng" or directional format like "51.5280° N, 123.1207° W".</p>
                     </div>
                   )}
 

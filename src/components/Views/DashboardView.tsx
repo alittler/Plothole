@@ -128,18 +128,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Project Info */}
             <div className="flex-1">
               <div className="space-y-2 mb-6">
-                <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white">{projectData.title}</h1>
-                <p className="text-sm md:text-base text-slate-500 dark:text-slate-400">by {projectData.author}</p>
+                <h1 className="text-2xl md:text-4xl font-black text-slate-900 dark:text-white truncate">{projectData.title}</h1>
+                <p className="text-xs md:text-base text-slate-500 dark:text-slate-400 truncate">by {projectData.author}</p>
                 
                 {isIntegrityValid !== null && (
                   <div className="flex gap-2 mt-3">
                     {isIntegrityValid === true ? (
                       <div className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-bold">
-                        <ShieldCheck size={14} /> Verified
+                        <ShieldCheck size={14} /> <span className="hidden sm:inline">Verified</span>
                       </div>
                     ) : (
                       <div className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full text-xs font-bold animate-pulse">
-                        <ShieldAlert size={14} /> Corruption Detected
+                        <ShieldAlert size={14} /> <span className="hidden sm:inline">Corruption Detected</span>
                       </div>
                     )}
                   </div>
@@ -157,31 +157,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </header>
 
         {/* Summary & Actions */}
-        <div className="max-w-7xl mx-auto mb-8 space-y-4 md:space-y-0 md:flex gap-6">
-          <div className="flex-1 ph-panel p-4 md:p-6 rounded-2xl">
+        <div className="max-w-7xl mx-auto mb-8 space-y-3 md:space-y-0 md:flex gap-6">
+          <div className="hidden sm:block flex-1 ph-panel p-4 md:p-6 rounded-2xl">
             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Summary</p>
             <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 line-clamp-2 font-serif">{projectData.summary || '—'}</p>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-wrap justify-end md:flex-nowrap flex-shrink-0">
             <button
               onClick={onUpdateProcessedFiles}
               disabled={isUpdatingProcessed || isAnalyzing}
               title="Sync manuscript with project data"
-              className="ph-button-secondary p-2 md:p-3 rounded-2xl text-xs md:text-sm font-bold flex items-center gap-2 flex-wrap justify-center disabled:opacity-50"
+              className="ph-button-secondary p-2 md:p-3 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold flex items-center gap-1 md:gap-2 disabled:opacity-50 shrink-0"
             >
               {isUpdatingProcessed ? <Loader2 size={16} className="animate-spin" /> : <Cpu size={16} />}
               <span className="hidden sm:inline">Sync</span>
             </button>
             <button
               onClick={() => onExportProject(projectData)}
-              className="ph-button p-2 md:p-3 rounded-2xl text-xs md:text-sm font-bold flex items-center gap-2 flex-wrap justify-center"
+              className="ph-button p-2 md:p-3 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold flex items-center gap-1 md:gap-2 shrink-0"
             >
               <Download size={16} />
               <span className="hidden sm:inline">Export</span>
             </button>
             <button
               onClick={onExportVault}
-              className="ph-button-secondary p-2 md:p-3 rounded-2xl text-xs md:text-sm font-bold flex items-center gap-2 flex-wrap justify-center"
+              className="ph-button-secondary p-2 md:p-3 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold flex items-center gap-1 md:gap-2 shrink-0"
               title="Backup all your notes and account metadata"
             >
               <Archive size={16} />
@@ -190,7 +190,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {onSave && (
               <button
                 onClick={onSave}
-                className="ph-button-secondary p-2 md:p-3 rounded-2xl text-xs md:text-sm font-bold flex items-center gap-2 flex-wrap justify-center"
+                className="ph-button-secondary p-2 md:p-3 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold flex items-center gap-1 md:gap-2 shrink-0"
               >
                 <Save size={16} />
                 <span className="hidden sm:inline">Save</span>

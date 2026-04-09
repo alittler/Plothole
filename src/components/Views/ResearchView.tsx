@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Search, Zap, Loader2, Send, Trash2, Layout, BookOpen, 
-  FileText, MessageSquare, Cpu, Code, Plus, ArrowRight,
+  FileText, Cpu, Code, Plus, ArrowRight,
   Download, Upload, Copy, Check, Sparkles, User 
 } from 'lucide-react';
 import { ViewType, ProjectData, ProjectMetadata, Note, Source } from '../../types';
@@ -12,9 +12,8 @@ import { StenoChatPanel } from './Steno/StenoChatPanel';
 import Markdown from 'react-markdown';
 
 enum StenoTab {
-  WORKSPACE = 'Workspace',
-  SOURCES = 'Sources',
-  CHAT = 'Chat'
+  RESEARCH = 'Research',
+  SOURCES = 'Sources'
 }
 
 interface ResearchViewProps {
@@ -31,7 +30,7 @@ interface ResearchViewProps {
   projectData, globalNotes, projectsMetadata, currentUser, onUpdateProject, onDeleteNote, onLinkClick
   }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get('tab') as StenoTab) || StenoTab.WORKSPACE;
+  const activeTab = (searchParams.get('tab') as StenoTab) || StenoTab.RESEARCH;
   const setActiveTab = (tab: StenoTab) => setSearchParams({ tab });
 
   // Shared State
@@ -88,7 +87,7 @@ interface ResearchViewProps {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case StenoTab.WORKSPACE:
+      case StenoTab.RESEARCH:
         return (
           <div className="h-full flex flex-col overflow-hidden">
             {/* Mobile Sub-Tab Navigation */}
@@ -109,8 +108,8 @@ interface ResearchViewProps {
 
             <div className="flex-1 overflow-y-auto p-0 md:p-8 custom-scrollbar">
               <div className="h-full min-h-full grid grid-cols-1 lg:grid-cols-4 gap-6 pb-40 lg:pb-0">
-                {/* Chat Panel */}
-                <div className={`${mobileSubTab === 'chat' ? 'block' : 'hidden'} lg:block lg:col-span-3 h-full overflow-hidden`}>
+                {/* Chat Panel - First Column */}
+                <div className={`${mobileSubTab === 'chat' ? 'block' : 'hidden'} lg:block lg:col-span-3 h-full overflow-hidden lg:order-1`}>
                   <StenoChatPanel 
                     chatMessages={chatMessages}
                     setChatMessages={setChatMessages}
@@ -125,8 +124,8 @@ interface ResearchViewProps {
                   />
                 </div>
 
-                {/* Sources Panel */}
-                <div className={`${mobileSubTab === 'sources' ? 'block' : 'hidden'} lg:block lg:col-span-1 h-full overflow-hidden`}>
+                {/* Sources Panel - Second Column */}
+                <div className={`${mobileSubTab === 'sources' ? 'block' : 'hidden'} lg:block lg:col-span-1 h-full overflow-hidden lg:order-2`}>
                   <StenoSourcesPanel
                     sources={sources}
                     setSources={setSources}
@@ -154,25 +153,6 @@ interface ResearchViewProps {
           </div>
         );
 
-      case StenoTab.CHAT:
-        return (
-          <div className="h-full flex flex-col max-w-4xl mx-auto p-4 lg:p-6 min-h-full pb-40">
-             <StenoChatPanel 
-              chatMessages={chatMessages}
-              setChatMessages={setChatMessages}
-              chatInput={chatInput}
-              setChatInput={setChatInput}
-              isChatLoading={isChatLoading}
-              setIsChatLoading={setIsChatLoading}
-              onSaveIdea={handleSaveIdea}
-              onSaveAsSource={handleSaveChatAsSource}
-              sources={sources}
-              ideas={ideas}
-              isFullScreen={true}
-            />
-          </div>
-        );
-
       default:
         return null;
     }
@@ -180,20 +160,22 @@ interface ResearchViewProps {
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
-      <header className="p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10 shrink-0">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-1 text-center md:text-left">
-            <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
-              <Search size={32} className="text-indigo-600" /> Research & Discovery
+      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10 shrink-0">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6">
+          <div className="space-y-1 text-center md:text-left hidden sm:block">
+            <h1 className="ph-section-title text-xl md:text-3xl flex items-center justify-center md:justify-start gap-2 md:gap-3">
+              <Search size={24} className="md:w-8 md:h-8 text-indigo-600" /> <span className="hidden md:inline">Research & Discovery</span>
             </h1>
-            <p className="ph-section-subtitle">Analyze sources and chat with the Oracle.</p>
+            <p className="ph-section-subtitle text-xs md:text-sm">Analyze sources and chat with the Oracle.</p>
+          </div>
+          <div className="sm:hidden">
+            <Search size={24} className="text-indigo-600" />
           </div>
           <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
             {Object.values(StenoTab).map(tab => {
               const Icon = {
-                [StenoTab.WORKSPACE]: Layout,
-                [StenoTab.SOURCES]: Search,
-                [StenoTab.CHAT]: MessageSquare
+                [StenoTab.RESEARCH]: Layout,
+                [StenoTab.SOURCES]: Search
               }[tab as StenoTab];
               
               const isActive = activeTab === tab;
@@ -201,10 +183,10 @@ interface ResearchViewProps {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`ph-tab ${isActive ? "ph-tab-active" : "ph-tab-inactive"}`}
+                  className={`ph-tab text-xs md:text-sm ${isActive ? "ph-tab-active" : "ph-tab-inactive"}`}
                 >
-                  {Icon && <Icon size={14} />}
-                  {tab}
+                  {Icon && <Icon size={14} className="md:w-4 md:h-4" />}
+                  <span className="hidden sm:inline">{tab}</span>
                 </button>
               );
             })}

@@ -20,7 +20,6 @@ export enum ViewType {
   SOURCE_READER = 'SourceReader',
   MATRIX = 'Matrix',
   DICTIONARY = 'Dictionary',
-  RESEARCH = 'Research',
   SEMANTIC_EDITOR = 'SemanticEditor',
   STORY_ARCHITECT = 'StoryArchitect',
   CODEX = 'Codex',
@@ -233,6 +232,7 @@ export interface ProjectData {
   artifacts?: Artifact[];
   lore?: LoreEntry[];
   sources?: Source[];
+  codexSources?: {id: string; name: string; content: string}[];
   timeline: TimelineEvent[];
   relationships: Relationship[];
   chapters?: Chapter[];
@@ -241,6 +241,7 @@ export interface ProjectData {
   inspirations?: Inspiration[];
   themes: string[];
   proseDocuments?: ProseDocument[];
+  corkboardNotes?: ProseDocument[]; // Separate collection for corkboard snippets
   semanticDocuments?: SemanticDocument[];
   userToolboxLinks?: ToolboxLink[];
   

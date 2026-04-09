@@ -55,8 +55,8 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   const [noteToDelete, setNoteToDelete] = React.useState<string | null>(null);
   const [selectedProseId, setSelectedProseId] = React.useState<string | null>(null);
 
-  const proseDocs = React.useMemo(() => data.proseDocuments || [], [data.proseDocuments]);
-  const activeProse = React.useMemo(() => proseDocs.find(d => d.id === selectedProseId), [proseDocs, selectedProseId]);
+  const corkboardNotes = React.useMemo(() => data.corkboardNotes || [], [data.corkboardNotes]);
+  const activeProse = React.useMemo(() => corkboardNotes.find(d => d.id === selectedProseId), [corkboardNotes, selectedProseId]);
 
   const handleCreateProse = () => {
     const newDoc = {
@@ -65,18 +65,18 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
       content: '',
       lastModified: Date.now()
     };
-    onUpdateProject?.({ proseDocuments: [newDoc, ...proseDocs] });
+    onUpdateProject?.({ corkboardNotes: [newDoc, ...corkboardNotes] });
     setSelectedProseId(newDoc.id);
   };
 
   const handleUpdateProse = (id: string, updates: Partial<{ title: string, content: string }>) => {
-    const updated = proseDocs.map(d => d.id === id ? { ...d, ...updates, lastModified: Date.now() } : d);
-    onUpdateProject?.({ proseDocuments: updated });
+    const updated = corkboardNotes.map(d => d.id === id ? { ...d, ...updates, lastModified: Date.now() } : d);
+    onUpdateProject?.({ corkboardNotes: updated });
   };
 
   const handleDeleteProse = (id: string) => {
-    if (!confirm('Delete this document?')) return;
-    onUpdateProject?.({ proseDocuments: proseDocs.filter(d => d.id !== id) });
+    if (!confirm('Delete this snippet?')) return;
+    onUpdateProject?.({ corkboardNotes: corkboardNotes.filter(d => d.id !== id) });
     if (selectedProseId === id) setSelectedProseId(null);
   };
 
@@ -748,7 +748,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {proseDocs.length === 0 ? (
+                      {corkboardNotes.length === 0 ? (
                         <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4">
                           <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
                             <FileText size={32} className="text-slate-300" />
@@ -756,7 +756,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                           <p className="text-slate-400 font-serif italic">Your corkboard is empty. Create a new snippet to begin.</p>
                         </div>
                       ) : (
-                        proseDocs.map(doc => (
+                        corkboardNotes.map(doc => (
                           <button
                             key={doc.id}
                             onClick={() => setSelectedProseId(doc.id)}

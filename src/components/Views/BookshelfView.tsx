@@ -57,36 +57,36 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10 shrink-0">
-        <div className="max-w-6xl mx-auto flex items-center gap-4 md:gap-6">
-          <div className="p-3 md:p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shrink-0">
-            <BookOpen size={24} className="md:w-8 md:h-8" />
+      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10 shrink-0">
+        <div className="max-w-6xl mx-auto flex items-center gap-3 md:gap-6">
+          <div className="p-2 md:p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shrink-0">
+            <BookOpen size={20} className="md:w-8 md:h-8" />
           </div>
-          <div className="space-y-1">
-            <h1 className="ph-section-title text-2xl md:text-4xl">My Library</h1>
-            <p className="ph-section-subtitle">Manage the story worlds of your multiverse.</p>
+          <div className="space-y-1 hidden sm:block">
+            <h1 className="ph-section-title text-xl md:text-4xl">My Library</h1>
+            <p className="ph-section-subtitle text-xs md:text-sm">Manage the story worlds of your multiverse.</p>
           </div>
           {onRefreshMetadata && (
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className={`ml-auto px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
+              className={`ml-auto px-2 md:px-4 py-1.5 md:py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1 md:gap-2 transition-all shrink-0 ${
                 isRefreshing 
                   ? 'bg-indigo-100 text-indigo-400' 
                   : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-indigo-600 border border-slate-200 dark:border-slate-700 shadow-sm'
               }`}
             >
               <Database size={14} className={isRefreshing ? 'animate-spin' : ''} />
-              {isRefreshing ? 'Refreshing...' : 'Refresh Library'}
+              <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh Library'}</span>
             </button>
           )}
           {activeProjectId && onDeselectProject && (
             <button
               onClick={onDeselectProject}
-              className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all bg-white dark:bg-slate-800 text-slate-500 hover:text-red-600 border border-slate-200 dark:border-slate-700 shadow-sm"
+              className="px-2 md:px-4 py-1.5 md:py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1 md:gap-2 transition-all bg-white dark:bg-slate-800 text-slate-500 hover:text-red-600 border border-slate-200 dark:border-slate-700 shadow-sm shrink-0"
             >
               <X size={14} />
-              Clear Selection
+              <span className="hidden sm:inline">Clear Selection</span>
             </button>
           )}
         </div>

@@ -8,16 +8,74 @@
     <title>Plothole — Your Story, Decoded</title>
     <script>
       window.addEventListener('error', function(event) {
+        // Ignore "Script error" from CORS issues or third-party scripts
+        const message = event.message || '';
+        const isScriptError = message === 'Script error' || message === '';
+        
+        // Suppress common harmless errors
+        if (message && (
+          message.includes('ResizeObserver') ||
+          message.includes('NetworkError') ||
+          message.includes('timeout')
+        )) {
+          return;
+        }
+        
+        // For mobile, script errors from CORS are common and not actionable
+        if (isScriptError) {
+          console.error('Script error (CORS or third-party):', {
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+            stack: event.error?.stack
+          });
+          return; // Don't show UI for these
+        }
+        
+        console.error('Global error caught:', event);
         const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:9999;padding:20px;font-family:monospace;white-space:pre-wrap;';
-        errorDiv.textContent = 'Global Error: ' + event.message + '\n' + (event.error && event.error.stack ? event.error.stack : '');
+        errorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:9999;padding:20px;font-family:monospace;white-space:pre-wrap;font-size:12px;overflow-y:auto;max-height:100%;';
+        
+        const filename = event.filename ? ` at ${event.filename}:${event.lineno}:${event.colno}` : '';
+        const stack = event.error && event.error.stack ? event.error.stack : '';
+        const errorText = `Global Error: ${message}${filename}\n${stack}`;
+        
+        errorDiv.textContent = errorText;
         document.body.appendChild(errorDiv);
+        
+        // Auto-dismiss after 10 seconds
+        setTimeout(() => {
+          if (errorDiv.parentNode) {
+            errorDiv.remove();
+          }
+        }, 10000);
       });
+      
       window.addEventListener('unhandledrejection', function(event) {
+        // Suppress network and timeout errors
+        const reasonStr = String(event.reason || '');
+        if (reasonStr.includes('NetworkError') || reasonStr.includes('timeout') || reasonStr.includes('abort')) {
+          event.preventDefault();
+          return;
+        }
+        
+        console.error('Unhandled rejection caught:', event.reason);
         const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:orange;color:white;z-index:9999;padding:20px;font-family:monospace;white-space:pre-wrap;';
-        errorDiv.textContent = 'Unhandled Promise Rejection: ' + event.reason;
+        errorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:orange;color:white;z-index:9999;padding:20px;font-family:monospace;white-space:pre-wrap;font-size:12px;overflow-y:auto;max-height:100%;';
+        
+        const reasonText = event.reason ? String(event.reason) : 'Unknown reason';
+        const stack = event.reason && event.reason.stack ? event.reason.stack : '';
+        const errorText = `Unhandled Promise Rejection: ${reasonText}\n${stack}`;
+        
+        errorDiv.textContent = errorText;
         document.body.appendChild(errorDiv);
+        
+        // Auto-dismiss after 10 seconds
+        setTimeout(() => {
+          if (errorDiv.parentNode) {
+            errorDiv.remove();
+          }
+        }, 10000);
       });
     </script>
   </head>

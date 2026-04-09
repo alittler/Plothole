@@ -45,7 +45,6 @@ import { PlotSystemView } from './components/Views/PlotSystemView';
 import { SettingsView } from './components/Views/SettingsView';
 import { AdminView } from './components/Views/AdminView';
 import { ToolboxView } from './components/Views/ToolboxView';
-import ResearchView from './components/Views/ResearchView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
 import { WikiPageView } from './components/Views/WikiPageView';
@@ -1335,7 +1334,6 @@ const handleRestoreCommit = async (commit: Commit) => {
           }} 
           onLinkClick={handleLinkClick} 
           onAddDoubleProcessedNote={handleDoubleProcessNote} 
-          activeTasks={activeTasks} 
           onUpdateProject={updateProjectData} 
           semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled}
           onCreateProject={handleCreateProject}
@@ -1472,9 +1470,6 @@ const handleRestoreCommit = async (commit: Commit) => {
           onLinkClick={handleLinkClick} 
           fetchWithAuth={fetchWithAuth}
         />;
-
-      case ViewType.RESEARCH:
-        return projectData ? <ResearchView projectData={projectData} globalNotes={globalNotes} projectsMetadata={projectsMetadata} currentUser={currentUser} onUpdateProject={updateProjectData} onDeleteNote={handleDeleteNote} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research.</div>;
 
       case ViewType.CODEX:
         return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;

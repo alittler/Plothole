@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType, User } from '../../types';
-import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, GitBranch, Wrench } from 'lucide-react';
+import { LayoutGrid, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, Wrench } from 'lucide-react';
 import { UserButton, useClerk } from '@clerk/clerk-react';
 import { isCloudStorageActive } from '../../services/storageService';
 
@@ -92,7 +92,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const allNavItems: NavItem[] = [
     { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
-    { id: ViewType.RESEARCH, label: 'Research', icon: Search, projectOnly: true },
     { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
     { id: ViewType.MAP, label: 'Atlas', icon: Map, projectOnly: true },
     { id: ViewType.TIMELINE, label: 'History', icon: Calendar, projectOnly: true },
@@ -110,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
       {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(i.id))
       },
       {
         title: 'System',
@@ -272,18 +271,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
 
             <div className="pt-2 flex flex-col gap-0.5">
-              <a
-                href="https://github.com/alittler/Plothole"
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className={`w-full flex items-center gap-3 px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
-                title="GitHub Repository"
-              >
-                <GitBranch size={14} className="text-slate-700 group-hover:text-amber-500 transition-colors" />
-                {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest">GitHub</span>}
-              </a>
-
               <button
                 onClick={(e) => { e.stopPropagation(); onOpenLicenses(); }}
                 className={`w-full flex items-center gap-3 px-4 py-1.5 rounded-lg text-slate-600 hover:text-slate-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
@@ -292,6 +279,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <Shield size={14} className="text-slate-700 group-hover:text-amber-500 transition-colors" />
                 {!isCollapsed && <span className="text-[10px] font-black uppercase tracking-widest">Licenses</span>}
               </button>
+
+              {!isCollapsed && (
+                <div className="text-[10px] text-slate-600 dark:text-slate-500 mt-2 px-4 font-mono flex items-center whitespace-nowrap flex-wrap gap-1">
+                  {sourceHash && (
+                    <>
+                      <span className="text-emerald-400" title="Source/App Last Modified Hash">
+                        {sourceHash}
+                      </span>
+                      <span className="text-slate-700">|</span>
+                    </>
+                  )}
+                  {commitHash && (
+                    <a 
+                      href={`https://github.com/alittler/Plothole/commit/${commitHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-amber-400 hover:text-amber-300 transition-colors"
+                      title="App Build Commit"
+                    >
+                      {commitHash}
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </nav>
@@ -300,29 +311,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => window.innerWidth < 1024 && onClose()}
           className="p-4 border-t border-slate-800/50"
         >
-          {!isCollapsed && (
-            <div className="text-[10px] text-slate-600 dark:text-slate-500 mb-3 px-4 font-mono flex items-center whitespace-nowrap">
-              {sourceHash && (
-                <>
-                  <span className="text-emerald-400" title="Source/App Last Modified Hash">
-                    {sourceHash}
-                  </span>
-                  <span className="text-slate-700 mx-2">|</span>
-                </>
-              )}
-              {commitHash && (
-                <a 
-                  href={`https://github.com/alittler/Plothole/commit/${commitHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-amber-400 hover:text-amber-300 transition-colors"
-                  title="App Build Commit"
-                >
-                  {commitHash}
-                </a>
-              )}
-            </div>
-          )}
           <div className={`flex items-center gap-3 px-4 py-2 ${isCollapsed ? 'justify-center px-0' : ''}`}>
             {!isCollapsed && (
               <div 

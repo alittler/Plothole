@@ -173,6 +173,10 @@ export const MapView: React.FC<MapViewProps> = ({
   const [pathName, setPathName] = useState('');
   const [showPathNameDialog, setShowPathNameDialog] = useState(false);
 
+  // Scale Input Dialog State
+  const [showScaleDialog, setShowScaleDialog] = useState(false);
+  const [scaleInput, setScaleInput] = useState('');
+
 
   const getDistance = (p1: L.LatLng, p2: L.LatLng) => {
     if (isRealWorld) {
@@ -255,7 +259,9 @@ export const MapView: React.FC<MapViewProps> = ({
       attributionControl: isRealWorld,
       fadeAnimation: false,
       maxBoundsViscosity: 1.0,
-      worldCopyJump: false
+      worldCopyJump: false,
+      zoomSnap: 0,
+      zoomDelta: 0.5
     });
 
     if (isRealWorld) {
@@ -269,11 +275,38 @@ export const MapView: React.FC<MapViewProps> = ({
       map.setView([0, 0], 0);
     }
 
+    // Disable default scroll wheel zoom and implement power zoom
+    map.scrollWheelZoom.disable();
+    
+    const powerZoomHandler = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) return; // Allow pinch zoom
+      if (!mapRef.current || !mapRef.current._loaded) return; // Guard: map not ready
+      
+      try {
+        e.preventDefault();
+        
+        const zoomPower = 5; // 5x zoom increment per scroll step
+        const currentZoom = map.getZoom();
+        const newZoom = Math.max(
+          map.getMinZoom(),
+          Math.min(map.getMaxZoom(), currentZoom + (e.deltaY < 0 ? zoomPower : -zoomPower))
+        );
+        
+        // Set zoom without animation to keep pins steady
+        map.setZoom(newZoom, { animate: false });
+      } catch (err) {
+        // Silently ignore errors during map initialization
+      }
+    };
+    
+    containerRef.current?.addEventListener('wheel', powerZoomHandler, { passive: false });
+
     mapRef.current = map;
     setIsReady(true);
 
     return () => {
       setIsReady(false);
+      containerRef.current?.removeEventListener('wheel', powerZoomHandler);
       map.remove();
       mapRef.current = null;
     };
@@ -500,6 +533,47 @@ export const MapView: React.FC<MapViewProps> = ({
     return () => { map.off('move zoom', handleMove); };
   }, [isReady, isRealWorld]);
 
+  const handleScaleChange = (desiredSize: number, unit: string) => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    
+    // Use binary search with the EXACT same calculation as renderScaleBar
+    let zoomLow = -2;
+    let zoomHigh = 19;
+    
+    // More iterations for higher precision
+    for (let iteration = 0; iteration < 50; iteration++) {
+      const testZoom = (zoomLow + zoomHigh) / 2;
+      
+      let displayDist = 0;
+      if (isRealWorld) {
+        const center = map.getCenter();
+        const p1 = center;
+        const p2 = map.unproject(map.project(center, testZoom).add(L.point(100, 0)), testZoom);
+        displayDist = getDistance(p1, p2) / 1000;
+        if (mapUnit === 'mi') displayDist *= 0.621371;
+      } else {
+        if (!imgWidth) return;
+        const currentScale = mapScale || 1000;
+        const p1 = map.unproject(L.point(0, 0), testZoom);
+        const p2 = map.unproject(L.point(100, 0), testZoom);
+        const pixelDist = Math.abs(p2.lng - p1.lng);
+        displayDist = (pixelDist / imgWidth) * currentScale;
+      }
+      
+      // Converge with high precision
+      if (Math.abs(displayDist - desiredSize) < 0.01) break;
+      
+      if (displayDist < desiredSize) {
+        zoomHigh = testZoom; // scale too small, need to zoom out
+      } else {
+        zoomLow = testZoom; // scale too large, need to zoom in
+      }
+    }
+    
+    map.setZoom((zoomLow + zoomHigh) / 2);
+  };
+
   const renderScaleBar = () => {
     if (!mapRef.current) return null;
     const map = mapRef.current;
@@ -529,10 +603,16 @@ export const MapView: React.FC<MapViewProps> = ({
             <div className="flex items-center gap-2 border-l border-white/10 pl-4"><span className="opacity-50 uppercase tracking-widest text-[8px]">Zoom</span><span className="text-white font-bold">{debugCoords.zoom.toFixed(1)}x</span></div>
           </div>
         )}
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 py-2 rounded-xl shadow-2xl border border-white/20 flex flex-col gap-1 border-b-4 border-b-emerald-500">
+        <button 
+          onClick={() => {
+            setScaleInput(displayDist.toFixed(displayDist < 10 ? 1 : 0));
+            setShowScaleDialog(true);
+          }}
+          className="pointer-events-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 py-2 rounded-xl shadow-2xl border border-white/20 flex flex-col gap-1 border-b-4 border-b-emerald-500 hover:shadow-lg hover:border-b-emerald-600 transition-all cursor-pointer active:scale-95"
+        >
           <div className="flex items-center justify-between w-[100px] border-b-2 border-l-2 border-r-2 border-slate-900 dark:border-white h-1.5" />
           <div className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white text-center">{displayDist.toFixed(displayDist < 10 ? 1 : 0)} {label}</div>
-        </div>
+        </button>
       </div>
     );
   };
@@ -640,6 +720,7 @@ export const MapView: React.FC<MapViewProps> = ({
               </div>`
             })
           }).addTo(map);
+          marker.bindTooltip(loc.name, { permanent: false, direction: 'top', offset: [0, -10] });
           marker.bindPopup(`<div class="p-4 min-w-[200px] space-y-3 bg-white dark:bg-slate-900 rounded-2xl"><div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2"><div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${loc.type}</div><button class="lock-toggle-map p-1.5 rounded-lg transition-all ${isLocLocked ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400 hover:bg-amber-50 hover:text-amber-500'}">${isLocLocked ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>'}</button></div><div class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">${loc.name}</div><div class="flex gap-2 pt-2"><button class="edit-map-btn flex-1 px-3 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/20">Edit</button><button class="remove-map-btn px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center">Remove</button></div></div>`, { className: 'custom-map-popup', closeButton: false, offset: [0, -30] });
           marker.on('popupopen', (e) => {
             const popup = e.popup.getElement();
@@ -652,12 +733,34 @@ export const MapView: React.FC<MapViewProps> = ({
               if (lockBtn) L.DomEvent.on(lockBtn as HTMLElement, 'click', (ev) => { L.DomEvent.stopPropagation(ev); onLocationLockRef.current?.(loc.id, !isLocLocked); });
             }
           });
-          marker.on('click', (e) => { L.DomEvent.stopPropagation(e); onLocationClickRef.current?.(loc.id); });
-          marker.on('dragend', (e) => { const newPos = e.target.getLatLng(); onLocationMoveRef.current?.(loc.id, newPos.lng, newPos.lat); });
+          marker.on('click', (e) => { 
+            L.DomEvent.stopPropagation(e); 
+            if (isMeasuring) {
+              const point = map.latLngToLayerPoint(e.latlng);
+              let clickedExisting = false;
+              points.forEach(p => {
+                const pt = map.latLngToLayerPoint(L.latLng(p.y, p.x));
+                if (point.distanceTo(pt) < 15) clickedExisting = true;
+              });
+              if (clickedExisting && points.length >= 2) {
+                finalizeMeasurement();
+                return;
+              }
+              setPoints(prev => [...prev, { x: loc.x, y: loc.y, locationId: loc.id }]);
+              setTempMeasureB(null);
+            } else {
+              onLocationClickRef.current?.(loc.id);
+            }
+          });
+          marker.on('dragend', (e) => { 
+            const newPos = e.target.getLatLng(); 
+            onLocationMoveRef.current?.(loc.id, newPos.lng, newPos.lat);
+            setPoints(prev => prev.map(p => p.locationId === loc.id ? { ...p, x: newPos.lng, y: newPos.lat } : p));
+          });
         }
       });
     } catch (err) { console.warn("Marker update error:", err); }
-  }, [locations, isRealWorld, isReady]);
+  }, [locations, isRealWorld, isReady, isMeasuring, points, setPoints]);
 
   const renderTargetPreview = (bounds: L.LatLngBounds, isOffScreen: boolean) => {
     const fullBounds = isRealWorld ? L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180)) : mapBoundsRef.current;
@@ -767,6 +870,78 @@ export const MapView: React.FC<MapViewProps> = ({
                 className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
               >
                 Save Path
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showScaleDialog && (
+        <div className="absolute inset-0 flex items-center justify-center z-[200] bg-black/30 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-white/20 p-8 w-96 max-w-[90vw] animate-in fade-in zoom-in-95 duration-300">
+            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Set Map Scale</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Enter the scale you want 100 pixels to represent
+            </p>
+            <div className="flex gap-2 mb-6">
+              <input
+                type="number"
+                value={scaleInput}
+                onChange={(e) => setScaleInput(e.target.value)}
+                onKeyDown={(e) => { 
+                  if (e.key === 'Enter') {
+                    const size = parseFloat(scaleInput);
+                    const unit = mapUnit || 'km';
+                    if (!isNaN(size) && size > 0) {
+                      handleScaleChange(size, unit);
+                      setShowScaleDialog(false);
+                      setScaleInput('');
+                    }
+                  }
+                }}
+                placeholder="e.g., 250"
+                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                autoFocus
+              />
+              <select
+                value={mapUnit || 'km'}
+                onChange={(e) => {
+                  const size = parseFloat(scaleInput);
+                  if (!isNaN(size) && size > 0) {
+                    handleScaleChange(size, e.target.value);
+                    setShowScaleDialog(false);
+                    setScaleInput('');
+                  }
+                }}
+                className="px-3 py-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold"
+              >
+                <option value="km">km</option>
+                <option value="mi">mi</option>
+                <option value="m">m</option>
+              </select>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowScaleDialog(false);
+                  setScaleInput('');
+                }}
+                className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const size = parseFloat(scaleInput);
+                  const unit = mapUnit || 'km';
+                  if (!isNaN(size) && size > 0) {
+                    handleScaleChange(size, unit);
+                    setShowScaleDialog(false);
+                    setScaleInput('');
+                  }
+                }}
+                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
+              >
+                Apply Scale
               </button>
             </div>
           </div>
