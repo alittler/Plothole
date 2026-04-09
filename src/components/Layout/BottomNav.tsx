@@ -45,6 +45,22 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const defaultOrder = [ViewType.BOOKSHELF, ViewType.DASHBOARD, ViewType.NOTEPAD, ViewType.RESEARCH];
   const order = bottomNavOrder || defaultOrder;
 
+  const getViewLabel = (view: ViewType) => {
+    switch (view) {
+      case ViewType.BOOKSHELF: return 'Library';
+      case ViewType.DASHBOARD: return 'Dashboard';
+      case ViewType.NOTEPAD: return 'Notepad';
+      case ViewType.RESEARCH: return 'Research';
+      case ViewType.CHARACTERS: return 'Characters';
+      case ViewType.MAP: return 'Atlas';
+      case ViewType.TIMELINE: return 'History';
+      case ViewType.TOOLBOX: return 'Toolbox';
+      case ViewType.SETTINGS: return 'Settings';
+      case ViewType.ADMIN: return 'Admin';
+      default: return 'Page';
+    }
+  };
+
   const getViewIcon = (view: ViewType, isActive: boolean) => {
     const size = 24;
     switch (view) {
@@ -100,6 +116,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             <button
               key={view}
               onClick={() => onChangeView(view)}
+              title={getViewLabel(view)}
               className={`flex items-center justify-center p-3 rounded-2xl transition-all ${isActive ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-600/40 scale-110' : 'text-slate-400 hover:text-slate-300 dark:hover:text-slate-600'}`}
             >
               {getViewIcon(view, isActive)}

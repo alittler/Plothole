@@ -226,10 +226,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
               </h1>
               <p className="ph-section-subtitle">Map the geography and artifacts of your story world.</p>
             </div>
-            <div className="sm:hidden flex items-center gap-3">
-              <Globe size={24} className="text-indigo-600" />
-            </div>
-            <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
+            <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar flex items-center gap-2">
+              <div className="sm:hidden flex items-center gap-2 shrink-0">
+                <Globe size={24} className="text-indigo-600" />
+              </div>
               {Object.values(WorldTab).map(tab => (
                 <button
                   key={tab}

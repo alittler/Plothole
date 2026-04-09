@@ -373,7 +373,7 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10 shrink-0">
+       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10 shrink-0">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-1 text-center md:text-left hidden sm:block">
             <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
@@ -381,10 +381,10 @@ export const CharacterView: React.FC<CharacterViewProps> = ({
             </h1>
             <p className="ph-section-subtitle">Orchestrate the souls and societies of your story world.</p>
           </div>
-          <div className="sm:hidden flex items-center gap-3">
-            <Users size={24} className="text-indigo-600" />
-          </div>
-          <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
+          <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar flex items-center gap-2">
+            <div className="sm:hidden flex items-center gap-2 shrink-0">
+              <Users size={24} className="text-indigo-600" />
+            </div>
             {Object.values(CharacterTab).map(tab => (
               <button
                 key={tab}

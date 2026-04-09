@@ -119,10 +119,10 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
             </h1>
             <p className="ph-section-subtitle">Chronicle the events and rhythms of your narrative.</p>
           </div>
-          <div className="sm:hidden flex items-center gap-3">
-            <Calendar size={24} className="text-indigo-600" />
-          </div>
-          <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
+          <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar flex items-center gap-2">
+            <div className="sm:hidden flex items-center gap-2 shrink-0">
+              <Calendar size={24} className="text-indigo-600" />
+            </div>
             {Object.values(PlotTab).map(tab => (
               <button
                 key={tab}
