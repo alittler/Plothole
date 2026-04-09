@@ -946,26 +946,39 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Latitude</label>
                         <input
-                          type="number"
-                          step="0.0001"
+                          type="text"
                           value={locationLat}
-                          onChange={(e) => setLocationLat(e.target.value)}
-                          placeholder="e.g., 48.8566"
+                          onChange={(e) => {
+                            const input = e.target.value.trim();
+                            // Parse comma-separated coordinates: "lat, lng" or just "lat"
+                            if (input.includes(',')) {
+                              const parts = input.split(',').map(s => s.trim());
+                              const lat = parseFloat(parts[0]);
+                              const lng = parseFloat(parts[1]);
+                              if (!isNaN(lat)) setLocationLat(lat.toString());
+                              if (!isNaN(lng)) setLocationLng(lng.toString());
+                            } else {
+                              setLocationLat(input);
+                            }
+                          }}
+                          placeholder="e.g., 48.8566 or 48.8566, 2.3522"
                           className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Longitude</label>
                         <input
-                          type="number"
-                          step="0.0001"
+                          type="text"
                           value={locationLng}
-                          onChange={(e) => setLocationLng(e.target.value)}
+                          onChange={(e) => {
+                            const input = e.target.value.trim();
+                            setLocationLng(input);
+                          }}
                           placeholder="e.g., 2.3522"
                           className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-2">For real-world maps using geodesic coordinates</p>
+                      <p className="text-[10px] text-slate-500 mt-2">For real-world maps using geodesic coordinates. Paste "lat, lng" into Latitude field.</p>
                     </div>
                   )}
 
@@ -1047,8 +1060,11 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
                       // Add coordinates based on method
                       if (addLocationMethod === 'coords' && locationLat && locationLng) {
-                        newLocation.x = parseFloat(locationLng);
-                        newLocation.y = parseFloat(locationLat);
+                        // Limit to 15 decimal places
+                        const lat = parseFloat(locationLat);
+                        const lng = parseFloat(locationLng);
+                        newLocation.x = parseFloat(lng.toFixed(15));
+                        newLocation.y = parseFloat(lat.toFixed(15));
                       } else if (addLocationMethod === 'xy' && locationX && locationY) {
                         newLocation.x = parseFloat(locationX);
                         newLocation.y = parseFloat(locationY);
