@@ -91,6 +91,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Close mobile sidebar when resizing from mobile to desktop
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (isOpen && window.innerWidth >= 1024) {
+        onClose();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen, onClose]);
+
   // Close menu when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
