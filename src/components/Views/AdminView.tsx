@@ -568,7 +568,7 @@ books:
                           { title: 'Locations', desc: 'Settings with descriptions and classifications' },
                           { title: 'Artifacts & Items', desc: 'Inanimate objects, weapons, relics, and their significance' },
                           { title: 'Worldbuilding Terms', desc: 'Unique concepts, magic systems, terminology specific to your world' },
-                          { title: 'Character Importance', desc: 'Determined by first mention in text (main characters appear early)' }
+                          { title: 'Character Tier Classification', desc: 'Categorized as Core, Supporting, or Background based on role' }
                         ].map(item => (
                           <div key={item.title} className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900/30">
                             <p className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-widest mb-1">{item.title}</p>
@@ -584,6 +584,7 @@ books:
                         <pre>{`Character Fields Extracted:
 ├── name               # Character name
 ├── role               # Story role (Protagonist, Antagonist, Supporting, Minor)
+├── tier               # Tier assignment (1=Core, 2=Supporting, 3=Background)
 ├── job                # Profession or occupation
 ├── description        # General character description
 ├── traits             # Array of personality traits
@@ -596,20 +597,28 @@ books:
 ├── strengths          # Character abilities and strengths
 ├── weaknesses         # Vulnerabilities and weaknesses
 ├── nickname           # Alternate names or aliases
-├── firstMentionOffset # Character position in text (determines importance)
+├── firstMentionOffset # Character position in text
 └── source             # "ai" or "manual" (origin of data)`}</pre>
                       </div>
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Main Characters (Level 1)</h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                        Main characters are those who appear earliest in your manuscript. The app automatically generates physical descriptions for main characters if they are missing, ensuring complete character profiles.
+                      <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3">Character Tier System</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        Characters are classified into three tiers based on their narrative role during manuscript analysis. Only <strong>Core Tier (Tier 1)</strong> characters receive automatic physical description generation.
                       </p>
-                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                        <p className="text-xs text-blue-900 dark:text-blue-300">
-                          <strong>Auto-Generation:</strong> When you process a manuscript, if a main character lacks physical description details, the app will generate them using the other extracted data (age, role, traits, etc.). This ensures all level 1 characters have complete profiles.
-                        </p>
+                      <div className="space-y-3">
+                        {[
+                          { tier: '1 - Core', roles: 'Protagonist, Antagonist', desc: 'Main characters driving the narrative. Auto-generate missing physical descriptions.' },
+                          { tier: '2 - Supporting', roles: 'Supporting cast', desc: 'Important secondary characters. Manual description recommended.' },
+                          { tier: '3 - Background', roles: 'Minor, Extras', desc: 'Incidental characters with limited page time. Low priority for detail generation.' }
+                        ].map(item => (
+                          <div key={item.tier} className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">{item.tier}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-2"><strong>Roles:</strong> {item.roles}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">{item.desc}</p>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
@@ -620,8 +629,9 @@ books:
                         <li>App detects changes (Smart Sync)</li>
                         <li>AI analyzes manuscript in chunks (for large files)</li>
                         <li>Details are extracted using the unified analysis schema</li>
-                        <li>New characters are added; existing ones are merged with new data</li>
-                        <li>For main characters without physical descriptions, AI generates them</li>
+                        <li>Characters are classified by role into tiers (Protagonist/Antagonist → Tier 1, Supporting → Tier 2, Minor → Tier 3)</li>
+                        <li>New characters are added with their assigned tier; existing ones are merged with new data</li>
+                        <li><strong>For Tier 1 (Core) characters:</strong> If physical description is missing, AI generates it automatically</li>
                         <li>Timeline, locations, artifacts, and lore are updated</li>
                         <li>Project summary and themes are refreshed</li>
                       </ol>

@@ -321,16 +321,23 @@ const App: React.FC = () => {
       if (analysis.characters.length > 0) {
         const existingChars = [...projectData.characters];
         
-        // Identify main characters (those with earliest firstMentionOffset)
-        const charsWithOffset = analysis.characters.filter(c => c.firstMentionOffset !== undefined);
-        const mainCharacterCount = Math.max(1, Math.floor(charsWithOffset.length * 0.2)); // Top 20% are "main"
-        const sortedByOffset = [...charsWithOffset].sort((a, b) => (a.firstMentionOffset || Infinity) - (b.firstMentionOffset || Infinity));
-        const mainCharacterNames = new Set(sortedByOffset.slice(0, mainCharacterCount).map(c => c.name.toLowerCase()));
+        // Helper function to determine tier based on role
+        const getTierFromRole = (role: string): number => {
+          const lowerRole = role.toLowerCase();
+          if (lowerRole === 'protagonist' || lowerRole === 'antagonist' || lowerRole === 'core') {
+            return 1; // Core tier
+          } else if (lowerRole === 'supporting') {
+            return 2; // Supporting tier
+          } else {
+            return 3; // Background tier (Minor, etc.)
+          }
+        };
         
         // Process each analyzed character
         for (const nc of analysis.characters) {
           const idx = existingChars.findIndex(ec => ec.name.toLowerCase() === nc.name.toLowerCase());
-          const isMainCharacter = mainCharacterNames.has(nc.name.toLowerCase());
+          const characterTier = getTierFromRole(nc.role || 'Minor');
+          const isCoreTier = characterTier === 1;
           
           if (idx >= 0) {
             // Update existing character: prefer new data for job/role if current is empty
@@ -339,11 +346,12 @@ const App: React.FC = () => {
               job: existingChars[idx].job || nc.job || '',
               role: (existingChars[idx].role === 'Supporting' || existingChars[idx].role === 'Minor') ? (nc.role || existingChars[idx].role) : existingChars[idx].role,
               description: existingChars[idx].description.length < 10 ? (nc.description || existingChars[idx].description) : existingChars[idx].description,
-              firstMentionOffset: nc.firstMentionOffset || existingChars[idx].firstMentionOffset
+              firstMentionOffset: nc.firstMentionOffset || existingChars[idx].firstMentionOffset,
+              tier: existingChars[idx].tier !== undefined ? existingChars[idx].tier : characterTier
             };
             
-            // Auto-generate physical description for main characters if missing
-            if (isMainCharacter && (!existingChars[idx].physicalFeatures || existingChars[idx].physicalFeatures.length < 20)) {
+            // Auto-generate physical description for core tier characters if missing
+            if (isCoreTier && (!existingChars[idx].physicalFeatures || existingChars[idx].physicalFeatures.length < 20)) {
               try {
                 setProcessingStatus(`Generating physical description for ${nc.name}...`);
                 const physicalDesc = await generateCharacterPhysicalDescription({
@@ -360,10 +368,12 @@ const App: React.FC = () => {
               }
             }
           } else {
-            existingChars.push(nc);
+            // Add tier to new character based on their role
+            const newChar = { ...nc, tier: characterTier };
+            existingChars.push(newChar);
             
-            // Auto-generate physical description for new main characters if missing
-            if (isMainCharacter && (!nc.physicalFeatures || nc.physicalFeatures.length < 20)) {
+            // Auto-generate physical description for new core tier characters if missing
+            if (isCoreTier && (!nc.physicalFeatures || nc.physicalFeatures.length < 20)) {
               try {
                 setProcessingStatus(`Generating physical description for ${nc.name}...`);
                 const physicalDesc = await generateCharacterPhysicalDescription({

@@ -326,6 +326,7 @@ export interface Character {
   conflict?: string;
   primary_trait?: string;
   location_id?: string;
+  tier?: number; // 1 = Core, 2 = Supporting, 3 = Background
 
   // Physical and biographical details (from AI analysis)
   physicalFeatures?: string; // Height, weight, build, distinctive marks
