@@ -234,7 +234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 title={item.label}
                                 onClick={() => handleNavItemClick(item)}
                                 disabled={isDisabled}
-                                className={`w-full flex items-center justify-center p-3 rounded-xl transition-all group ${
+                                className={`w-full flex items-center justify-center p-2 rounded-xl transition-all group ${
                                   isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''
                                 } ${
                                   !isActive && !isDisabled ? 'hover:bg-slate-800 hover:text-slate-200' : ''
@@ -242,7 +242,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                   isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''
                                 }`}
                               >
-                                <item.icon size={24} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />
+                                <item.icon size={18} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />
                               </button>
                             );
                           })}

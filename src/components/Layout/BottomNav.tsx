@@ -61,8 +61,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     }
   };
 
-  const getViewIcon = (view: ViewType, isActive: boolean) => {
-    const size = 24;
+  const getViewIcon = (view: ViewType, isActive: boolean, iconSize: number = 24) => {
+    const size = iconSize;
     switch (view) {
       case ViewType.BOOKSHELF: return <Book size={size} />;
       case ViewType.DASHBOARD: return <LayoutGrid size={size} />;
@@ -117,18 +117,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               key={view}
               onClick={() => onChangeView(view)}
               title={getViewLabel(view)}
-              className={`flex items-center justify-center p-3 rounded-2xl transition-all ${isActive ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-600/40 scale-110' : 'text-slate-400 hover:text-slate-300 dark:hover:text-slate-600'}`}
+              className={`flex items-center justify-center p-2 rounded-2xl transition-all ${isActive ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-600/40 scale-110' : 'text-slate-400 hover:text-slate-300 dark:hover:text-slate-600'}`}
             >
-              {getViewIcon(view, isActive)}
+              {getViewIcon(view, isActive, 20)}
             </button>
           );
         })}
 
         <button
           onClick={onToggleSidebar}
-          className={`flex items-center justify-center p-3 rounded-2xl transition-all ${isSidebarOpen ? 'text-white bg-indigo-500' : 'text-slate-400 hover:text-slate-300 dark:hover:text-slate-600'}`}
+          className={`flex items-center justify-center p-2 rounded-2xl transition-all ${isSidebarOpen ? 'text-white bg-indigo-500' : 'text-slate-400 hover:text-slate-300 dark:hover:text-slate-600'}`}
         >
-          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
         
       </div>
