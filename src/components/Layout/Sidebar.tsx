@@ -164,7 +164,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center justify-between">
             {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white uppercase">{appName.replace(' — Your Story, Decoded', '')}</span>}
             <div className="flex items-center gap-2">
-              <button onClick={onToggleCollapse} className="hidden lg:block p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white">
+              <button 
+                onClick={onToggleCollapse} 
+                className="hidden lg:block p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white"
+                title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              >
                 {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
               </button>
             </div>
@@ -218,6 +222,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     return (
                       <button
                         key={item.id}
+                        title={isCollapsed ? item.label : undefined}
                         onClick={() => {
                           if (!isDisabled) {
                             if (currentView === item.id) {
@@ -239,6 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''}
                           ${!isActive && !isDisabled ? 'hover:bg-slate-900 hover:text-slate-200' : ''}
                           ${isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''}
+                          ${isCollapsed ? 'justify-center px-0' : ''}
                         `}
                       >
                         <item.icon size={18} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`} />

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ViewType, ProjectData, Location, Artifact, LoreEntry, Note, ProseDocument, User, ProjectMetadata } from '../../types';
+import { ViewType, ProjectData, Location, Artifact, LoreEntry, Note, ProseDocument, User, ProjectMetadata, MapPath } from '../../types';
 import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers } from 'lucide-react';
 
 import { MapView } from '../ui/MapView';
 import { WikiText } from '../ui/WikiText';
 import { generateId } from '../../services/storageService';
 import { RichEditor } from '../ui/RichEditor';
+import { Modal } from '../ui/Modal';
 
 interface WorldSystemViewProps {
   currentView: ViewType;
@@ -36,7 +37,7 @@ interface WorldSystemViewProps {
 
 enum WorldTab {
   MAP = 'Interactive Map',
-  LOCATIONS = 'Locations List',
+  LOCATIONS = 'Locations & Paths',
   INVENTORY = 'Inventory',
   RECIPE_BOOK = 'Recipe Book'
 }
@@ -78,6 +79,22 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   const [editingMapName, setEditingMapName] = useState("");
   const [localScale, setLocalScale] = useState(data.mapScale || 100);
   const [localUnit, setLocalUnit] = useState(data.mapUnit || "km");
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [editingArtifact, setEditingArtifact] = useState<Artifact | null>(null);
+  const [editingPath, setEditingPath] = useState<MapPath | null>(null);
+
+  // Add Location Dialog State
+  const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
+  const [addLocationMethod, setAddLocationMethod] = useState<'search' | 'coords' | 'xy' | null>(null);
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [locationLat, setLocationLat] = useState('');
+  const [locationLng, setLocationLng] = useState('');
+  const [locationX, setLocationX] = useState('');
+  const [locationY, setLocationY] = useState('');
+  const [locationName, setLocationName] = useState('');
 
   const zoomInRef = useRef<() => void>(null);
   const zoomOutRef = useRef<() => void>(null);
@@ -122,38 +139,54 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
     }
   };
 
-  const handleAutoMatch = async () => {
-    if (!confirm("Attempt to match ALL locations to real-world coordinates using Earth data? This may overwrite existing positions.")) return;
-    setIsMatching(true);
-    const updatedLocations = [...data.locations];
-    let matchedCount = 0;
-    for (let i = 0; i < updatedLocations.length; i++) {
-      const loc = updatedLocations[i];
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc.name)}&limit=1`);
-        const results = await res.json();
-        if (results && results.length > 0) {
-          const lon = parseFloat(results[0].lon);
-          const lat = parseFloat(results[0].lat);
-          updatedLocations[i] = { ...loc, x: lon, y: lat, matchedX: lon, matchedY: lat };
-          matchedCount++;
-        }
-        await new Promise((r) => setTimeout(r, 1000));
-      } catch (err) {
-        console.error(`Failed to match ${loc.name}:`, err);
-      }
-    }
-    if (matchedCount > 0) {
-      onUpdateProject({ locations: updatedLocations });
-      alert(`Successfully matched ${matchedCount} locations to Earth.`);
-    } else {
-      alert("No matches found.");
-    }
-    setIsMatching(false);
+  const handleOpenLocationEdit = (loc: Location) => {
+    setEditingLocation({ ...loc });
+    setEditingArtifact(null);
+    setEditingPath(null);
+    setIsEditModalOpen(true);
   };
 
-  const entities = data.entities || [];
-  
+  const handleOpenArtifactEdit = (art: Artifact) => {
+    setEditingArtifact({ ...art });
+    setEditingLocation(null);
+    setEditingPath(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleOpenPathEdit = (path: MapPath) => {
+    setEditingPath({ ...path });
+    setEditingLocation(null);
+    setEditingArtifact(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingLocation) {
+      const sanitized = {
+        ...editingLocation,
+        x: editingLocation.x !== undefined ? Number(editingLocation.x.toFixed(6)) : undefined,
+        y: editingLocation.y !== undefined ? Number(editingLocation.y.toFixed(6)) : undefined
+      };
+      onUpdateLocation(sanitized);
+    } else if (editingArtifact) {
+      onUpdateProject({ artifacts: (data.artifacts || []).map(a => a.id === editingArtifact.id ? editingArtifact : a) });
+    } else if (editingPath) {
+      onUpdateProject({ paths: (data.paths || []).map(p => p.id === editingPath.id ? editingPath : p) });
+    }
+    setIsEditModalOpen(false);
+    setEditingLocation(null);
+    setEditingArtifact(null);
+    setEditingPath(null);
+  };
+
+  const handleLocationPlace = (id: string, x: number, y: number) => {
+    const loc = data.locations.find(l => l.id === id);
+    if (loc) {
+      onUpdateLocation({ ...loc, x, y, prevX: loc.x, prevY: loc.y, parentId: currentMapParentId || undefined, mapId: currentMapParentId || 'root' });
+      setIsQueueOpen(false); // Close location manager on drop
+    }
+  };
+
   const isCurrentMapRealWorld = (() => {
     if (currentMapParentId) {
       const parent = data.locations.find(l => l.id === currentMapParentId);
@@ -239,6 +272,14 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   <>
                     <MapView 
                       locations={filteredLocations} 
+                      paths={data.paths}
+                      onAddPath={(path) => onUpdateProject({ paths: [...(data.paths || []), path] })}
+                      onUpdatePath={(path) => onUpdateProject({ paths: (data.paths || []).map(p => p.id === path.id ? path : p) })}
+                      onDeletePath={(id) => onUpdateProject({ paths: (data.paths || []).filter(p => p.id !== id) })}
+                      onScaleCalibrated={(newScale) => {
+                        onUpdateProject({ mapScale: Number(newScale.toFixed(2)) });
+                        setLocalScale(Number(newScale.toFixed(2)));
+                      }}
                       rootMapImage={parentLocation?.mapImage || data.rootMapImage || DEFAULT_MAP} 
                       mapUnit={data.mapUnit}
                       mapScale={data.mapScale}
@@ -250,17 +291,25 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       getViewStateRef={getViewStateRef}
                       onViewChange={(view) => onUpdateProject({ mapDefaultView: view })}
                       onDimensionsDetected={(width, height) => setMapDimensions({ width, height })}
-                      onLinkClick={onLinkClick}
+                      onLinkClick={(type, id) => {
+                        if (type === 'admin') {
+                          const loc = data.locations.find(l => l.id === id);
+                          if (loc) { handleOpenLocationEdit(loc); return; }
+                          const path = data.paths?.find(p => p.id === id);
+                          if (path) { handleOpenPathEdit(path); return; }
+                          const art = data.artifacts?.find(a => a.id === id);
+                          if (art) { handleOpenArtifactEdit(art); return; }
+                        } else {
+                          onLinkClick(type, id);
+                        }
+                      }}
                       isRealWorld={isCurrentMapRealWorld}
                       onLocationClick={(id) => {
                         setSelectedLocationId(id);
                         const loc = data.locations.find(l => l.id === id);
                         if (loc && loc.mapImage) onMapChange(loc.id);
                       }}
-                      onLocationPlace={(id, x, y) => {
-                        const loc = data.locations.find(l => l.id === id);
-                        if (loc) onUpdateLocation({ ...loc, x, y, prevX: loc.x, prevY: loc.y, parentId: currentMapParentId || undefined, mapId: currentMapParentId || 'root' });
-                      }}
+                      onLocationPlace={handleLocationPlace}
                       onLocationMove={(id, x, y) => {
                         const loc = data.locations.find(l => l.id === id);
                         if (loc) onUpdateLocation({ ...loc, x, y, prevX: loc.x, prevY: loc.y, mapId: currentMapParentId || 'root' });
@@ -336,16 +385,16 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                                   <Ruler size={16} className="md:w-5 md:h-5" />
                                 </button>
                                 <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
+                                <label className="p-1.5 md:p-2 text-slate-500 hover:text-indigo-600 cursor-pointer rounded-lg md:rounded-xl transition-colors" title="Change Map" onClick={(e) => e.stopPropagation()}><Upload size={16} className="md:w-5 md:h-5" /><input type="file" className="hidden" accept="image/*" onChange={handleMapUpload} /></label>
                               </>
                             )}
-                            <label className="p-1.5 md:p-2 text-slate-500 hover:text-indigo-600 cursor-pointer rounded-lg md:rounded-xl transition-colors" title="Change Map" onClick={(e) => e.stopPropagation()}><Upload size={16} className="md:w-5 md:h-5" /><input type="file" className="hidden" accept="image/*" onChange={handleMapUpload} /></label>
                           </div>
                           <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsMapMenuOpen(!isMapMenuOpen); }} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-lg md:rounded-xl transition-all ${isMapMenuOpen ? 'bg-emerald-600 text-white rotate-180 shadow-lg' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><MapIcon size={20} className="md:w-6 md:h-6 shrink-0" /></button>
                         </div>
 
                         <div className="flex flex-col bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl md:rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-                          <button onClick={() => zoomInRef.current?.()} className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800" title="Zoom In"><Plus size={20} /></button>
-                          <button onClick={() => fitAllLocationsRef.current?.()} className="p-3 text-slate-500 hover:text-emerald-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800" title="Fit All Locations"><Maximize2 size={20} /></button>
+                          <button onClick={() => setShowAddLocationDialog(true)} className="p-3 text-slate-500 hover:text-emerald-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800" title="Add Location"><Plus size={20} /></button>
+                          <button onClick={() => onToggleFullscreen?.()} className={`p-3 transition-colors border-b border-slate-100 dark:border-slate-800 ${isFullscreen ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800'}`} title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}><Maximize2 size={20} /></button>
                           <button onClick={() => zoomOutRef.current?.()} className="p-3 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" title="Zoom Out"><Minus size={20} /></button>
                         </div>
                       </div>
@@ -377,7 +426,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
                           {(() => {
                             const currentImg = currentMapParentId ? data.locations.find(l => l.id === currentMapParentId)?.mapImage : data.rootMapImage;
-                            return currentImg ? <img src={currentImg} className="w-full h-full object-cover" alt="" /> : <Globe className="w-6 h-6 text-emerald-500" />;
+                            return (currentImg && !isCurrentMapRealWorld) ? <img src={currentImg} className="w-full h-full object-cover" alt="" /> : <Globe className="w-6 h-6 text-emerald-500" />;
                           })()}
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-sm py-0.5 text-[9px] font-black text-white uppercase tracking-tighter text-center">Layers</div>
@@ -428,7 +477,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                           locationQueue.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-center space-y-3 p-4 py-12"><CheckCircle size={24} className="text-slate-300" /><p className="text-xs text-slate-400 italic">All locations placed.</p></div>) : (
                             locationQueue.map(loc => (
                               <div key={loc.id} draggable onDragStart={(e) => e.dataTransfer.setData('locationId', loc.id)} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-indigo-500/50 transition-all hover:shadow-md">
-                                <div className="flex items-center justify-between mb-1"><span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{loc.type}</span><Edit2 size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 cursor-pointer" onClick={() => onLinkClick('admin', loc.id)} /></div>
+                                <div className="flex items-center justify-between mb-1"><span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{loc.type}</span><Edit2 size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 cursor-pointer" onClick={() => handleOpenLocationEdit(loc)} /></div>
                                 <h4 className="font-bold text-slate-900 dark:text-white text-sm break-words">{loc.name}</h4>
                                 <p className="text-[10px] text-slate-500 line-clamp-2 mt-1 italic">Drag icon to place on current map</p>
                               </div>
@@ -448,7 +497,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                                     {loc.matchedX !== undefined && (
                                       <button onClick={() => onLocationReset(loc.id)} className="p-1 text-slate-400 hover:text-blue-600" title="Reset to Earth"><Globe size={12} /></button>
                                     )}
-                                    <Edit2 size={12} className="text-slate-300 hover:text-indigo-500 cursor-pointer" onClick={() => onLinkClick?.('admin', loc.id)} />
+                                    <Edit2 size={12} className="text-slate-300 hover:text-indigo-500 cursor-pointer" onClick={() => handleOpenLocationEdit(loc)} />
                                     <button onClick={() => onUpdateLocation({ ...loc, x: undefined, y: undefined, parentId: undefined, mapId: undefined, mapImage: undefined })}><Trash2 size={12} className="text-slate-300 hover:text-red-500 cursor-pointer" /></button>
                                   </div>
                                 </div>
@@ -466,31 +515,70 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
             )}
 
             {activeTab === WorldTab.LOCATIONS && (
-              <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl"><MapIcon size={24} /></div>
-                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Geographic Roster</h2><p className="text-sm text-slate-500 uppercase font-bold tracking-widest">Points of Interest and Regional Bounds</p></div>
-                  </div>
-                  <button onClick={() => onAddLocation({ id: generateId(), name: 'New Location', description: '', type: 'City', source: 'manual' })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"><Plus size={18} /> New Location</button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {data.locations.map(loc => (
-                    <div key={loc.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
-                        <div className="flex items-center gap-2 transition-opacity">
-                          {!loc.mapImage && <button onClick={() => onUpdateLocation({ ...loc, mapImage: DEFAULT_MAP, type: 'Region' })} className="text-slate-400 hover:text-emerald-500 transition-colors" title="Turn into Map Link"><MapIcon size={14} /></button>}
-                          <button onClick={() => onLinkClick?.('admin', loc.id)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
-                          <button onClick={() => onUpdateLocation({ ...loc, x: undefined, y: undefined, parentId: undefined, mapId: undefined, mapImage: undefined })} className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
-                        </div>
-                      </div>
-                      <h3 className="font-bold text-slate-900 dark:text-white">{loc.name}</h3>
-                      <p className="text-sm text-slate-500 line-clamp-2 mt-2 font-serif italic">{loc.description || 'No description yet.'}</p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                {/* Column 1: Locations */}
+                <section className="space-y-8">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl"><MapIcon size={24} /></div>
+                      <div><h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Geographic Roster</h2><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Points of Interest</p></div>
                     </div>
-                  ))}
-                </div>
-              </section>
+                    <button onClick={() => onAddLocation({ id: generateId(), name: 'New Location', description: '', type: 'City', source: 'manual' })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"><Plus size={14} /> New Location</button>
+                  </div>
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                    {data.locations.map(loc => (
+                      <div key={loc.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative hover:shadow-md transition-all">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
+                          <div className="flex items-center gap-2">
+                            {!loc.mapImage && <button onClick={() => onUpdateLocation({ ...loc, mapImage: DEFAULT_MAP, type: 'Region' })} className="text-slate-400 hover:text-emerald-500 transition-colors" title="Turn into Map Link"><MapIcon size={14} /></button>}
+                            <button onClick={() => handleOpenLocationEdit(loc)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
+                            <button onClick={() => onUpdateLocation({ ...loc, x: undefined, y: undefined, parentId: undefined, mapId: undefined, mapImage: undefined })} className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                          </div>
+                        </div>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-sm">{loc.name}</h3>
+                        <p className="text-xs text-slate-500 line-clamp-2 mt-2 font-serif italic">{loc.description || 'No description yet.'}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Column 2: Paths */}
+                <section className="space-y-8">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl"><Activity size={24} /></div>
+                      <div><h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Distance Logs</h2><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Recorded Pathmeasurements</p></div>
+                    </div>
+                  </div>
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                    {(data.paths || []).length === 0 ? (
+                      <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+                        <Ruler size={32} className="text-slate-300" />
+                        <p className="text-slate-400 font-serif italic text-sm px-6">No paths recorded yet. Use the Ruler tool on the map to save pathmeasurements.</p>
+                      </div>
+                    ) : (
+                      data.paths?.map(path => (
+                        <div key={path.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative hover:shadow-md transition-all">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{path.isRealWorld ? 'Real World' : 'Local Map'}</span>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => handleOpenPathEdit(path)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
+                              <button onClick={() => onUpdateProject({ paths: data.paths?.filter(p => p.id !== path.id) })} className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                            </div>
+                          </div>
+                          <h3 className="font-bold text-slate-900 dark:text-white text-sm">{path.name}</h3>
+                          <div className="mt-3 flex items-baseline gap-1">
+                            <span className="text-xl font-black text-indigo-600">{path.distance}</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">{path.unit}</span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 mt-2 italic">Points: {path.points.length} • Anchors: {path.points.filter(p => p.locationId).length}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </section>
+              </div>
             )}
 
             {activeTab === WorldTab.INVENTORY && (
@@ -504,11 +592,11 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {data.artifacts?.map(art => (
-                    <div key={art.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative">
+                    <div key={art.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative hover:shadow-md transition-all">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{art.type}</span>
-                        <div className="flex items-center gap-2 transition-opacity">
-                          <button onClick={() => onLinkClick?.('admin', art.id)} className="text-slate-400 hover:text-indigo-500 transition-colors"><Edit2 size={14} /></button>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleOpenArtifactEdit(art)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
                           <button onClick={() => onDeleteArtifact(art.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
                         </div>
                       </div>
@@ -692,6 +780,301 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Unified Universal Edit Modal */}
+      <Modal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)}
+        onConfirm={handleSaveEdit}
+        title={editingLocation ? "Edit Location" : editingArtifact ? "Edit Artifact" : "Edit Path"}
+        footer={
+          <>
+            <button onClick={() => setIsEditModalOpen(false)} className="ph-button-secondary px-6 py-2 text-xs">Cancel</button>
+            <button onClick={handleSaveEdit} className="ph-button px-6 py-2 text-xs">Save Changes</button>
+          </>
+        }
+      >
+        <div className="space-y-6">
+          {editingLocation && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Name</label>
+                  <input type="text" value={editingLocation.name} onChange={(e) => setEditingLocation({ ...editingLocation, name: e.target.value })} className="ph-input w-full" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Type</label>
+                  <select value={editingLocation.type} onChange={(e) => setEditingLocation({ ...editingLocation, type: e.target.value })} className="ph-input w-full">
+                    <option>City</option><option>Town</option><option>Village</option><option>Fortress</option><option>Landmark</option><option>Region</option><option>Other</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
+                <textarea value={editingLocation.description} onChange={(e) => setEditingLocation({ ...editingLocation, description: e.target.value })} className="ph-input w-full h-32 resize-none font-serif italic" />
+              </div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2 text-[10px] font-black text-indigo-600 uppercase tracking-widest"><Globe size={12} /> Coordinates</div></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Longitude (X)</label><input type="number" step="0.000001" value={editingLocation.x ?? ''} onChange={(e) => setEditingLocation({ ...editingLocation, x: parseFloat(e.target.value) || 0 })} className="ph-input w-full font-mono text-xs" /></div>
+                  <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Latitude (Y)</label><input type="number" step="0.000001" value={editingLocation.y ?? ''} onChange={(e) => setEditingLocation({ ...editingLocation, y: parseFloat(e.target.value) || 0 })} className="ph-input w-full font-mono text-xs" /></div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {editingArtifact && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Name</label>
+                  <input type="text" value={editingArtifact.name} onChange={(e) => setEditingArtifact({ ...editingArtifact, name: e.target.value })} className="ph-input w-full" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Type</label>
+                  <input type="text" value={editingArtifact.type} onChange={(e) => setEditingArtifact({ ...editingArtifact, type: e.target.value })} className="ph-input w-full" placeholder="Relic, Weapon, etc." />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
+                <textarea value={editingArtifact.description} onChange={(e) => setEditingArtifact({ ...editingArtifact, description: e.target.value })} className="ph-input w-full h-32 resize-none font-serif italic" />
+              </div>
+            </>
+          )}
+
+          {editingPath && (
+            <>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Path Name</label>
+                <input type="text" value={editingPath.name} onChange={(e) => setEditingPath({ ...editingPath, name: e.target.value })} className="ph-input w-full" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Distance</label>
+                  <div className="flex items-center gap-2">
+                    <input type="number" value={editingPath.distance} onChange={(e) => setEditingPath({ ...editingPath, distance: parseFloat(e.target.value) || 0 })} className="ph-input flex-1 font-mono text-xs" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase">{editingPath.unit}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Color</label>
+                  <input type="color" value={editingPath.color || '#6366f1'} onChange={(e) => setEditingPath({ ...editingPath, color: e.target.value })} className="ph-input w-full h-10 p-1" />
+                </div>
+              </div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Technical Info</p>
+                <div className="text-[9px] text-slate-500 space-y-1 font-mono">
+                  <p>Points: {editingPath.points.length}</p>
+                  <p>System: {editingPath.isRealWorld ? 'Real-World Geodesic' : 'Euclidean Plane'}</p>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Add Location Dialog */}
+      {showAddLocationDialog && (
+        <div className="fixed inset-0 flex items-center justify-center z-[200] bg-black/30 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-white/20 p-8 w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-300">
+            {!addLocationMethod ? (
+              <>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6">Add Location</h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => { setAddLocationMethod('search'); setLocationSearchQuery(''); }}
+                    className="w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 text-left"
+                  >
+                    🔍 Search Location
+                  </button>
+                  <button
+                    onClick={() => { setAddLocationMethod('coords'); setLocationLat(''); setLocationLng(''); }}
+                    className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 text-left"
+                  >
+                    🌍 By Coordinates (Lat/Lng)
+                  </button>
+                  <button
+                    onClick={() => { setAddLocationMethod('xy'); setLocationX(''); setLocationY(''); }}
+                    className="w-full px-4 py-3 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700 transition-colors shadow-lg shadow-purple-600/20 text-left"
+                  >
+                    📍 By Position (X/Y)
+                  </button>
+                </div>
+                <button
+                  onClick={() => setShowAddLocationDialog(false)}
+                  className="w-full mt-6 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6">
+                  {addLocationMethod === 'search' && '🔍 Search Location'}
+                  {addLocationMethod === 'coords' && '🌍 By Coordinates'}
+                  {addLocationMethod === 'xy' && '📍 By Position'}
+                </h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Location Name</label>
+                    <input
+                      type="text"
+                      value={locationName}
+                      onChange={(e) => setLocationName(e.target.value)}
+                      placeholder="e.g., Capital City"
+                      className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  {addLocationMethod === 'search' && (
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Search Query</label>
+                      <input
+                        type="text"
+                        value={locationSearchQuery}
+                        onChange={(e) => setLocationSearchQuery(e.target.value)}
+                        placeholder="e.g., Paris, France"
+                        className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <p className="text-[10px] text-slate-500 mt-2">Search uses Nominatim (OpenStreetMap)</p>
+                    </div>
+                  )}
+
+                  {addLocationMethod === 'coords' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Latitude</label>
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={locationLat}
+                          onChange={(e) => setLocationLat(e.target.value)}
+                          placeholder="e.g., 48.8566"
+                          className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Longitude</label>
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={locationLng}
+                          onChange={(e) => setLocationLng(e.target.value)}
+                          placeholder="e.g., 2.3522"
+                          className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {addLocationMethod === 'xy' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">X Position</label>
+                        <input
+                          type="number"
+                          step="1"
+                          value={locationX}
+                          onChange={(e) => setLocationX(e.target.value)}
+                          placeholder="e.g., 500"
+                          className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Y Position</label>
+                        <input
+                          type="number"
+                          step="1"
+                          value={locationY}
+                          onChange={(e) => setLocationY(e.target.value)}
+                          placeholder="e.g., 300"
+                          className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setAddLocationMethod(null)}
+                    className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!locationName.trim()) {
+                        alert('Please enter a location name');
+                        return;
+                      }
+                      
+                      // Validate based on method
+                      if (addLocationMethod === 'coords') {
+                        const lat = parseFloat(locationLat);
+                        const lng = parseFloat(locationLng);
+                        if (isNaN(lat) || isNaN(lng)) {
+                          alert('Please enter valid latitude and longitude values');
+                          return;
+                        }
+                        if (lat < -90 || lat > 90) {
+                          alert('Latitude must be between -90 and 90');
+                          return;
+                        }
+                        if (lng < -180 || lng > 180) {
+                          alert('Longitude must be between -180 and 180');
+                          return;
+                        }
+                      } else if (addLocationMethod === 'xy') {
+                        const x = parseFloat(locationX);
+                        const y = parseFloat(locationY);
+                        if (isNaN(x) || isNaN(y)) {
+                          alert('Please enter valid X and Y positions');
+                          return;
+                        }
+                      }
+                      
+                      const newLocation: Location = {
+                        id: generateId(),
+                        name: locationName.trim(),
+                        description: '',
+                        type: 'City',
+                        source: 'manual'
+                      };
+
+                      // Add coordinates based on method
+                      if (addLocationMethod === 'coords' && locationLat && locationLng) {
+                        newLocation.x = parseFloat(locationLng);
+                        newLocation.y = parseFloat(locationLat);
+                      } else if (addLocationMethod === 'xy' && locationX && locationY) {
+                        newLocation.x = parseFloat(locationX);
+                        newLocation.y = parseFloat(locationY);
+                      }
+                      // Search method: location will be added with just name (user needs to place on map)
+
+                      onAddLocation(newLocation);
+                      
+                      // Reset and close
+                      setShowAddLocationDialog(false);
+                      setAddLocationMethod(null);
+                      setLocationName('');
+                      setLocationSearchQuery('');
+                      setLocationLat('');
+                      setLocationLng('');
+                      setLocationX('');
+                      setLocationY('');
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
+                  >
+                    Add Location
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

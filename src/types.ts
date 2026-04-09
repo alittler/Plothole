@@ -108,6 +108,7 @@ export interface HierarchicalEntity {
   
   // Generic / Tier 3
   description?: string;
+  fieldNotes?: { label: string; value: string }[]; 
   metadata?: Record<string, any>;
 }
 
@@ -285,6 +286,17 @@ export interface ProjectData {
   mapScale?: number;
   mapUnit?: string;
   mapDefaultView?: any;
+  paths?: MapPath[];
+}
+
+export interface MapPath {
+  id: string;
+  name: string;
+  points: { x: number; y: number; locationId?: string }[];
+  isRealWorld: boolean;
+  distance: number;
+  unit: string;
+  color?: string;
 }
 
 // Keep existing helper interfaces for now
@@ -351,6 +363,7 @@ export interface Character {
   nationality?: string;
   affiliation?: string;
   knowsAbout?: string[];
+  fieldNotes?: { label: string; value: string }[];
 }
 
 export interface Location {

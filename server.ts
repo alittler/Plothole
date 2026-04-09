@@ -873,6 +873,39 @@ async function startServer() {
       if (result.rows.length > 0) {
         res.json(result.rows[0].data);
       } else {
+        // Return defaults for known global IDs if not found
+        if (req.params.id === 'app_settings') {
+          return res.json({ 
+            appName: 'Plothole — Your Story, Decoded',
+            adminEmails: ['alittler86@gmail.com']
+          });
+        }
+        if (req.params.id === 'app_prompts') {
+          return res.json({
+            GENERAL_AND_CHARACTERS: "Extract title, summary, characters (including roles, jobs, physical descriptions, traits, and aliases), character relationships (bonds between characters), and themes.",
+            PLOT_MATRIX_ANALYSIS: "Identify major subplots from these events.",
+            TIMELINE: "Construct a chronological timeline.",
+            LOCATIONS: "Extract key locations.",
+            ARTIFACTS: "Extract inanimate artifacts.",
+            LORE: "Extract world-building terms.",
+            NOTE_ENHANCEMENT: "Expand this brainstorming fragment into a vivid narrative paragraph. Focus on imagery and atmosphere.",
+            PROCESS_RAW_NOTES: "Analyze the following prose and extract entities and plot directions.",
+            STRUCTURAL_ANALYSIS: "Analyze for logical consistency and plot structure.",
+            SENTIMENT: "Analyze emotional tone (-10 to 10) for events.",
+            RELATIONSHIPS: "Identify relationships between characters.",
+            THEMES: "Extract primary themes.",
+            SOFT_ANCHORS: "Identify chronological anchors.",
+            PLOT_AUDIT: "Identify narrative inconsistencies.",
+            THEME_EXTRACTION: "Synthesize thematic elements.",
+            CONLANG_GEN: "Generate conlang vocabulary.",
+            PROJECT_QA: "Answer the question using the provided context.",
+            MISSPELLINGS_SCAN: 'Find misspellings of "{name}".',
+            TOOLBOX_URL_ANALYSIS: "Analyze this URL for creative writer utility.",
+            GENERATE_CONLANG_WORD: 'Construct a word for "{word}" in "{langName}".',
+            CONNECT_NOTES: "Synthesize these notes into a narrative thread.",
+            AI_MODEL: "gemini-3-flash-preview"
+          });
+        }
         res.status(404).json({ error: 'Global not found' });
       }
     } catch (err) {

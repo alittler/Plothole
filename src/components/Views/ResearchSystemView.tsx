@@ -9,9 +9,9 @@ import { BookshelfView } from './BookshelfView';
 import { ImageUploadInput } from '../ui/ImageUploadInput';
 
 enum NotepadView {
-  STREAM = 'Stream',
-  PROSE = 'Prose',
-  INSPIRATION = 'Inspiration'
+  STREAM = 'Notebook',
+  CORKBOARD = 'Corkboard',
+  INSPIRATION = 'Moodboard'
 }
 import { generateId } from '../../services/storageService';
 
@@ -61,7 +61,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   const handleCreateProse = () => {
     const newDoc = {
       id: generateId(),
-      title: 'Untitled Scene',
+      title: 'Untitled Snippet',
       content: '',
       lastModified: Date.now()
     };
@@ -671,7 +671,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                 </div>
               </div>
             </div>
-          ) : viewMode === NotepadView.PROSE ? (
+          ) : viewMode === NotepadView.CORKBOARD ? (
             <div className="flex-1 bg-slate-100 dark:bg-slate-900 overflow-hidden flex flex-col relative">
               {activeProse ? (
                 <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 animate-in fade-in zoom-in-95 duration-300">
@@ -689,6 +689,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                         value={activeProse.title}
                         onChange={(e) => handleUpdateProse(activeProse.id, { title: e.target.value })}
                         className="bg-transparent border-none focus:ring-0 text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight"
+                        placeholder="Snippet Title"
                       />
                     </div>
                     <div className="flex items-center gap-2">
@@ -699,7 +700,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                     <RichEditor 
                       content={activeProse.content} 
                       onChange={(html) => handleUpdateProse(activeProse.id, { content: html })}
-                      placeholder="Write your scene here... Your work is automatically saved."
+                      placeholder="Jot down your thoughts or miscellaneous lines here... This is independent of your manuscript."
                     />
                   </div>
                 </div>
@@ -710,14 +711,40 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                   <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cork-board.png')] opacity-10 pointer-events-none" />
                   
                   <div className="max-w-5xl mx-auto relative z-10">
-                    <div className="flex items-center justify-between mb-8">
-                      <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Prose Corkboard</h2>
-                      <button 
-                        onClick={handleCreateProse}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
-                      >
-                        <Plus size={16} /> New Scene
-                      </button>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                      <div>
+                        <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Snippet Corkboard</h2>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">A place for miscellaneous lines and thoughts.</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="relative group">
+                          <input 
+                            type="text" 
+                            placeholder="Quick add line..." 
+                            className="ph-input pr-10 w-64 text-xs"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                                const val = e.currentTarget.value.trim();
+                                const newDoc = {
+                                  id: generateId(),
+                                  title: val.slice(0, 20) + (val.length > 20 ? '...' : ''),
+                                  content: val,
+                                  lastModified: Date.now()
+                                };
+                                onUpdateProject?.({ proseDocuments: [newDoc, ...proseDocs] });
+                                e.currentTarget.value = '';
+                              }
+                            }}
+                          />
+                          <Plus size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                        </div>
+                        <button 
+                          onClick={handleCreateProse}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
+                        >
+                          <Plus size={16} /> New Snippet
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -726,7 +753,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                           <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
                             <FileText size={32} className="text-slate-300" />
                           </div>
-                          <p className="text-slate-400 font-serif italic">Your corkboard is empty. Create a new scene to begin.</p>
+                          <p className="text-slate-400 font-serif italic">Your corkboard is empty. Create a new snippet to begin.</p>
                         </div>
                       ) : (
                         proseDocs.map(doc => (
@@ -737,7 +764,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                           >
                             <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-slate-300/50" /> {/* Pin head */}
                             <h3 className="font-bold text-slate-900 dark:text-white mb-2 line-clamp-1 uppercase text-xs tracking-widest">{doc.title}</h3>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-serif line-clamp-5 overflow-hidden" dangerouslySetInnerHTML={{ __html: doc.content || 'Empty scene...' }} />
+                            <div className="text-xs text-slate-500 dark:text-slate-400 font-serif line-clamp-5 overflow-hidden" dangerouslySetInnerHTML={{ __html: doc.content || 'Empty snippet...' }} />
                             <div className="mt-auto pt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
                               <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(doc.lastModified).toLocaleDateString()}</span>
                               <div className="flex items-center gap-2">
