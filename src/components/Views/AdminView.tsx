@@ -5,7 +5,7 @@ import {
   Shield, Sparkles, Save, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3, GripVertical, Eye, EyeOff, Users, Calendar, Menu, QrCode
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3, GripVertical, Eye, EyeOff, Users, Calendar, Menu, QrCode, BookOpen
 } from 'lucide-react';
 
 import { CardCatalogueView } from './CardCatalogueView';
@@ -33,7 +33,8 @@ enum AdminTab {
   USERS = 'Users',
   TOOLBOX = 'Toolbox',
   CARD_CATALOGUE = 'Card Catalogue',
-  PLOTHOLE_FORMAT = 'File Format'
+  PLOTHOLE_FORMAT = 'File Format',
+  SCRIPTURE_MYTHOLOGY = 'Scripture & Mythology'
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
@@ -57,6 +58,20 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [networkInfo, setNetworkInfo] = useState<{ ip: string, port: number } | null>(null);
   const [wikiUrl, setWikiUrl] = useState('');
   const [isWikiEnabled, setIsWikiEnabled] = useState(false);
+
+  // Scripture & Mythology entries
+  interface ScriptureEntry {
+    id: string;
+    reference: string;
+    translation: string;
+    text: string;
+    notes?: string;
+  }
+  const [scriptureEntries, setScriptureEntries] = useState<ScriptureEntry[]>(() => {
+    const stored = localStorage.getItem('scripture_entries');
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [newScriptureEntry, setNewScriptureEntry] = useState<Partial<ScriptureEntry>>({ reference: '', translation: 'KJV', text: '', notes: '' });
 
   React.useEffect(() => {
     fetch('/api/network-info')
@@ -107,6 +122,28 @@ export const AdminView: React.FC<AdminViewProps> = ({
     };
     setSettings(updatedSettings);
     onSaveSettings(updatedSettings);
+  };
+
+  // Scripture & Mythology handlers
+  const handleAddScriptureEntry = () => {
+    if (!newScriptureEntry.reference || !newScriptureEntry.text) return;
+    const entry: ScriptureEntry = {
+      id: generateId(),
+      reference: newScriptureEntry.reference || '',
+      translation: newScriptureEntry.translation || 'KJV',
+      text: newScriptureEntry.text || '',
+      notes: newScriptureEntry.notes
+    };
+    const updated = [...scriptureEntries, entry];
+    setScriptureEntries(updated);
+    localStorage.setItem('scripture_entries', JSON.stringify(updated));
+    setNewScriptureEntry({ reference: '', translation: 'KJV', text: '', notes: '' });
+  };
+
+  const handleDeleteScriptureEntry = (id: string) => {
+    const updated = scriptureEntries.filter(e => e.id !== id);
+    setScriptureEntries(updated);
+    localStorage.setItem('scripture_entries', JSON.stringify(updated));
   };
 
   const getViewLabel = (view: ViewType): string => {
@@ -873,6 +910,139 @@ books:
           </div>
         );
 
+      case AdminTab.SCRIPTURE_MYTHOLOGY:
+        return (
+          <div className="max-w-5xl mx-auto space-y-8 py-8 animate-in fade-in duration-500">
+            {/* Header */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-amber-600 text-white rounded-2xl shadow-lg shadow-amber-600/20"><BookOpen size={28} /></div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Scripture & Mythology</h2>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Cultural Corpus • Biblical Verses & Translations</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                Build a personal library of biblical verses, mythological references, and cultural insights. Store multiple translations side-by-side for easy reference during writing and research.
+              </p>
+            </section>
+
+            {/* Add New Entry Form */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Add New Entry</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Reference (e.g., "Genesis 1:1", "Job 3:11")</label>
+                  <input
+                    type="text"
+                    placeholder="Enter verse reference..."
+                    value={newScriptureEntry.reference || ''}
+                    onChange={e => setNewScriptureEntry({...newScriptureEntry, reference: e.target.value})}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Translation</label>
+                    <select
+                      value={newScriptureEntry.translation || 'KJV'}
+                      onChange={e => setNewScriptureEntry({...newScriptureEntry, translation: e.target.value})}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                    >
+                      <option value="KJV">King James Version</option>
+                      <option value="NIV">New International Version</option>
+                      <option value="NASB">New American Standard Bible</option>
+                      <option value="ESV">English Standard Version</option>
+                      <option value="NLT">New Living Translation</option>
+                      <option value="NRSV">New Revised Standard Version</option>
+                      <option value="AMP">The Amplified Bible</option>
+                      <option value="MSG">The Message</option>
+                      <option value="OTHER">Other/Custom</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Year/Source (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., 1611, Print Edition"
+                      value={newScriptureEntry.notes || ''}
+                      onChange={e => setNewScriptureEntry({...newScriptureEntry, notes: e.target.value})}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Verse Text</label>
+                  <textarea
+                    placeholder="Paste the full verse text here..."
+                    value={newScriptureEntry.text || ''}
+                    onChange={e => setNewScriptureEntry({...newScriptureEntry, text: e.target.value})}
+                    rows={4}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none resize-none"
+                  />
+                </div>
+
+                <button
+                  onClick={handleAddScriptureEntry}
+                  className="w-full py-4 bg-amber-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-amber-700 transition-all shadow-xl shadow-amber-600/20 flex items-center justify-center gap-3"
+                >
+                  <Plus size={20} /> Add Entry
+                </button>
+              </div>
+            </section>
+
+            {/* Scripture Entries List */}
+            {scriptureEntries.length > 0 && (
+              <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                  Saved Entries ({scriptureEntries.length})
+                </h3>
+
+                <div className="space-y-4">
+                  {scriptureEntries.map(entry => (
+                    <div key={entry.id} className="p-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h4 className="text-sm font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider mb-1">
+                            {entry.reference}
+                          </h4>
+                          <p className="text-xs text-amber-700 dark:text-amber-300 font-bold uppercase">
+                            {entry.translation}{entry.notes ? ` • ${entry.notes}` : ''}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteScriptureEntry(entry.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Delete entry"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                      
+                      <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed font-serif italic mb-4 p-4 bg-white dark:bg-slate-800/50 rounded-xl border border-amber-100 dark:border-amber-900/50">
+                        "{entry.text}"
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {scriptureEntries.length === 0 && (
+              <section className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 rounded-2xl p-10 shadow-sm border border-amber-100 dark:border-amber-900/30 text-center space-y-4">
+                <BookOpen size={48} className="mx-auto text-amber-600 dark:text-amber-400" />
+                <p className="text-slate-600 dark:text-slate-400 font-bold">No entries yet</p>
+                <p className="text-sm text-slate-500 dark:text-slate-500">Add your first scripture entry to begin building your cultural corpus.</p>
+              </section>
+            )}
+          </div>
+        );
+
       default: return null;
     }
   };
@@ -903,6 +1073,7 @@ books:
                 {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
                 {tab === AdminTab.CARD_CATALOGUE && <Grid3x3 size={18} />}
                 {tab === AdminTab.PLOTHOLE_FORMAT && <Archive size={18} />}
+                {tab === AdminTab.SCRIPTURE_MYTHOLOGY && <BookOpen size={18} />}
               </div>
               <span className="hidden md:inline">{tab}</span>
             </button>
