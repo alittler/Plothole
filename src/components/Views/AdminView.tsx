@@ -29,6 +29,7 @@ interface AdminViewProps {
 enum AdminTab {
   SYSTEM = 'System',
   NAVIGATION = 'Navigation',
+  CONNECT = 'Connect',
   USERS = 'Users',
   TOOLBOX = 'Toolbox',
   CARD_CATALOGUE = 'Card Catalogue',
@@ -54,6 +55,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   const [newLink, setNewLink] = useState<Partial<ToolboxLink>>({ label: '', url: '', category: 'Writing', description: '' });
   const [networkInfo, setNetworkInfo] = useState<{ ip: string, port: number } | null>(null);
+  const [wikiUrl, setWikiUrl] = useState('');
+  const [isWikiEnabled, setIsWikiEnabled] = useState(false);
 
   React.useEffect(() => {
     fetch('/api/network-info')
@@ -61,6 +64,23 @@ export const AdminView: React.FC<AdminViewProps> = ({
       .then(data => setNetworkInfo(data))
       .catch(err => console.error("Failed to fetch network info", err));
   }, []);
+
+  React.useEffect(() => {
+    if (data?.id) {
+      fetch(`/api/projects/${data.id}/wiki-settings`)
+        .then(res => res.json())
+        .then(wikiData => {
+          setIsWikiEnabled(wikiData.enable_wiki !== false);
+          if (wikiData.username) {
+            const baseUrl = window.location.origin;
+            const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+            const slugifiedTitle = slugify(data.title);
+            setWikiUrl(`${baseUrl}/${wikiData.username}/${slugifiedTitle}`);
+          }
+        })
+        .catch(err => console.error("Failed to fetch wiki settings", err));
+    }
+  }, [data?.id, data?.title]);
 
   const handleAddDefaultLink = () => {
     if (!newLink.label || !newLink.url) return;
@@ -878,6 +898,7 @@ books:
               <div className={activeTab === tab ? 'text-white' : 'text-indigo-500'}>
                 {tab === AdminTab.SYSTEM && <Settings size={18} />}
                 {tab === AdminTab.NAVIGATION && <Layout size={18} />}
+                {tab === AdminTab.CONNECT && <QrCode size={18} />}
                 {tab === AdminTab.USERS && <User size={18} />}
                 {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
                 {tab === AdminTab.CARD_CATALOGUE && <Grid3x3 size={18} />}
@@ -889,24 +910,6 @@ books:
         </nav>
 
         <div className="p-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
-          {networkInfo && (
-            <div className="flex flex-col items-center gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-500">
-              <div className="p-2 bg-white rounded-lg border border-slate-100">
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`http://${networkInfo.ip}:${networkInfo.port}`)}`}
-                  alt="Local Access QR Code"
-                  className="w-24 h-24"
-                />
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Local Network Access</p>
-                <code className="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg">
-                  {networkInfo.ip}:{networkInfo.port}
-                </code>
-              </div>
-            </div>
-          )}
-
           <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl space-y-2">
             <p className="ph-label mb-0">User Level</p>
             <div className="flex items-center gap-2 text-indigo-600">

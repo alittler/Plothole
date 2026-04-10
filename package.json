@@ -55,6 +55,7 @@
     "remark-gfm": "^4.0.1",
     "resend": "^6.9.3",
     "simple-git": "^3.33.0",
+    "tesseract.js": "^7.0.0",
     "vite": "^6.2.0"
   },
   "devDependencies": {

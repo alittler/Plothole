@@ -20,6 +20,7 @@ import cors from 'cors';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdf = require('pdf-parse');
+import { processFolder } from './src/services/sourcePipeline.ts';
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({
@@ -333,6 +334,28 @@ async function startServer() {
         filename: filename,
         extractedText: extractedText
       });
+
+      // Trigger sidecar pipeline asynchronously (don't wait for response)
+      if (isS3Configured) {
+        setImmediate(async () => {
+          try {
+            const s3Prefix = projectId ? `source/${projectId}` : 'source';
+            console.log(`[Source Pipeline] Queuing async processing for s3://${s3Bucket}/${s3Prefix}`);
+            const result = await processFolder(s3Bucket, s3Prefix);
+            console.log(
+              `[Source Pipeline] Async processing complete: ${result.processed} processed, ${result.skipped} skipped, ${result.failed} failed`
+            );
+            if (result.errors.length > 0) {
+              console.error('[Source Pipeline] Errors during processing:', result.errors);
+            }
+          } catch (error) {
+            console.error(
+              '[Source Pipeline] Async processing failed:',
+              error instanceof Error ? error.message : String(error)
+            );
+          }
+        });
+      }
     } catch (err) {
       console.error('Error in source-upload endpoint:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
