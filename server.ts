@@ -963,6 +963,147 @@ async function startServer() {
     res.json({ status: 'delivered' });
   });
 
+  // Send test email for backup notifications
+  app.post('/api/send-test-email', async (req: any, res) => {
+    const userId = req.auth?.userId || 'user-1';
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { projectId, userEmail } = req.body;
+    if (!projectId || !userEmail) return res.status(400).json({ error: 'Missing projectId or userEmail' });
+
+    if (!resend) return res.status(503).json({ error: 'Resend not configured' });
+
+    try {
+      const email = await resend.emails.send({
+        from: 'Plothole Backups <backups@resend.dev>',
+        to: userEmail,
+        subject: '[Plothole] Test Email - Backup Configuration',
+        html: '<p>This is a test email from Plothole to verify your backup notification configuration is working correctly.</p><p>If you receive this email, your backup notifications are properly configured!</p>'
+      });
+      res.json({ 
+        success: true, 
+        message: 'Test email sent successfully!',
+        resendId: (email.data as any)?.id 
+      });
+    } catch (err) {
+      console.error('Test email error:', err);
+      res.status(500).json({ error: 'Failed to send test email', message: err instanceof Error ? err.message : 'Unknown error' });
+    }
+  });
+
+  // Create a test backup
+  app.post('/api/test-backup', async (req: any, res) => {
+    const userId = req.auth?.userId || 'user-1';
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { projectId } = req.body;
+    if (!projectId) return res.status(400).json({ error: 'Missing projectId' });
+
+    try {
+      const pool = getPool();
+      if (!pool) return res.status(500).json({ error: 'Database unavailable' });
+
+      // Fetch the project
+      const result = await pool.query('SELECT data FROM projects WHERE id = $1', [projectId]);
+      if (!result.rows.length) return res.status(404).json({ error: 'Project not found' });
+
+      const projectData = result.rows[0].data;
+      const timestamp = Date.now();
+      const hash = require('crypto').createHash('sha256').update(JSON.stringify(projectData)).digest('hex');
+
+      // Create a new backup entry
+      const backup = {
+        id: `backup-${Date.now()}`,
+        timestamp,
+        status: 'pending' as const,
+        wordCount: projectData.wordCount || 0,
+        hash: hash.slice(0, 8)
+      };
+
+      // Add to backups array
+      if (!projectData.backups) projectData.backups = [];
+      projectData.backups.push(backup);
+
+      // Update project with new backup
+      await pool.query(
+        'UPDATE projects SET data = $1 WHERE id = $2',
+        [JSON.stringify(projectData), projectId]
+      );
+
+      // Simulate sending the backup email (would be async in production)
+      if (resend) {
+        resend.emails.send({
+          from: 'Plothole Backups <backups@resend.dev>',
+          to: 'alittler86@gmail.com',
+          subject: `[Test] Backup: ${projectData.title} [${backup.hash}] (${backup.wordCount} words)`,
+          html: `<p>Test backup for project: <strong>${projectData.title}</strong></p><p>Hash: <code>${backup.hash}</code></p><p>Word count: ${backup.wordCount}</p>`
+        }).catch((err: any) => console.error('Backup email failed:', err));
+      }
+
+      res.json({ 
+        success: true, 
+        message: 'Test backup created successfully!',
+        backup 
+      });
+    } catch (err) {
+      console.error('Test backup error:', err);
+      res.status(500).json({ error: 'Failed to create test backup', message: err instanceof Error ? err.message : 'Unknown error' });
+    }
+  });
+
+  // Resend a failed backup
+  app.post('/api/resend-backup/:backupId', async (req: any, res) => {
+    const userId = req.auth?.userId || 'user-1';
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { backupId } = req.params;
+    const { projectId } = req.body;
+
+    if (!projectId || !backupId) return res.status(400).json({ error: 'Missing projectId or backupId' });
+
+    try {
+      const pool = getPool();
+      if (!pool) return res.status(500).json({ error: 'Database unavailable' });
+
+      // Fetch the project
+      const result = await pool.query('SELECT data FROM projects WHERE id = $1', [projectId]);
+      if (!result.rows.length) return res.status(404).json({ error: 'Project not found' });
+
+      const projectData = result.rows[0].data;
+      const backup = projectData.backups?.find((b: any) => b.id === backupId);
+      if (!backup) return res.status(404).json({ error: 'Backup not found' });
+
+      // Update backup status to pending
+      backup.status = 'pending';
+      await pool.query(
+        'UPDATE projects SET data = $1 WHERE id = $2',
+        [JSON.stringify(projectData), projectId]
+      );
+
+      // Send the backup email
+      if (resend) {
+        resend.emails.send({
+          from: 'Plothole Backups <backups@resend.dev>',
+          to: 'alittler86@gmail.com',
+          subject: `[Resend] Backup: ${projectData.title} [${backup.hash}] (${backup.wordCount} words)`,
+          html: `<p>Resending backup for project: <strong>${projectData.title}</strong></p><p>Hash: <code>${backup.hash}</code></p><p>Word count: ${backup.wordCount}</p>`
+        }).then(() => {
+          // Mark as delivered after successful send
+          backup.status = 'delivered';
+          pool.query('UPDATE projects SET data = $1 WHERE id = $2', [JSON.stringify(projectData), projectId]);
+        }).catch((err: any) => console.error('Resend email failed:', err));
+      }
+
+      res.json({ 
+        success: true, 
+        message: 'Backup resend initiated!'
+      });
+    } catch (err) {
+      console.error('Resend backup error:', err);
+      res.status(500).json({ error: 'Failed to resend backup', message: err instanceof Error ? err.message : 'Unknown error' });
+    }
+  });
+
   // Username management
   app.post('/api/user/username', async (req: any, res) => {
     if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });

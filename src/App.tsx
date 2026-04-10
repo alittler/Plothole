@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
 import { 
   ProjectData, ProjectMetadata, User, ViewType, Note, 
-  AppPrompts, AppSettings, ToolboxLink, Artifact, LoreEntry, Idea, ChangeLogEntry, Relationship, SemanticDocument, ProseDocument, Chapter
+  AppPrompts, AppSettings, ToolboxLink, Artifact, LoreEntry, TimelineEvent, Idea, ChangeLogEntry, Relationship, SemanticDocument, ProseDocument, Chapter
 } from './types';
 import { 
   getAllProjectsMetadata, loadProjectById, saveProjectData, 
@@ -796,20 +796,20 @@ const handleRestoreCommit = async (commit: Commit) => {
         { id: 'ART-TRUTH-SCROLL', name: 'The Founding Scroll', description: 'A hidden scroll revealing the truth about the Mnemonic Plague—that it was not a disaster but a weapon.', type: 'Artifact', significance: 'Legendary', source: 'manual' as const }
       ];
 
-      const lore = [
-        { id: 'LORE-MNEMONIC-PLAGUE', name: 'The Mnemonic Plague', content: 'Three centuries ago, a catastrophic event wiped the collective memory of civilization. Official records claim it was a natural disaster. In reality, it was engineered by the First High Architects as a tool to reshape society and eliminate dissent.', tags: ['History', 'Mystery'], source: 'manual' as const },
-        { id: 'LORE-ECHO-WALKERS', name: 'Echo-Walkers and the Void', content: 'Echo-Walkers are individuals capable of entering others\' minds and experiencing their memories. Those untrained risk the Void—a state of complete memory loss that erases all sense of identity. The Chronos Key and ancient stabilization techniques can prevent this fate.', tags: ['Magic System', 'Danger'], source: 'manual' as const },
-        { id: 'LORE-THE-WEAVER', name: 'The Great Weaver', content: 'A figure of legend from before the Plague who supposedly spun the first memory strings at the dawn of time. May have been the architect of the original society\'s memory system. Some believe The Weaver still exists in spectral form.', tags: ['Mythology', 'Speculation'], source: 'manual' as const },
-        { id: 'LORE-MNEMOS-CURRENCY', name: 'Mnemos: Memory as Currency', content: 'In the post-Plague world, memories became the primary currency. Extracted memories of the elite are stored in vials and traded. Those with more memory strength (Mnemos) have greater social status and access to resources.', tags: ['Economy', 'Society'], source: 'manual' as const },
-        { id: 'LORE-FIRST-AGE', name: 'The First Age Before Memory', content: 'Largely lost to the Plague, the First Age was a world where civilization depended on a unified memory system. Records suggest advanced technology, complex social structures, and knowledge now considered impossible. Only fragments remain in the Deep Vaults.', tags: ['Lost Civilization', 'History'], source: 'manual' as const }
+      const lore: LoreEntry[] = [
+        { id: 'LORE-MNEMONIC-PLAGUE', term: 'The Mnemonic Plague', definition: 'Three centuries ago, a catastrophic event wiped the collective memory of civilization. Official records claim it was a natural disaster. In reality, it was engineered by the First High Architects as a tool to reshape society and eliminate dissent.', tags: ['History', 'Mystery'], category: 'Event', source: 'manual' as const },
+        { id: 'LORE-ECHO-WALKERS', term: 'Echo-Walkers and the Void', definition: 'Echo-Walkers are individuals capable of entering others\' minds and experiencing their memories. Those untrained risk the Void—a state of complete memory loss that erases all sense of identity. The Chronos Key and ancient stabilization techniques can prevent this fate.', tags: ['Magic System', 'Danger'], category: 'Abilities', source: 'manual' as const },
+        { id: 'LORE-THE-WEAVER', term: 'The Great Weaver', definition: 'A figure of legend from before the Plague who supposedly spun the first memory strings at the dawn of time. May have been the architect of the original society\'s memory system. Some believe The Weaver still exists in spectral form.', tags: ['Mythology', 'Speculation'], category: 'Mythology', source: 'manual' as const },
+        { id: 'LORE-MNEMOS-CURRENCY', term: 'Mnemos: Memory as Currency', definition: 'In the post-Plague world, memories became the primary currency. Extracted memories of the elite are stored in vials and traded. Those with more memory strength (Mnemos) have greater social status and access to resources.', tags: ['Economy', 'Society'], category: 'Economy', source: 'manual' as const },
+        { id: 'LORE-FIRST-AGE', term: 'The First Age Before Memory', definition: 'Largely lost to the Plague, the First Age was a world where civilization depended on a unified memory system. Records suggest advanced technology, complex social structures, and knowledge now considered impossible. Only fragments remain in the Deep Vaults.', tags: ['Lost Civilization', 'History'], category: 'History', source: 'manual' as const }
       ];
 
-      const timeline = [
-        { id: 'TL-FIRST-AGE', date: '0', period: 'The First Age', description: 'Civilization at its height. Memory system operates perfectly. The Weaver constructs the foundational memory architecture.', status: 'Unknown' as const },
-        { id: 'TL-THE-PLAGUE', date: '0-300YBP', period: 'The Mnemonic Plague', description: 'A catastrophic event wipes the collective memory. Official history begins here. Survivors rebuild, creating the Citadel under the rule of the First High Architects.', status: 'Documented' as const },
-        { id: 'TL-CITADEL-FOUNDED', date: '300YBP', period: 'Founding of the Citadel', description: 'The Great Archive is constructed. Memory becomes the foundation of society. The tiered class system emerges based on memory strength.', status: 'Documented' as const },
-        { id: 'TL-GREAT-FIRE', date: '10YBP', period: 'The West Wing Burning', description: 'Vaelen orders the destruction of the West Wing of the Archive to eliminate knowledge of dissent and rebellion. Thousands of memories are lost forever.', status: 'Suspected' as const },
-        { id: 'TL-PRESENT-DAY', date: 'Now', period: 'The Echo Awakens', description: 'Arthur discovers the Chronos Key. The Echo manifests. The truth of the Founding begins to unravel. The Citadel\'s carefully constructed reality faces its greatest threat.', status: 'In Progress' as const }
+      const timeline: TimelineEvent[] = [
+        { id: 'TL-FIRST-AGE', date: '0', title: 'The First Age', description: 'Civilization at its height. Memory system operates perfectly. The Weaver constructs the foundational memory architecture.', charactersInvolved: ['The Weaver'], location: 'The World' },
+        { id: 'TL-THE-PLAGUE', date: '0-300YBP', title: 'The Mnemonic Plague', description: 'A catastrophic event wipes the collective memory. Official history begins here. Survivors rebuild, creating the Citadel under the rule of the First High Architects.', charactersInvolved: ['The First Architects'], location: 'Global' },
+        { id: 'TL-CITADEL-FOUNDED', date: '300YBP', title: 'Founding of the Citadel', description: 'The Great Archive is constructed. Memory becomes the foundation of society. The tiered class system emerges based on memory strength.', charactersInvolved: ['First High Architects'], location: 'Citadel' },
+        { id: 'TL-GREAT-FIRE', date: '10YBP', title: 'The West Wing Burning', description: 'Vaelen orders the destruction of the West Wing of the Archive to eliminate knowledge of dissent and rebellion. Thousands of memories are lost forever.', charactersInvolved: ['Admin Vaelen'], location: 'The Great Archive' },
+        { id: 'TL-PRESENT-DAY', date: 'Now', title: 'The Echo Awakens', description: 'Arthur discovers the Chronos Key. The Echo manifests. The truth of the Founding begins to unravel. The Citadel\'s carefully constructed reality faces its greatest threat.', charactersInvolved: ['Arthur Penhaligon', 'The Echo'], location: 'The Citadel' }
       ];
 
       const proseDocuments = [
@@ -1046,7 +1046,7 @@ const handleRestoreCommit = async (commit: Commit) => {
       await exportVaultAsZip(
         globalNotes,
         generateId(8),
-        currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : 'Unknown Author',
+        currentUser?.name || 'Unknown Author',
         projectsMetadata
       );
     } catch (e) {
@@ -1767,9 +1767,10 @@ const handleRestoreCommit = async (commit: Commit) => {
               currentUser={currentUser}
               onFileUpload={() => {}}
               onLoadSample={() => handleCreateProject(projectData?.title || 'The Obsidian Citadel', projectData?.author || 'Junior Archivist', true, projectData?.shortName || 'Citadel', projectData?.id)}
-              onExport={() => exportProjectPlothole(projectData)}
-              onAnalyzeText={() => {}}
+              onExport={handleExportVault}
+              onExportVault={handleExportVault}
               onRestoreHistory={() => {}}
+              onAnalyzeText={() => {}}
               onUpdateProcessedFiles={handleUpdateProcessedFiles}
               isUpdatingProcessed={isUpdatingProcessed}
               error={null}

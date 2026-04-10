@@ -150,6 +150,7 @@ export interface LoreEntry {
   term: string; // Maps to prefLabel
   definition: string; // Maps to definition/note
   category: string;
+  tags?: string[];
   source?: 'manual' | 'ai';
 
   // SKOS (Simple Knowledge Organization System) Compatibility
@@ -259,6 +260,7 @@ export interface ProjectData {
   calendars: CalendarSystem[];
   commits?: Commit[];
   backups?: BackupStatus[];
+  backupSettings?: BackupSettings;
   integrityHash?: string;
   latestManuscriptText?: string;
   manuscriptDraft?: string;
@@ -509,6 +511,15 @@ export interface BackupStatus {
   resendId?: string;
 }
 
+export type BackupFrequency = 'manual' | 'hourly' | 'daily' | 'weekly' | 'monthly';
+
+export interface BackupSettings {
+  frequency: BackupFrequency;
+  lastBackupTime?: number;
+  nextBackupTime?: number;
+  enabled: boolean;
+}
+
 export interface ProjectMetadata {
   id: string;
   title: string;
@@ -528,6 +539,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username?: string;
   role: 'admin' | 'editor';
   themeColor: string;
   lastActive?: number;

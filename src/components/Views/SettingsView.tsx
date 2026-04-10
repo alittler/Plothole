@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ProjectData, Note, User as AppUser, ViewType, ChangeLogEntry, AppSettings } from '../../types';
+import { ProjectData, Note, User as AppUser, ViewType, ChangeLogEntry, AppSettings, BackupFrequency } from '../../types';
 import { 
   Settings, User as UserIcon, Database, Shield, Code, Check, 
   ChevronRight, History, Activity, Hash, Archive, FileCode,
   Link as LinkIcon, Sparkles, Copy, Trash2, Download, FileText, X,
-  MapPin, Book, Clock, Upload, AlertCircle
+  MapPin, Book, Clock, Upload, AlertCircle, Mail
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
@@ -42,6 +42,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as SettingsTab) || SettingsTab.PROFILE;
+  console.log('[SettingsView] Active Tab:', activeTab);
   const setActiveTab = (tab: SettingsTab) => setSearchParams({ tab });
 
   const [rawText, setRawText] = React.useState('');
@@ -52,6 +53,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [archiveFiles, setArchiveFiles] = React.useState<{ name: string, size: number, mtime: Date, url: string }[]>([]);
   const [previewFile, setPreviewFile] = React.useState<{ name: string, content: string, type: string } | null>(null);
   const [isLoadingArchive, setIsLoadingArchive] = React.useState(false);
+  
+  const [backupFrequency, setBackupFrequency] = React.useState<BackupFrequency>((projectData?.backupSettings?.frequency) || 'manual');
+  const [isBackupEnabled, setIsBackupEnabled] = React.useState(projectData?.backupSettings?.enabled ?? false);
+  const [isTestEmailLoading, setIsTestEmailLoading] = React.useState(false);
+  const [testEmailResult, setTestEmailResult] = React.useState<{ success: boolean; message: string } | null>(null);
+  const [isTestBackupLoading, setIsTestBackupLoading] = React.useState(false);
+  const [testBackupResult, setTestBackupResult] = React.useState<{ success: boolean; message: string } | null>(null);
   
   // Use provided fetchWithAuth or fallback to plain fetch
   const doFetch = fetchWithAuth || fetch.bind(window);
@@ -126,6 +134,113 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     } finally {
       setIsLoadingArchive(false);
     }
+  };
+
+  const handleSendTestEmail = async () => {
+    setIsTestEmailLoading(true);
+    setTestEmailResult(null);
+    try {
+      const resp = await doFetch('/api/send-test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          projectId: projectData?.id,
+          userEmail: currentUser?.email 
+        })
+      });
+      
+      const data = await resp.json();
+      setTestEmailResult({
+        success: resp.ok,
+        message: data.message || (resp.ok ? 'Test email sent successfully!' : 'Failed to send test email')
+      });
+      setTimeout(() => setTestEmailResult(null), 5000);
+    } catch (err) {
+      setTestEmailResult({
+        success: false,
+        message: 'Error sending test email: ' + (err instanceof Error ? err.message : 'Unknown error')
+      });
+    } finally {
+      setIsTestEmailLoading(false);
+    }
+  };
+
+  const handleTestBackup = async () => {
+    setIsTestBackupLoading(true);
+    setTestBackupResult(null);
+    try {
+      const resp = await doFetch('/api/test-backup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          projectId: projectData?.id
+        })
+      });
+      
+      const data = await resp.json();
+      setTestBackupResult({
+        success: resp.ok,
+        message: data.message || (resp.ok ? 'Test backup created successfully!' : 'Failed to create test backup')
+      });
+      setTimeout(() => setTestBackupResult(null), 5000);
+    } catch (err) {
+      setTestBackupResult({
+        success: false,
+        message: 'Error creating test backup: ' + (err instanceof Error ? err.message : 'Unknown error')
+      });
+    } finally {
+      setIsTestBackupLoading(false);
+    }
+  };
+
+  const handleBackupSettingsChange = (frequency: BackupFrequency) => {
+    setBackupFrequency(frequency);
+    if (projectData) {
+      onUpdateProject({
+        ...projectData,
+        backupSettings: {
+          frequency,
+          enabled: isBackupEnabled,
+          lastBackupTime: projectData.backupSettings?.lastBackupTime,
+          nextBackupTime: projectData.backupSettings?.nextBackupTime
+        }
+      });
+    }
+  };
+
+  const handleBackupEnabledChange = (enabled: boolean) => {
+    setIsBackupEnabled(enabled);
+    if (projectData) {
+      onUpdateProject({
+        ...projectData,
+        backupSettings: {
+          frequency: backupFrequency,
+          enabled,
+          lastBackupTime: projectData.backupSettings?.lastBackupTime,
+          nextBackupTime: projectData.backupSettings?.nextBackupTime
+        }
+      });
+    }
+  };
+
+  const getNextBackupTime = () => {
+    if (!isBackupEnabled || backupFrequency === 'manual') return null;
+    
+    const now = Date.now();
+    const intervals: Record<BackupFrequency, number> = {
+      hourly: 60 * 60 * 1000,
+      daily: 24 * 60 * 60 * 1000,
+      weekly: 7 * 24 * 60 * 60 * 1000,
+      monthly: 30 * 24 * 60 * 60 * 1000,
+      manual: 0
+    };
+    
+    const nextTime = (projectData?.backupSettings?.lastBackupTime || now) + intervals[backupFrequency];
+    return nextTime;
+  };
+
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString();
   };
 
   const handlePreviewFile = async (file: { name: string, url: string }) => {
@@ -484,7 +599,205 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       case SettingsTab.ARCHIVE:
         return projectData ? (
-          <section className="h-full flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in duration-500">
+          <section className="h-full flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-y-auto animate-in fade-in duration-500">
+            <div className="bg-amber-500 text-white p-2 text-center font-bold uppercase text-[10px] tracking-[0.2em]">DEBUG: Backup Preview System Active</div>
+            {/* Backup Resend Section */}
+            <div className="p-10 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-4 bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-600/20">
+                  <Download size={28} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Backup & Resend</h3>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Resend project backups to cloud storage.</p>
+                </div>
+              </div>
+              
+              {projectData.backups && projectData.backups.length > 0 ? (
+                <div className="space-y-3">
+                  {projectData.backups.map(backup => (
+                    <div key={backup.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className={`w-2 h-2 rounded-full ${backup.status === 'delivered' ? 'bg-emerald-500' : backup.status === 'pending' ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white text-sm">{new Date(backup.timestamp).toLocaleString()}</p>
+                          <p className="text-xs text-slate-500">{backup.wordCount} words • {backup.status}</p>
+                        </div>
+                      </div>
+                      {backup.status !== 'delivered' && (
+                        <button 
+                          onClick={() => {
+                            fetch(`/api/resend-backup/${backup.id}`, { method: 'POST' })
+                              .catch(err => console.error('Resend failed:', err));
+                          }}
+                          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-bold uppercase"
+                        >
+                          Resend
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400 italic">No backups yet.</p>
+              )}
+
+              {/* Test Backup Button */}
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={handleTestBackup}
+                  disabled={isTestBackupLoading}
+                  className="flex-1 px-6 py-3 bg-emerald-600 text-white font-bold uppercase text-sm rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-600/30"
+                >
+                  {isTestBackupLoading ? 'Creating...' : 'Test Backup'}
+                </button>
+              </div>
+
+              {testBackupResult && (
+                <div className={`mt-4 p-4 rounded-lg border ${testBackupResult.success ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800'}`}>
+                  <p className={`text-sm font-bold ${testBackupResult.success ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
+                    {testBackupResult.message}
+                  </p>
+                </div>
+              )}
+
+              {/* Backup Scheduling Settings */}
+              <div className="mt-8 pt-8 border-t border-emerald-200 dark:border-emerald-800/50 space-y-6">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-3 block">Backup Schedule</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['manual', 'hourly', 'daily', 'weekly', 'monthly'] as BackupFrequency[]).map(freq => (
+                      <button
+                        key={freq}
+                        onClick={() => handleBackupSettingsChange(freq)}
+                        className={`py-3 px-4 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${backupFrequency === freq ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-emerald-500'}`}
+                      >
+                        {freq}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-200 dark:border-emerald-800/30 mb-6">
+                  <div className="space-y-1">
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Automatic Backups</span>
+                    <p className="text-[10px] text-slate-600 dark:text-slate-400 font-bold uppercase">Enable scheduled backups.</p>
+                  </div>
+                  <button 
+                    onClick={() => handleBackupEnabledChange(!isBackupEnabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isBackupEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isBackupEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {isBackupEnabled && getNextBackupTime() && (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-[10px]">
+                    <p className="text-slate-600 dark:text-slate-300 font-bold uppercase tracking-widest mb-1">Next Backup</p>
+                    <p className="text-slate-500 dark:text-slate-400 font-mono text-xs">{formatTime(getNextBackupTime()!)}</p>
+                  </div>
+                )}
+                </div>
+
+                {/* Backup Preview Section - Moved Outside for better visibility and padding */}
+                <div className="mt-8 pt-8 border-t border-emerald-200 dark:border-emerald-800/50 space-y-4 pb-20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={16} className="text-emerald-600" />
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Backup Preview</h4>
+                </div>
+
+                {/* Email Preview Card */}
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 rounded-full bg-rose-400" />
+                        <div className="w-2 h-2 rounded-full bg-amber-400" />
+                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                      </div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase ml-2">Backup Notification Preview</span>
+                    </div>
+                    <Mail size={12} className="text-slate-400" />
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Subject</p>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-100">[Milestone] Backup: {projectData?.title || 'Project'} [sha-8] ({projectData?.wordCount || 0} words)</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Body</p>
+                      <div className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-100 dark:border-slate-800/50">
+                        <p>Automated backup for project: <strong>{projectData?.title}</strong></p>
+                        <p className="mt-1 text-slate-400 italic">This backup contains the current .plothole files for all books associated with your account.</p>
+                      </div>
+                    </div>
+
+                    {/* Attachments Preview */}
+                    <div className="pt-2">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase mb-2">Attachments (Estimated)</p>
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="flex items-center justify-between p-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-300 rounded">
+                              <FileText size={12} />
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">{projectData?.title?.replace(/\s+/g, '_')}_current.plothole</span>
+                          </div>
+                          <span className="text-[9px] font-mono text-emerald-600/70">CURRENT</span>
+                        </div>
+
+                        <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-100 dark:border-slate-800/50 opacity-60">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 bg-slate-200 dark:bg-slate-700 text-slate-500 rounded">
+                              <History size={12} />
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">Historical_Snapshots.zip</span>
+                          </div>
+                          <span className="text-[9px] font-mono text-slate-400">UP TO 5 COPIES (MATCHING SHA)</span>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-[9px] text-slate-400 leading-tight italic">
+                        Note: The system sends the current state of all associated books and up to 5 historical versions for each file where SHA codes match established milestones.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                </div>
+                </div>
+
+            {/* Test Email Section */}
+            <div className="p-10 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-4 bg-violet-600 text-white rounded-2xl shadow-lg shadow-violet-600/20">
+                  <Mail size={28} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Email Settings</h3>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Test your email configuration.</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600 dark:text-slate-300">Send a test email to verify your backup notifications are working correctly.</p>
+                
+                {testEmailResult && (
+                  <div className={`p-4 rounded-lg border ${testEmailResult.success ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800'}`}>
+                    <p className={`text-sm font-bold ${testEmailResult.success ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
+                      {testEmailResult.message}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleSendTestEmail}
+                  disabled={isTestEmailLoading}
+                  className="w-full px-6 py-3 bg-violet-600 text-white font-bold uppercase text-sm rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-600/30"
+                >
+                  {isTestEmailLoading ? 'Sending...' : 'Send Test Email'}
+                </button>
+              </div>
+            </div>
+
             <div className="p-10 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 relative z-10">
               <div className="flex items-center gap-4">
                 <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20">
@@ -751,7 +1064,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
                 <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
                   <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-                    <User size={20} className="text-indigo-600" />
+                    <UserIcon size={20} className="text-indigo-600" />
                   </div>
                   <h3 className="font-black text-lg text-slate-900 dark:text-white">CHARACTERS</h3>
                 </div>
@@ -996,7 +1309,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   return (
     <div className="h-full flex bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
       {/* Settings Secondary Sidebar */}
-      <aside className={`${activeTab ? 'hidden lg:flex' : 'flex'} w-full lg:w-64 md:w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col shrink-0 transition-all duration-300`}>
+      <aside className={`w-full lg:w-64 md:w-72 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col lg:flex-col shrink-0 transition-all duration-300`}>
         <div className="p-8 border-b border-slate-100 dark:border-slate-800 space-y-1">
           <h1 className="ph-section-title text-xl flex items-center gap-3">
             <Settings size={20} className="text-indigo-600" /> Settings
@@ -1004,17 +1317,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <p className="ph-section-subtitle">Environment Control</p>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
+        <nav data-section="view-tabs" className="lg:flex-1 overflow-x-auto lg:overflow-y-auto p-4 flex lg:flex-col gap-2 custom-scrollbar">
           {Object.values(SettingsTab).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`ph-tab w-full flex items-center gap-3 px-4 py-3.5 ${activeTab === tab ? 'ph-tab-active' : 'ph-tab-inactive'}`}
+              className={`ph-tab lg:w-full flex flex-row items-center lg:gap-3 gap-1 px-2 lg:px-4 py-2 lg:py-3.5 whitespace-nowrap shrink-0 ${activeTab === tab ? 'ph-tab-active' : 'ph-tab-inactive'}`}
             >
               <div className={activeTab === tab ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}>
                 {getTabIcon(tab)}
               </div>
-              {tab}
+              <span className="hidden lg:inline">{tab}</span>
             </button>
           ))}
         </nav>

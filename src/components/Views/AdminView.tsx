@@ -5,7 +5,7 @@ import {
   Shield, Sparkles, Save, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3, GripVertical, Eye, EyeOff, Users, Calendar
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3, GripVertical, Eye, EyeOff, Users, Calendar, Menu
 } from 'lucide-react';
 
 import { CardCatalogueView } from './CardCatalogueView';
@@ -362,6 +362,10 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 )}
               </div>
 
+              <button onClick={saveBottomNavOrder} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20">
+                <Save size={18} /> Save Bottom Nav Order
+              </button>
+
               {hiddenBottomNavItems.length > 0 && (
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-100 dark:border-slate-800 space-y-3">
                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Hidden Links</h3>
@@ -382,13 +386,27 @@ export const AdminView: React.FC<AdminViewProps> = ({
                         </button>
                       </div>
                     ))}
+                    {/* Menu/Hamburger Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 opacity-50">
+                      <div className="flex items-center gap-3">
+                        <EyeOff size={16} className="text-slate-400" />
+                        <Menu size={18} className="text-slate-500" />
+                        <span className="font-bold text-slate-900 dark:text-white">Menu</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          // This would toggle showing/hiding the menu button
+                          // For now, this is a placeholder for future functionality
+                        }}
+                        className="p-2 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 text-emerald-500 rounded-lg transition-colors"
+                        title="Show in bottom nav"
+                      >
+                        <EyeOff size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
-
-              <button onClick={saveBottomNavOrder} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20">
-                <Save size={18} /> Save Bottom Nav Order
-              </button>
             </section>
           </div>
         );
@@ -842,7 +860,7 @@ books:
   return (
     <div className="h-full flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
       {/* Admin Secondary Sidebar */}
-      <aside className={`${activeTab ? 'hidden md:flex' : 'flex'} w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col shrink-0 transition-all duration-300`}>
+      <aside className={`w-full md:w-72 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col md:flex-col shrink-0 transition-all duration-300`}>
         <div className="p-8 border-b border-slate-100 dark:border-slate-800 space-y-1">
           <h1 className="ph-section-title text-xl flex items-center gap-3">
             <Shield size={20} className="text-indigo-600" /> Admin
@@ -850,12 +868,12 @@ books:
           <p className="ph-section-subtitle">System Control</p>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
+        <nav data-section="view-tabs" className="md:flex-1 overflow-x-auto md:overflow-y-auto p-4 flex md:flex-col gap-2 custom-scrollbar">
           {Object.values(AdminTab).map(tab => (
             <button
               key={tab}
               onClick={() => handleSetActiveTab(tab)}
-              className={`ph-tab w-full flex items-center gap-3 px-4 py-3.5 ${activeTab === tab ? 'ph-tab-active bg-indigo-600 text-white' : 'ph-tab-inactive'}`}
+              className={`ph-tab md:w-full flex flex-row items-center md:gap-3 gap-1 px-2 md:px-4 py-2 md:py-3.5 whitespace-nowrap shrink-0 ${activeTab === tab ? 'ph-tab-active bg-indigo-600 text-white' : 'ph-tab-inactive'}`}
             >
               <div className={activeTab === tab ? 'text-white' : 'text-indigo-500'}>
                 {tab === AdminTab.SYSTEM && <Settings size={18} />}
@@ -865,7 +883,7 @@ books:
                 {tab === AdminTab.CARD_CATALOGUE && <Grid3x3 size={18} />}
                 {tab === AdminTab.PLOTHOLE_FORMAT && <Archive size={18} />}
               </div>
-              {tab}
+              <span className="hidden md:inline">{tab}</span>
             </button>
           ))}
         </nav>
@@ -900,8 +918,8 @@ books:
       </aside>
 
       {/* Main Admin Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar">
-        <div className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8 min-h-full pb-40">
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto relative bg-slate-50 dark:bg-slate-950 custom-scrollbar pb-20 lg:pb-0">
+        <div className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8 min-h-full">
           {renderTabContent()}
         </div>
       </main>
