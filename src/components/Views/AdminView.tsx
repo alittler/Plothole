@@ -5,7 +5,7 @@ import {
   Shield, Sparkles, Save, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3, GripVertical, Eye, EyeOff, Users, Calendar, Menu
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3, GripVertical, Eye, EyeOff, Users, Calendar, Menu, QrCode
 } from 'lucide-react';
 
 import { CardCatalogueView } from './CardCatalogueView';
