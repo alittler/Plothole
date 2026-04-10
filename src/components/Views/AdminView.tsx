@@ -72,6 +72,10 @@ export const AdminView: React.FC<AdminViewProps> = ({
     return stored ? JSON.parse(stored) : [];
   });
   const [newScriptureEntry, setNewScriptureEntry] = useState<Partial<ScriptureEntry>>({ reference: '', translation: 'KJV', text: '', notes: '' });
+  const [scriptureSearchInput, setScriptureSearchInput] = useState('');
+  const [scriptureSearchResults, setScriptureSearchResults] = useState<any>(null);
+  const [scriptureSearchLoading, setScriptureSearchLoading] = useState(false);
+  const [scriptureSearchError, setScriptureSearchError] = useState('');
 
   React.useEffect(() => {
     fetch('/api/network-info')
@@ -144,6 +148,87 @@ export const AdminView: React.FC<AdminViewProps> = ({
     const updated = scriptureEntries.filter(e => e.id !== id);
     setScriptureEntries(updated);
     localStorage.setItem('scripture_entries', JSON.stringify(updated));
+  };
+
+  const handleSearchScripture = async () => {
+    if (!scriptureSearchInput.trim()) {
+      setScriptureSearchError('Please enter a verse reference (e.g., John 3:16)');
+      return;
+    }
+
+    setScriptureSearchLoading(true);
+    setScriptureSearchError('');
+    setScriptureSearchResults(null);
+
+    try {
+      // Use the free Bible API with KJV (public domain)
+      const response = await fetch(`https://api.scripture.api.bible/v1/search?query=${encodeURIComponent(scriptureSearchInput)}&bibleId=de4e12af7f28f599-02`, {
+        headers: {
+          'api-key': 'e8a36d2161e8ca1c3b95e6e78e0b1d67'
+        }
+      });
+
+      if (!response.ok) {
+        // Fallback: parse the reference manually (e.g., "John 3:16")
+        const match = scriptureSearchInput.match(/^(\d?\s*[A-Za-z]+)\s+(\d+):(\d+)/);
+        if (match) {
+          const book = match[1].trim();
+          const chapter = match[2];
+          const verse = match[3];
+          
+          setScriptureSearchResults({
+            reference: `${book} ${chapter}:${verse}`,
+            text: '[Verse text not available - please add manually or visit biblegateway.com]',
+            isManual: true
+          });
+          setNewScriptureEntry({
+            reference: `${book} ${chapter}:${verse}`,
+            translation: 'KJV',
+            text: '',
+            notes: ''
+          });
+        } else {
+          setScriptureSearchError('Invalid verse format. Use: John 3:16, Genesis 1:1, etc.');
+        }
+        return;
+      }
+
+      const data = await response.json();
+      
+      if (data.passages && data.passages.length > 0) {
+        const passage = data.passages[0];
+        setScriptureSearchResults({
+          reference: scriptureSearchInput,
+          text: passage.content.replace(/<[^>]*>/g, ''),
+          translation: 'KJV',
+          source: 'Bible API'
+        });
+        setNewScriptureEntry({
+          reference: scriptureSearchInput,
+          translation: 'KJV',
+          text: passage.content.replace(/<[^>]*>/g, ''),
+          notes: 'Auto-fetched from Bible API'
+        });
+      } else {
+        setScriptureSearchError('Verse not found. Try: John 3:16, Genesis 1:1, etc.');
+      }
+    } catch (err) {
+      setScriptureSearchError('Could not fetch verse. Please enter the text manually.');
+      const match = scriptureSearchInput.match(/^(\d?\s*[A-Za-z]+)\s+(\d+):(\d+)/);
+      if (match) {
+        const book = match[1].trim();
+        const chapter = match[2];
+        const verse = match[3];
+        setNewScriptureEntry({
+          reference: `${book} ${chapter}:${verse}`,
+          translation: 'KJV',
+          text: '',
+          notes: ''
+        });
+      }
+    } finally {
+      setScriptureSearchLoading(false);
+    }
   };
 
   const getViewLabel = (view: ViewType): string => {
@@ -928,16 +1013,75 @@ books:
               </p>
             </section>
 
-            {/* Add New Entry Form */}
+            {/* Search for Verses */}
             <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Add New Entry</h3>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Search & Add Verses</h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Reference (e.g., "Genesis 1:1", "Job 3:11")</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Verse Reference (e.g., "John 3:16", "Genesis 1:1", "Psalm 23")</label>
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      placeholder="Search for a Bible verse..."
+                      value={scriptureSearchInput}
+                      onChange={e => setScriptureSearchInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSearchScripture()}
+                      className="flex-1 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                    <button
+                      onClick={handleSearchScripture}
+                      disabled={scriptureSearchLoading}
+                      className="px-6 py-3 bg-amber-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+                    >
+                      {scriptureSearchLoading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                      {scriptureSearchLoading ? 'Searching...' : 'Search'}
+                    </button>
+                  </div>
+                </div>
+
+                {scriptureSearchError && (
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/30">
+                    <p className="text-sm text-red-600 dark:text-red-400">{scriptureSearchError}</p>
+                  </div>
+                )}
+
+                {scriptureSearchResults && (
+                  <div className="p-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                    <h4 className="text-sm font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider mb-3">Search Result</h4>
+                    <div className="mb-4 p-4 bg-white dark:bg-slate-800/50 rounded-xl border border-amber-100 dark:border-amber-900/50">
+                      <p className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-2">{scriptureSearchResults.reference}</p>
+                      <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed font-serif italic">
+                        "{scriptureSearchResults.text}"
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (newScriptureEntry.reference && newScriptureEntry.text) {
+                          handleAddScriptureEntry();
+                          setScriptureSearchInput('');
+                          setScriptureSearchResults(null);
+                        }
+                      }}
+                      className="w-full py-3 bg-amber-600 text-white rounded-xl font-black uppercase tracking-widest hover:bg-amber-700 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus size={18} /> Add to Library
+                    </button>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Manual Entry Form (fallback) */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Or Add Manually</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Verse Reference</label>
                   <input
                     type="text"
-                    placeholder="Enter verse reference..."
+                    placeholder="e.g., John 3:16"
                     value={newScriptureEntry.reference || ''}
                     onChange={e => setNewScriptureEntry({...newScriptureEntry, reference: e.target.value})}
                     className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
@@ -952,23 +1096,21 @@ books:
                       onChange={e => setNewScriptureEntry({...newScriptureEntry, translation: e.target.value})}
                       className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
                     >
-                      <option value="KJV">King James Version</option>
-                      <option value="NIV">New International Version</option>
+                      <option value="KJV">King James Version (Public Domain)</option>
+                      <option value="WEB">World English Bible (Public Domain)</option>
                       <option value="NASB">New American Standard Bible</option>
                       <option value="ESV">English Standard Version</option>
                       <option value="NLT">New Living Translation</option>
-                      <option value="NRSV">New Revised Standard Version</option>
-                      <option value="AMP">The Amplified Bible</option>
-                      <option value="MSG">The Message</option>
-                      <option value="OTHER">Other/Custom</option>
+                      <option value="NIV">New International Version</option>
+                      <option value="OTHER">Other/Custom Translation</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Year/Source (optional)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Source/Edition (optional)</label>
                     <input
                       type="text"
-                      placeholder="e.g., 1611, Print Edition"
+                      placeholder="e.g., 1611, Print Edition, BibleGateway"
                       value={newScriptureEntry.notes || ''}
                       onChange={e => setNewScriptureEntry({...newScriptureEntry, notes: e.target.value})}
                       className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
