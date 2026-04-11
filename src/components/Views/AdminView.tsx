@@ -10,6 +10,8 @@ import {
 
 import { CardCatalogueView } from './CardCatalogueView';
 import { generateId } from '../../services/storageService';
+import { CharacterCard } from '../ui/CharacterCard';
+import { HierarchicalEntity } from '../../types';
 
 interface AdminViewProps {
   data: ProjectData | null;
