@@ -71,8 +71,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
     const stored = localStorage.getItem('scripture_entries');
     return stored ? JSON.parse(stored) : [];
   });
-  const [newScriptureEntry, setNewScriptureEntry] = useState<Partial<ScriptureEntry>>({ reference: '', translation: 'KJV', text: '', notes: '' });
+  const [newScriptureEntry, setNewScriptureEntry] = useState<Partial<ScriptureEntry>>({ reference: '', translation: 'web', text: '', notes: '' });
   const [scriptureSearchInput, setScriptureSearchInput] = useState('');
+  const [scriptureSearchTranslation, setScriptureSearchTranslation] = useState('web');
   const [scriptureSearchResults, setScriptureSearchResults] = useState<any>(null);
   const [scriptureSearchLoading, setScriptureSearchLoading] = useState(false);
   const [scriptureSearchError, setScriptureSearchError] = useState('');
@@ -161,70 +162,49 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setScriptureSearchResults(null);
 
     try {
-      // Use the free Bible API with KJV (public domain)
-      const response = await fetch(`https://api.scripture.api.bible/v1/search?query=${encodeURIComponent(scriptureSearchInput)}&bibleId=de4e12af7f28f599-02`, {
-        headers: {
-          'api-key': 'e8a36d2161e8ca1c3b95e6e78e0b1d67'
-        }
-      });
-
-      if (!response.ok) {
-        // Fallback: parse the reference manually (e.g., "John 3:16")
-        const match = scriptureSearchInput.match(/^(\d?\s*[A-Za-z]+)\s+(\d+):(\d+)/);
-        if (match) {
-          const book = match[1].trim();
-          const chapter = match[2];
-          const verse = match[3];
-          
-          setScriptureSearchResults({
-            reference: `${book} ${chapter}:${verse}`,
-            text: '[Verse text not available - please add manually or visit biblegateway.com]',
-            isManual: true
-          });
-          setNewScriptureEntry({
-            reference: `${book} ${chapter}:${verse}`,
-            translation: 'KJV',
-            text: '',
-            notes: ''
-          });
-        } else {
-          setScriptureSearchError('Invalid verse format. Use: John 3:16, Genesis 1:1, etc.');
-        }
-        return;
-      }
-
+      // Use server-side proxy to avoid CORS issues, with translation parameter
+      const response = await fetch(`/api/bible/${encodeURIComponent(scriptureSearchInput)}?translation=${scriptureSearchTranslation}`);
       const data = await response.json();
-      
-      if (data.passages && data.passages.length > 0) {
-        const passage = data.passages[0];
+
+      if (data.success && data.text) {
         setScriptureSearchResults({
-          reference: scriptureSearchInput,
-          text: passage.content.replace(/<[^>]*>/g, ''),
-          translation: 'KJV',
+          reference: data.reference,
+          text: data.text,
+          translation: data.translation,
+          translationId: data.translationId,
           source: 'Bible API'
         });
         setNewScriptureEntry({
-          reference: scriptureSearchInput,
-          translation: 'KJV',
-          text: passage.content.replace(/<[^>]*>/g, ''),
-          notes: 'Auto-fetched from Bible API'
+          reference: data.reference,
+          translation: data.translation,
+          text: data.text,
+          notes: `Public domain - ${data.translationId}`
         });
       } else {
-        setScriptureSearchError('Verse not found. Try: John 3:16, Genesis 1:1, etc.');
+        throw new Error(data.error || 'Verse not found');
       }
     } catch (err) {
-      setScriptureSearchError('Could not fetch verse. Please enter the text manually.');
+      // Fallback: parse the reference manually (e.g., "John 3:16")
       const match = scriptureSearchInput.match(/^(\d?\s*[A-Za-z]+)\s+(\d+):(\d+)/);
       if (match) {
         const book = match[1].trim();
         const chapter = match[2];
         const verse = match[3];
+        
+        setScriptureSearchResults({
+          reference: `${book} ${chapter}:${verse}`,
+          text: '[Verse text not available - please paste manually from BibleGateway.com or similar]',
+          isManual: true
+        });
         setNewScriptureEntry({
           reference: `${book} ${chapter}:${verse}`,
-          translation: 'KJV',
+          translation: scriptureSearchTranslation,
           text: '',
           notes: ''
         });
+        setScriptureSearchError('Verse not found. Please paste text manually below.');
+      } else {
+        setScriptureSearchError('Invalid verse format. Use: John 3:16, Genesis 1:1, Psalm 23:1, etc.');
       }
     } finally {
       setScriptureSearchLoading(false);
@@ -1019,6 +999,25 @@ books:
               
               <div className="space-y-4">
                 <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Translation</label>
+                  <select
+                    value={scriptureSearchTranslation}
+                    onChange={e => setScriptureSearchTranslation(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                  >
+                    <option value="web">World English Bible (Public Domain)</option>
+                    <option value="kjv">King James Version (Public Domain)</option>
+                    <option value="dra">Douay-Rheims 1899 American Edition (Public Domain)</option>
+                    <option value="clementine">Clementine Latin Vulgate (Public Domain)</option>
+                    <option value="asv">American Standard Version 1901 (Public Domain)</option>
+                    <option value="darby">Darby Bible (Public Domain)</option>
+                    <option value="ylt">Young's Literal Translation - NT only (Public Domain)</option>
+                    <option value="bbe">Bible in Basic English (Public Domain)</option>
+                    <option value="oeb-us">Open English Bible - US Edition (Public Domain)</option>
+                  </select>
+                </div>
+
+                <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Verse Reference (e.g., "John 3:16", "Genesis 1:1", "Psalm 23")</label>
                   <div className="flex gap-3">
                     <input
@@ -1092,17 +1091,20 @@ books:
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block mb-2">Translation</label>
                     <select
-                      value={newScriptureEntry.translation || 'KJV'}
+                      value={newScriptureEntry.translation || 'web'}
                       onChange={e => setNewScriptureEntry({...newScriptureEntry, translation: e.target.value})}
                       className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-amber-500 outline-none"
                     >
-                      <option value="KJV">King James Version (Public Domain)</option>
-                      <option value="WEB">World English Bible (Public Domain)</option>
-                      <option value="NASB">New American Standard Bible</option>
-                      <option value="ESV">English Standard Version</option>
-                      <option value="NLT">New Living Translation</option>
-                      <option value="NIV">New International Version</option>
-                      <option value="OTHER">Other/Custom Translation</option>
+                      <option value="web">World English Bible (Public Domain)</option>
+                      <option value="kjv">King James Version (Public Domain)</option>
+                      <option value="dra">Douay-Rheims 1899 American Edition (Public Domain)</option>
+                      <option value="clementine">Clementine Latin Vulgate (Public Domain)</option>
+                      <option value="asv">American Standard Version 1901 (Public Domain)</option>
+                      <option value="darby">Darby Bible (Public Domain)</option>
+                      <option value="ylt">Young's Literal Translation - NT only (Public Domain)</option>
+                      <option value="bbe">Bible in Basic English (Public Domain)</option>
+                      <option value="oeb-us">Open English Bible - US Edition (Public Domain)</option>
+                      <option value="other">Other/Custom Translation</option>
                     </select>
                   </div>
 

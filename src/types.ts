@@ -26,7 +26,8 @@ export enum ViewType {
   CARD_CATALOGUE = 'CardCatalogue',
   WORLD_HUB = 'WorldHub',
   WORKSPACE_HUB = 'WorkspaceHub',
-  SYSTEM_HUB = 'SystemHub'
+  SYSTEM_HUB = 'SystemHub',
+  RESEARCH = 'Research'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -245,6 +246,10 @@ export interface ProjectData {
   corkboardNotes?: ProseDocument[]; // Separate collection for corkboard snippets
   semanticDocuments?: SemanticDocument[];
   userToolboxLinks?: ToolboxLink[];
+  
+  // Research Hub fields
+  researchSources?: {id: string; name: string; type: string; uploadDate: number; size: number; extractionStatus: string; notes?: string}[];
+  researchNotes?: {id: string; title: string; content: string; sourceIds: string[]; scriptureCitations: string[]; tags: string[]; createdAt: number; updatedAt: number}[];
   
   // Modular Tiered Architecture fields
   entities: HierarchicalEntity[];

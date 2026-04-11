@@ -678,6 +678,38 @@ async function startServer() {
     });
   });
 
+  app.get('/api/bible/:reference', async (req, res) => {
+    try {
+      const reference = req.params.reference;
+      const translation = req.query.translation || 'web'; // Default to WEB
+      const query = reference.replace(/:/g, ':').replace(/\s+/g, '+');
+      
+      const response = await fetch(`https://bible-api.com/${query}?translation=${translation}`);
+      const data = await response.json();
+      
+      if (data.verses && data.verses.length > 0) {
+        res.json({
+          success: true,
+          reference: data.reference || reference,
+          text: data.verses.map((v: any) => v.text).join(' '),
+          translation: data.translation_name || translation,
+          translationId: data.translation_id || translation,
+          source: 'Bible API'
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: 'Verse not found'
+        });
+      }
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch verse'
+      });
+    }
+  });
+
   app.get('/api/version', (req, res) => {
     const { execSync } = require('child_process');
     const fs = require('fs');

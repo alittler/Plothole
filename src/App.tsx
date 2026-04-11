@@ -38,6 +38,7 @@ import { AiAssistant } from './components/ui/AiAssistant';
 import { BookshelfView } from './components/Views/BookshelfView';
 import { DashboardView } from './components/Views/DashboardView';
 import { ResearchSystemView } from './components/Views/ResearchSystemView';
+import { ResearchHubView } from './components/Views/ResearchHubView';
 import { CharacterView } from './components/Views/CharacterView';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
 import { WorldSystemView } from './components/Views/WorldSystemView';
@@ -99,7 +100,51 @@ const App: React.FC = () => {
   const [appPrompts, setAppPromptsState] = useState<AppPrompts>(DEFAULT_PROMPTS);
   const [appSettings, setAppSettings] = useState<AppSettings>({ 
     appName: 'Plothole — Your Story, Decoded',
-    adminEmails: ['alittler86@gmail.com']
+    adminEmails: ['alittler86@gmail.com'],
+    defaultToolboxLinks: [
+      {
+        id: 'demo-demographics',
+        label: 'Fantasy Demographics Generator',
+        url: 'https://donjon.bin.sh/fantasy/demographics/',
+        category: 'World Building',
+        description: 'Generate realistic demographic data for fantasy settlements'
+      },
+      {
+        id: 'demo-magic-gen',
+        label: 'Magic Generator',
+        url: 'https://www.litrpgadventures.com/ai-tools/magic-generator/',
+        category: 'World Building',
+        description: 'Create unique magic systems and spells'
+      },
+      {
+        id: 'demo-onelook',
+        label: 'OneLook Dictionary',
+        url: 'https://www.onelook.com/',
+        category: 'Language',
+        description: 'Search across multiple dictionaries simultaneously'
+      },
+      {
+        id: 'demo-ogham',
+        label: 'Ogham',
+        url: 'https://ogham.co/',
+        category: 'Language',
+        description: 'Ancient Irish alphabet and writing system'
+      },
+      {
+        id: 'demo-ipa',
+        label: 'IPA Reader',
+        url: 'https://ipa-reader.com/',
+        category: 'Language',
+        description: 'Pronunciation helper using International Phonetic Alphabet'
+      },
+      {
+        id: 'demo-vulgarlang',
+        label: 'Vulgar',
+        url: 'https://www.vulgarlang.com/',
+        category: 'Language',
+        description: 'Create constructed and fictional languages'
+      }
+    ]
   });
   
   const [currentUser, setCurrentUser] = useState<User>(DEMO_USER);
@@ -1473,6 +1518,9 @@ const handleRestoreCommit = async (commit: Commit) => {
 
       case ViewType.CODEX:
         return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;
+
+      case ViewType.RESEARCH:
+        return projectData ? <ResearchHubView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research Hub.</div>;
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
