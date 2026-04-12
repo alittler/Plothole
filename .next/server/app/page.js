@@ -1,0 +1,13 @@
+var R=require("../chunks/ssr/[turbopack]_runtime.js")("server/app/page.js")
+R.c("server/chunks/ssr/[root-of-the-server]__0s3b.5w._.js")
+R.c("server/chunks/ssr/0oi0_next_dist_esm_build_templates_app-page_10fdv34.js")
+R.c("server/chunks/ssr/[root-of-the-server]__0d12itm._.js")
+R.c("server/chunks/ssr/0oi0_0qyqyhc._.js")
+R.c("server/chunks/ssr/Dropbox_Documents_GitHub_Plothole_app_layout_tsx_06gjd6i._.js")
+R.c("server/chunks/ssr/0oi0_next_dist_client_components_0u1nbza._.js")
+R.c("server/chunks/ssr/0oi0_next_dist_client_components_builtin_forbidden_06op5jy.js")
+R.c("server/chunks/ssr/0oi0_next_dist_client_components_builtin_unauthorized_13t1-c6.js")
+R.c("server/chunks/ssr/0oi0_next_dist_client_components_builtin_global-error_0-3cqu1.js")
+R.c("server/chunks/ssr/Dropbox_Documents_GitHub_Plothole__next-internal_server_app_page_actions_13lm4mr.js")
+R.m(11630)
+module.exports=R.m(11630).exports
