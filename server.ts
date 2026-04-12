@@ -6,8 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { initDb, getPool } from './src/db.ts';
-// @ts-ignore
-import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
+import { auth } from 'express-oauth2-jwt-bearer';
 import { Resend } from 'resend';
 import * as Sentry from "@sentry/node";
 import multer from 'multer';
@@ -642,20 +641,11 @@ async function startServer() {
     res.status(200).send('OK');
   });
 
-  // Clerk Middleware
-  const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || 
-                              process.env.VITE_CLERK_PUBLISHABLE_KEY || 
-                              process.env.VITE_PUBLIC_CLERK_PUBLISHABLE_KEY || 
-                              process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const clerkSecretKey = process.env.CLERK_SECRET_KEY;
-
-  if (clerkSecretKey || clerkPublishableKey) {
-    // Ensure the SDK picks up the keys correctly
-    if (clerkPublishableKey) process.env.CLERK_PUBLISHABLE_KEY = clerkPublishableKey;
-    if (clerkSecretKey) process.env.CLERK_SECRET_KEY = clerkSecretKey;
-    
-    app.use(ClerkExpressWithAuth());
-  }
+  // Auth0 Middleware
+  const checkJwt = auth({
+    audience: 'https://dev-t0pa1ah6r1n2wc4a.us.auth0.com/api/v2/', // Using default management API as audience if not specified
+    issuerBaseURL: `https://dev-t0pa1ah6r1n2wc4a.us.auth0.com/`,
+  });
 
   // API Routes
   app.get('/api/config', (req: express.Request, res: express.Response) => {
@@ -663,7 +653,7 @@ async function startServer() {
     res.json({
       hasGeminiKey: !!(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY),
       hasDb: !!(process.env.DATABASE_URL),
-      hasClerk: !!(process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY),
+      hasAuth0: true,
       env: process.env.NODE_ENV || 'development',
       serverTime: new Date().toISOString(),
       status: 'healthy'
@@ -817,8 +807,8 @@ async function startServer() {
   });
 
   // Protected API Routes
-  app.get('/api/projects', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.get('/api/projects', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     console.log(`[API] Fetch projects request from user: ${userId}`);
     
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -836,8 +826,8 @@ async function startServer() {
     }
   });
 
-  app.post('/api/projects', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.post('/api/projects', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     console.log(`[API] Save project request from user: ${userId}`);
     
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -865,8 +855,8 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/projects/:id', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.delete('/api/projects/:id', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const pool = getPool();
@@ -881,8 +871,8 @@ async function startServer() {
   });
 
   // Global Notes
-  app.get('/api/notes', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.get('/api/notes', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const pool = getPool();
@@ -896,8 +886,8 @@ async function startServer() {
     }
   });
 
-  app.post('/api/notes', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.post('/api/notes', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const pool = getPool();
@@ -918,8 +908,8 @@ async function startServer() {
   });
 
   // App Globals (Settings, Prompts, etc.)
-  app.get('/api/globals/:id', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.get('/api/globals/:id', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
 
@@ -968,8 +958,8 @@ async function startServer() {
     }
   });
 
-  app.post('/api/globals/:id', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.post('/api/globals/:id', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable' });
 
@@ -991,8 +981,8 @@ async function startServer() {
     res.send('Server is working');
   });
 
-  app.post('/api/backup-email', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.post('/api/backup-email', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { projectTitle, wordCount, hash, backupData } = req.body;
@@ -1019,8 +1009,8 @@ async function startServer() {
   });
 
   // Send test email for backup notifications
-  app.post('/api/send-test-email', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.post('/api/send-test-email', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { projectId, userEmail } = req.body;
@@ -1047,8 +1037,8 @@ async function startServer() {
   });
 
   // Create a test backup
-  app.post('/api/test-backup', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.post('/api/test-backup', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { projectId } = req.body;
@@ -1107,8 +1097,8 @@ async function startServer() {
   });
 
   // Resend a failed backup
-  app.post('/api/resend-backup/:backupId', async (req: any, res) => {
-    const userId = req.auth?.userId || 'user-1';
+  app.post('/api/resend-backup/:backupId', checkJwt, async (req: any, res) => {
+    const userId = req.auth?.payload.sub || 'user-1';
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { backupId } = req.params;
@@ -1160,8 +1150,8 @@ async function startServer() {
   });
 
   // Username management
-  app.post('/api/user/username', async (req: any, res) => {
-    if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
+  app.post('/api/user/username', checkJwt, async (req: any, res) => {
+    if (!req.auth?.payload.sub) return res.status(401).json({ error: 'Unauthorized' });
 
     const { username } = req.body;
     const lowercaseUsername = username?.toLowerCase();
@@ -1176,7 +1166,7 @@ async function startServer() {
 
       await pool.query(
         'UPDATE users SET username = $1 WHERE id = $2',
-        [lowercaseUsername, req.auth.userId]
+        [lowercaseUsername, req.auth.payload.sub]
       );
       res.json({ success: true });
     } catch (err: any) {
@@ -1189,8 +1179,8 @@ async function startServer() {
     }
   });
 
-  app.get('/api/user/username', async (req: any, res) => {
-    if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized' });
+  app.get('/api/user/username', checkJwt, async (req: any, res) => {
+    if (!req.auth?.payload.sub) return res.status(401).json({ error: 'Unauthorized' });
     
     try {
       const pool = getPool();
@@ -1198,7 +1188,7 @@ async function startServer() {
       
       const result = await pool.query(
         'SELECT username FROM users WHERE id = $1',
-        [req.auth.userId]
+        [req.auth.payload.sub]
       );
       res.json({ username: result.rows[0]?.username || null });
     } catch (err) {
@@ -1301,10 +1291,10 @@ async function startServer() {
   });
 
   // Fetch wiki settings for a project
-  app.get('/api/projects/:projectId/wiki-settings', async (req: any, res) => {
+  app.get('/api/projects/:projectId/wiki-settings', checkJwt, async (req: any, res) => {
     const { projectId } = req.params;
     
-    if (!req.auth?.userId) {
+    if (!req.auth?.payload.sub) {
       console.log(`[Wiki] GET settings unauthorized for project ${projectId}`);
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -1319,11 +1309,11 @@ async function startServer() {
       // Verify ownership
       const project = await pool.query(
         'SELECT p.is_wiki_public, p.enable_wiki, p.data, u.username FROM projects p JOIN users u ON p.user_id = u.id WHERE p.id = $1 AND p.user_id = $2',
-        [projectId, req.auth.userId]
+        [projectId, req.auth.payload.sub]
       );
       
       if (project.rows.length === 0) {
-        console.log(`[Wiki] Project not found: ${projectId} for user ${req.auth.userId}`);
+        console.log(`[Wiki] Project not found: ${projectId} for user ${req.auth.payload.sub}`);
         return res.status(404).json({ error: 'Project not found' });
       }
 
@@ -1340,11 +1330,11 @@ async function startServer() {
   });
 
   // Update wiki visibility for a project
-  app.post('/api/projects/:projectId/wiki-settings', async (req: any, res) => {
+  app.post('/api/projects/:projectId/wiki-settings', checkJwt, async (req: any, res) => {
     const { projectId } = req.params;
     const { is_wiki_public, enable_wiki, wikiSettings } = req.body;
     
-    if (!req.auth?.userId) {
+    if (!req.auth?.payload.sub) {
       console.log(`[Wiki] POST settings unauthorized for project ${projectId}`);
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -1365,8 +1355,8 @@ async function startServer() {
       const project = projectResult.rows[0];
       if (!project) return res.status(404).json({ error: 'Project not found' });
 
-      if (project.user_id !== req.auth.userId) {
-        console.log(`[Wiki] User ${req.auth.userId} not authorized to edit project ${projectId}`);
+      if (project.user_id !== req.auth.payload.sub) {
+        console.log(`[Wiki] User ${req.auth.payload.sub} not authorized to edit project ${projectId}`);
         return res.status(403).json({ error: 'Not authorized' });
       }
 
@@ -1435,21 +1425,13 @@ async function startServer() {
         }
       }
 
-      // Inject the Clerk and Gemini Publishable Keys into the HTML
-      const clerkKey = process.env.CLERK_PUBLISHABLE_KEY ||
-                       process.env.VITE_CLERK_PUBLISHABLE_KEY || 
-                       process.env.VITE_PUBLIC_CLERK_PUBLISHABLE_KEY ||
-                       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 
-                       process.env.VITE_CLERK_PUBLISH || 
-                       '';
+      // Inject the Gemini Publishable Key into the HTML
       const geminiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
       
       const injection = `
         <script>
-          window.CLERK_PUBLISHABLE_KEY = ${JSON.stringify(clerkKey)};
           window.GEMINI_API_KEY = ${JSON.stringify(geminiKey)};
           window._env_ = {
-            VITE_CLERK_PUBLISHABLE_KEY: ${JSON.stringify(clerkKey)},
             VITE_GEMINI_API_KEY: ${JSON.stringify(geminiKey)}
           };
         </script>

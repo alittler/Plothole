@@ -56,7 +56,7 @@ import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool, Trash2, Loader2 } from 'lucide-react';
-import { SignedIn, SignedOut, useUser, useAuth } from '@clerk/clerk-react';
+import { useAuth0 } from '@auth0/auth0-react';
 import { SignInPage } from './components/Auth/SignInPage';
 
 const DEMO_USER: User = {
@@ -74,12 +74,11 @@ const DEMO_USER: User = {
 const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
-  const { isSignedIn, getToken } = useAuth();
+  const { user: auth0User, isAuthenticated, isLoading: isAuthLoading, getAccessTokenSilently } = useAuth0();
 
   const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
     try {
-      const token = await getToken();
+      const token = await getAccessTokenSilently();
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -92,7 +91,7 @@ const App: React.FC = () => {
       console.error(`[Auth] Error fetching token for ${url}:`, err);
       throw err;
     }
-  }, [getToken]);
+  }, [getAccessTokenSilently]);
 
   const [projectsMetadata, setProjectsMetadata] = useState<ProjectMetadata[]>([]);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
@@ -151,23 +150,23 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User>(DEMO_USER);
   const [isServerConnected, setIsServerConnected] = useState(true);
   
-  // Sync Clerk user with app user
+  // Sync Auth0 user with app user
   useEffect(() => {
-    if (isClerkLoaded && clerkUser) {
-      const email = clerkUser.primaryEmailAddress?.emailAddress || '';
-      const isAdmin = (clerkUser.publicMetadata?.role === 'admin') || 
+    if (!isAuthLoading && auth0User) {
+      const email = auth0User.email || '';
+      const isAdmin = (auth0User['https://plothole.ai/roles']?.includes('admin')) || 
                       (appSettings.adminEmails?.includes(email)) ||
                       (import.meta.env.MODE === 'development' && email.endsWith('@plothole.ai'));
 
       setCurrentUser(prev => ({
         ...prev,
-        id: clerkUser.id,
-        name: clerkUser.fullName || clerkUser.username || 'Writer',
+        id: auth0User.sub || '',
+        name: auth0User.name || auth0User.nickname || 'Writer',
         email: email,
         role: isAdmin ? 'admin' : 'editor',
       }));
     }
-  }, [isClerkLoaded, clerkUser, appSettings.adminEmails]);
+  }, [isAuthLoading, auth0User, appSettings.adminEmails]);
 
   const currentView = (decodeURIComponent(location.pathname.slice(1)) as ViewType) || DEMO_USER.preferences?.landingPage || ViewType.BOOKSHELF;
   const setCurrentView = (view: ViewType) => navigate(`/${view}`);
@@ -200,11 +199,11 @@ const App: React.FC = () => {
   const refreshMetadata = useCallback(async () => {
     console.log('[App] Refreshing metadata...');
     // Ensure storage is configured correctly based on current state
-    setCloudStorageEnabled(isSignedIn === true, fetchWithAuth);
+    setCloudStorageEnabled(isAuthenticated === true, fetchWithAuth);
     const meta = await getAllProjectsMetadata();
     console.log(`[App] Received ${meta.length} projects from storage`);
     setProjectsMetadata(meta);
-  }, [isSignedIn, fetchWithAuth]);
+  }, [isAuthenticated, fetchWithAuth]);
 
   const handleManualSave = useCallback(async () => {
     if (!projectData) return;
@@ -592,16 +591,16 @@ const App: React.FC = () => {
   }, [appSettings.appName]);
 
   useEffect(() => {
-    // Wait for Clerk to determine auth status
-    if (!isClerkLoaded) return;
+    // Wait for Auth0 to determine auth status
+    if (isAuthLoading) return;
 
     const init = async () => {
       try {
-        console.log(`[Init] Clerk loaded: ${isClerkLoaded}, SignedIn: ${isSignedIn}, UserId: ${clerkUser?.id}`);
+        console.log(`[Init] Auth0 loaded: ${!isAuthLoading}, Authenticated: ${isAuthenticated}, UserId: ${auth0User?.sub}`);
         
         // Configure storage first
-        console.log(`[Init] Configuring storage. Cloud enabled: ${isSignedIn === true}`);
-        setCloudStorageEnabled(isSignedIn === true, fetchWithAuth);
+        console.log(`[Init] Configuring storage. Cloud enabled: ${isAuthenticated === true}`);
+        setCloudStorageEnabled(isAuthenticated === true, fetchWithAuth);
 
         console.log(`[Init] Fetching metadata...`);
         const [meta, notes, resources, prompts, settings] = await Promise.all([
@@ -647,7 +646,7 @@ const App: React.FC = () => {
       }
     };
     init();
-  }, [checkApiKey, isSignedIn, isClerkLoaded, fetchWithAuth]); // Re-run when auth state or Clerk status changes
+  }, [checkApiKey, isAuthenticated, isAuthLoading, fetchWithAuth]); // Re-run when auth state or Auth0 status changes
 
 
   useEffect(() => {
@@ -923,7 +922,7 @@ const handleRestoreCommit = async (commit: Commit) => {
     }
 
     await saveProjectData(newProject);
-    if (isSignedIn) {
+    if (isAuthenticated) {
       await fetchWithAuth('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1296,7 +1295,7 @@ const handleRestoreCommit = async (commit: Commit) => {
   };
 
   const viewContent = useMemo(() => {
-    if (!isLoaded || !isClerkLoaded) return <div className="h-full flex items-center justify-center text-primary animate-pulse font-bold uppercase tracking-widest">Initialising Core Engines...</div>;
+    if (!isLoaded || isAuthLoading) return <div className="h-full flex items-center justify-center text-primary animate-pulse font-bold uppercase tracking-widest">Initialising Core Engines...</div>;
 
     // Admin view restriction
     if (currentView === ViewType.ADMIN && currentUser.role !== 'admin') {
@@ -1535,7 +1534,7 @@ const handleRestoreCommit = async (commit: Commit) => {
       default: 
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
-  }, [isLoaded, isClerkLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, isExtractingRelationships, isUpdatingProcessed, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleDeleteProject, handleUploadProject, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, handleQuickUpdate]);
+  }, [isLoaded, isAuthLoading, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, isExtractingRelationships, isUpdatingProcessed, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleDeleteProject, handleUploadProject, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, handleQuickUpdate]);
   // Auto-collapse sidebar when entering/exiting Admin or Settings view
   useEffect(() => {
     if (currentView === ViewType.ADMIN || currentView === ViewType.SETTINGS) {
@@ -1987,7 +1986,7 @@ const handleRestoreCommit = async (commit: Commit) => {
         ) : (
           <PublicProfileView />
         )
-      ) : !isSignedIn && !isGuest ? (
+      ) : (!isAuthenticated && !isGuest && !isAuthLoading) ? (
         <SignInPage onGuestAccess={() => setIsGuest(true)} />
       ) : (
         renderAppContent()

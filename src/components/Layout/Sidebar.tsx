@@ -1,7 +1,7 @@
 import React from 'react';
 import { ViewType, User } from '../../types';
 import { LayoutGrid, Layout, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, Wrench, BookOpen } from 'lucide-react';
-import { UserButton, useClerk } from '@clerk/clerk-react';
+import { useAuth0 } from '@auth0/auth0-react';
 import { isCloudStorageActive } from '../../services/storageService';
 
 interface SidebarProps {
@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, onSave, appName = 'PLOTHOLE',
   sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false, isServerConnected = true, isCloudStorage = false, lastModified
 }) => {
-  const { signOut } = useClerk();
+  const { logout } = useAuth0();
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [commitHash, setCommitHash] = React.useState<string | null>(null);
   const [sourceHash, setSourceHash] = React.useState<string | null>(null);
@@ -315,7 +315,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Persistent Footer Items */}
           <div className="flex flex-col gap-2 pt-4 border-t border-slate-800">
             <button
-              onClick={(e) => { e.stopPropagation(); signOut(); }}
+              onClick={(e) => { e.stopPropagation(); logout({ logoutParams: { returnTo: window.location.origin } }); }}
               className={`flex items-center gap-3 px-3 py-2 rounded-xl text-slate-500 hover:bg-rose-900/20 hover:text-rose-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
               title="Sign Out"
             >
@@ -375,7 +375,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <Sparkles size={18} className={isAiOpen ? 'animate-spin' : ''} />
               </button>
-              <UserButton afterSignOutUrl={window.location.origin} />
             </div>
           </div>
         </div>
