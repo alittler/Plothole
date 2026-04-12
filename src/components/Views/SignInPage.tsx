@@ -2,7 +2,7 @@ import React from 'react';
 import { SignIn } from '@clerk/clerk-react';
 
 export const SignInPage: React.FC = () => {
-  const hasClerk = !!(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || (window as any).CLERK_PUBLISHABLE_KEY);
+  const hasClerk = !!(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || (typeof window !== 'undefined' && (window as any).CLERK_PUBLISHABLE_KEY));
 
   return (
     <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-6">

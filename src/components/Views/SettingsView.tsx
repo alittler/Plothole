@@ -1335,7 +1335,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="p-6 border-t border-slate-100 dark:border-slate-800">
           <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl space-y-2 text-center">
             <p className="ph-label mb-0 text-center">Build Info</p>
-            <div className="text-[10px] font-mono text-indigo-500 truncate">#{import.meta.env.VITE_GIT_COMMIT_HASH?.slice(0, 7)}</div>
+            <div className="text-[10px] font-mono text-indigo-500 truncate">#{(process.env.NEXT_PUBLIC_GIT_COMMIT_HASH || 'unknown')?.slice(0, 7)}</div>
           </div>
         </div>
       </aside>

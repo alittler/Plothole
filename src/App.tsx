@@ -156,7 +156,7 @@ const App: React.FC = () => {
       const email = auth0User.email || '';
       const isAdmin = (auth0User['https://plothole.ai/roles']?.includes('admin')) || 
                       (appSettings.adminEmails?.includes(email)) ||
-                      (import.meta.env.MODE === 'development' && email.endsWith('@plothole.ai'));
+                      (process.env.NODE_ENV === 'development' && email.endsWith('@plothole.ai'));
 
       setCurrentUser(prev => ({
         ...prev,
