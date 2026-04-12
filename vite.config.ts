@@ -6,6 +6,8 @@ import { execSync } from 'child_process';
 import license from 'rollup-plugin-license';
 import fs from 'fs';
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 let commitHash = 'dev';
 try {
   if (fs.existsSync('.git')) {
@@ -19,19 +21,15 @@ export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   console.log('Loaded ENV keys:', Object.keys(env).filter(k => k.includes('GEMINI') || k.includes('CLERK')));
   return {
-    plugins: [
-      react(), 
-      tailwindcss(),
-      license({
-        thirdParty: {
-          output: [
-            path.resolve(__dirname, './public/licenses.txt'),
-            path.resolve(__dirname, './THIRD-PARTY-NOTICES.txt'),
-          ],
-          includePrivate: true,
-        },
-      }),
-    ],
+    plugins: [react(), tailwindcss(), license({
+      thirdParty: {
+        output: [
+          path.resolve(__dirname, './public/licenses.txt'),
+          path.resolve(__dirname, './THIRD-PARTY-NOTICES.txt'),
+        ],
+        includePrivate: true,
+      },
+    }), cloudflare()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY),
