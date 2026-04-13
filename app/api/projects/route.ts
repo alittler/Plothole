@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/src/db';
+import { getUserId } from '@/app/api/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Auth0 user ID would be extracted from request (see middleware)
-    // For now, use demo user
-    const userId = 'user-1';
+    const userId = await getUserId(request);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = 'user-1';
+    const userId = await getUserId(request);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

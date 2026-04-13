@@ -11,7 +11,8 @@ export const initializeApiKey = async () => {
   initializedApiKey = metaEnv.VITE_GEMINI_API_KEY || 
                       (window as any).GEMINI_API_KEY || 
                       windowEnv.VITE_GEMINI_API_KEY ||
-                      (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) || 
+                      (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_GEMINI_API_KEY : null) ||
+                      (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_GEMINI_API_KEY ? (window as any).NEXT_PUBLIC_GEMINI_API_KEY : null) ||
                       await getApiKey('gemini_api_key');
 };
 
@@ -173,7 +174,7 @@ export const DEFAULT_PROMPTS: AppPrompts = {
   TOOLBOX_URL_ANALYSIS: "Analyze this URL for creative writer utility.",
   GENERATE_CONLANG_WORD: 'Construct a word for "{word}" in "{langName}".',
   CONNECT_NOTES: "Synthesize these notes into a narrative thread.",
-  AI_MODEL: "gemini-3-flash-preview"
+  AI_MODEL: "gemini-2.5-flash"
 };
 
 const getCurrentPrompts = async (): Promise<AppPrompts> => {
@@ -199,7 +200,7 @@ export const analyzeStoryText = async (text: string, tokenLimit?: number, option
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const appSettings = await getAppSettings();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
 
   // Determine intelligent chunk size based on model
   let maxChars = appSettings?.aiCharacterLimit || 400000; 
@@ -319,7 +320,7 @@ export const analyzeStoryText = async (text: string, tokenLimit?: number, option
 export const detectManuscriptStructure = async (snippet: string): Promise<{actPattern: string, chapterPattern: string, scenePattern: string}> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const systemInstruction = "Identify novel structure patterns (Acts, Chapters, Scenes) from the text. Return JSON with Javascript Regex strings (using ^ for start-of-line).";
 
   const response = await withRetry(() => ai.models.generateContent({
@@ -346,7 +347,7 @@ export const detectManuscriptStructure = async (snippet: string): Promise<{actPa
 export const getEvocativeTitles = async (scenes: {id: string, content: string}[]): Promise<{id: string, title: string}[]> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
 
   const payload = scenes.map(s => `ID: ${s.id}\nCONTENT: ${s.content.substring(0, 500)}`).join('\n\n---\n\n');
 
@@ -375,7 +376,7 @@ export const getEvocativeTitles = async (scenes: {id: string, content: string}[]
 export const doubleProcessNote = async (rawNote: string): Promise<{ expanded: string, summary: string, tags: string[] }> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
 
   const expansionRes = await withRetry(() => ai.models.generateContent({
     model,
@@ -418,7 +419,7 @@ Be poetic and evocative. Do not mention the title or author in the description.`
   
   const descResponse = await withRetry(() => 
     ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash',
       contents: { parts: [{ text: descPrompt }] },
     })
   );
@@ -439,7 +440,7 @@ Description: ${description}`;
   
   const keywordResponse = await withRetry(() =>
     ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash',
       contents: { parts: [{ text: keywordPrompt }] },
     })
   );
@@ -484,7 +485,7 @@ Description: ${description}`;
 export const generateCharacterPhysicalDescription = async (character: { name: string; role: string; age?: string; job?: string; traits?: string[]; description?: string }): Promise<string> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   
   const traitsText = character.traits?.length ? character.traits.join(', ') : 'various traits';
   const ageText = character.age ? `Age: ${character.age}. ` : '';
@@ -520,7 +521,7 @@ Make it specific and evocative. Focus on visual details that bring the character
 export const processRawNotes = async (text: string): Promise<{content: string, category: string, tags: string[], analysis: string}[]> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const response = await ai.models.generateContent({
     model,
     contents: `Analyze and extract entities: ${text}`,
@@ -547,7 +548,7 @@ export const processRawNotes = async (text: string): Promise<{content: string, c
 export const extractThemesFromNotes = async (notes: Note[]): Promise<string[]> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const text = notes.map(n => n.content).join('\n');
   const response = await ai.models.generateContent({
     model,
@@ -563,7 +564,7 @@ export const extractThemesFromNotes = async (notes: Note[]): Promise<string[]> =
 export const askProjectAI = async (prompt: string, projectData: ProjectData | null): Promise<string> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const context = projectData ? `Project Title: ${projectData.title}` : "No project context.";
   const response = await ai.models.generateContent({
     model,
@@ -575,7 +576,7 @@ export const askProjectAI = async (prompt: string, projectData: ProjectData | nu
 export const analyzeRelationships = async (text: string, characters: Character[]): Promise<Relationship[]> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const charNames = characters.map(c => c.name).join(', ');
   const response = await ai.models.generateContent({
     model,
@@ -609,7 +610,7 @@ export const analyzeRelationships = async (text: string, characters: Character[]
 export const analyzeUrlForToolbox = async (url: string): Promise<{label: string, category: string, description: string}> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const response = await ai.models.generateContent({
     model,
     contents: `Analyze website utility for a writer: ${url}`,
@@ -627,7 +628,7 @@ export const analyzeUrlForToolbox = async (url: string): Promise<{label: string,
 export const generateConlangWord = async (language: Language, word: string): Promise<{translation: string, etymology: string}> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const response = await ai.models.generateContent({
     model,
     contents: `Construct word for "${word}" based on phonology rules of ${language}`,
@@ -645,7 +646,7 @@ export const generateConlangWord = async (language: Language, word: string): Pro
 export const analyzeConlangPhonology = async (dictionary: string): Promise<string> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const prompt = `
     You are an expert computational linguist specializing in phonology and conlanging.
     Analyze the following fictional dictionary and deduce a set of plausible phonological rules in IPA notation.
@@ -671,7 +672,7 @@ export const analyzeConlangPhonology = async (dictionary: string): Promise<strin
 export const analyzePlotMatrix = async (events: TimelineEvent[]): Promise<{ plotlines: Plotline[], cells: MatrixCell[] }> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const eventData = events.map(e => e.title).join(', ');
   const response = await ai.models.generateContent({
     model,
@@ -702,7 +703,7 @@ export const analyzePlotMatrix = async (events: TimelineEvent[]): Promise<{ plot
 export const generateSourceGuide = async (text: string) => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   
   const response = await ai.models.generateContent({
     model,
@@ -733,7 +734,7 @@ ${text.substring(0, 15000)}`,
 export const stenoResearch = async (text: string) => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const prompt = `
     Perform high-speed research and entity extraction on the following text.
     Extract key entities (people, places, organizations), summarize the core message, and identify any actionable insights or interesting connections.
@@ -764,7 +765,7 @@ export const stenoResearch = async (text: string) => {
 export const smartExtractSources = async (text: string): Promise<{ title: string; author: string; content: string; citation: string; url?: string; type: 'text' | 'web' }[]> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
 
   const prompt = `
     Extract sources from the following text. 
@@ -801,7 +802,7 @@ export const chatWithAssistant = async (
 ) => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   const chat = ai.chats.create({
     model,
     config: {
@@ -829,7 +830,7 @@ export const chatWithAssistant = async (
 export const semanticSearchNotes = async (query: string, notes: Note[]): Promise<string[]> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
 
   const noteData = notes.map(n => `ID: ${n.id}\nCONTENT: ${n.content}\nTAGS: ${n.tags.join(', ')}`).join('\n\n---\n\n');
 
@@ -859,7 +860,7 @@ export const extractSoftAnchors = async (
 ): Promise<{ title: string; description: string; uei: number; referenceEventId: string; date: string }[]> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
   
   const existingContext = existingEvents.map(e => `ID: ${e.id} | Title: ${e.title} | UEI (Day Count): ${e.uei}`).join('\n');
 
@@ -913,7 +914,7 @@ ${text}
 export const performOCR = async (base64Image: string): Promise<string> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
 
   const prompt = `
     Perform high-accuracy OCR on the attached image. 
@@ -949,7 +950,7 @@ export const performOCR = async (base64Image: string): Promise<string> => {
 export const notebookLMProcess = async (text: string, type: 'text' | 'pdf' | 'image'): Promise<{ markdown: string, metadata: any }> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
 
   const systemInstruction = `
     You are a processing pipeline. Your task is to parse this source and generate the required sidecar files to integrate it into my application's database using the 'Bundle Method.'
@@ -1019,7 +1020,7 @@ export const auditPlotThreads = async (
 ): Promise<{ id: string; type: 'character' | 'mystery' | 'plot-point'; content: string; message: string }[]> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
 
   const manuscriptText = chapters.map(c => `Chapter: ${c.title}\n${c.content.substring(0, 2000)}`).join('\n\n');
   const timelineSummary = timeline.map(e => `- ${e.title}: ${e.description}`).join('\n');
@@ -1069,7 +1070,7 @@ Return a JSON array of objects:
 export const analyzeSourceForCodex = async (sourceContent: string, question: string): Promise<string> => {
   const ai = getAiClient();
   const prompts = await getCurrentPrompts();
-  const model = prompts.AI_MODEL || "gemini-3-flash-preview";
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
 
   const prompt = `
 You are a knowledge extraction assistant helping build a Story Codex from reference materials.

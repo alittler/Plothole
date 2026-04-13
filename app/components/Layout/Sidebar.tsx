@@ -226,7 +226,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                   {isMenuOpen && (
                     <div data-section="page-menu" className="absolute left-full top-0 ml-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 flex flex-col gap-1 p-2 custom-scrollbar">
                       {sections.map((section) => (
-                        <div key={section.label} className="flex flex-col gap-1">
+                        <div key={section.title} className="flex flex-col gap-1">
                           {section.items.map(item => {
                             const isActive = currentView === item.id;
                             const isDisabled = item.projectOnly && !hasActiveProject;

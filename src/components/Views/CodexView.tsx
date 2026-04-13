@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ProjectData, HierarchicalEntity } from '../../types';
-import { Book, Search, FileText, Plus, Scroll, BookMarked, Box, MoreHorizontal } from 'lucide-react';
+import { Book, Search, FileText, Plus, Scroll, BookMarked, Box, MoreHorizontal, Wand2 } from 'lucide-react';
 import { WikiText } from '../ui/WikiText';
 import { generateId } from '../../services/storageService';
 
@@ -15,6 +15,7 @@ enum CodexTab {
   LORE = 'Lore',
   LEXICON = 'Lexicon',
   ARTIFACTS = 'Artifacts',
+  BESTIARY = 'Bestiary',
   OTHER = 'Other'
 }
 
@@ -28,6 +29,7 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
   const lore = projectData.lore || [];
   const entities = projectData.entities || [];
   const artifacts = entities.filter(e => e.type === 'Item' || e.type === 'Artifact');
+  const creatures = entities.filter(e => e.type === 'Creature' || e.type === 'Beast' || e.species?.toLowerCase().includes('creature') || e.species?.toLowerCase().includes('beast'));
 
   const getFilteredContent = () => {
     let base: any[] = [];
@@ -37,8 +39,10 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
       base = lore.filter(l => l.category === 'Dictionary' || l.category === 'Linguistics');
     } else if (activeTab === CodexTab.ARTIFACTS) {
       base = artifacts;
+    } else if (activeTab === CodexTab.BESTIARY) {
+      base = creatures;
     } else if (activeTab === CodexTab.OTHER) {
-      base = entities.filter(e => e.type !== 'Artifact' && e.type !== 'Item');
+      base = entities.filter(e => e.type !== 'Artifact' && e.type !== 'Item' && e.type !== 'Creature' && e.type !== 'Beast');
     }
 
     return base.filter(entry => {
@@ -59,6 +63,17 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
         type: 'Artifact',
         tier: 3,
         species: 'General',
+        description: '',
+        source: 'manual'
+      };
+      onUpdateProject({ entities: [...entities, newEntity] });
+    } else if (activeTab === CodexTab.BESTIARY) {
+      const newEntity: HierarchicalEntity = {
+        id: generateId(),
+        name: 'New Creature',
+        type: 'Creature',
+        tier: 3,
+        species: 'Unknown',
         description: '',
         source: 'manual'
       };
@@ -108,6 +123,7 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
                 [CodexTab.LORE]: Scroll,
                 [CodexTab.LEXICON]: BookMarked,
                 [CodexTab.ARTIFACTS]: Box,
+                [CodexTab.BESTIARY]: Wand2,
                 [CodexTab.OTHER]: MoreHorizontal
               }[tab];
               return (

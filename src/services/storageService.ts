@@ -520,7 +520,10 @@ export const deleteProject = async (id: string): Promise<void> => {
   if (useCloudStorage && authFetch) {
     try {
       const res = await authFetch(`/api/projects/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Cloud delete failed');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(`Cloud delete failed: ${res.status} - ${errorData.error || res.statusText}`);
+      }
     } catch (e) {
       console.error("Cloud delete failed, attempting local delete:", e);
     }

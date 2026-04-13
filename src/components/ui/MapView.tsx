@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity } from 'lucide-react';
 import { Location, TimelineEvent, Character, MapPath } from '../../types';
 import { generateId } from '../../services/storageService';
+import { createGridLayer } from '../../utils/gridLayer';
 
 interface MapViewProps {
   locations: Location[];
@@ -42,11 +43,13 @@ export const MapView: React.FC<MapViewProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapBoundsRef = useRef<L.LatLngBounds | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const gridLayerRef = useRef<L.LayerGroup | null>(null);
   const pathLayersRef = useRef<{ [key: string]: L.LayerGroup }>({});
   const measureMarkersRef = useRef<L.Marker[]>([]);
   const [imgWidth, setImgWidth] = useState<number>(0);
   const [isReady, setIsReady] = useState(false);
   const [shortcuts, setShortcuts] = useState<{ name: string, bounds: L.LatLngBounds, count: number, type: string }[]>([]);
+  const [showGrid, setShowGrid] = useState(true);
 
   // Ledger Draggable State
   const [ledgerPos, setLedgerPos] = useState({ x: 0, y: 0 });
@@ -271,6 +274,12 @@ export const MapView: React.FC<MapViewProps> = ({
       const minZoom = map.getBoundsZoom(worldBounds, true);
       map.setMinZoom(minZoom);
       map.setView([20, 0], Math.max(minZoom, 2));
+      
+      // Add grid layer for real world maps
+      gridLayerRef.current = createGridLayer();
+      if (showGrid) {
+        gridLayerRef.current.addTo(map);
+      }
     } else {
       map.setView([0, 0], 0);
     }
@@ -532,6 +541,19 @@ export const MapView: React.FC<MapViewProps> = ({
     if (isRealWorld) { map.on('move zoom', handleMove); handleMove(); }
     return () => { map.off('move zoom', handleMove); };
   }, [isReady, isRealWorld]);
+
+  // Grid layer toggle effect
+  useEffect(() => {
+    const map = mapRef.current;
+    const gridLayer = gridLayerRef.current;
+    if (!map || !gridLayer || !isRealWorld) return;
+    
+    if (showGrid) {
+      gridLayer.addTo(map);
+    } else {
+      gridLayer.removeFrom(map);
+    }
+  }, [showGrid, isRealWorld]);
 
   const handleScaleChange = (desiredSize: number, unit: string) => {
     if (!mapRef.current) return;

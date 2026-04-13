@@ -79,6 +79,10 @@ const App: React.FC = () => {
   const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
     try {
       const token = await getAccessTokenSilently();
+      if (!token) {
+        console.error(`[Auth] No token available for ${url}`);
+        throw new Error('No access token available');
+      }
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -168,7 +172,7 @@ const App: React.FC = () => {
     }
   }, [isAuthLoading, auth0User, appSettings.adminEmails]);
 
-  const currentView = (decodeURIComponent(location.pathname.slice(1)) as ViewType) || DEMO_USER.preferences?.landingPage || ViewType.BOOKSHELF;
+  const currentView = (decodeURIComponent(location.pathname.slice(1)) as ViewType) || ViewType.BOOKSHELF;
   const setCurrentView = (view: ViewType) => navigate(`/${view}`);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

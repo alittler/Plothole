@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/src/db';
+import { getUserId } from '@/app/api/auth';
 
 export async function DELETE(
   request: NextRequest,
@@ -7,7 +8,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const userId = 'user-1';
+    const userId = await getUserId(request);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

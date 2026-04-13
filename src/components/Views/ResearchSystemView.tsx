@@ -7,6 +7,7 @@ import { RichEditor } from '../ui/RichEditor';
 import { semanticSearchNotes } from '../../services/geminiService';
 import { BookshelfView } from './BookshelfView';
 import { ImageUploadInput } from '../ui/ImageUploadInput';
+import { sanitizeHtml } from '../../utils/htmlSanitizer';
 
 enum NotepadView {
   STREAM = 'Notebook',
@@ -764,7 +765,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                           >
                             <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-slate-300/50" /> {/* Pin head */}
                             <h3 className="font-bold text-slate-900 dark:text-white mb-2 line-clamp-1 uppercase text-xs tracking-widest">{doc.title}</h3>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 font-serif line-clamp-5 overflow-hidden" dangerouslySetInnerHTML={{ __html: doc.content || 'Empty snippet...' }} />
+                            <div className="text-xs text-slate-500 dark:text-slate-400 font-serif line-clamp-5 overflow-hidden" dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content || 'Empty snippet...') }} />
                             <div className="mt-auto pt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
                               <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(doc.lastModified).toLocaleDateString()}</span>
                               <div className="flex items-center gap-2">

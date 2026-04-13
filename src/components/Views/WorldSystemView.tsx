@@ -135,8 +135,84 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
   const DEFAULT_MAP = `data:image/svg+xml,%3Csvg width='800' height='600' viewBox='0 0 800 600' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f5f1e6'/%3E%3Cpath d='M0 0l800 600M800 0L0 600' stroke='%23e2e8f0' stroke-width='1'/%3E%3Ccircle cx='400' cy='300' r='100' fill='none' stroke='%23cbd5e1' stroke-dasharray='10,10'/%3E%3Ctext x='400' y='310' font-family='serif' font-size='24' fill='%2394a3b8' text-anchor='middle' font-style='italic'%3EUncharted Territory%3C/text%3E%3C/svg%3E`;
 
+  // Determine if current map is real-world
+  const isCurrentMapRealWorld = (() => {
+    if (currentMapParentId) {
+      const parent = data.locations.find(l => l.id === currentMapParentId);
+      return !!parent?.isRealWorld;
+    }
+    return !!data.isRealWorldMap;
+  })();
+
+  // Test creatures for real-world map visualization
+  const testCreatures: Location[] = [
+    {
+      id: 'test-selkie',
+      name: 'Selkie',
+      description: 'Northern edge test (Iceland area). Shapeshifting seal creature.',
+      type: 'creature',
+      x: -10,
+      y: 64,
+      mapId: 'real-world',
+      parentId: undefined,
+      shortId: 'selkie',
+      isRealWorld: true
+    },
+    {
+      id: 'test-zilant',
+      name: 'Zilant',
+      description: 'Eastern edge test (Caspian area). Two-headed dragon.',
+      type: 'creature',
+      x: 50,
+      y: 57,
+      mapId: 'real-world',
+      parentId: undefined,
+      shortId: 'zilant',
+      isRealWorld: true
+    },
+    {
+      id: 'test-xana',
+      name: 'Xana',
+      description: 'Western edge test (Iberia area). Mischievous water spirit.',
+      type: 'creature',
+      x: -10,
+      y: 44,
+      mapId: 'real-world',
+      parentId: undefined,
+      shortId: 'xana',
+      isRealWorld: true
+    },
+    {
+      id: 'test-centaur',
+      name: 'Centaur',
+      description: 'Southern edge test (Mediterranean area). Half-human, half-horse.',
+      type: 'creature',
+      x: 40,
+      y: 32,
+      mapId: 'real-world',
+      parentId: undefined,
+      shortId: 'centaur',
+      isRealWorld: true
+    },
+    {
+      id: 'test-nessie',
+      name: 'Nessie',
+      description: 'Center-North test (Scotland). Loch monster.',
+      type: 'creature',
+      x: -1,
+      y: 57,
+      mapId: 'real-world',
+      parentId: undefined,
+      shortId: 'nessie',
+      isRealWorld: true
+    }
+  ];
+
+  // Merge test creatures with real locations when viewing real-world map
+  const allLocations = isCurrentMapRealWorld ? [...data.locations, ...testCreatures] : data.locations;
+
   const locationQueue = data.locations.filter((l) => l.x === undefined || l.y === undefined);
-  const filteredLocations = data.locations.filter((l) => l.x !== undefined && l.y !== undefined && l.parentId === (currentMapParentId || undefined));
+  const filteredLocations = allLocations.filter((l) => l.x !== undefined && l.y !== undefined && l.parentId === (currentMapParentId || undefined));
   const parentLocation = data.locations.find((l) => l.id === currentMapParentId);
 
   const handleMapUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,14 +282,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
       setIsQueueOpen(false); // Close location manager on drop
     }
   };
-
-  const isCurrentMapRealWorld = (() => {
-    if (currentMapParentId) {
-      const parent = data.locations.find(l => l.id === currentMapParentId);
-      return !!parent?.isRealWorld;
-    }
-    return !!data.isRealWorldMap;
-  })();
 
   return (
     <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
