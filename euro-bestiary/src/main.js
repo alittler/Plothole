@@ -20,6 +20,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 let creatures = []
 let markers = {}
 let selectedMarker = null
+let markerLayer = L.layerGroup()
+
+// Add marker layer to map immediately
+markerLayer.addTo(map)
 
 // DOM elements
 const searchInput = document.getElementById('search-input')
@@ -61,7 +65,7 @@ async function loadCreatures() {
 
 // Add markers to map
 function addMarkersToMap(filtered = creatures) {
-  Object.values(markers).forEach(marker => map.removeLayer(marker))
+  markerLayer.clearLayers()
   markers = {}
 
   filtered.forEach(creature => {
@@ -75,7 +79,7 @@ function addMarkersToMap(filtered = creatures) {
         </div>
       `)
       .on('click', () => selectCreature(creature))
-      .addTo(map)
+      .addTo(markerLayer)
 
     markers[creature.Name] = marker
   })

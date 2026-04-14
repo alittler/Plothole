@@ -1,0 +1,1919 @@
+[
+  {
+    "id": 1,
+    "name": "Ankou",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 48.2,
+    "lon": -2.93,
+    "lore": "The personification of death who collects souls."
+  },
+  {
+    "id": 2,
+    "name": "Apsat",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 42.31,
+    "lon": 43.4,
+    "lore": "God of birds and fish; protects hunters."
+  },
+  {
+    "id": 3,
+    "name": "Banshee",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 53.35,
+    "lon": -6.26,
+    "lore": "Spirit whose wailing foretells a death."
+  },
+  {
+    "id": 4,
+    "name": "Barbegazi",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 45.92,
+    "lon": 6.87,
+    "lore": "Mountain men with giant snowshoe feet."
+  },
+  {
+    "id": 5,
+    "name": "Barstukas",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 55.17,
+    "lon": 23.89,
+    "lore": "Tiny earth men living under elder trees."
+  },
+  {
+    "id": 6,
+    "name": "Basajaun",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 43.01,
+    "lon": -1.12,
+    "lore": "Lord of the Forest; taught humans agriculture."
+  },
+  {
+    "id": 7,
+    "name": "Bean-nighe",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 56.49,
+    "lon": -4.2,
+    "lore": "Washer at the ford who cleans bloodied shrouds."
+  },
+  {
+    "id": 8,
+    "name": "Bwbach",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 52.13,
+    "lon": -3.78,
+    "lore": "Helpful brownie who hates dissent."
+  },
+  {
+    "id": 9,
+    "name": "Clurichaun",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 52.34,
+    "lon": -8.68,
+    "lore": "Drunken cousin of the leprechaun."
+  },
+  {
+    "id": 10,
+    "name": "Domovoy",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 50.45,
+    "lon": 30.52,
+    "lore": "Protective Slavic household spirit."
+  },
+  {
+    "id": 11,
+    "name": "Duergar",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 55.28,
+    "lon": -1.94,
+    "lore": "Malicious dark-dwelling dwarves."
+  },
+  {
+    "id": 12,
+    "name": "Dwarf",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 51.8,
+    "lon": 10.5,
+    "lore": "Subterranean master smiths."
+  },
+  {
+    "id": 13,
+    "name": "Gnome",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 53.06,
+    "lon": -4.07,
+    "lore": "Earth-dwellers guarding treasure."
+  },
+  {
+    "id": 14,
+    "name": "Haltija",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 69.3,
+    "lon": 21.26,
+    "lore": "Guardian spirit of people or homes."
+  },
+  {
+    "id": 15,
+    "name": "Kallikantzaros",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 40.08,
+    "lon": 22.36,
+    "lore": "Chaos-causing Christmas goblins."
+  },
+  {
+    "id": 16,
+    "name": "Kikimora",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 60.5,
+    "lon": 31.5,
+    "lore": "Helpful or chaotic female house spirit."
+  },
+  {
+    "id": 17,
+    "name": "Korrigans",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 48.1,
+    "lon": -3,
+    "lore": "Fae dancing in stone circles."
+  },
+  {
+    "id": 18,
+    "name": "Leprechaun",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 54.04,
+    "lon": -6.18,
+    "lore": "Solitary cobbler guarding gold."
+  },
+  {
+    "id": 19,
+    "name": "Leshy",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 52.73,
+    "lon": 23.86,
+    "lore": "Forest guardian of variable size."
+  },
+  {
+    "id": 20,
+    "name": "Lutin",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 48.01,
+    "lon": -2.28,
+    "lore": "Prankish French spirit."
+  },
+  {
+    "id": 21,
+    "name": "Aitvaras",
+    "category": "Zoomorphic",
+    "alignment": "Ambivalent",
+    "lat": 55.35,
+    "lon": 26,
+    "lore": "Rooster or fireball house spirit."
+  },
+  {
+    "id": 22,
+    "name": "Afanc",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 52.89,
+    "lon": -3.61,
+    "lore": "Lake beast causing floods."
+  },
+  {
+    "id": 23,
+    "name": "Black Shuck",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 52.45,
+    "lon": 1.46,
+    "lore": "Spectral dog; omen of death."
+  },
+  {
+    "id": 24,
+    "name": "Càssait-Bheinn",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 56.8,
+    "lon": -5,
+    "lore": "Giant elusive mountain bird."
+  },
+  {
+    "id": 25,
+    "name": "Cirein-cròin",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 57.9,
+    "lon": -6.3,
+    "lore": "Whale-eating sea serpent."
+  },
+  {
+    "id": 26,
+    "name": "Fenrir",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 61.63,
+    "lon": 8.31,
+    "lore": "Wolf destined to kill Odin."
+  },
+  {
+    "id": 27,
+    "name": "Iku-Turso",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 59.9,
+    "lon": 25.5,
+    "lore": "terrifying sea monster."
+  },
+  {
+    "id": 28,
+    "name": "Kraken",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 64,
+    "lon": 5,
+    "lore": "Colossal ship-sinking beast."
+  },
+  {
+    "id": 29,
+    "name": "Lavellan",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 57.5,
+    "lon": -3.5,
+    "lore": "Poisonous rat-like creature."
+  },
+  {
+    "id": 30,
+    "name": "Marool",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 60.5,
+    "lon": -1,
+    "lore": "Multi-eyed fish demon."
+  },
+  {
+    "id": 31,
+    "name": "Nessie",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 57.32,
+    "lon": -4.42,
+    "lore": "Loch Ness resident."
+  },
+  {
+    "id": 32,
+    "name": "Otso",
+    "category": "Zoomorphic",
+    "alignment": "Benevolent",
+    "lat": 64,
+    "lon": 28,
+    "lore": "Finnish bear spirit."
+  },
+  {
+    "id": 33,
+    "name": "Sleipnir",
+    "category": "Zoomorphic",
+    "alignment": "Benevolent",
+    "lat": 65,
+    "lon": -18,
+    "lore": "Eight-legged divine horse."
+  },
+  {
+    "id": 34,
+    "name": "Water Horse",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 53,
+    "lon": -8,
+    "lore": "Predatory aquatic pony."
+  },
+  {
+    "id": 35,
+    "name": "Wolpertinger",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 49,
+    "lon": 13,
+    "lore": "Antlered, winged rabbit."
+  },
+  {
+    "id": 36,
+    "name": "Cu Sith",
+    "category": "Zoomorphic",
+    "alignment": "Ambivalent",
+    "lat": 56,
+    "lon": -5,
+    "lore": "Giant green hound."
+  },
+  {
+    "id": 37,
+    "name": "Cadejo",
+    "category": "Zoomorphic",
+    "alignment": "Ambivalent",
+    "lat": 36,
+    "lon": -5,
+    "lore": "Spectral dog protector or curse."
+  },
+  {
+    "id": 38,
+    "name": "Barghest",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 53.95,
+    "lon": -1.08,
+    "lore": "Demonic dog with large teeth."
+  },
+  {
+    "id": 39,
+    "name": "Gallytrot",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 52.63,
+    "lon": 1.29,
+    "lore": "White shadowy dog."
+  },
+  {
+    "id": 40,
+    "name": "Moddey Dhoo",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 54.22,
+    "lon": -4.69,
+    "lore": "Spectral black spaniel."
+  },
+  {
+    "id": 41,
+    "name": "Centaur",
+    "category": "Hybrids of human and animal",
+    "alignment": "Ambivalent",
+    "lat": 39.44,
+    "lon": 23.05,
+    "lore": "Half-human, half-horse."
+  },
+  {
+    "id": 42,
+    "name": "Satyr",
+    "category": "Hybrids of human and animal",
+    "alignment": "Ambivalent",
+    "lat": 37.5,
+    "lon": 22.2,
+    "lore": "Half-human, half-goat legs."
+  },
+  {
+    "id": 43,
+    "name": "Minotaur",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 35.31,
+    "lon": 25.16,
+    "lore": "Bull head, human body."
+  },
+  {
+    "id": 44,
+    "name": "Harpy",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 37.25,
+    "lon": 21,
+    "lore": "Woman head, bird body."
+  },
+  {
+    "id": 45,
+    "name": "Scylla",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 38.25,
+    "lon": 15.71,
+    "lore": "Multi-headed sea monster."
+  },
+  {
+    "id": 46,
+    "name": "Mermaid",
+    "category": "Hybrids of human and animal",
+    "alignment": "Ambivalent",
+    "lat": 46.43,
+    "lon": 0.12,
+    "lore": "Human torso, fish tail."
+  },
+  {
+    "id": 47,
+    "name": "Sirena",
+    "category": "Hybrids of human and animal",
+    "alignment": "Ambivalent",
+    "lat": 43.46,
+    "lon": -3.76,
+    "lore": "Singing sea maidens."
+  },
+  {
+    "id": 48,
+    "name": "Sphinx",
+    "category": "Hybrids of human and animal",
+    "alignment": "Neutral",
+    "lat": 38.32,
+    "lon": 23.32,
+    "lore": "Lion body, human head, wings."
+  },
+  {
+    "id": 49,
+    "name": "Manticore",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 29.93,
+    "lon": 52.89,
+    "lore": "Human face, lion body, scorpion tail."
+  },
+  {
+    "id": 50,
+    "name": "Faun",
+    "category": "Hybrids of human and animal",
+    "alignment": "Benevolent",
+    "lat": 41.89,
+    "lon": 12.49,
+    "lore": "Peaceful goat-man."
+  },
+  {
+    "id": 51,
+    "name": "Gorgon",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 34.5,
+    "lon": 24,
+    "lore": "Snake hair; turns to stone."
+  },
+  {
+    "id": 52,
+    "name": "Ichthyocentaur",
+    "category": "Hybrids of human and animal",
+    "alignment": "Neutral",
+    "lat": 37.65,
+    "lon": 24.02,
+    "lore": "Human, horse, and fish hybrid."
+  },
+  {
+    "id": 53,
+    "name": "Lamia",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 39.5,
+    "lon": 22.5,
+    "lore": "Child-eating half-serpent."
+  },
+  {
+    "id": 54,
+    "name": "Nixie",
+    "category": "Hybrids of human and animal",
+    "alignment": "Ambivalent",
+    "lat": 48.57,
+    "lon": 13.46,
+    "lore": "Water spirit with fish features."
+  },
+  {
+    "id": 55,
+    "name": "Sileni",
+    "category": "Hybrids of human and animal",
+    "alignment": "Ambivalent",
+    "lat": 38,
+    "lon": 23.5,
+    "lore": "Drunken companions of Dionysus."
+  },
+  {
+    "id": 56,
+    "name": "Triton",
+    "category": "Hybrids of human and animal",
+    "alignment": "Neutral",
+    "lat": 36.4,
+    "lon": 25.4,
+    "lore": "Merman sea messenger."
+  },
+  {
+    "id": 57,
+    "name": "Cynocephaly",
+    "category": "Hybrids of human and animal",
+    "alignment": "Neutral",
+    "lat": 45,
+    "lon": 25,
+    "lore": "Dog-headed humans."
+  },
+  {
+    "id": 58,
+    "name": "Each-Uisge",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 56.96,
+    "lon": -5.7,
+    "lore": "Shapeshifting water hunter."
+  },
+  {
+    "id": 59,
+    "name": "Melusine",
+    "category": "Hybrids of human and animal",
+    "alignment": "Ambivalent",
+    "lat": 46.43,
+    "lon": 0.12,
+    "lore": "Water spirit with serpent tail."
+  },
+  {
+    "id": 60,
+    "name": "Rusalka",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 49,
+    "lon": 32,
+    "lore": "Vengeful drowning spirit."
+  },
+  {
+    "id": 61,
+    "name": "Griffin",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 49,
+    "lon": 87,
+    "lore": "Lion body, eagle head."
+  },
+  {
+    "id": 62,
+    "name": "Hippogriff",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 42.67,
+    "lon": 0,
+    "lore": "Griffin-mare offspring."
+  },
+  {
+    "id": 63,
+    "name": "Chimera",
+    "category": "Hybrid animals",
+    "alignment": "Malicious",
+    "lat": 36.43,
+    "lon": 30.45,
+    "lore": "Lion, goat, snake hybrid."
+  },
+  {
+    "id": 64,
+    "name": "Pegasus",
+    "category": "Hybrid animals",
+    "alignment": "Benevolent",
+    "lat": 38.35,
+    "lon": 22.97,
+    "lore": "Winged stallion."
+  },
+  {
+    "id": 65,
+    "name": "Questing Beast",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 51.5,
+    "lon": -3.5,
+    "lore": "Snake, leopard, lion hybrid."
+  },
+  {
+    "id": 66,
+    "name": "Catoblepas",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 9,
+    "lon": 35,
+    "lore": "Heavy-headed lethal beast."
+  },
+  {
+    "id": 67,
+    "name": "Leucrotta",
+    "category": "Hybrid animals",
+    "alignment": "Malicious",
+    "lat": 15,
+    "lon": 40,
+    "lore": "Hyena-stag hybrid."
+  },
+  {
+    "id": 68,
+    "name": "Yale",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 52,
+    "lon": 0,
+    "lore": "Antelope with swiveling horns."
+  },
+  {
+    "id": 70,
+    "name": "Hippocamp",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 37.65,
+    "lon": 24.02,
+    "lore": "Horse-fish hybrid."
+  },
+  {
+    "id": 71,
+    "name": "Sea-Goat",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 35,
+    "lon": 25,
+    "lore": "Goat-fish hybrid."
+  },
+  {
+    "id": 72,
+    "name": "Ophiotaurus",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 38.5,
+    "lon": 22,
+    "lore": "Bull-serpent hybrid."
+  },
+  {
+    "id": 73,
+    "name": "Musimon",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 40,
+    "lon": 9,
+    "lore": "Goat-sheep hybrid."
+  },
+  {
+    "id": 74,
+    "name": "Monoceros",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 20,
+    "lon": 70,
+    "lore": "One-horned stag beast."
+  },
+  {
+    "id": 69,
+    "name": "Cockerel",
+    "category": "Hybrid animals",
+    "alignment": "Ambivalent",
+    "lat": 52.25,
+    "lon": 21.01,
+    "lore": "Basilisk-related hybrid bird."
+  },
+  {
+    "id": 75,
+    "name": "Balaur",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 47.16,
+    "lon": 26.35,
+    "lore": "Multi-headed weather dragon."
+  },
+  {
+    "id": 76,
+    "name": "Hydra",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 37.55,
+    "lon": 22.72,
+    "lore": "Multi-headed swamp serpent."
+  },
+  {
+    "id": 77,
+    "name": "Zmey",
+    "category": "Dragons",
+    "alignment": "Ambivalent",
+    "lat": 44.8,
+    "lon": 20.46,
+    "lore": "Slavic protector/destroyer dragon."
+  },
+  {
+    "id": 78,
+    "name": "Guivre",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 49,
+    "lon": 1,
+    "lore": "Venomous legless dragon."
+  },
+  {
+    "id": 79,
+    "name": "Knucker",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 50.84,
+    "lon": -0.55,
+    "lore": "English water dragon."
+  },
+  {
+    "id": 80,
+    "name": "Lambton Worm",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 54.88,
+    "lon": -1.52,
+    "lore": "Giant coiling hill serpent."
+  },
+  {
+    "id": 81,
+    "name": "Peluda",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 48.19,
+    "lon": 0.66,
+    "lore": "Porcupine-quilled dragon."
+  },
+  {
+    "id": 82,
+    "name": "Tarasque",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 43.8,
+    "lon": 4.65,
+    "lore": "Six-legged turtle-dragon hybrid."
+  },
+  {
+    "id": 83,
+    "name": "Vouivre",
+    "category": "Dragons",
+    "alignment": "Ambivalent",
+    "lat": 46.5,
+    "lon": 5.9,
+    "lore": "Ruby-foreheaded wyvern."
+  },
+  {
+    "id": 84,
+    "name": "Culebre",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 43.19,
+    "lon": -4.83,
+    "lore": "Spanish cave-guarding serpent."
+  },
+  {
+    "id": 85,
+    "name": "Ladōn",
+    "category": "Dragons",
+    "alignment": "Neutral",
+    "lat": 31,
+    "lon": -8,
+    "lore": "Multi-headed garden guardian."
+  },
+  {
+    "id": 86,
+    "name": "Python",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 38.48,
+    "lon": 22.5,
+    "lore": "Earth-dragon of Delphi."
+  },
+  {
+    "id": 87,
+    "name": "Bolsh",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 40.2,
+    "lon": 19.6,
+    "lore": "Balkan destructive serpent."
+  },
+  {
+    "id": 88,
+    "name": "Dragonet",
+    "category": "Dragons",
+    "alignment": "Ambivalent",
+    "lat": 45,
+    "lon": 15,
+    "lore": "Small venomous dragon species."
+  },
+  {
+    "id": 89,
+    "name": "Drakon",
+    "category": "Dragons",
+    "alignment": "Neutral",
+    "lat": 38,
+    "lon": 23,
+    "lore": "Giant Greek serpent."
+  },
+  {
+    "id": 90,
+    "name": "Fire-Drake",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 51,
+    "lon": 10,
+    "lore": "Classic fire dragon."
+  },
+  {
+    "id": 91,
+    "name": "Amphisbaena",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 30,
+    "lon": 35,
+    "lore": "Two-headed serpent."
+  },
+  {
+    "id": 92,
+    "name": "Basilisk",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 45,
+    "lon": 10,
+    "lore": "King of serpents; lethal gaze."
+  },
+  {
+    "id": 93,
+    "name": "Cockatrice",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 51.5,
+    "lon": -0.12,
+    "lore": "Rooster-dragon hybrid."
+  },
+  {
+    "id": 94,
+    "name": "Wyvern",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 52,
+    "lon": -2,
+    "lore": "Two-legged winged dragon."
+  },
+  {
+    "id": 95,
+    "name": "Ouroboros",
+    "category": "Dragons",
+    "alignment": "Neutral",
+    "lat": 35,
+    "lon": 30,
+    "lore": "Eternal self-eating serpent."
+  },
+  {
+    "id": 96,
+    "name": "Colchian Dragon",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 42.15,
+    "lon": 41.67,
+    "lore": "Golden Fleece guardian."
+  },
+  {
+    "id": 97,
+    "name": "Pukis",
+    "category": "Dragons",
+    "alignment": "Ambivalent",
+    "lat": 56.5,
+    "lon": 23.5,
+    "lore": "Wealth-bringing house dragon."
+  },
+  {
+    "id": 98,
+    "name": "Aitvaras (Serpent)",
+    "category": "Dragons",
+    "alignment": "Ambivalent",
+    "lat": 55.35,
+    "lon": 26,
+    "lore": "Fiery sky-serpent spirit."
+  },
+  {
+    "id": 99,
+    "name": "Chuvash Dragon",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 55,
+    "lon": 47,
+    "lore": "Shapeshifting deceptive dragon."
+  },
+  {
+    "id": 100,
+    "name": "Bonnacon",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 41,
+    "lon": 24,
+    "lore": "Caustic dung defender."
+  },
+  {
+    "id": 101,
+    "name": "Skvader",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 62.39,
+    "lon": 17.3,
+    "lore": "Hare-grouse hybrid."
+  },
+  {
+    "id": 102,
+    "name": "Jackalope",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 50,
+    "lon": 15,
+    "lore": "Antlered hare."
+  },
+  {
+    "id": 103,
+    "name": "Karkinos",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 37.55,
+    "lon": 22.72,
+    "lore": "Hydra's giant crab ally."
+  },
+  {
+    "id": 104,
+    "name": "Caladrius",
+    "category": "Zoomorphic",
+    "alignment": "Benevolent",
+    "lat": 41.9,
+    "lon": 12.45,
+    "lore": "Sickness-predicting bird."
+  },
+  {
+    "id": 105,
+    "name": "Stymphalian Bird",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 37.84,
+    "lon": 22.45,
+    "lore": "Metallic man-eating bird."
+  },
+  {
+    "id": 106,
+    "name": "Salamander",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 45,
+    "lon": 5,
+    "lore": "Fire-resistant lizard."
+  },
+  {
+    "id": 107,
+    "name": "Aspidochelone",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 60,
+    "lon": -10,
+    "lore": "Island-sized sea monster."
+  },
+  {
+    "id": 108,
+    "name": "Fastitocalon",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 62,
+    "lon": -5,
+    "lore": "Ship-sinking turtle island."
+  },
+  {
+    "id": 109,
+    "name": "Gulon",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 60,
+    "lon": 15,
+    "lore": "Gluttonous cat-dog beast."
+  },
+  {
+    "id": 110,
+    "name": "Caucasian Eagle",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 42,
+    "lon": 44,
+    "lore": "Prometheus's tormentor."
+  },
+  {
+    "id": 111,
+    "name": "Kudiani",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 42,
+    "lon": 44,
+    "lore": "Shapeshifting Georgian sorceress."
+  },
+  {
+    "id": 112,
+    "name": "Laukosargas",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 56,
+    "lon": 22.2,
+    "lore": "Field guardian spirit."
+  },
+  {
+    "id": 113,
+    "name": "Baubas",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 55.52,
+    "lon": 25.1,
+    "lore": "Dark spindly spirit."
+  },
+  {
+    "id": 114,
+    "name": "Vadājs",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 57.3,
+    "lon": 25.5,
+    "lore": "Lost-leading forest spirit."
+  },
+  {
+    "id": 115,
+    "name": "Liche",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 45.83,
+    "lon": 1.26,
+    "lore": "Undead sorcerer."
+  },
+  {
+    "id": 116,
+    "name": "Dahu",
+    "category": "Zoomorphic",
+    "alignment": "Neutral",
+    "lat": 45.5,
+    "lon": 6.5,
+    "lore": "Uneven-legged mountain goat."
+  },
+  {
+    "id": 117,
+    "name": "Matagot",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 43.6,
+    "lon": 1.44,
+    "lore": "Wealth-bringing cat spirit."
+  },
+  {
+    "id": 118,
+    "name": "Wichtel",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 50,
+    "lon": 10,
+    "lore": "Helpful German brownie."
+  },
+  {
+    "id": 119,
+    "name": "Heinzelmännchen",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 50.94,
+    "lon": 6.95,
+    "lore": "Hardworking Cologne gnomes."
+  },
+  {
+    "id": 120,
+    "name": "Kobold",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 51,
+    "lon": 9,
+    "lore": "Chaotic mine spirit."
+  },
+  {
+    "id": 121,
+    "name": "Nix",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 60.7,
+    "lon": 10.8,
+    "lore": "Musical water lure."
+  },
+  {
+    "id": 122,
+    "name": "Nökke",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 59.32,
+    "lon": 18.06,
+    "lore": "Violin-playing water spirit."
+  },
+  {
+    "id": 123,
+    "name": "Vodyanoy",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 53.2,
+    "lon": 50.15,
+    "lore": "Drowning frog spirit."
+  },
+  {
+    "id": 124,
+    "name": "Bolotnik",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 53,
+    "lon": 28,
+    "lore": "Mimicking swamp spirit."
+  },
+  {
+    "id": 125,
+    "name": "Polevik",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 54,
+    "lon": 38,
+    "lore": "Grass-haired field spirit."
+  },
+  {
+    "id": 126,
+    "name": "Ovinnik",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 55,
+    "lon": 35,
+    "lore": "Vicious cat barn spirit."
+  },
+  {
+    "id": 127,
+    "name": "Vila",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 43.21,
+    "lon": 19.05,
+    "lore": "Healing mountain nymph."
+  },
+  {
+    "id": 128,
+    "name": "Samovila",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 42.7,
+    "lon": 23.33,
+    "lore": "Dancing forest water nymph."
+  },
+  {
+    "id": 129,
+    "name": "Zmey Gorynych",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 55.75,
+    "lon": 37.61,
+    "lore": "Three-headed Russian dragon."
+  },
+  {
+    "id": 130,
+    "name": "Poludnica",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 50,
+    "lon": 20,
+    "lore": "Lady Midday strike spirit."
+  },
+  {
+    "id": 131,
+    "name": "Besta",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 40,
+    "lon": -8,
+    "lore": "Portuguese demonic beast."
+  },
+  {
+    "id": 132,
+    "name": "Mora",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 45.1,
+    "lon": 15.2,
+    "lore": "Nightmare-causing demon."
+  },
+  {
+    "id": 133,
+    "name": "Nightmare",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 52.52,
+    "lon": 13.4,
+    "lore": "Sleep-plaguing spirit."
+  },
+  {
+    "id": 134,
+    "name": "Hulder",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 60.47,
+    "lon": 8.46,
+    "lore": "Cow-tailed forest spirit."
+  },
+  {
+    "id": 135,
+    "name": "Troll",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 62,
+    "lon": 9,
+    "lore": "Sun-vulnerable giants."
+  },
+  {
+    "id": 136,
+    "name": "Huldra",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 59.91,
+    "lon": 10.75,
+    "lore": "Hollow-backed forest woman."
+  },
+  {
+    "id": 137,
+    "name": "Fossegrim",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 59,
+    "lon": 9,
+    "lore": "Fiddle-playing water spirit."
+  },
+  {
+    "id": 138,
+    "name": "Näkki",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 60.17,
+    "lon": 24.94,
+    "lore": "Finnish child-drowning spirit."
+  },
+  {
+    "id": 139,
+    "name": "Ajatar",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 61.5,
+    "lon": 23.76,
+    "lore": "Disease-spreading forest spirit."
+  },
+  {
+    "id": 140,
+    "name": "Hiisi",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 61,
+    "lon": 25,
+    "lore": "Sacred grove turned demon."
+  },
+  {
+    "id": 141,
+    "name": "Metsatöll",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 58.59,
+    "lon": 25,
+    "lore": "Estonian forest wolf spirit."
+  },
+  {
+    "id": 142,
+    "name": "Kratt",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 59.43,
+    "lon": 24.75,
+    "lore": "Theft-assisting construct."
+  },
+  {
+    "id": 143,
+    "name": "Paphos",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 34.77,
+    "lon": 32.42,
+    "lore": "Creator of living statues."
+  },
+  {
+    "id": 144,
+    "name": "Telchines",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 36.44,
+    "lon": 28.22,
+    "lore": "Flipper-handed dog smiths."
+  },
+  {
+    "id": 145,
+    "name": "Dactyls",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 35.2,
+    "lon": 24.8,
+    "lore": "Iron-discovering tiny smiths."
+  },
+  {
+    "id": 146,
+    "name": "Korybantes",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 35.3,
+    "lon": 25,
+    "lore": "Armored ritual dancers."
+  },
+  {
+    "id": 147,
+    "name": "Curetes",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 35.15,
+    "lon": 24.5,
+    "lore": "Baby Zeus's shield guardians."
+  },
+  {
+    "id": 148,
+    "name": "Hecatoncheires",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.9,
+    "lon": 23.3,
+    "lore": "Hundred-armed giants."
+  },
+  {
+    "id": 149,
+    "name": "Cyclops",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 37.5,
+    "lon": 14.5,
+    "lore": "One-eyed shepherd smiths."
+  },
+  {
+    "id": 150,
+    "name": "Lestrygonians",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 41.2,
+    "lon": 13,
+    "lore": "Odyssean giant cannibals."
+  },
+  {
+    "id": 151,
+    "name": "Geryon",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 36.5,
+    "lon": -6.3,
+    "lore": "Three-bodied giant."
+  },
+  {
+    "id": 152,
+    "name": "Cacus",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 41.88,
+    "lon": 12.48,
+    "lore": "Aventine fire giant."
+  },
+  {
+    "id": 153,
+    "name": "Talos",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 35,
+    "lon": 25,
+    "lore": "Bronze shore automaton."
+  },
+  {
+    "id": 154,
+    "name": "Gorgon (Medusa)",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 37,
+    "lon": 22,
+    "lore": "Snake-haired victim turned killer."
+  },
+  {
+    "id": 155,
+    "name": "Graeae",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 38,
+    "lon": 21,
+    "lore": "One-eyed sister trio."
+  },
+  {
+    "id": 156,
+    "name": "Erinyes",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 37,
+    "lon": 22.5,
+    "lore": "Venomous vengeance deities."
+  },
+  {
+    "id": 157,
+    "name": "Hesperides",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 32,
+    "lon": -8,
+    "lore": "Garden garden nymphs."
+  },
+  {
+    "id": 158,
+    "name": "Dryad",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 38.5,
+    "lon": 22,
+    "lore": "Tree-bound spirits."
+  },
+  {
+    "id": 159,
+    "name": "Hamadryad",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 38.6,
+    "lon": 22.1,
+    "lore": "Specific life-linked dryad."
+  },
+  {
+    "id": 160,
+    "name": "Naiad",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 38,
+    "lon": 23,
+    "lore": "Spring and fountain nymphs."
+  },
+  {
+    "id": 161,
+    "name": "Oread",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.9,
+    "lon": 22.8,
+    "lore": "Mountain cave nymphs."
+  },
+  {
+    "id": 162,
+    "name": "Napaeae",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.7,
+    "lon": 22.5,
+    "lore": "Wooded glen nymphs."
+  },
+  {
+    "id": 163,
+    "name": "Limnades",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.6,
+    "lon": 22.3,
+    "lore": "Lake and marsh nymphs."
+  },
+  {
+    "id": 164,
+    "name": "Anthousai",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.5,
+    "lon": 22.1,
+    "lore": "Flower-haired nymphs."
+  },
+  {
+    "id": 165,
+    "name": "Alseids",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.4,
+    "lon": 21.9,
+    "lore": "Grove and undergrowth nymphs."
+  },
+  {
+    "id": 166,
+    "name": "Leimakids",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.3,
+    "lon": 21.7,
+    "lore": "Meadow and pasture nymphs."
+  },
+  {
+    "id": 167,
+    "name": "Lampades",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.94,
+    "lon": 23.72,
+    "lore": "Torch-bearing underworld nymphs."
+  },
+  {
+    "id": 168,
+    "name": "Meliads",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 39,
+    "lon": 22,
+    "lore": "Ash tree nymphs."
+  },
+  {
+    "id": 169,
+    "name": "Hydriads",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 38.2,
+    "lon": 21.8,
+    "lore": "Specific spring water nymphs."
+  },
+  {
+    "id": 170,
+    "name": "Epimelides",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 37.1,
+    "lon": 22.1,
+    "lore": "Orchard and sheep nymphs."
+  },
+  {
+    "id": 171,
+    "name": "Haliads",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 36.5,
+    "lon": 24.5,
+    "lore": "Rocky shore sea nymphs."
+  },
+  {
+    "id": 172,
+    "name": "Psamate",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.7,
+    "lon": 24.1,
+    "lore": "Sandy beach sea nymph."
+  },
+  {
+    "id": 173,
+    "name": "The Fates",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.97,
+    "lon": 23.72,
+    "lore": "Destiny spinning sisters."
+  },
+  {
+    "id": 174,
+    "name": "The Muses",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 38.35,
+    "lon": 22.98,
+    "lore": "Art and science goddesses."
+  },
+  {
+    "id": 175,
+    "name": "The Graces",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 38.48,
+    "lon": 22.84,
+    "lore": "Beauty and creativity goddesses."
+  },
+  {
+    "id": 176,
+    "name": "The Horae",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 37.9,
+    "lon": 23.5,
+    "lore": "Seasons and time goddesses."
+  },
+  {
+    "id": 177,
+    "name": "Cerberus",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 36.43,
+    "lon": 22.48,
+    "lore": "Three-headed underworld dog."
+  },
+  {
+    "id": 178,
+    "name": "Orthrus",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 36,
+    "lon": -5.5,
+    "lore": "Two-headed cattle guardian."
+  },
+  {
+    "id": 179,
+    "name": "Sphinx (Theban)",
+    "category": "Hybrids of human and animal",
+    "alignment": "Neutral",
+    "lat": 38.32,
+    "lon": 23.32,
+    "lore": "Winged human-headed riddler."
+  },
+  {
+    "id": 180,
+    "name": "Arimaspians",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 60,
+    "lon": 70,
+    "lore": "Griffin-warring one-eyed people."
+  },
+  {
+    "id": 181,
+    "name": "Hyperboreans",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 75,
+    "lon": 30,
+    "lore": "Sunshine giants of the north."
+  },
+  {
+    "id": 182,
+    "name": "Lestrigons",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 41.2,
+    "lon": 13,
+    "lore": "Giant Odyssean cannibals."
+  },
+  {
+    "id": 183,
+    "name": "Cicones",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 40.9,
+    "lon": 25.4,
+    "lore": "Fierce Odyssean tribe."
+  },
+  {
+    "id": 184,
+    "name": "Lotophagi",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 33.8,
+    "lon": 10.8,
+    "lore": "Apathetic lotus-eaters."
+  },
+  {
+    "id": 185,
+    "name": "Gorgon (Stheno)",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 34,
+    "lon": 24,
+    "lore": "Murderous eldest Gorgon."
+  },
+  {
+    "id": 186,
+    "name": "Gorgon (Euryale)",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 34.1,
+    "lon": 24.1,
+    "lore": "Immortal bellowing Gorgon."
+  },
+  {
+    "id": 187,
+    "name": "Chrysaor",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 38.36,
+    "lon": 22.98,
+    "lore": "Golden-sworded giant boar."
+  },
+  {
+    "id": 188,
+    "name": "Khalkotauroi",
+    "category": "Hybrid animals",
+    "alignment": "Malicious",
+    "lat": 42.2,
+    "lon": 42,
+    "lore": "Bronze fire-breathing bulls."
+  },
+  {
+    "id": 189,
+    "name": "Phyllis",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 41,
+    "lon": 23.8,
+    "lore": "Almond tree figure."
+  },
+  {
+    "id": 190,
+    "name": "Phaethon",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 38,
+    "lon": 22,
+    "lore": "Lost solar chariot son."
+  },
+  {
+    "id": 191,
+    "name": "Satyress",
+    "category": "Hybrids of human and animal",
+    "alignment": "Ambivalent",
+    "lat": 37,
+    "lon": 22,
+    "lore": "Female forest satyr."
+  },
+  {
+    "id": 192,
+    "name": "Oupis",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.8,
+    "lon": 22.2,
+    "lore": "Hunting retinue nymph."
+  },
+  {
+    "id": 193,
+    "name": "Loxias",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 37.9,
+    "lon": 22.3,
+    "lore": "Delphic oracle nymph."
+  },
+  {
+    "id": 194,
+    "name": "Hekaerge",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 38,
+    "lon": 22.4,
+    "lore": "Offering-bearing northern nymph."
+  },
+  {
+    "id": 195,
+    "name": "Ciconian Cavalry",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 40.9,
+    "lon": 25.4,
+    "lore": "Thracian horse warriors."
+  },
+  {
+    "id": 196,
+    "name": "Lotus Eaters",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 33.8,
+    "lon": 10.8,
+    "lore": "Peaceful apathy group."
+  },
+  {
+    "id": 197,
+    "name": "Graeae Sisters",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 38,
+    "lon": 21,
+    "lore": "Tooth-sharing trio."
+  },
+  {
+    "id": 198,
+    "name": "Gorgon Stheno",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 34,
+    "lon": 24,
+    "lore": "Immortal deadly sister."
+  },
+  {
+    "id": 199,
+    "name": "Gorgon Euryale",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 34.1,
+    "lon": 24.1,
+    "lore": "Immortal shouting sister."
+  },
+  {
+    "id": 200,
+    "name": "Pegasus (Winged)",
+    "category": "Hybrid animals",
+    "alignment": "Benevolent",
+    "lat": 38.35,
+    "lon": 22.97,
+    "lore": "Divine help horse."
+  },
+  {
+    "id": 201,
+    "name": "Chrysaor (Giant)",
+    "category": "Anthromorphic",
+    "alignment": "Neutral",
+    "lat": 38.36,
+    "lon": 22.98,
+    "lore": "Sword-bearing giant."
+  },
+  {
+    "id": 202,
+    "name": "Colchian Dragon (Sleepless)",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 42.15,
+    "lon": 41.67,
+    "lore": "Golden Fleece guardian."
+  },
+  {
+    "id": 203,
+    "name": "Scylla (Nymph)",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 38.25,
+    "lon": 15.71,
+    "lore": "Nymph turned monster."
+  },
+  {
+    "id": 204,
+    "name": "Charybdis",
+    "category": "Zoomorphic",
+    "alignment": "Malicious",
+    "lat": 38.26,
+    "lon": 15.6,
+    "lore": "Ship-swallowing maelstrom."
+  },
+  {
+    "id": 205,
+    "name": "Python (Specific)",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 38.48,
+    "lon": 22.5,
+    "lore": "Delphi navel dragon."
+  },
+  {
+    "id": 206,
+    "name": "Chimera (Fire)",
+    "category": "Hybrid animals",
+    "alignment": "Malicious",
+    "lat": 36.43,
+    "lon": 30.45,
+    "lore": "Fire-breathing composite beast."
+  },
+  {
+    "id": 207,
+    "name": "Manticore (Spines)",
+    "category": "Hybrids of human and animal",
+    "alignment": "Malicious",
+    "lat": 29.93,
+    "lon": 52.89,
+    "lore": "Spine-shooting lion hybrid."
+  },
+  {
+    "id": 208,
+    "name": "Griffin (Guardian)",
+    "category": "Hybrid animals",
+    "alignment": "Neutral",
+    "lat": 50,
+    "lon": 80,
+    "lore": "Gold-mine guardian."
+  },
+  {
+    "id": 209,
+    "name": "Lestrigons (Tribe)",
+    "category": "Anthromorphic",
+    "alignment": "Malicious",
+    "lat": 41.2,
+    "lon": 13,
+    "lore": "Fleet-destroying cannibals."
+  },
+  {
+    "id": 210,
+    "name": "Cicones (Force)",
+    "category": "Anthromorphic",
+    "alignment": "Ambivalent",
+    "lat": 40.9,
+    "lon": 25.4,
+    "lore": "Resilient Thracian tribe."
+  },
+  {
+    "id": 211,
+    "name": "Hyperboreans (Northern)",
+    "category": "Anthromorphic",
+    "alignment": "Benevolent",
+    "lat": 75,
+    "lon": 30,
+    "lore": "Happy northern giants."
+  },
+  {
+    "id": 212,
+    "name": "Colchian Dragon (Fleece)",
+    "category": "Dragons",
+    "alignment": "Malicious",
+    "lat": 42.15,
+    "lon": 41.67,
+    "lore": "Ever-vigilant serpent."
+  },
+  {
+    "id": 213,
+    "name": "Khalkotauroi (Bulls)",
+    "category": "Hybrid animals",
+    "alignment": "Malicious",
+    "lat": 42.2,
+    "lon": 42,
+    "lore": "Fire-breathing bronze bulls."
+  }
+]
