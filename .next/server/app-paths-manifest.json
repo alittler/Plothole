@@ -7,5 +7,6 @@
   "/api/network-info/route": "app/api/network-info/route.js",
   "/api/projects/[id]/route": "app/api/projects/[id]/route.js",
   "/api/projects/route": "app/api/projects/route.js",
-  "/api/version/route": "app/api/version/route.js"
+  "/api/version/route": "app/api/version/route.js",
+  "/creatures/page": "app/creatures/page.js"
 }
