@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ProjectData, HierarchicalEntity } from '../../types';
 import { Book, Search, FileText, Plus, Scroll, BookMarked, Box, MoreHorizontal, Wand2 } from 'lucide-react';
 import { WikiText } from '../ui/WikiText';
+import { CardActions } from '../ui/CardActions';
 import { generateId } from '../../services/storageService';
 
 interface CodexViewProps {
@@ -104,17 +105,32 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
     }
   };
 
+  const handleDeleteEntry = (id: string) => {
+    const newLore = lore.filter(l => l.id !== id);
+    const newEntities = entities.filter(e => e.id !== id);
+    onUpdateProject({ lore: newLore, entities: newEntities });
+  };
+
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10 shrink-0">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-1 text-center md:text-left hidden sm:block">
-            <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
-              <Book size={32} className="text-indigo-600" /> Story Codex
-            </h1>
-            <p className="ph-section-subtitle">The authoritative collection of your world's knowledge.</p>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div className="space-y-0 hidden sm:block">
+              <h1 className="ph-section-title text-2xl md:text-3xl flex items-center gap-3">
+                <Book size={32} className="text-indigo-600" /> Story Codex
+              </h1>
+            </div>
+            <div className="relative ml-auto">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="ph-input pl-12 w-64"
+              />
+            </div>
           </div>
-          <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar flex items-center gap-2">
+          <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
             <div className="sm:hidden flex items-center gap-2 shrink-0">
               <Book size={24} className="text-indigo-600" />
             </div>
@@ -181,12 +197,19 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
                   <div key={id} className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative group">
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{category}</span>
-                      <button 
-                        onClick={() => onLinkClick('admin', id)}
-                        className="text-slate-400 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        <FileText size={16} />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => onLinkClick('admin', id)}
+                          className="text-slate-400 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <FileText size={16} />
+                        </button>
+                        <CardActions
+                          itemName={title}
+                          onEdit={() => onLinkClick('admin', id)}
+                          onDelete={() => handleDeleteEntry(id)}
+                        />
+                      </div>
                     </div>
                     <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase mb-2">{title}</h3>
                     <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-serif">

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ViewType, ProjectData, ProjectMetadata, User } from '../../types';
 import { Search, Grid3x3, List, Filter, Plus, Edit2, Trash2, ChevronRight, Users, MapPin, Wand2, Book, Clock, Archive } from 'lucide-react';
+import { CardActions } from '../ui/CardActions';
 
 interface CardCatalogueViewProps {
   currentView: ViewType;
@@ -116,6 +117,29 @@ export const CardCatalogueView: React.FC<CardCatalogueViewProps> = ({
   };
 
   const filteredCards = useMemo(() => getCards(), [selectedType, searchTerm, data]);
+
+  const handleDeleteCard = (cardId: string) => {
+    switch (selectedType) {
+      case CardType.CHARACTER:
+        onUpdateProject({ characters: (data.characters || []).filter(c => c.id !== cardId) });
+        break;
+      case CardType.LOCATION:
+        onUpdateProject({ locations: (data.locations || []).filter(l => l.id !== cardId) });
+        break;
+      case CardType.ARTIFACT:
+        onUpdateProject({ artifacts: (data.artifacts || []).filter(a => a.id !== cardId) });
+        break;
+      case CardType.LORE:
+        onUpdateProject({ lore: (data.lore || []).filter(l => l.id !== cardId) });
+        break;
+      case CardType.TIMELINE:
+        onUpdateProject({ timeline: (data.timeline || []).filter(t => t.id !== cardId) });
+        break;
+      case CardType.ENTITY:
+        onUpdateProject({ entities: (data.entities || []).filter(e => e.id !== cardId) });
+        break;
+    }
+  };
 
   const getCardIcon = (type: CardType) => {
     switch (type) {
@@ -281,7 +305,14 @@ export const CardCatalogueView: React.FC<CardCatalogueViewProps> = ({
                       {card.preview}
                     </p>
                   </div>
-                  <ChevronRight className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors ml-4 shrink-0" size={18} />
+                  <div className="flex items-center gap-2 ml-4">
+                    <ChevronRight className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors shrink-0" size={18} />
+                    <CardActions
+                      itemName={card.title}
+                      onEdit={() => onLinkClick(card.type, card.id)}
+                      onDelete={() => handleDeleteCard(card.id)}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

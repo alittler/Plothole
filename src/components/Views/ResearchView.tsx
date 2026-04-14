@@ -161,17 +161,26 @@ interface ResearchViewProps {
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10 shrink-0">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6">
-          <div className="space-y-1 text-center md:text-left hidden sm:block">
-            <h1 className="ph-section-title text-xl md:text-3xl flex items-center justify-center md:justify-start gap-2 md:gap-3">
-              <Search size={24} className="md:w-8 md:h-8 text-indigo-600" /> <span className="hidden md:inline">Research & Discovery</span>
-            </h1>
-            <p className="ph-section-subtitle text-xs md:text-sm">Analyze sources and chat with the Oracle.</p>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div className="space-y-0 hidden sm:block">
+              <h1 className="ph-section-title text-xl md:text-3xl flex items-center gap-2 md:gap-3">
+                <Search size={24} className="md:w-8 md:h-8 text-indigo-600" /> <span className="hidden md:inline">Research & Discovery</span>
+              </h1>
+            </div>
+            <div className="sm:hidden">
+              <Search size={24} className="text-indigo-600" />
+            </div>
+            <div className="relative ml-auto">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="ph-input pl-12 w-64"
+              />
+            </div>
           </div>
-          <div className="sm:hidden">
-            <Search size={24} className="text-indigo-600" />
-          </div>
-          <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar">
+          <div className="ph-tab-container overflow-x-auto no-scrollbar">
             {Object.values(StenoTab).map(tab => {
               const Icon = {
                 [StenoTab.RESEARCH]: Layout,

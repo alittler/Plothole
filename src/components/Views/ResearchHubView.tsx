@@ -513,34 +513,39 @@ export const ResearchHubView: React.FC<ResearchHubViewProps> = ({ projectData, o
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
       {/* Header */}
       <header className="p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-6">
-          <div className="space-y-1">
-            <h1 className="ph-section-title text-3xl flex items-center gap-3">
-              <Search size={28} className="text-indigo-600" /> Research Hub
-            </h1>
-            <p className="ph-section-subtitle">Sources • Notes • Scripture • Citations</p>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div className="space-y-0">
+              <h1 className="ph-section-title text-3xl flex items-center gap-3">
+                <Search size={28} className="text-indigo-600" /> Research Hub
+              </h1>
+            </div>
+            <div className="relative ml-auto">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="ph-input pl-12 w-64"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {Object.values(ResearchHubTab).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-lg text-sm font-black uppercase tracking-wider transition-all ${
+                  activeTab === tab
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
         </div>
       </header>
-
-      {/* Tabs */}
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-8 py-4 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex gap-2">
-          {Object.values(ResearchHubTab).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg text-sm font-black uppercase tracking-wider transition-all ${
-                activeTab === tab
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Content */}
       <main className="flex-1 overflow-y-auto custom-scrollbar">

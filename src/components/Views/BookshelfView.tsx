@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ProjectMetadata, User } from '../../types';
 import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database, Globe, Edit2, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { CardActions } from '../ui/CardActions';
 import { ProjectWikiSettings } from './ProjectWikiSettings';
 
 interface BookshelfViewProps {
@@ -172,15 +173,19 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                       >
                         <Globe size={18} />
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setProjectToDelete(project.id);
+                      <CardActions
+                        itemName={project.title}
+                        onEdit={() => {
+                          const proj = projects.find(p => p.id === project.id);
+                          if (proj) {
+                            setProjectToEdit(project.id);
+                            setEditTitle(proj.title);
+                            setEditAuthor(proj.author);
+                            setEditShortName(proj.shortName || '');
+                          }
                         }}
-                        className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                        onDelete={() => setProjectToDelete(project.id)}
+                      />
                     </div>
                   </div>
                 </div>

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
 import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight, FileText, Search } from 'lucide-react';
 import { calculateUEI, getDateFromUEI, parseDateToUEI } from '../../utils/calendarUtils';
+import { CardActions } from '../ui/CardActions';
 
 interface PlotSystemViewProps {
   currentView: ViewType;
@@ -112,14 +113,23 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
       <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm z-10 shrink-0">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-1 text-center md:text-left hidden sm:block">
-            <h1 className="ph-section-title text-2xl md:text-3xl flex items-center justify-center md:justify-start gap-3">
-              <Calendar size={32} className="text-indigo-600" /> Plot & Timeline
-            </h1>
-            <p className="ph-section-subtitle">Chronicle the events and rhythms of your narrative.</p>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div className="space-y-0 hidden sm:block">
+              <h1 className="ph-section-title text-2xl md:text-3xl flex items-center gap-3">
+                <Calendar size={32} className="text-indigo-600" /> Plot & Timeline
+              </h1>
+            </div>
+            <div className="relative ml-auto">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="ph-input pl-12 w-64"
+              />
+            </div>
           </div>
-          <div className="ph-tab-container w-full md:w-auto overflow-x-auto no-scrollbar flex items-center gap-2">
+          <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
             <div className="sm:hidden flex items-center gap-2 shrink-0">
               <Calendar size={24} className="text-indigo-600" />
             </div>
@@ -172,25 +182,14 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                         </div>
                         <div className="flex items-center gap-2">
                           {event.source === 'ai' && <Sparkles size={14} className={event.isSoftAnchor ? 'text-indigo-400' : 'text-amber-400'} />}
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
+                          <CardActions
+                            itemName={event.title}
+                            onEdit={() => {
+                              handleSelectEvent(event);
                               onLinkClick('admin', event.id);
                             }}
-                            className="p-1 text-slate-300 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Edit Event"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(event.id);
-                            }} 
-                            className="p-1 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                            onDelete={() => handleDelete(event.id)}
+                          />
                         </div>
                       </div>
                       <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">{event.title}</h3>

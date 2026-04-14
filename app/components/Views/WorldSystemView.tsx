@@ -40,7 +40,7 @@ interface WorldSystemViewProps {
 
 enum WorldTab {
   MAP = 'Interactive Map',
-  CREATE_MAP = 'Create Map',
+  GENERATE_TOWN = 'Generate Town',
   LOCATIONS = 'Locations & Paths',
   INVENTORY = 'Inventory',
   RECIPE_BOOK = 'Recipe Book'
@@ -683,7 +683,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
               </div>
             )}
 
-            {activeTab === WorldTab.CREATE_MAP && (
+            {activeTab === WorldTab.GENERATE_TOWN && (
               <CreateMapTab />
             )}
 

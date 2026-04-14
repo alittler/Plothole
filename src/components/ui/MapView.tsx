@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import 'leaflet.markercluster';
 import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity, Footprints as PawPrint } from 'lucide-react';
 import { Location, TimelineEvent, Character, MapPath } from '../../types';
 import { generateId } from '../../services/storageService';
@@ -61,6 +64,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const [isReady, setIsReady] = useState(false);
   const [shortcuts, setShortcuts] = useState<{ name: string, bounds: L.LatLngBounds, count: number, type: string }[]>([]);
   const [showGrid, setShowGrid] = useState(true);
+  const [selectedCreature, setSelectedCreature] = useState<any | null>(null);
 
   // Ledger Draggable State
   const [ledgerPos, setLedgerPos] = useState({ x: 0, y: 0 });
@@ -286,15 +290,62 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   // Get icon for creature category
-  const getCreatureIcon = (category: string): string => {
-    switch (category) {
-      case 'Dragons': return '<img src="/assets/map-icons/dragon.png" style="width: 24px; height: 24px; object-fit: contain;" />';
-      case 'Hybrid animals': return '<img src="/assets/map-icons/chimera.png" style="width: 24px; height: 24px; object-fit: contain;" />';
-      case 'Hybrids of human and animal': return '<img src="/assets/map-icons/minotaur.png" style="width: 24px; height: 24px; object-fit: contain;" />';
-      case 'Anthromorphic': return '<img src="/assets/map-icons/cyclops.png" style="width: 24px; height: 24px; object-fit: contain;" />';
-      case 'Zoomorphic': return '<img src="/assets/map-icons/bear.png" style="width: 24px; height: 24px; object-fit: contain;" />';
-      default: return '👹';
+  const getCategoryColor = (category: string): string => {
+    const normalized = category.toLowerCase().trim();
+    switch (normalized) {
+      case 'dragons': return '#ef4444'; // Red
+      case 'anthromorphic':
+      case 'anthropomorphic': return '#8b5cf6'; // Purple
+      case 'zoomorphic': return '#10b981'; // Green
+      case 'hybrids of human and animal': return '#f59e0b'; // Amber
+      case 'hybrid animals': return '#3b82f6'; // Blue
+      default: return '#64748b'; // Slate
     }
+  };
+
+  const getCreatureIcon = (category: string): string => {
+    const bgColor = getCategoryColor(category);
+    const iconUrl = (() => {
+      switch (category) {
+        case 'Dragons': return '/assets/map-icons/dragon.png';
+        case 'Hybrid animals': return '/assets/map-icons/chimera.png';
+        case 'Hybrids of human and animal': return '/assets/map-icons/minotaur.png';
+        case 'Anthromorphic': return '/assets/map-icons/cyclops.png';
+        case 'Zoomorphic': return '/assets/map-icons/bear.png';
+        default: return '';
+      }
+    })();
+
+    const innerSize = 16;
+    const iconContent = iconUrl
+      ? `<img src="${iconUrl}" style="width: ${innerSize}px; height: ${innerSize}px; object-fit: contain; filter: brightness(0) invert(1);" />`
+      : `<span style="font-size: 14px;">👹</span>`;
+
+    return `<div style="background-color: ${bgColor}; width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+      ${iconContent}
+    </div>`;
+  };
+
+  const getCreatureIconOriginal = (category: string): string => {
+    const iconUrl = (() => {
+      switch (category) {
+        case 'Dragons': return '/assets/map-icons/dragon.png';
+        case 'Hybrid animals': return '/assets/map-icons/chimera.png';
+        case 'Hybrids of human and animal': return '/assets/map-icons/minotaur.png';
+        case 'Anthromorphic': return '/assets/map-icons/cyclops.png';
+        case 'Zoomorphic': return '/assets/map-icons/bear.png';
+        default: return '';
+      }
+    })();
+
+    const innerSize = 24;
+    const iconContent = iconUrl
+      ? `<img src="${iconUrl}" style="width: ${innerSize}px; height: ${innerSize}px; object-fit: contain;" />`
+      : `<span style="font-size: 20px;">👹</span>`;
+
+    return `<div style="display: flex; align-items: center; justify-content: center;">
+      ${iconContent}
+    </div>`;
   };
 
   const handleConfirmPathName = () => {
@@ -342,56 +393,63 @@ export const MapView: React.FC<MapViewProps> = ({
     });
 
     if (isRealWorld) {
-      tileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors', noWrap: true }).addTo(map);
+      tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/positron/{z}/{x}/{y}{r}.png', { 
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20,
+        noWrap: true 
+      }).addTo(map);
       const worldBounds = L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180));
       map.setMaxBounds(worldBounds);
       const minZoom = map.getBoundsZoom(worldBounds, true);
       map.setMinZoom(minZoom);
       map.setView([20, 0], Math.max(minZoom, 2));
       
-      // Create creatures layer
-      const creaturesLayer = L.layerGroup();
-      creaturesLayer.addTo(map);
-      creaturesLayerRef.current = creaturesLayer;
+      // Create category-based cluster groups
+      const categoryClusterGroups: { [key: string]: any } = {};
+      
+      // Initialize cluster group for each category
+      const categories = new Set(creaturesData.map(c => c.category));
+      categories.forEach(category => {
+        const mcg = L.markerClusterGroup({
+          maxClusterRadius: 50,
+          iconCreateFunction: (cluster) => {
+            const childCount = cluster.getChildCount();
+            const bgColor = getCategoryColor(category);
+            return L.divIcon({
+              html: `<div style="background-color: ${bgColor}; width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); font-weight: bold; color: white; font-size: 12px;">
+                ${childCount}
+              </div>`,
+              iconSize: [40, 40],
+              iconAnchor: [20, 20],
+              className: 'creature-cluster'
+            });
+          }
+        });
+        mcg.addTo(map);
+        categoryClusterGroups[category] = mcg;
+      });
+      
+      creaturesLayerRef.current = L.layerGroup(Object.values(categoryClusterGroups));
       
       // Add creatures from euro-bestiary dataset
       creaturesData.forEach(creature => {
         if (creature.lat && creature.lon) {
           const iconHtml = getCreatureIcon(creature.category);
-          // Check if it's an image icon (contains <img), Flaticon icon (<i), or emoji
-          const isImageIcon = iconHtml.includes('<img');
-          const isFlaticonIcon = iconHtml.includes('<i');
           const marker = L.marker([creature.lat, creature.lon], {
             icon: L.divIcon({
               className: 'creature-marker',
-              html: isImageIcon
-                ? `<div class="flex items-center justify-center drop-shadow-lg hover:scale-125 transition-transform cursor-pointer">${iconHtml}</div>`
-                : isFlaticonIcon 
-                ? `<div class="flex items-center justify-center text-xl drop-shadow-lg hover:scale-125 transition-transform cursor-pointer text-slate-700 dark:text-slate-300">${iconHtml}</div>`
-                : `<div class="flex items-center justify-center text-2xl drop-shadow-lg hover:scale-125 transition-transform cursor-pointer">${iconHtml}</div>`,
+              html: `<div class="drop-shadow-lg hover:scale-125 transition-transform cursor-pointer">${iconHtml}</div>`,
               iconSize: [32, 32],
               iconAnchor: [16, 16],
               popupAnchor: [0, -16]
             })
           })
-            .bindPopup(`
-              <div style="font-weight: bold; margin-bottom: 5px;">${creature.name}</div>
-              <div style="font-size: 12px;">
-                <div><strong>Category:</strong> ${creature.category}</div>
-                <div><strong>Alignment:</strong> ${creature.alignment}</div>
-                ${creature.lore ? `<div style="margin-top: 5px; font-size: 11px; max-width: 200px;">${creature.lore.substring(0, 150)}...</div>` : ''}
-                <button class="creature-bestiary-btn" data-creature-id="${creature.id}" style="margin-top: 8px; padding: 4px 8px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 500;">View in Bestiary</button>
-              </div>
-            `)
-            .on('popupopen', () => {
-              const btn = document.querySelector(`[data-creature-id="${creature.id}"]`);
-              if (btn) {
-                btn.addEventListener('click', () => {
-                  onCreatureClick?.(creature.id);
-                });
-              }
-            })
-            .addTo(creaturesLayer);
+            .on('click', () => {
+              setSelectedCreature(creature);
+            });
+          
+          categoryClusterGroups[creature.category].addLayer(marker);
         }
       });
     } else {
@@ -924,10 +982,11 @@ export const MapView: React.FC<MapViewProps> = ({
       const zoom = 15;
       const x = Math.floor((center.lng + 180) / 360 * Math.pow(2, zoom));
       const y = Math.floor((1 - Math.log(Math.tan(center.lat * Math.PI / 180) + 1 / Math.cos(center.lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
-      const tileUrl = `https://a.tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+      const tileUrl = `https://a.basemaps.cartocdn.com/positron/${zoom}/${x}/${y}.png`;
+      const fallbackUrl = `https://b.basemaps.cartocdn.com/positron/${zoom}/${x}/${y}.png`;
       return (
         <div className="relative w-full h-full bg-slate-200 dark:bg-slate-800 overflow-hidden shadow-inner">
-          <img src={tileUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-in-out scale-125" style={{ filter: isOffScreen ? 'grayscale(0.5) brightness(0.8)' : 'none' }} alt="" onError={(e) => { (e.target as HTMLImageElement).src = `https://b.tile.openstreetmap.org/${zoom}/${x}/${y}.png`; }} />
+          <img src={tileUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-in-out scale-125" style={{ filter: isOffScreen ? 'grayscale(0.5) brightness(0.8)' : 'none' }} alt="" onError={(e) => { (e.target as HTMLImageElement).src = fallbackUrl; }} />
           <div className="absolute inset-0 border-[3px] border-white/20 rounded-xl" />
           <div className="absolute inset-0 bg-blue-500/10 pointer-events-none" />
         </div>
@@ -1097,6 +1156,67 @@ export const MapView: React.FC<MapViewProps> = ({
               >
                 Apply Scale
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Creature Detail Card */}
+      {selectedCreature && (
+        <div className="absolute inset-0 flex items-end z-[150] pointer-events-none">
+          <div className="pointer-events-auto w-full bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent p-6 pb-8 animate-in slide-in-from-bottom duration-300">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start gap-4">
+                    {/* Original Icon */}
+                    <div className="w-20 h-20 rounded-xl bg-slate-700/50 border border-slate-600 flex items-center justify-center shrink-0" dangerouslySetInnerHTML={{ __html: getCreatureIconOriginal(selectedCreature.category) }} />
+                    
+                    {/* Details */}
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-black text-white mb-2">{selectedCreature.name}</h2>
+                      <div className="flex flex-wrap gap-3 mb-3">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-700/40 rounded-full border border-slate-600/50">
+                          <span className="text-xs font-bold text-slate-300 uppercase tracking-wide">Category</span>
+                          <span className="text-sm font-bold text-white">{selectedCreature.category}</span>
+                        </div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-700/40 rounded-full border border-slate-600/50">
+                          <span className="text-xs font-bold text-slate-300 uppercase tracking-wide">Alignment</span>
+                          <span className="text-sm font-bold text-white">{selectedCreature.alignment}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Close Button */}
+                    <button
+                      onClick={() => setSelectedCreature(null)}
+                      className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white shrink-0"
+                    >
+                      <CloseIcon size={24} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Full Description */}
+                {selectedCreature.lore && (
+                  <div className="mt-4 p-4 bg-slate-700/30 rounded-xl border border-slate-600/30">
+                    <p className="text-slate-200 text-sm leading-relaxed">{selectedCreature.lore}</p>
+                  </div>
+                )}
+
+                {/* Action Button */}
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={() => {
+                      onCreatureClick?.(selectedCreature.id);
+                      setSelectedCreature(null);
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-bold rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all shadow-lg shadow-purple-600/20"
+                  >
+                    View in Bestiary
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
