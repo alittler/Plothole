@@ -69,6 +69,18 @@ export const MapView: React.FC<MapViewProps> = ({
   const [showGrid, setShowGrid] = useState(true);
   const [selectedCreature, setSelectedCreature] = useState<any | null>(null);
 
+  // Handle Esc key to close creature detail card
+  useEffect(() => {
+    if (!selectedCreature) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedCreature(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [selectedCreature]);
+
   // Ledger Draggable State
   const [ledgerPos, setLedgerPos] = useState({ x: 0, y: 0 });
   const [isDraggingLedger, setIsDraggingLedger] = useState(false);
