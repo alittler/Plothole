@@ -1,7 +1,8 @@
+// SEED MONSTERS UPDATE
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ViewType, ProjectData, Location, Artifact, LoreEntry, Note, ProseDocument, User, ProjectMetadata, MapPath } from '../../types';
-import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers } from 'lucide-react';
+import { ViewType, ProjectData, Location, Artifact, LoreEntry, Note, ProseDocument, User, ProjectMetadata, MapPath, Character } from '../../types';
+import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers, Footprints as PawPrint, Lock, Unlock } from 'lucide-react';
 
 import { MapView } from '../ui/MapView';
 import { WikiText } from '../ui/WikiText';
@@ -18,6 +19,7 @@ interface WorldSystemViewProps {
   onUpdateArtifact: (a: Artifact) => void;
   onAddLore: (l: LoreEntry) => void;
   onUpdateLocation: (l: Location) => void;
+  onUpdateCharacter: (c: Character) => void;
   onLocationUndo: (id: string) => void;
   onLocationReset: (id: string) => void;
   onUpdateRootMap: (u: string) => void;
@@ -71,6 +73,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   currentMapParentId,
   onMapChange,
   onUpdateLocation,
+  onUpdateCharacter,
   onAddLocation,
   onLocationUndo,
   onLocationReset,
@@ -95,6 +98,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   const [isMapMenuOpen, setIsMapMenuOpen] = useState(false);
   const [isLayersOpen, setIsLayersOpen] = useState(false);
   const [isWorldExpanded, setIsWorldExpanded] = useState(false);
+  const [entityManagerTab, setEntityManagerTab] = useState<'locations' | 'characters'>('locations');
   const [editingMapId, setEditingMapId] = useState<string | null>(null);
   const [editingMapName, setEditingMapName] = useState("");
   const [localScale, setLocalScale] = useState(data.mapScale || 100);
@@ -207,6 +211,67 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
     }
   };
 
+  const [showLocations, setShowLocations] = useState(true);
+  const [showCharacters, setShowCharacters] = useState(true);
+  const [showPaths, setShowPaths] = useState(true);
+
+  const handleCharacterPlace = (id: string, x: number, y: number) => {
+    const char = data.characters.find(c => c.id === id);
+    if (char) {
+      onUpdateCharacter({ ...char, x, y, parentId: currentMapParentId || 'root' });
+      setIsQueueOpen(false);
+    }
+  };
+
+  const handleCharacterMove = (id: string, x: number, y: number) => {
+    const char = data.characters.find(c => c.id === id);
+    if (char) {
+      onUpdateCharacter({ ...char, x, y });
+    }
+  };
+
+  const handleCharacterUnplace = (id: string) => {
+    const char = data.characters.find(c => c.id === id);
+    if (char) {
+      const { x, y, parentId, isLocked, ...rest } = char;
+      onUpdateCharacter(rest);
+    }
+  };
+
+  const handleCharacterLock = (id: string, isLocked: boolean) => {
+    const char = data.characters.find(c => c.id === id);
+    if (char) {
+      onUpdateCharacter({ ...char, isLocked });
+    }
+  };
+
+  const filteredCharacters = data.characters.filter((c) => c.x !== undefined && c.y !== undefined && (c.parentId === (currentMapParentId || 'root')));
+
+  const handleSeedTestMonsters = () => {
+    const testCreatures = [
+      { name: "Selkie", x: -18.5, y: 64.9, desc: "Northern edge test (Iceland area)." },
+      { name: "Zilant", x: 50.0, y: 42.0, desc: "Eastern edge test (Caspian area)." },
+      { name: "Xana", x: -3.7, y: 40.0, desc: "Western edge test (Iberia area)." },
+      { name: "Centaur", x: 18.0, y: 35.0, desc: "Southern edge test (Mediterranean area)." },
+      { name: "Nessie", x: -4.4, y: 57.3, desc: "Center-North test (Scotland)." }
+    ];
+
+    const newChars: Character[] = testCreatures.map(tc => ({
+      id: generateId(),
+      name: tc.name,
+      description: tc.desc,
+      role: 'Monster',
+      job: 'Test Subject',
+      traits: ['Test'],
+      x: tc.x,
+      y: tc.y,
+      parentId: currentMapParentId || 'root',
+      source: 'manual'
+    }));
+
+    onUpdateProject({ characters: [...(data.characters || []), ...newChars] });
+  };
+
   const isCurrentMapRealWorld = (() => {
     if (currentMapParentId) {
       const parent = data.locations.find(l => l.id === currentMapParentId);
@@ -295,8 +360,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 ) : (
                   <>
                     <MapView 
-                      locations={filteredLocations} 
-                      paths={data.paths}
+                      locations={showLocations ? filteredLocations : []} 
+                      characters={showCharacters ? filteredCharacters : []}
+                      showCharacters={showCharacters}
+                      paths={showPaths ? data.paths : []}
                       onAddPath={(path) => onUpdateProject({ paths: [...(data.paths || []), path] })}
                       onUpdatePath={(path) => onUpdateProject({ paths: (data.paths || []).map(p => p.id === path.id ? path : p) })}
                       onDeletePath={(id) => onUpdateProject({ paths: (data.paths || []).filter(p => p.id !== id) })}
@@ -354,6 +421,13 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         const loc = data.locations.find(l => l.id === id);
                         if (loc) onUpdateLocation({ ...loc, isLocked });
                       }}
+                      onCharacterClick={(id) => {
+                        onLinkClick('characters', id);
+                      }}
+                      onCharacterPlace={handleCharacterPlace}
+                      onCharacterMove={handleCharacterMove}
+                      onCharacterUnplace={handleCharacterUnplace}
+                      onCharacterLock={handleCharacterLock}
                       onMapClick={() => {
                         setIsMapMenuOpen(false);
                         setIsScaleOpen(false);
@@ -458,6 +532,41 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
                       {isLayersOpen && (
                         <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
+                          <div className="flex items-center gap-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-white/20 shadow-xl mr-2">
+                            <button 
+                              onClick={() => setShowLocations(!showLocations)}
+                              className={`group relative w-10 h-10 rounded-lg overflow-hidden border transition-all hover:scale-105 ${showLocations ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-inner' : 'border-white/20'}`}
+                              title="Toggle Locations"
+                            >
+                              <div className="w-full h-full flex flex-col items-center justify-center">
+                                <MapPin className={`w-4 h-4 transition-colors ${showLocations ? 'text-emerald-600' : 'text-slate-400 group-hover:text-emerald-400'}`} />
+                                <span className={`text-[7px] font-black uppercase ${showLocations ? 'text-emerald-600' : 'text-slate-400'}`}>Locs</span>
+                              </div>
+                            </button>
+
+                            <button 
+                              onClick={() => setShowPaths(!showPaths)}
+                              className={`group relative w-10 h-10 rounded-lg overflow-hidden border transition-all hover:scale-105 ${showPaths ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-inner' : 'border-white/20'}`}
+                              title="Toggle Pathways"
+                            >
+                              <div className="w-full h-full flex flex-col items-center justify-center">
+                                <Activity className={`w-4 h-4 transition-colors ${showPaths ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-400'}`} />
+                                <span className={`text-[7px] font-black uppercase ${showPaths ? 'text-indigo-600' : 'text-slate-400'}`}>Paths</span>
+                              </div>
+                            </button>
+
+                            <button 
+                              onClick={() => setShowCharacters(!showCharacters)}
+                              className={`group relative w-10 h-10 rounded-lg overflow-hidden border transition-all hover:scale-105 ${showCharacters ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20 shadow-inner' : 'border-white/20'}`}
+                              title="Toggle Creatures"
+                            >
+                              <div className="w-full h-full flex flex-col items-center justify-center">
+                                <PawPrint className={`w-4 h-4 transition-colors ${showCharacters ? 'text-rose-600' : 'text-slate-400 group-hover:text-rose-400'}`} />
+                                <span className={`text-[7px] font-black uppercase ${showCharacters ? 'text-rose-600' : 'text-slate-400'}`}>Creats</span>
+                              </div>
+                            </button>
+                          </div>
+
                           {currentMapParentId && (
                             <button 
                               onClick={() => { onMapChange(null); setIsLayersOpen(false); }}
@@ -470,6 +579,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                               <div className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-[9px] font-black text-white uppercase text-center">Root</div>
                             </button>
                           )}
+
                           {data.locations.filter(l => l.mapImage && l.id !== currentMapParentId).map(mapLoc => (
                             <button 
                               key={mapLoc.id}
@@ -489,46 +599,102 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
                     <aside className={`absolute top-24 bottom-6 right-[88px] z-40 w-80 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-2xl transition-all duration-500 ease-in-out rounded-3xl p-6 flex flex-col space-y-6 ${isQueueOpen ? 'translate-x-0 opacity-100 scale-100' : 'translate-x-12 opacity-0 scale-95 pointer-events-none'}`}>
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={14} /> Location Manager</h3>
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Layers size={14} /> Atlas Manager</h3>
                         <button onClick={() => setIsQueueOpen(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400"><X size={16} /></button>
                       </div>
+
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0">
-                        <button onClick={(e) => { e.stopPropagation(); setIsWorldExpanded(false); }} className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all ${!isWorldExpanded ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Unplaced ({locationQueue.length})</button>
-                        <button onClick={(e) => { e.stopPropagation(); setIsWorldExpanded(true); }} className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all ${isWorldExpanded ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Placed ({filteredLocations.length})</button>
+                        <button 
+                          onClick={() => setEntityManagerTab('locations')} 
+                          className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center justify-center gap-1.5 ${entityManagerTab === 'locations' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          <MapPin size={10} /> Locations
+                        </button>
+                        <button 
+                          onClick={() => setEntityManagerTab('characters')} 
+                          className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center justify-center gap-1.5 ${entityManagerTab === 'characters' ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          <PawPrint size={10} /> Creatures
+                        </button>
                       </div>
+
+                      <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0">
+                        <button onClick={(e) => { e.stopPropagation(); setIsWorldExpanded(false); }} className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all ${!isWorldExpanded ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Unplaced</button>
+                        <button onClick={(e) => { e.stopPropagation(); setIsWorldExpanded(true); }} className={`flex-1 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all ${isWorldExpanded ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Placed</button>
+                      </div>
+
                       <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
-                        {!isWorldExpanded ? (
-                          locationQueue.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-center space-y-3 p-4 py-12"><CheckCircle size={24} className="text-slate-300" /><p className="text-xs text-slate-400 italic">All locations placed.</p></div>) : (
-                            locationQueue.map(loc => (
-                              <div key={loc.id} draggable onDragStart={(e) => e.dataTransfer.setData('locationId', loc.id)} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-indigo-500/50 transition-all hover:shadow-md">
-                                <div className="flex items-center justify-between mb-1"><span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{loc.type}</span><Edit2 size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 cursor-pointer" onClick={() => handleOpenLocationEdit(loc)} /></div>
-                                <h4 className="font-bold text-slate-900 dark:text-white text-sm break-words">{loc.name}</h4>
-                                <p className="text-[10px] text-slate-500 line-clamp-2 mt-1 italic">Drag icon to place on current map</p>
-                              </div>
-                            ))
+                        {entityManagerTab === 'locations' ? (
+                          !isWorldExpanded ? (
+                            locationQueue.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-center space-y-3 p-4 py-12"><CheckCircle size={24} className="text-slate-300" /><p className="text-xs text-slate-400 italic">All locations placed.</p></div>) : (
+                              locationQueue.map(loc => (
+                                <div key={loc.id} draggable onDragStart={(e) => e.dataTransfer.setData('locationId', loc.id)} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-indigo-500/50 transition-all hover:shadow-md">
+                                  <div className="flex items-center justify-between mb-1"><span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{loc.type}</span><Edit2 size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 cursor-pointer" onClick={() => handleOpenLocationEdit(loc)} /></div>
+                                  <h4 className="font-bold text-slate-900 dark:text-white text-sm break-words">{loc.name}</h4>
+                                  <p className="text-[10px] text-slate-500 line-clamp-2 mt-1 italic">Drag icon to place on map</p>
+                                </div>
+                              ))
+                            )
+                          ) : (
+                            filteredLocations.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-center space-y-3 p-4 py-12"><MapPin size={24} className="text-slate-200" /><p className="text-xs text-slate-400 italic">No locations on this layer.</p></div>) : (
+                              filteredLocations.map(loc => (
+                                <div key={loc.id} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm group hover:border-emerald-500/50 transition-all">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
+                                    <div className="flex items-center gap-2">
+                                      <button onClick={(e) => { e.stopPropagation(); onUpdateLocation({ ...loc, isLocked: !(loc.isLocked ?? (loc.matchedX !== undefined)) }); }} className={`p-1 rounded transition-colors ${ (loc.isLocked ?? (loc.matchedX !== undefined)) ? 'text-amber-500 hover:bg-amber-50' : 'text-slate-300 hover:bg-slate-50'}`} title={(loc.isLocked ?? (loc.matchedX !== undefined)) ? "Unlock Marker" : "Lock Marker"}>{ (loc.isLocked ?? (loc.matchedX !== undefined)) ? <MapPin size={12} /> : <Sparkles size={12} /> }</button>
+                                      <Edit2 size={12} className="text-slate-300 hover:text-indigo-500 cursor-pointer" onClick={() => handleOpenLocationEdit(loc)} />
+                                      <button onClick={() => onUpdateLocation({ ...loc, x: undefined, y: undefined, parentId: undefined, mapId: undefined, mapImage: undefined })}><Trash2 size={12} className="text-slate-300 hover:text-red-500 cursor-pointer" /></button>
+                                    </div>
+                                  </div>
+                                  <h4 className="font-bold text-slate-900 dark:text-white text-sm break-words">{loc.name}</h4>
+                                  <span className="text-[8px] font-mono text-slate-400 uppercase">COORD: {loc.x?.toFixed(1)}, {loc.y?.toFixed(1)}</span>
+                                </div>
+                              ))
+                            )
                           )
                         ) : (
-                          filteredLocations.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-center space-y-3 p-4 py-12"><MapPin size={24} className="text-slate-200" /><p className="text-xs text-slate-400 italic">No locations on this layer.</p></div>) : (
-                            filteredLocations.map(loc => (
-                              <div key={loc.id} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm group hover:border-emerald-500/50 transition-all">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
-                                  <div className="flex items-center gap-2">
-                                    <button onClick={(e) => { e.stopPropagation(); onUpdateLocation({ ...loc, isLocked: !(loc.isLocked ?? (loc.matchedX !== undefined)) }); }} className={`p-1 rounded transition-colors ${ (loc.isLocked ?? (loc.matchedX !== undefined)) ? 'text-amber-500 hover:bg-amber-50' : 'text-slate-300 hover:bg-slate-50'}`} title={(loc.isLocked ?? (loc.matchedX !== undefined)) ? "Unlock Marker" : "Lock Marker"}>{ (loc.isLocked ?? (loc.matchedX !== undefined)) ? <MapPin size={12} /> : <Sparkles size={12} /> }</button>
-                                    {loc.prevX !== undefined && (
-                                      <button onClick={() => onLocationUndo(loc.id)} className="p-1 text-slate-400 hover:text-indigo-600" title="Undo Move"><RotateCcw size={12} /></button>
-                                    )}
-                                    {loc.matchedX !== undefined && (
-                                      <button onClick={() => onLocationReset(loc.id)} className="p-1 text-slate-400 hover:text-blue-600" title="Reset to Earth"><Globe size={12} /></button>
-                                    )}
-                                    <Edit2 size={12} className="text-slate-300 hover:text-indigo-500 cursor-pointer" onClick={() => handleOpenLocationEdit(loc)} />
-                                    <button onClick={() => onUpdateLocation({ ...loc, x: undefined, y: undefined, parentId: undefined, mapId: undefined, mapImage: undefined })}><Trash2 size={12} className="text-slate-300 hover:text-red-500 cursor-pointer" /></button>
-                                  </div>
+                          // Characters Tab
+                          !isWorldExpanded ? (
+                            <div className="space-y-3">
+                              {data.characters.filter(c => c.x === undefined).length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-center space-y-3 p-4 py-12">
+                                  <CheckCircle size={24} className="text-slate-300" />
+                                  <p className="text-xs text-slate-400 italic">All creatures placed.</p>
                                 </div>
-                                <h4 className="font-bold text-slate-900 dark:text-white text-sm break-words">{loc.name}</h4>
-                                <span className="text-[8px] font-mono text-slate-400 uppercase">COORD: {loc.x?.toFixed(1)}, {loc.y?.toFixed(1)}</span>
-                              </div>
-                            ))
+                              ) : (
+                                data.characters.filter(c => c.x === undefined).map(char => (
+                                  <div key={char.id} draggable onDragStart={(e) => e.dataTransfer.setData('characterId', char.id)} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm cursor-grab active:cursor-grabbing group hover:border-rose-500/50 transition-all hover:shadow-md">
+                                    <div className="flex items-center justify-between mb-1"><span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Creature</span><Edit2 size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 cursor-pointer" onClick={() => onLinkClick('characters', char.id)} /></div>
+                                    <h4 className="font-bold text-slate-900 dark:text-white text-sm break-words">{char.name}</h4>
+                                    <p className="text-[10px] text-slate-500 line-clamp-2 mt-1 italic">Drag icon to place on map</p>
+                                  </div>
+                                ))
+                              )}
+                              <button 
+                                onClick={handleSeedTestMonsters}
+                                className="w-full py-3 bg-rose-50 dark:bg-rose-900/20 border-2 border-dashed border-rose-200 dark:border-rose-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all flex items-center justify-center gap-2 mt-4"
+                              >
+                                <Sparkles size={14} /> Seed Test Monsters
+                              </button>
+                            </div>
+                          ) : (
+                            filteredCharacters.length === 0 ? (<div className="h-full flex flex-col items-center justify-center text-center space-y-3 p-4 py-12"><PawPrint size={24} className="text-slate-200" /><p className="text-xs text-slate-400 italic">No creatures on this layer.</p></div>) : (
+                              filteredCharacters.map(char => (
+                                <div key={char.id} className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm group hover:border-rose-500/50 transition-all">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Creature</span>
+                                    <div className="flex items-center gap-2">
+                                      <button onClick={(e) => { e.stopPropagation(); handleCharacterLock(char.id, !char.isLocked); }} className={`p-1 rounded transition-colors ${ char.isLocked ? 'text-amber-500 hover:bg-amber-50' : 'text-slate-300 hover:bg-slate-50'}`} title={char.isLocked ? "Unlock Marker" : "Lock Marker"}>{ char.isLocked ? <Lock size={12} /> : <Unlock size={12} /> }</button>
+                                      <Edit2 size={12} className="text-slate-300 hover:text-indigo-500 cursor-pointer" onClick={() => onLinkClick('characters', char.id)} />
+                                      <button onClick={() => handleCharacterUnplace(char.id)}><Trash2 size={12} className="text-slate-300 hover:text-red-500 cursor-pointer" /></button>
+                                    </div>
+                                  </div>
+                                  <h4 className="font-bold text-slate-900 dark:text-white text-sm break-words">{char.name}</h4>
+                                  <span className="text-[8px] font-mono text-slate-400 uppercase">COORD: {char.x?.toFixed(1)}, {char.y?.toFixed(1)}</span>
+                                </div>
+                              ))
+                            )
                           )
                         )}
                       </div>
@@ -662,7 +828,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl"><Box size={24} /></div>
                     <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Inventory</h2><p className="text-sm text-slate-500 uppercase font-bold tracking-widest">Artifacts and Objects</p></div>
                   </div>
-                  <button onClick={() => onAddArtifact({ id: generateId(), name: 'New Artifact', type: 'Relic', description: '', source: 'manual' })} className="px-4 py-2 bg-amber-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20"><Plus size={18} /> New Artifact</button>
+                  <button onClick={() => onAddArtifact({ id: generateId(), name: 'New Artifact', type: 'Relic', description: '', source: 'manual' })} className="px-4 py-2 bg-amber-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"><Plus size={18} /> New Artifact</button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {data.artifacts?.map(art => (

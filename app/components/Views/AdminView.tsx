@@ -26,6 +26,7 @@ interface AdminViewProps {
   onLinkClick: (type: string, id: string) => void;
   onChangeView: (view: ViewType) => void;
   currentUser: AppUser;
+  currentView: ViewType;
 }
 
 enum AdminTab {
@@ -40,7 +41,7 @@ enum AdminTab {
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
-  data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote, onLinkClick, onChangeView, currentUser
+  data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote, onLinkClick, onChangeView, currentUser, currentView
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<AdminTab>((searchParams.get('tab') as AdminTab) || AdminTab.SYSTEM);
@@ -655,7 +656,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       case AdminTab.CARD_CATALOGUE:
         return data ? (
           <div className="h-full flex flex-col min-h-0 animate-in fade-in duration-500">
-            <CardCatalogueView data={data} onUpdateProject={onUpdateProject} onLinkClick={onLinkClick} />
+            <CardCatalogueView data={data} onUpdateProject={onUpdateProject} onLinkClick={onLinkClick} currentView={currentView} onChangeView={onChangeView} />
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center p-20"><div className="text-center space-y-4"><Grid3x3 size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Card Catalogue.</p></div></div>

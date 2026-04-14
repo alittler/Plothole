@@ -148,7 +148,6 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                             setProjectToEdit(project.id);
                             setEditTitle(proj.title);
                             setEditAuthor(proj.author);
-                            setEditShortName(proj.shortName || '');
                           }
                         }}
                         className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"

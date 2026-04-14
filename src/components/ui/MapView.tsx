@@ -1,24 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity } from 'lucide-react';
+import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity, Footprints as PawPrint } from 'lucide-react';
 import { Location, TimelineEvent, Character, MapPath } from '../../types';
 import { generateId } from '../../services/storageService';
 import { createGridLayer } from '../../utils/gridLayer';
 
 interface MapViewProps {
   locations: Location[];
+  characters?: Character[];
+  showCharacters?: boolean;
   paths?: MapPath[];
   onAddPath?: (path: MapPath) => void;
   onUpdatePath?: (path: MapPath) => void;
   onDeletePath?: (id: string) => void;
   onLocationClick?: (id: string) => void;
+  onCharacterClick?: (id: string) => void;
   onMapClick?: (x: number, y: number) => void;
   onLocationPlace?: (id: string, x: number, y: number) => void;
+  onCharacterPlace?: (id: string, x: number, y: number) => void;
   onLocationMove?: (id: string, x: number, y: number) => void;
+  onCharacterMove?: (id: string, x: number, y: number) => void;
   onLocationUnplace?: (id: string) => void;
+  onCharacterUnplace?: (id: string) => void;
   onLocationUndo?: (id: string) => void;
   onLocationReset?: (id: string) => void;
   onLocationLock?: (id: string, isLocked: boolean) => void;
+  onCharacterLock?: (id: string, isLocked: boolean) => void;
   onDimensionsDetected?: (width: number, height: number) => void;
   onLinkClick?: (type: string, id: string) => void;
   rootMapImage?: string;
@@ -36,7 +43,7 @@ interface MapViewProps {
 }
 
 export const MapView: React.FC<MapViewProps> = ({ 
-  locations, paths = [], onAddPath, onUpdatePath, onDeletePath, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onLocationUnplace, onLocationUndo, onLocationReset, onLocationLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef, onViewChange, onScaleCalibrated,
+  locations, characters = [], showCharacters = true, paths = [], onAddPath, onUpdatePath, onDeletePath, onLocationClick, onCharacterClick, onMapClick, onLocationPlace, onCharacterPlace, onLocationMove, onCharacterMove, onLocationUnplace, onCharacterUnplace, onLocationUndo, onLocationReset, onLocationLock, onCharacterLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef, onViewChange, onScaleCalibrated,
   isRealWorld = false
 }) => {
   const mapRef = useRef<L.Map | null>(null);
@@ -64,7 +71,13 @@ export const MapView: React.FC<MapViewProps> = ({
     const point = mapRef.current.latLngToLayerPoint(latlng);
     let nearest = null;
     let minDist = Infinity;
-    locations.forEach(loc => {
+    
+    const allEntities = [
+      ...locations.map(l => ({ ...l, entityType: 'location' })),
+      ...characters.map(c => ({ ...c, entityType: 'character' }))
+    ];
+
+    allEntities.forEach(loc => {
       if (loc.x === undefined || loc.y === undefined) return;
       const locLatLng = L.latLng(loc.y, loc.x);
       const locPoint = mapRef.current!.latLngToLayerPoint(locLatLng);
@@ -79,6 +92,9 @@ export const MapView: React.FC<MapViewProps> = ({
 
   const locationsRef = useRef(locations);
   useEffect(() => { locationsRef.current = locations; }, [locations]);
+  
+  const charactersRef = useRef(characters);
+  useEffect(() => { charactersRef.current = characters; }, [characters]);
 
   const updateShortcuts = React.useCallback(() => {
     const map = mapRef.current;
@@ -141,12 +157,24 @@ export const MapView: React.FC<MapViewProps> = ({
     return { color, svg: MAP_ICONS[iconKey] || MAP_ICONS['landmark'] };
   };
 
+  const getCharacterMarkerStyle = (char: Character) => {
+    return { 
+      color: 'bg-rose-500', 
+      svg: '<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5zm0 8a3 3 0 1 1 3-3 3 3 0 0 1-3 3z"/>' 
+    };
+  };
+
   const onDimensionsDetectedRef = useRef(onDimensionsDetected);
   const onLocationPlaceRef = useRef(onLocationPlace);
+  const onCharacterPlaceRef = useRef(onCharacterPlace);
   const onLocationMoveRef = useRef(onLocationMove);
+  const onCharacterMoveRef = useRef(onCharacterMove);
   const onLocationUnplaceRef = useRef(onLocationUnplace);
+  const onCharacterUnplaceRef = useRef(onCharacterUnplace);
   const onLocationLockRef = useRef(onLocationLock);
+  const onCharacterLockRef = useRef(onCharacterLock);
   const onLocationClickRef = useRef(onLocationClick);
+  const onCharacterClickRef = useRef(onCharacterClick);
   const onLinkClickRef = useRef(onLinkClick);
   const onViewChangeRef = useRef(onViewChange);
   const onUpdatePathRef = useRef(onUpdatePath);
@@ -155,10 +183,15 @@ export const MapView: React.FC<MapViewProps> = ({
 
   useEffect(() => { onDimensionsDetectedRef.current = onDimensionsDetected; }, [onDimensionsDetected]);
   useEffect(() => { onLocationPlaceRef.current = onLocationPlace; }, [onLocationPlace]);
+  useEffect(() => { onCharacterPlaceRef.current = onCharacterPlace; }, [onCharacterPlace]);
   useEffect(() => { onLocationMoveRef.current = onLocationMove; }, [onLocationMove]);
+  useEffect(() => { onCharacterMoveRef.current = onCharacterMove; }, [onCharacterMove]);
   useEffect(() => { onLocationUnplaceRef.current = onLocationUnplace; }, [onLocationUnplace]);
+  useEffect(() => { onCharacterUnplaceRef.current = onCharacterUnplace; }, [onCharacterUnplace]);
   useEffect(() => { onLocationLockRef.current = onLocationLock; }, [onLocationLock]);
+  useEffect(() => { onCharacterLockRef.current = onCharacterLock; }, [onCharacterLock]);
   useEffect(() => { onLocationClickRef.current = onLocationClick; }, [onLocationClick]);
+  useEffect(() => { onCharacterClickRef.current = onCharacterClick; }, [onCharacterClick]);
   useEffect(() => { onLinkClickRef.current = onLinkClick; }, [onLinkClick]);
   useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
   useEffect(() => { onUpdatePathRef.current = onUpdatePath; }, [onUpdatePath]);
@@ -258,13 +291,13 @@ export const MapView: React.FC<MapViewProps> = ({
       crs: isRealWorld ? L.CRS.EPSG3857 : L.CRS.Simple,
       minZoom: isRealWorld ? 2 : -2,
       maxZoom: 19,
-      zoomControl: false,
+      zoomControl: true,
       attributionControl: isRealWorld,
       fadeAnimation: false,
       maxBoundsViscosity: 1.0,
       worldCopyJump: false,
-      zoomSnap: 0,
-      zoomDelta: 0.5
+      zoomSnap: 1,
+      zoomDelta: 1
     });
 
     if (isRealWorld) {
@@ -284,38 +317,11 @@ export const MapView: React.FC<MapViewProps> = ({
       map.setView([0, 0], 0);
     }
 
-    // Disable default scroll wheel zoom and implement power zoom
-    map.scrollWheelZoom.disable();
-    
-    const powerZoomHandler = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) return; // Allow pinch zoom
-      if (!mapRef.current || !mapRef.current._loaded) return; // Guard: map not ready
-      
-      try {
-        e.preventDefault();
-        
-        const zoomPower = 5; // 5x zoom increment per scroll step
-        const currentZoom = map.getZoom();
-        const newZoom = Math.max(
-          map.getMinZoom(),
-          Math.min(map.getMaxZoom(), currentZoom + (e.deltaY < 0 ? zoomPower : -zoomPower))
-        );
-        
-        // Set zoom without animation to keep pins steady
-        map.setZoom(newZoom, { animate: false });
-      } catch (err) {
-        // Silently ignore errors during map initialization
-      }
-    };
-    
-    containerRef.current?.addEventListener('wheel', powerZoomHandler, { passive: false });
-
     mapRef.current = map;
     setIsReady(true);
 
     return () => {
       setIsReady(false);
-      containerRef.current?.removeEventListener('wheel', powerZoomHandler);
       map.remove();
       mapRef.current = null;
     };
@@ -781,8 +787,57 @@ export const MapView: React.FC<MapViewProps> = ({
           });
         }
       });
+
+      // Render Characters
+      if (showCharacters) {
+        characters.forEach(char => {
+          if (char.x !== undefined && char.y !== undefined) {
+            const latlng = L.latLng(char.y, char.x);
+            if (!isRealWorld && mapBoundsRef.current && !mapBoundsRef.current.contains(latlng)) return;
+            const isCharLocked = char.isLocked ?? false;
+            
+            const marker = L.marker(latlng, {
+              draggable: !isCharLocked,
+              icon: L.divIcon({
+                className: 'custom-marker character-marker',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
+                html: `<svg viewBox="0 0 24 24" fill="white" stroke="white" width="30" height="30" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); display: block;">
+                  <circle cx="12" cy="7" r="2.5" fill="white" stroke="white" stroke-width="0.5"></circle>
+                  <rect x="9" y="11" width="6" height="7" rx="0.5" fill="white" stroke="white" stroke-width="0.5"></rect>
+                </svg>`
+              })
+            }).addTo(map);
+
+            marker.bindTooltip(char.name, { permanent: false, direction: 'top', offset: [0, -10] });
+            marker.bindPopup(`<div class="p-4 min-w-[200px] space-y-3 bg-white dark:bg-slate-900 rounded-2xl"><div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2"><div class="text-[10px] font-black text-rose-500 uppercase tracking-widest">Creature</div><button class="lock-toggle-char p-1.5 rounded-lg transition-all ${isCharLocked ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500'}">${isCharLocked ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>'}</button></div><div class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">${char.name}</div><div class="flex gap-2 pt-2"><button class="edit-char-btn flex-1 px-3 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/20">Dossier</button><button class="remove-char-btn px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center">Recall</button></div></div>`, { className: 'custom-map-popup', closeButton: false, offset: [0, -30] });
+            
+            marker.on('popupopen', (e) => {
+              const popup = e.popup.getElement();
+              if (popup) {
+                const editBtn = popup.querySelector('.edit-char-btn');
+                const unplaceBtn = popup.querySelector('.remove-char-btn');
+                const lockBtn = popup.querySelector('.lock-toggle-char');
+                if (editBtn) L.DomEvent.on(editBtn as HTMLElement, 'click', (ev) => { L.DomEvent.stopPropagation(ev); onLinkClickRef.current?.('characters', char.id); map.closePopup(); });
+                if (unplaceBtn) L.DomEvent.on(unplaceBtn as HTMLElement, 'click', (ev) => { L.DomEvent.stopPropagation(ev); if (confirm(`Recall "${char.name}" from the map?`)) { onCharacterUnplaceRef.current?.(char.id); map.closePopup(); } });
+                if (lockBtn) L.DomEvent.on(lockBtn as HTMLElement, 'click', (ev) => { L.DomEvent.stopPropagation(ev); onCharacterLockRef.current?.(char.id, !isCharLocked); });
+              }
+            });
+
+            marker.on('click', (e) => { 
+              L.DomEvent.stopPropagation(e); 
+              onCharacterClickRef.current?.(char.id);
+            });
+
+            marker.on('dragend', (e) => { 
+              const newPos = e.target.getLatLng(); 
+              onCharacterMoveRef.current?.(char.id, newPos.lng, newPos.lat);
+            });
+          }
+        });
+      }
     } catch (err) { console.warn("Marker update error:", err); }
-  }, [locations, isRealWorld, isReady, isMeasuring, points, setPoints]);
+  }, [locations, characters, showCharacters, isRealWorld, isReady, isMeasuring, points, setPoints]);
 
   const renderTargetPreview = (bounds: L.LatLngBounds, isOffScreen: boolean) => {
     const fullBounds = isRealWorld ? L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180)) : mapBoundsRef.current;

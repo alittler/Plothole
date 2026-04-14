@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import L from 'leaflet';
-import Papa from 'papaparse';
 import { Search, ChevronDown, ChevronUp, MapPin, Wand2, Download } from 'lucide-react';
+import creaturesData from '@alittler/creatures';
 
 interface Creature {
-  ID: string;
-  Name: string;
-  Category: string;
-  Alignment: string;
-  Lat: string;
-  Lon: string;
-  Lore: string;
-  latitude?: number;
-  longitude?: number;
+  id: number;
+  name: string;
+  category: string;
+  alignment: string;
+  lat: number;
+  lon: number;
+  lore: string;
 }
 
 interface BestiaryBrowserViewProps {
@@ -43,49 +41,23 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
   const mapContainerRef = React.useRef<HTMLDivElement>(null);
   const markersRef = React.useRef<{ [key: string]: L.Marker }>({});
 
-  // Load creatures data
+  // Load creatures data from package
   useEffect(() => {
-    const loadCreatures = async () => {
-      try {
-        const response = await fetch('/euro-bestiary/creatures.csv');
-        if (!response.ok) throw new Error('Failed to fetch creatures');
-        
-        const csv = await response.text();
-        Papa.parse(csv, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            const creaturesData: Creature[] = (results.data as any[])
-              .filter(row => row.Name && row.Lat && row.Lon)
-              .map(c => ({
-                ...c,
-                latitude: parseFloat(c.Lat),
-                longitude: parseFloat(c.Lon),
-              }));
-
-            setCreatures(creaturesData);
-            
-            // Extract unique categories and alignments
-            const uniqueCategories = ['All', ...Array.from(new Set(creaturesData.map(c => c.Category)))];
-            const uniqueAlignments = ['All', ...Array.from(new Set(creaturesData.map(c => c.Alignment)))];
-            
-            setCategories(uniqueCategories);
-            setAlignments(uniqueAlignments);
-            setFilteredCreatures(creaturesData);
-            setIsLoading(false);
-          },
-          error: () => {
-            console.error('Error parsing CSV');
-            setIsLoading(false);
-          }
-        });
-      } catch (error) {
-        console.error('Error loading creatures:', error);
-        setIsLoading(false);
-      }
-    };
-
-    loadCreatures();
+    try {
+      setCreatures(creaturesData);
+      
+      // Extract unique categories and alignments
+      const uniqueCategories = ['All', ...Array.from(new Set(creaturesData.map(c => c.category)))];
+      const uniqueAlignments = ['All', ...Array.from(new Set(creaturesData.map(c => c.alignment)))];
+      
+      setCategories(uniqueCategories);
+      setAlignments(uniqueAlignments);
+      setFilteredCreatures(creaturesData);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error loading creatures:', error);
+      setIsLoading(false);
+    }
   }, []);
 
   // Initialize map
@@ -117,20 +89,20 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
 
     // Add new markers
     filteredCreatures.forEach(creature => {
-      if (creature.latitude && creature.longitude) {
-        const marker = L.marker([creature.latitude, creature.longitude])
+      if (creature.lat && creature.lon) {
+        const marker = L.marker([creature.lat, creature.lon])
           .bindPopup(`
-            <div style="font-weight: bold; margin-bottom: 5px; font-size: 14px;">${creature.Name}</div>
+            <div style="font-weight: bold; margin-bottom: 5px; font-size: 14px;">${creature.name}</div>
             <div style="font-size: 12px; color: #666;">
-              <div><strong>Category:</strong> ${creature.Category || 'N/A'}</div>
-              <div><strong>Alignment:</strong> ${creature.Alignment || 'N/A'}</div>
-              ${creature.Lore ? `<div style="margin-top: 5px; font-size: 11px; max-width: 200px;">${creature.Lore.substring(0, 150)}...</div>` : ''}
+              <div><strong>Category:</strong> ${creature.category || 'N/A'}</div>
+              <div><strong>Alignment:</strong> ${creature.alignment || 'N/A'}</div>
+              ${creature.lore ? `<div style="margin-top: 5px; font-size: 11px; max-width: 200px;">${creature.lore.substring(0, 150)}...</div>` : ''}
             </div>
           `)
           .on('click', () => setSelectedCreature(creature))
           .addTo(mapRef.current!);
 
-        markersRef.current[creature.ID] = marker;
+        markersRef.current[creature.id] = marker;
       }
     });
 
@@ -148,17 +120,17 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(c =>
-        c.Name.toLowerCase().includes(query) ||
-        (c.Lore && c.Lore.toLowerCase().includes(query))
+        c.name.toLowerCase().includes(query) ||
+        (c.lore && c.lore.toLowerCase().includes(query))
       );
     }
 
     if (selectedCategory !== 'All') {
-      filtered = filtered.filter(c => c.Category === selectedCategory);
+      filtered = filtered.filter(c => c.category === selectedCategory);
     }
 
     if (selectedAlignment !== 'All') {
-      filtered = filtered.filter(c => c.Alignment === selectedAlignment);
+      filtered = filtered.filter(c => c.alignment === selectedAlignment);
     }
 
     setFilteredCreatures(filtered);
@@ -267,24 +239,24 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
                       }`}
                       onClick={() => {
                         setSelectedCreature(creature);
-                        if (creature.latitude && creature.longitude) {
-                          mapRef.current?.setView([creature.latitude, creature.longitude], 8);
-                          markersRef.current[creature.ID]?.openPopup();
+                        if (creature.lat && creature.lon) {
+                          mapRef.current?.setView([creature.lat, creature.lon], 8);
+                          markersRef.current[creature.id]?.openPopup();
                         }
                       }}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-slate-900 dark:text-white text-sm">{creature.Name}</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{creature.Category} • {creature.Alignment}</p>
-                          {creature.Lore && expandedCreatureId === creature.ID && (
-                            <p className="text-xs text-slate-700 dark:text-slate-300 mt-2 leading-relaxed">{creature.Lore}</p>
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm">{creature.name}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{creature.category} • {creature.alignment}</p>
+                          {creature.lore && expandedCreatureId === creature.id && (
+                            <p className="text-xs text-slate-700 dark:text-slate-300 mt-2 leading-relaxed">{creature.lore}</p>
                           )}
                         </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setExpandedCreatureId(expandedCreatureId === creature.ID ? null : creature.ID);
+                            setExpandedCreatureId(expandedCreatureId === creature.id ? null : creature.id);
                           }}
                           className="ml-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0"
                         >

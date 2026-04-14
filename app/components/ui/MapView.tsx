@@ -1,23 +1,30 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity } from 'lucide-react';
+import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity, Footprints as PawPrint } from 'lucide-react';
 import { Location, TimelineEvent, Character, MapPath } from '../../types';
 import { generateId } from '../../services/storageService';
 
 interface MapViewProps {
   locations: Location[];
+  characters?: Character[];
+  showCharacters?: boolean;
   paths?: MapPath[];
   onAddPath?: (path: MapPath) => void;
   onUpdatePath?: (path: MapPath) => void;
   onDeletePath?: (id: string) => void;
   onLocationClick?: (id: string) => void;
+  onCharacterClick?: (id: string) => void;
   onMapClick?: (x: number, y: number) => void;
   onLocationPlace?: (id: string, x: number, y: number) => void;
+  onCharacterPlace?: (id: string, x: number, y: number) => void;
   onLocationMove?: (id: string, x: number, y: number) => void;
+  onCharacterMove?: (id: string, x: number, y: number) => void;
   onLocationUnplace?: (id: string) => void;
+  onCharacterUnplace?: (id: string) => void;
   onLocationUndo?: (id: string) => void;
   onLocationReset?: (id: string) => void;
   onLocationLock?: (id: string, isLocked: boolean) => void;
+  onCharacterLock?: (id: string, isLocked: boolean) => void;
   onDimensionsDetected?: (width: number, height: number) => void;
   onLinkClick?: (type: string, id: string) => void;
   rootMapImage?: string;
@@ -35,7 +42,7 @@ interface MapViewProps {
 }
 
 export const MapView: React.FC<MapViewProps> = ({ 
-  locations, paths = [], onAddPath, onUpdatePath, onDeletePath, onLocationClick, onMapClick, onLocationPlace, onLocationMove, onLocationUnplace, onLocationUndo, onLocationReset, onLocationLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef, onViewChange, onScaleCalibrated,
+  locations, characters = [], showCharacters = true, paths = [], onAddPath, onUpdatePath, onDeletePath, onLocationClick, onCharacterClick, onMapClick, onLocationPlace, onCharacterPlace, onLocationMove, onCharacterMove, onLocationUnplace, onCharacterUnplace, onLocationUndo, onLocationReset, onLocationLock, onCharacterLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef, onViewChange, onScaleCalibrated,
   isRealWorld = false
 }) => {
   const mapRef = useRef<L.Map | null>(null);
@@ -61,7 +68,13 @@ export const MapView: React.FC<MapViewProps> = ({
     const point = mapRef.current.latLngToLayerPoint(latlng);
     let nearest = null;
     let minDist = Infinity;
-    locations.forEach(loc => {
+    
+    const allEntities = [
+      ...locations.map(l => ({ ...l, entityType: 'location' })),
+      ...characters.map(c => ({ ...c, entityType: 'character' }))
+    ];
+
+    allEntities.forEach(loc => {
       if (loc.x === undefined || loc.y === undefined) return;
       const locLatLng = L.latLng(loc.y, loc.x);
       const locPoint = mapRef.current!.latLngToLayerPoint(locLatLng);
@@ -76,6 +89,9 @@ export const MapView: React.FC<MapViewProps> = ({
 
   const locationsRef = useRef(locations);
   useEffect(() => { locationsRef.current = locations; }, [locations]);
+  
+  const charactersRef = useRef(characters);
+  useEffect(() => { charactersRef.current = characters; }, [characters]);
 
   const updateShortcuts = React.useCallback(() => {
     const map = mapRef.current;
@@ -140,10 +156,15 @@ export const MapView: React.FC<MapViewProps> = ({
 
   const onDimensionsDetectedRef = useRef(onDimensionsDetected);
   const onLocationPlaceRef = useRef(onLocationPlace);
+  const onCharacterPlaceRef = useRef(onCharacterPlace);
   const onLocationMoveRef = useRef(onLocationMove);
+  const onCharacterMoveRef = useRef(onCharacterMove);
   const onLocationUnplaceRef = useRef(onLocationUnplace);
+  const onCharacterUnplaceRef = useRef(onCharacterUnplace);
   const onLocationLockRef = useRef(onLocationLock);
+  const onCharacterLockRef = useRef(onCharacterLock);
   const onLocationClickRef = useRef(onLocationClick);
+  const onCharacterClickRef = useRef(onCharacterClick);
   const onLinkClickRef = useRef(onLinkClick);
   const onViewChangeRef = useRef(onViewChange);
   const onUpdatePathRef = useRef(onUpdatePath);
@@ -152,10 +173,15 @@ export const MapView: React.FC<MapViewProps> = ({
 
   useEffect(() => { onDimensionsDetectedRef.current = onDimensionsDetected; }, [onDimensionsDetected]);
   useEffect(() => { onLocationPlaceRef.current = onLocationPlace; }, [onLocationPlace]);
+  useEffect(() => { onCharacterPlaceRef.current = onCharacterPlace; }, [onCharacterPlace]);
   useEffect(() => { onLocationMoveRef.current = onLocationMove; }, [onLocationMove]);
+  useEffect(() => { onCharacterMoveRef.current = onCharacterMove; }, [onCharacterMove]);
   useEffect(() => { onLocationUnplaceRef.current = onLocationUnplace; }, [onLocationUnplace]);
+  useEffect(() => { onCharacterUnplaceRef.current = onCharacterUnplace; }, [onCharacterUnplace]);
   useEffect(() => { onLocationLockRef.current = onLocationLock; }, [onLocationLock]);
+  useEffect(() => { onCharacterLockRef.current = onCharacterLock; }, [onCharacterLock]);
   useEffect(() => { onLocationClickRef.current = onLocationClick; }, [onLocationClick]);
+  useEffect(() => { onCharacterClickRef.current = onCharacterClick; }, [onCharacterClick]);
   useEffect(() => { onLinkClickRef.current = onLinkClick; }, [onLinkClick]);
   useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
   useEffect(() => { onUpdatePathRef.current = onUpdatePath; }, [onUpdatePath]);
@@ -255,13 +281,13 @@ export const MapView: React.FC<MapViewProps> = ({
       crs: isRealWorld ? L.CRS.EPSG3857 : L.CRS.Simple,
       minZoom: isRealWorld ? 2 : -2,
       maxZoom: 19,
-      zoomControl: false,
+      zoomControl: true,
       attributionControl: isRealWorld,
       fadeAnimation: false,
       maxBoundsViscosity: 1.0,
       worldCopyJump: false,
-      zoomSnap: 0,
-      zoomDelta: 0.5
+      zoomSnap: 1,
+      zoomDelta: 1
     });
 
     if (isRealWorld) {
@@ -275,38 +301,11 @@ export const MapView: React.FC<MapViewProps> = ({
       map.setView([0, 0], 0);
     }
 
-    // Disable default scroll wheel zoom and implement power zoom
-    map.scrollWheelZoom.disable();
-    
-    const powerZoomHandler = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) return; // Allow pinch zoom
-      if (!mapRef.current || !mapRef.current._loaded) return; // Guard: map not ready
-      
-      try {
-        e.preventDefault();
-        
-        const zoomPower = 5; // 5x zoom increment per scroll step
-        const currentZoom = map.getZoom();
-        const newZoom = Math.max(
-          map.getMinZoom(),
-          Math.min(map.getMaxZoom(), currentZoom + (e.deltaY < 0 ? zoomPower : -zoomPower))
-        );
-        
-        // Set zoom without animation to keep pins steady
-        map.setZoom(newZoom, { animate: false });
-      } catch (err) {
-        // Silently ignore errors during map initialization
-      }
-    };
-    
-    containerRef.current?.addEventListener('wheel', powerZoomHandler, { passive: false });
-
     mapRef.current = map;
     setIsReady(true);
 
     return () => {
       setIsReady(false);
-      containerRef.current?.removeEventListener('wheel', powerZoomHandler);
       map.remove();
       mapRef.current = null;
     };
@@ -333,7 +332,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
         const nearest = findNearestLocation(e.latlng);
         const snappedLatLng = nearest ? nearest.latlng : e.latlng;
-        const locationId = nearest ? nearest.id : undefined;
+        const locationId = (nearest as any)?.id;
         setPoints(prev => [...prev, { x: snappedLatLng.lng, y: snappedLatLng.lat, locationId }]);
         setTempMeasureB(null);
       } else {
@@ -516,11 +515,18 @@ export const MapView: React.FC<MapViewProps> = ({
     e.preventDefault();
     const map = mapRef.current;
     if (!isReady || !map || !containerRef.current) return;
+    
     const locationId = e.dataTransfer.getData('locationId');
-    if (!locationId || !onLocationPlaceRef.current) return;
+    const characterId = e.dataTransfer.getData('characterId');
+    
     const rect = containerRef.current.getBoundingClientRect();
     const latlng = map.containerPointToLatLng(L.point(e.clientX - rect.left, e.clientY - rect.top));
-    onLocationPlaceRef.current(locationId, latlng.lng, latlng.lat);
+    
+    if (locationId) {
+      onLocationPlaceRef.current?.(locationId, latlng.lng, latlng.lat);
+    } else if (characterId) {
+      onCharacterPlaceRef.current?.(characterId, latlng.lng, latlng.lat);
+    }
   };
 
   const [debugCoords, setDebugCoords] = useState<{ lat: number, lng: number, zoom: number } | null>(null);
@@ -694,6 +700,8 @@ export const MapView: React.FC<MapViewProps> = ({
     const map = mapRef.current;
     try {
       map.eachLayer(l => { if (l instanceof L.Marker && !(l.options.icon?.options as any).className?.includes('measure-node')) map.removeLayer(l); });
+      
+      // Render Locations
       locations.forEach(loc => {
         if (loc.x !== undefined && loc.y !== undefined) {
           const latlng = L.latLng(loc.y, loc.x);
@@ -746,7 +754,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 finalizeMeasurement();
                 return;
               }
-              setPoints(prev => [...prev, { x: loc.x, y: loc.y, locationId: loc.id }]);
+              setPoints(prev => [...prev, { x: loc.x!, y: loc.y!, locationId: loc.id }]);
               setTempMeasureB(null);
             } else {
               onLocationClickRef.current?.(loc.id);
@@ -759,8 +767,69 @@ export const MapView: React.FC<MapViewProps> = ({
           });
         }
       });
+
+      // Render Characters
+      if (showCharacters) {
+        characters.forEach(char => {
+          if (char.x !== undefined && char.y !== undefined) {
+            const latlng = L.latLng(char.y, char.x);
+            if (!isRealWorld && mapBoundsRef.current && !mapBoundsRef.current.contains(latlng)) return;
+            const isCharLocked = char.isLocked ?? false;
+            
+            const marker = L.marker(latlng, {
+              draggable: !isCharLocked,
+              icon: L.divIcon({
+                className: 'custom-marker character-marker',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
+                html: `<div class="group/marker relative flex flex-col items-center">
+                  <div class="relative transition-transform duration-300 group-hover/marker:scale-110">
+                    <div class="w-10 h-10 relative flex items-center justify-center">
+                      <!-- Outer Glow -->
+                      <div class="absolute inset-0 bg-rose-500/20 rounded-full animate-pulse scale-125" />
+                      <!-- Inner Glow -->
+                      <div class="absolute inset-0 bg-rose-500/10 rounded-full scale-150 blur-sm" />
+                      <!-- Main Badge -->
+                      <div class="w-8 h-8 bg-rose-500 rounded-full border-2 border-white shadow-xl flex items-center justify-center text-white relative z-10">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                          <path d="M11 20L7 12.021C4.288 10.5 2 7.5 2 4.5 2 2.5 3.5 1 5.5 1 7 1 8.5 2 10 4c1.5-2 3-3 4.5-3 2 0 3.5 1.5 3.5 3.5 0 3-2.288 6-5 7.521L11 20z" fill="currentColor"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>`
+              })
+            }).addTo(map);
+
+            marker.bindTooltip(char.name, { permanent: false, direction: 'top', offset: [0, -10] });
+            marker.bindPopup(`<div class="p-4 min-w-[200px] space-y-3 bg-white dark:bg-slate-900 rounded-2xl"><div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2"><div class="text-[10px] font-black text-rose-500 uppercase tracking-widest">Creature</div><button class="lock-toggle-char p-1.5 rounded-lg transition-all ${isCharLocked ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500'}">${isCharLocked ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>'}</button></div><div class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">${char.name}</div><div class="flex gap-2 pt-2"><button class="edit-char-btn flex-1 px-3 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/20">Dossier</button><button class="remove-char-btn px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center">Recall</button></div></div>`, { className: 'custom-map-popup', closeButton: false, offset: [0, -30] });
+            
+            marker.on('popupopen', (e) => {
+              const popup = e.popup.getElement();
+              if (popup) {
+                const editBtn = popup.querySelector('.edit-char-btn');
+                const unplaceBtn = popup.querySelector('.remove-char-btn');
+                const lockBtn = popup.querySelector('.lock-toggle-char');
+                if (editBtn) L.DomEvent.on(editBtn as HTMLElement, 'click', (ev) => { L.DomEvent.stopPropagation(ev); onLinkClickRef.current?.('characters', char.id); map.closePopup(); });
+                if (unplaceBtn) L.DomEvent.on(unplaceBtn as HTMLElement, 'click', (ev) => { L.DomEvent.stopPropagation(ev); if (confirm(`Recall "${char.name}" from the map?`)) { onCharacterUnplaceRef.current?.(char.id); map.closePopup(); } });
+                if (lockBtn) L.DomEvent.on(lockBtn as HTMLElement, 'click', (ev) => { L.DomEvent.stopPropagation(ev); onCharacterLockRef.current?.(char.id, !isCharLocked); });
+              }
+            });
+
+            marker.on('click', (e) => { 
+              L.DomEvent.stopPropagation(e); 
+              onCharacterClickRef.current?.(char.id);
+            });
+
+            marker.on('dragend', (e) => { 
+              const newPos = e.target.getLatLng(); 
+              onCharacterMoveRef.current?.(char.id, newPos.lng, newPos.lat);
+            });
+          }
+        });
+      }
     } catch (err) { console.warn("Marker update error:", err); }
-  }, [locations, isRealWorld, isReady, isMeasuring, points, setPoints]);
+  }, [locations, characters, showCharacters, isRealWorld, isReady, isMeasuring, points, setPoints]);
 
   const renderTargetPreview = (bounds: L.LatLngBounds, isOffScreen: boolean) => {
     const fullBounds = isRealWorld ? L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180)) : mapBoundsRef.current;
@@ -798,6 +867,190 @@ export const MapView: React.FC<MapViewProps> = ({
       <div className={`relative w-full h-full flex items-center justify-center shadow-inner ${isOffScreen ? 'bg-gradient-to-br from-indigo-500 to-violet-600' : 'bg-gradient-to-br from-emerald-400 to-teal-500'}`}>
         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
         {isOffScreen ? <MapPin size={20} className="text-white drop-shadow-md" /> : <Maximize2 size={20} className="text-white drop-shadow-md" />}
+      </div>
+    );
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const map = mapRef.current;
+    if (!isReady || !map || !containerRef.current) return;
+    
+    const locationId = e.dataTransfer.getData('locationId');
+    const characterId = e.dataTransfer.getData('characterId');
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const latlng = map.containerPointToLatLng(L.point(e.clientX - rect.left, e.clientY - rect.top));
+    
+    if (locationId) {
+      onLocationPlaceRef.current?.(locationId, latlng.lng, latlng.lat);
+    } else if (characterId) {
+      onCharacterPlaceRef.current?.(characterId, latlng.lng, latlng.lat);
+    }
+  };
+
+  const [debugCoords, setDebugCoords] = useState<{ lat: number, lng: number, zoom: number } | null>(null);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isReady) return;
+    const handleMove = () => { const center = map.getCenter(); setDebugCoords({ lat: center.lat, lng: center.lng, zoom: map.getZoom() }); };
+    if (isRealWorld) { map.on('move zoom', handleMove); handleMove(); }
+    return () => { map.off('move zoom', handleMove); };
+  }, [isReady, isRealWorld]);
+
+  const handleScaleChange = (desiredSize: number, unit: string) => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    
+    // Use binary search with the EXACT same calculation as renderScaleBar
+    let zoomLow = -2;
+    let zoomHigh = 19;
+    
+    // More iterations for higher precision
+    for (let iteration = 0; iteration < 50; iteration++) {
+      const testZoom = (zoomLow + zoomHigh) / 2;
+      
+      let displayDist = 0;
+      if (isRealWorld) {
+        const center = map.getCenter();
+        const p1 = center;
+        const p2 = map.unproject(map.project(center, testZoom).add(L.point(100, 0)), testZoom);
+        displayDist = getDistance(p1, p2) / 1000;
+        if (mapUnit === 'mi') displayDist *= 0.621371;
+      } else {
+        if (!imgWidth) return;
+        const currentScale = mapScale || 1000;
+        const p1 = map.unproject(L.point(0, 0), testZoom);
+        const p2 = map.unproject(L.point(100, 0), testZoom);
+        const pixelDist = Math.abs(p2.lng - p1.lng);
+        displayDist = (pixelDist / imgWidth) * currentScale;
+      }
+      
+      // Converge with high precision
+      if (Math.abs(displayDist - desiredSize) < 0.01) break;
+      
+      if (displayDist < desiredSize) {
+        zoomHigh = testZoom; // scale too small, need to zoom out
+      } else {
+        zoomLow = testZoom; // scale too large, need to zoom in
+      }
+    }
+    
+    map.setZoom((zoomLow + zoomHigh) / 2);
+  };
+
+  const renderScaleBar = () => {
+    if (!mapRef.current) return null;
+    const map = mapRef.current;
+    let displayDist = 0;
+    let label = mapUnit || 'km';
+    if (isRealWorld) {
+      const center = map.getCenter();
+      const p1 = center;
+      const p2 = map.unproject(map.project(center, map.getZoom()).add(L.point(100, 0)), map.getZoom());
+      displayDist = getDistance(p1, p2) / 1000;
+      if (mapUnit === 'mi') displayDist *= 0.621371;
+    } else {
+      if (!imgWidth) return null;
+      const currentScale = mapScale || 1000;
+      const p1 = map.unproject(L.point(0, 0), map.getZoom());
+      const p2 = map.unproject(L.point(100, 0), map.getZoom());
+      const pixelDist = Math.abs(p2.lng - p1.lng);
+      displayDist = (pixelDist / imgWidth) * currentScale;
+    }
+    if (displayDist < 1) { displayDist = displayDist * 1000; label = (mapUnit === 'mi' || label === 'mi') ? 'ft' : 'm'; }
+    return (
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none flex flex-col items-center gap-2">
+        {isRealWorld && debugCoords && (
+          <div className="bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-mono text-emerald-400 mb-2 shadow-2xl flex items-center gap-4">
+            <div className="flex items-center gap-2"><span className="opacity-50 uppercase tracking-widest text-[8px]">Lat</span><span className="min-w-[70px]">{debugCoords.lat.toFixed(6)}</span></div>
+            <div className="flex items-center gap-2 border-l border-white/10 pl-4"><span className="opacity-50 uppercase tracking-widest text-[8px]">Lng</span><span className="min-w-[70px]">{debugCoords.lng.toFixed(6)}</span></div>
+            <div className="flex items-center gap-2 border-l border-white/10 pl-4"><span className="opacity-50 uppercase tracking-widest text-[8px]">Zoom</span><span className="text-white font-bold">{debugCoords.zoom.toFixed(1)}x</span></div>
+          </div>
+        )}
+        <button 
+          onClick={() => {
+            setScaleInput(displayDist.toFixed(displayDist < 10 ? 1 : 0));
+            setShowScaleDialog(true);
+          }}
+          className="pointer-events-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 py-2 rounded-xl shadow-2xl border border-white/20 flex flex-col gap-1 border-b-4 border-b-emerald-500 hover:shadow-lg hover:border-b-emerald-600 transition-all cursor-pointer active:scale-95"
+        >
+          <div className="flex items-center justify-between w-[100px] border-b-2 border-l-2 border-r-2 border-slate-900 dark:border-white h-1.5" />
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white text-center">{displayDist.toFixed(displayDist < 10 ? 1 : 0)} {label}</div>
+        </button>
+      </div>
+    );
+  };
+
+  const renderMeasurementResults = () => {
+    if (points.length < 1) return null;
+    let totalMeters = 0;
+    const resolvedPoints = points.map(p => L.latLng(p.y, p.x));
+    if (tempMeasureB) resolvedPoints.push(tempMeasureB);
+    if (resolvedPoints.length < 2) return null;
+    for (let i = 0; i < resolvedPoints.length - 1; i++) {
+      const p1 = resolvedPoints[i]; const p2 = resolvedPoints[i+1];
+      if (!isNaN(p1.lat) && !isNaN(p1.lng) && !isNaN(p2.lat) && !isNaN(p2.lng)) totalMeters += getDistance(p1, p2);
+    }
+    let totalPixels = 0;
+    for (let i = 0; i < resolvedPoints.length - 1; i++) {
+      const p1 = resolvedPoints[i]; const p2 = resolvedPoints[i+1];
+      if (!isNaN(p1.lat) && !isNaN(p1.lng) && !isNaN(p2.lat) && !isNaN(p2.lng)) totalPixels += p1.distanceTo(p2);
+    }
+    const distKm = totalMeters / 1000;
+    const handleCalibrate = () => {
+      const label = mapUnit || 'km';
+      const val = window.prompt(`Current distance is ${distKm.toFixed(2)} ${label}.\n\nWhat is the ACTUAL distance between these points?`, distKm.toFixed(2));
+      if (val) {
+        const expectedDist = parseFloat(val);
+        if (!isNaN(expectedDist) && expectedDist > 0 && imgWidth > 0 && totalPixels > 0) {
+          const newScale = (expectedDist * imgWidth) / totalPixels;
+          onScaleCalibratedRef.current?.(newScale);
+          alert(`Atlas scale synchronized to ${newScale.toFixed(2)} ${label} per image width.`);
+        }
+      }
+    };
+
+    return (
+      <div 
+        ref={ledgerRef}
+        style={{ transform: `translate(${ledgerPos.x}px, ${ledgerPos.y}px)` }}
+        className={`absolute top-24 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-4 duration-500 ${isDraggingLedger ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+        onMouseDown={(e) => {
+          if ((e.target as HTMLElement).closest('button')) return;
+          setIsDraggingLedger(true);
+          const startX = e.clientX - ledgerPos.x;
+          const startY = e.clientY - ledgerPos.y;
+          const handleMouseMove = (mv: MouseEvent) => { setLedgerPos({ x: mv.clientX - startX, y: mv.clientY - startY }); };
+          const handleMouseUp = () => { setIsDraggingLedger(false); window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp);
+        }}
+      >
+        <div className="relative paper-texture p-6 shadow-2xl border border-amber-900/20 max-w-sm rotate-1">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-amber-900/10 pb-2">
+              <h4 className="text-[10px] font-black text-amber-900/60 uppercase tracking-[0.2em]">Distance Ledger</h4>
+              <button onClick={() => { setPoints([]); setTempMeasureB(null); }} className="text-amber-900/40 hover:text-rose-600 transition-colors"><CloseIcon size={14} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-8">
+              <div>
+                <span className="text-[8px] font-black text-amber-900/40 uppercase block mb-1">Total (Metric)</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-serif italic text-amber-900">{distKm.toFixed(1)}</span>
+                  <span className="text-[10px] font-bold text-amber-900/60">{mapUnit || 'km'}</span>
+                </div>
+              </div>
+              <div className="border-l border-amber-900/10 pl-6 flex flex-col justify-center">
+                {isRealWorld && (
+                  <button onClick={handleCalibrate} className="flex items-center gap-1.5 px-2 py-1.5 bg-amber-900/10 hover:bg-amber-900/20 text-amber-900/70 rounded-lg transition-all text-[9px] font-black uppercase tracking-widest border border-amber-900/10"><Ruler size={10} /> Sync Scale</button>
+                )}
+              </div>
+            </div>
+            <div className="bg-amber-900/5 p-3 rounded italic text-[10px] text-amber-900/70 font-serif border-l-2 border-amber-900/20">Total path length across {resolvedPoints.length - 1} segments.</div>
+          </div>
+        </div>
       </div>
     );
   };
