@@ -4,10 +4,11 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
 import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity, Footprints as PawPrint } from 'lucide-react';
-import { Location, TimelineEvent, Character, MapPath } from '../../types';
+import { Location, TimelineEvent, Character, MapPath, ProjectData, HierarchicalEntity } from '../../types';
 import { generateId } from '../../services/storageService';
 import { createGridLayer } from '../../utils/gridLayer';
 import creaturesData from '@alittler/creatures';
+import { findBestiaryEntryForCreature } from '../../utils/creatureUtils';
 import '@flaticon/flaticon-uicons/css/solid/all.css';
 
 interface MapViewProps {
@@ -15,12 +16,14 @@ interface MapViewProps {
   characters?: Character[];
   showCharacters?: boolean;
   paths?: MapPath[];
+  projectData?: ProjectData;
   onAddPath?: (path: MapPath) => void;
   onUpdatePath?: (path: MapPath) => void;
   onDeletePath?: (id: string) => void;
   onLocationClick?: (id: string) => void;
   onCharacterClick?: (id: string) => void;
   onCreatureClick?: (creatureId: number) => void;
+  onBestiaryClick?: (entry: HierarchicalEntity) => void;
   onMapClick?: (x: number, y: number) => void;
   onLocationPlace?: (id: string, x: number, y: number) => void;
   onCharacterPlace?: (id: string, x: number, y: number) => void;
@@ -49,7 +52,7 @@ interface MapViewProps {
 }
 
 export const MapView: React.FC<MapViewProps> = ({ 
-  locations, characters = [], showCharacters = true, paths = [], onAddPath, onUpdatePath, onDeletePath, onLocationClick, onCharacterClick, onCreatureClick, onMapClick, onLocationPlace, onCharacterPlace, onLocationMove, onCharacterMove, onLocationUnplace, onCharacterUnplace, onLocationUndo, onLocationReset, onLocationLock, onCharacterLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef, onViewChange, onScaleCalibrated,
+  locations, characters = [], showCharacters = true, paths = [], projectData, onAddPath, onUpdatePath, onDeletePath, onLocationClick, onCharacterClick, onCreatureClick, onBestiaryClick, onMapClick, onLocationPlace, onCharacterPlace, onLocationMove, onCharacterMove, onLocationUnplace, onCharacterUnplace, onLocationUndo, onLocationReset, onLocationLock, onCharacterLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef, onViewChange, onScaleCalibrated,
   isRealWorld = false
 }) => {
   const mapRef = useRef<L.Map | null>(null);
@@ -1204,11 +1207,16 @@ export const MapView: React.FC<MapViewProps> = ({
                   </div>
                 )}
 
-                {/* Action Button */}
+                {/* Action Buttons */}
                 <div className="mt-4 flex gap-3">
                   <button
                     onClick={() => {
-                      onCreatureClick?.(selectedCreature.id);
+                      if (projectData && selectedCreature) {
+                        const bestiaryEntry = findBestiaryEntryForCreature(projectData, selectedCreature.name);
+                        if (bestiaryEntry) {
+                          onBestiaryClick?.(bestiaryEntry);
+                        }
+                      }
                       setSelectedCreature(null);
                     }}
                     className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-bold rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all shadow-lg shadow-purple-600/20"

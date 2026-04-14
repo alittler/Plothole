@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ProjectData, HierarchicalEntity } from '../../types';
-import { Book, Search, FileText, Plus, Scroll, BookMarked, Box, MoreHorizontal, Wand2 } from 'lucide-react';
+import { Book, Search, FileText, Plus, Scroll, BookMarked, Box, MoreHorizontal, Wand2, MapPin } from 'lucide-react';
 import { WikiText } from '../ui/WikiText';
 import { CardActions } from '../ui/CardActions';
 import { generateId } from '../../services/storageService';
@@ -192,12 +192,22 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
                 const title = entry.term || entry.name;
                 const description = entry.definition || entry.description;
                 const category = entry.category || entry.type;
+                const isCreature = entry.type === 'Creature' || entry.type === 'Beast';
 
                 return (
                   <div key={id} className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative group">
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{category}</span>
                       <div className="flex items-center gap-2">
+                        {isCreature && (
+                          <button 
+                            onClick={() => onLinkClick('map', id)}
+                            className="text-slate-400 hover:text-emerald-500 transition-colors"
+                            title="View on Map"
+                          >
+                            <MapPin size={16} />
+                          </button>
+                        )}
                         <button 
                           onClick={() => onLinkClick('admin', id)}
                           className="text-slate-400 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100"

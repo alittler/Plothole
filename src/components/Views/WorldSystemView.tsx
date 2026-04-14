@@ -360,6 +360,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       characters={showCharacters ? filteredCharacters : []}
                       showCharacters={showCharacters}
                       paths={showPaths ? data.paths : []}
+                      projectData={data}
                       onAddPath={(path) => onUpdateProject({ paths: [...(data.paths || []), path] })}
                       onUpdatePath={(path) => onUpdateProject({ paths: (data.paths || []).map(p => p.id === path.id ? path : p) })}
                       onDeletePath={(id) => onUpdateProject({ paths: (data.paths || []).filter(p => p.id !== id) })}
@@ -420,8 +421,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       onCharacterClick={(id) => {
                         onLinkClick('characters', id);
                       }}
-                      onCreatureClick={(creatureId) => {
-                        onChangeView(ViewType.BESTIARY, { creatureId });
+                      onBestiaryClick={(entry) => {
+                        onLinkClick('bestiary', entry.id);
                       }}
                       onCharacterPlace={handleCharacterPlace}
                       onCharacterMove={handleCharacterMove}

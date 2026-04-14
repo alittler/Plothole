@@ -52,6 +52,7 @@ import { CodexView } from './components/Views/CodexView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
 import { BestiaryBrowserView } from './components/Views/BestiaryBrowserView';
+import { ensureCreatureBestiaryEntries } from './utils/creatureUtils';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
@@ -480,6 +481,8 @@ const App: React.FC = () => {
     } else if (type === 'location') {
       setCurrentMapParentId(id);
       setCurrentView(ViewType.MAP);
+    } else if (type === 'bestiary') {
+      setCurrentView(ViewType.CODEX);
     } else if (type === 'dashboard') {
       setCurrentView(ViewType.DASHBOARD);
     }
@@ -659,6 +662,17 @@ const App: React.FC = () => {
     init();
   }, [checkApiKey, isAuthenticated, isAuthLoading, fetchWithAuth]); // Re-run when auth state or Auth0 status changes
 
+  // Auto-generate bestiary entries for creatures when project loads
+  useEffect(() => {
+    if (!projectData) return;
+    
+    const updatedProject = ensureCreatureBestiaryEntries(projectData);
+    
+    // Only update if new creatures were added
+    if (updatedProject.entities && updatedProject.entities.length > projectData.entities?.length) {
+      setProjectData(updatedProject);
+    }
+  }, [projectData?.id]); // Only run when project changes
 
   useEffect(() => {
     if (!projectData) return;

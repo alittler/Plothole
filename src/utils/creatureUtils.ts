@@ -1,3 +1,16 @@
+import { HierarchicalEntity, ProjectData } from '../types';
+import creaturesData from '@alittler/creatures';
+import { generateId } from '../services/storageService';
+
+export interface CreatureData {
+  id: number;
+  name: string;
+  category: string;
+  alignment: string;
+  lat: number;
+  lon: number;
+  lore: string;
+}
 
 export const getAlignmentColor = (alignment: string): string => {
   const normalized = alignment.toLowerCase().trim();
@@ -50,3 +63,73 @@ export const getCreatureIconHtml = (category: string, alignment: string, size: n
     ${iconContent}
   </div>`;
 };
+
+/**
+ * Auto-generate bestiary entries for all creatures in the @alittler/creatures package.
+ * Only creates entries for creatures that don't already exist in the project.
+ */
+export function ensureCreatureBestiaryEntries(projectData: ProjectData): ProjectData {
+  if (!projectData.entities) {
+    projectData.entities = [];
+  }
+
+  const creatures = creaturesData as CreatureData[];
+  const existingCreatures = new Set(
+    projectData.entities
+      .filter(e => e.type === 'Creature' || e.type === 'Beast')
+      .map(e => e.name.toLowerCase())
+  );
+
+  const newEntities: HierarchicalEntity[] = [];
+
+  creatures.forEach(creature => {
+    if (!existingCreatures.has(creature.name.toLowerCase())) {
+      const newEntity: HierarchicalEntity = {
+        id: `creature-${generateId()}`,
+        name: creature.name,
+        type: 'Creature',
+        tier: 1,
+        species: creature.category,
+        description: creature.lore,
+        source: 'manual',
+        metadata: {
+          creatureId: creature.id,
+          category: creature.category,
+          alignment: creature.alignment,
+          latitude: creature.lat,
+          longitude: creature.lon,
+        },
+      };
+      newEntities.push(newEntity);
+    }
+  });
+
+  if (newEntities.length > 0) {
+    projectData.entities = [...projectData.entities, ...newEntities];
+  }
+
+  return projectData;
+}
+
+/**
+ * Find a bestiary entry that matches a creature by name.
+ */
+export function findBestiaryEntryForCreature(
+  projectData: ProjectData,
+  creatureName: string
+): HierarchicalEntity | undefined {
+  return projectData.entities?.find(
+    e => (e.type === 'Creature' || e.type === 'Beast') &&
+    e.name.toLowerCase() === creatureName.toLowerCase()
+  );
+}
+
+/**
+ * Get creature data by name from the creatures package.
+ */
+export function getCreatureData(creatureName: string): CreatureData | undefined {
+  return (creaturesData as CreatureData[]).find(
+    c => c.name.toLowerCase() === creatureName.toLowerCase()
+  );
+}
+
