@@ -693,13 +693,6 @@ export const MapView: React.FC<MapViewProps> = ({
     if (displayDist < 1) { displayDist = displayDist * 1000; label = (mapUnit === 'mi' || label === 'mi') ? 'ft' : 'm'; }
     return (
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none flex flex-col items-center gap-2">
-        {isRealWorld && debugCoords && (
-          <div className="bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-mono text-emerald-400 mb-2 shadow-2xl flex items-center gap-4">
-            <div className="flex items-center gap-2"><span className="opacity-50 uppercase tracking-widest text-[8px]">Lat</span><span className="min-w-[70px]">{debugCoords.lat.toFixed(6)}</span></div>
-            <div className="flex items-center gap-2 border-l border-white/10 pl-4"><span className="opacity-50 uppercase tracking-widest text-[8px]">Lng</span><span className="min-w-[70px]">{debugCoords.lng.toFixed(6)}</span></div>
-            <div className="flex items-center gap-2 border-l border-white/10 pl-4"><span className="opacity-50 uppercase tracking-widest text-[8px]">Zoom</span><span className="text-white font-bold">{debugCoords.zoom.toFixed(1)}x</span></div>
-          </div>
-        )}
         <button 
           onClick={() => {
             setScaleInput(displayDist.toFixed(displayDist < 10 ? 1 : 0));
