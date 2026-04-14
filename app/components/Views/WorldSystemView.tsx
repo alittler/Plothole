@@ -9,6 +9,7 @@ import { WikiText } from '../ui/WikiText';
 import { generateId } from '../../services/storageService';
 import { RichEditor } from '../ui/RichEditor';
 import { Modal } from '../ui/Modal';
+import { CreateMapTab } from './CreateMapTab';
 
 interface WorldSystemViewProps {
   currentView: ViewType;
@@ -39,6 +40,7 @@ interface WorldSystemViewProps {
 
 enum WorldTab {
   MAP = 'Interactive Map',
+  CREATE_MAP = 'Create Map',
   LOCATIONS = 'Locations & Paths',
   INVENTORY = 'Inventory',
   RECIPE_BOOK = 'Recipe Book'
@@ -679,6 +681,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   </>
                 )}
               </div>
+            )}
+
+            {activeTab === WorldTab.CREATE_MAP && (
+              <CreateMapTab />
             )}
 
             {activeTab === WorldTab.LOCATIONS && (
