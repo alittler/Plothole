@@ -27,7 +27,8 @@ export enum ViewType {
   WORLD_HUB = 'WorldHub',
   WORKSPACE_HUB = 'WorkspaceHub',
   SYSTEM_HUB = 'SystemHub',
-  RESEARCH = 'Research'
+  RESEARCH = 'Research',
+  BESTIARY = 'Bestiary'
 }
 
 export const APP_DATA_VERSION = 12;

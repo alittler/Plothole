@@ -51,6 +51,7 @@ import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
+import { BestiaryBrowserView } from './components/Views/BestiaryBrowserView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
@@ -1443,8 +1444,10 @@ const handleRestoreCommit = async (commit: Commit) => {
           currentView={currentView} 
           onChangeView={setCurrentView} 
           data={projectData} 
-          onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })} 
-          onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })} 
+          onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
+          onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
+          onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })}
+ 
           onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })} 
           onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })} 
           onLinkClick={handleLinkClick} 
@@ -1531,6 +1534,9 @@ const handleRestoreCommit = async (commit: Commit) => {
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
+
+      case ViewType.BESTIARY:
+        return <BestiaryBrowserView />;
 
       /* case ViewType.STORY_ARCHITECT:
         return <StoryArchitectView projectsMetadata={projectsMetadata} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); await refreshMetadata(); setCurrentView(ViewType.DASHBOARD); } }} onUpdateProject={updateProjectData} currentUser={currentUser} />; */

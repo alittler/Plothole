@@ -27,7 +27,8 @@ export enum ViewType {
   WORLD_HUB = 'WorldHub',
   WORKSPACE_HUB = 'WorkspaceHub',
   SYSTEM_HUB = 'SystemHub',
-  RESEARCH = 'Research'
+  RESEARCH = 'Research',
+  BESTIARY = 'Bestiary'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -372,6 +373,12 @@ export interface Character {
   affiliation?: string;
   knowsAbout?: string[];
   fieldNotes?: { label: string; value: string }[];
+  
+  // Map placement fields
+  x?: number;
+  y?: number;
+  parentId?: string;
+  isLocked?: boolean;
 }
 
 export interface Location {

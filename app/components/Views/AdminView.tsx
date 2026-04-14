@@ -5,7 +5,7 @@ import {
   Shield, Sparkles, Save, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3, GripVertical, Eye, EyeOff, Users, Calendar, Menu, QrCode, BookOpen
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3, GripVertical, Eye, EyeOff, Users, Calendar, Menu, QrCode, BookOpen, Wand2
 } from 'lucide-react';
 
 import { CardCatalogueView } from './CardCatalogueView';
@@ -225,7 +225,26 @@ export const AdminView: React.FC<AdminViewProps> = ({
       [ViewType.RESEARCH]: 'Research',
       [ViewType.TOOLBOX]: 'Toolbox',
       [ViewType.SETTINGS]: 'Settings',
-      [ViewType.ADMIN]: 'Admin'
+      [ViewType.ADMIN]: 'Admin',
+      [ViewType.BESTIARY]: 'Bestiary',
+      [ViewType.BOARD]: 'Board',
+      [ViewType.TABLE]: 'Table',
+      [ViewType.CALENDAR]: 'Calendar',
+      [ViewType.GALLERY]: 'Gallery',
+      [ViewType.LOCATIONS]: 'Locations',
+      [ViewType.INVENTORY]: 'Inventory',
+      [ViewType.ENCYCLOPEDIA]: 'Encyclopedia',
+      [ViewType.PLOT_ANALYSIS]: 'Plot Analysis',
+      [ViewType.PROCESSOR]: 'Processor',
+      [ViewType.SOURCE_READER]: 'Source Reader',
+      [ViewType.MATRIX]: 'Matrix',
+      [ViewType.DICTIONARY]: 'Dictionary',
+      [ViewType.SEMANTIC_EDITOR]: 'Semantic Editor',
+      [ViewType.STORY_ARCHITECT]: 'Story Architect',
+      [ViewType.CARD_CATALOGUE]: 'Card Catalogue',
+      [ViewType.WORLD_HUB]: 'World Hub',
+      [ViewType.WORKSPACE_HUB]: 'Workspace Hub',
+      [ViewType.SYSTEM_HUB]: 'System Hub'
     };
     return labels[view] || view;
   };
@@ -242,7 +261,26 @@ export const AdminView: React.FC<AdminViewProps> = ({
       [ViewType.RESEARCH]: Target,
       [ViewType.TOOLBOX]: Wrench,
       [ViewType.SETTINGS]: Settings,
-      [ViewType.ADMIN]: Shield
+      [ViewType.ADMIN]: Shield,
+      [ViewType.BESTIARY]: Wand2,
+      [ViewType.BOARD]: Grid3x3,
+      [ViewType.TABLE]: Grid3x3,
+      [ViewType.CALENDAR]: Calendar,
+      [ViewType.GALLERY]: Grid3x3,
+      [ViewType.LOCATIONS]: MapPin,
+      [ViewType.INVENTORY]: Grid3x3,
+      [ViewType.ENCYCLOPEDIA]: Book,
+      [ViewType.PLOT_ANALYSIS]: Target,
+      [ViewType.PROCESSOR]: Cpu,
+      [ViewType.SOURCE_READER]: FileText,
+      [ViewType.MATRIX]: Grid3x3,
+      [ViewType.DICTIONARY]: Book,
+      [ViewType.SEMANTIC_EDITOR]: Code,
+      [ViewType.STORY_ARCHITECT]: BookOpen,
+      [ViewType.CARD_CATALOGUE]: BookOpen,
+      [ViewType.WORLD_HUB]: Globe,
+      [ViewType.WORKSPACE_HUB]: Layout,
+      [ViewType.SYSTEM_HUB]: Settings
     };
     const Icon = iconMap[view];
     return Icon ? <Icon size={18} /> : null;
