@@ -5,6 +5,11 @@ import '../src/index.css';
 export const metadata: Metadata = {
   title: 'Plothole — Your Story, Decoded',
   description: 'Your Story, Decoded',
+  icons: {
+    icon: '/logos/plothole_32x32.png',
+    apple: '/logos/plothole_256x256.png',
+  },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
