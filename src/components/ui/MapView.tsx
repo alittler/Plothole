@@ -52,6 +52,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapBoundsRef = useRef<L.LatLngBounds | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const gridLayerRef = useRef<L.LayerGroup | null>(null);
+  const creaturesLayerRef = useRef<L.LayerGroup | null>(null);
   const pathLayersRef = useRef<{ [key: string]: L.LayerGroup }>({});
   const measureMarkersRef = useRef<L.Marker[]>([]);
   const [imgWidth, setImgWidth] = useState<number>(0);
@@ -318,6 +319,11 @@ export const MapView: React.FC<MapViewProps> = ({
       map.setMinZoom(minZoom);
       map.setView([20, 0], Math.max(minZoom, 2));
       
+      // Create creatures layer
+      const creaturesLayer = L.layerGroup();
+      creaturesLayer.addTo(map);
+      creaturesLayerRef.current = creaturesLayer;
+      
       // Add creatures from euro-bestiary dataset
       creaturesData.forEach(creature => {
         if (creature.lat && creature.lon) {
@@ -330,7 +336,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 ${creature.lore ? `<div style="margin-top: 5px; font-size: 11px; max-width: 200px;">${creature.lore.substring(0, 150)}...</div>` : ''}
               </div>
             `)
-            .addTo(map);
+            .addTo(creaturesLayer);
         }
       });
     } else {

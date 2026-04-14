@@ -42,7 +42,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     };
   }, []);
 
-  const defaultOrder = [ViewType.BOOKSHELF, ViewType.DASHBOARD, ViewType.NOTEPAD, ViewType.RESEARCH];
+  const defaultOrder = [ViewType.BOOKSHELF, ViewType.DASHBOARD, ViewType.NOTEPAD, ViewType.RESEARCH, ViewType.BESTIARY];
   const order = bottomNavOrder || defaultOrder;
 
   const getViewLabel = (view: ViewType) => {
