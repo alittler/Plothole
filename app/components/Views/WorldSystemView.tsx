@@ -247,30 +247,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
   const filteredCharacters = data.characters.filter((c) => c.x !== undefined && c.y !== undefined && (c.parentId === (currentMapParentId || 'root')));
 
-  const handleSeedTestMonsters = () => {
-    const testCreatures = [
-      { name: "Selkie", x: -18.5, y: 64.9, desc: "Northern edge test (Iceland area)." },
-      { name: "Zilant", x: 50.0, y: 42.0, desc: "Eastern edge test (Caspian area)." },
-      { name: "Xana", x: -3.7, y: 40.0, desc: "Western edge test (Iberia area)." },
-      { name: "Centaur", x: 18.0, y: 35.0, desc: "Southern edge test (Mediterranean area)." },
-      { name: "Nessie", x: -4.4, y: 57.3, desc: "Center-North test (Scotland)." }
-    ];
 
-    const newChars: Character[] = testCreatures.map(tc => ({
-      id: generateId(),
-      name: tc.name,
-      description: tc.desc,
-      role: 'Monster',
-      job: 'Test Subject',
-      traits: ['Test'],
-      x: tc.x,
-      y: tc.y,
-      parentId: currentMapParentId || 'root',
-      source: 'manual'
-    }));
-
-    onUpdateProject({ characters: [...(data.characters || []), ...newChars] });
-  };
 
   const isCurrentMapRealWorld = (() => {
     if (currentMapParentId) {
@@ -672,8 +649,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                                 ))
                               )}
                               <button 
-                                onClick={handleSeedTestMonsters}
-                                className="w-full py-3 bg-rose-50 dark:bg-rose-900/20 border-2 border-dashed border-rose-200 dark:border-rose-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all flex items-center justify-center gap-2 mt-4"
+                                onClick={() => {}}
+                                className="w-full py-3 bg-rose-50 dark:bg-rose-900/20 border-2 border-dashed border-rose-200 dark:border-rose-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all flex items-center justify-center gap-2 mt-4 hidden"
                               >
                                 <Sparkles size={14} /> Seed Test Monsters
                               </button>

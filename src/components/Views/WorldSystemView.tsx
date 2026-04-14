@@ -257,52 +257,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
   const filteredCharacters = data.characters.filter((c) => c.x !== undefined && c.y !== undefined && (c.parentId === (currentMapParentId || 'root')));
 
-  const handleSeedTestMonsters = async () => {
-    try {
-      const response = await fetch(
-        'https://raw.githubusercontent.com/alittler/european-mythical-creatures/main/creatures.json'
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch creatures: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      // Handle both direct array and object with creatures property
-      const creatures = Array.isArray(data) ? data : (data.creatures || []);
-      
-      // Flatten categories if data is organized by category
-      const flatCreatures = creatures.flatMap((item: any) => {
-        if (item.creatures && Array.isArray(item.creatures)) {
-          return item.creatures.map((c: any) => ({
-            ...c,
-            category: item.category
-          }));
-        }
-        return item;
-      });
 
-      const newChars: Character[] = flatCreatures.map((tc: any) => ({
-        id: generateId(),
-        name: tc.name,
-        description: tc.desc || tc.description || '',
-        role: 'Monster',
-        job: 'Test Subject',
-        traits: ['Test', tc.category || 'Unknown'],
-        x: tc.lng !== undefined ? tc.lng : tc.x,
-        y: tc.lat !== undefined ? tc.lat : tc.y,
-        parentId: currentMapParentId || 'root',
-        source: 'manual',
-        isLocked: true
-      }));
-
-      onUpdateProject({ characters: [...(data.characters || []), ...newChars] });
-    } catch (error) {
-      console.error('Error loading creatures:', error);
-      alert(`Failed to load creatures: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
 
   const isCurrentMapRealWorld = (() => {
     if (currentMapParentId) {
@@ -520,8 +475,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                             )}
                             <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
                             <button 
-                              onClick={handleSeedTestMonsters}
-                              className="p-1.5 md:p-2 rounded-lg md:rounded-xl transition-all text-slate-500 hover:text-rose-600"
+                              onClick={() => {}}
+                              className="p-1.5 md:p-2 rounded-lg md:rounded-xl transition-all text-slate-500 hover:text-rose-600 hidden"
                               title="Seed Test Monsters"
                             >
                               <Sparkles size={16} className="md:w-5 md:h-5" />
