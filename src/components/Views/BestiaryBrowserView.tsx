@@ -39,6 +39,7 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
 
   const mapRef = React.useRef<L.Map | null>(null);
   const mapContainerRef = React.useRef<HTMLDivElement>(null);
+  const markerLayerRef = React.useRef<L.LayerGroup | null>(null);
   const markersRef = React.useRef<{ [key: string]: L.Marker }>({});
 
   // Load creatures data from package
@@ -71,20 +72,26 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
       maxZoom: 19,
     }).addTo(map);
 
+    // Create and add marker layer
+    const markerLayer = L.layerGroup();
+    markerLayer.addTo(map);
+    markerLayerRef.current = markerLayer;
+
     mapRef.current = map;
 
     return () => {
       map.remove();
       mapRef.current = null;
+      markerLayerRef.current = null;
     };
   }, []);
 
   // Update markers on map
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !markerLayerRef.current) return;
 
-    // Remove old markers
-    Object.values(markersRef.current).forEach(marker => mapRef.current!.removeLayer(marker));
+    // Clear old markers
+    markerLayerRef.current.clearLayers();
     markersRef.current = {};
 
     // Add new markers
@@ -100,7 +107,7 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
             </div>
           `)
           .on('click', () => setSelectedCreature(creature))
-          .addTo(mapRef.current!);
+          .addTo(markerLayerRef.current!);
 
         markersRef.current[creature.id] = marker;
       }
