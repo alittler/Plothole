@@ -1,6 +1,8 @@
 {
-  "app": {},
-  "appUsingSizeAdjust": false,
+  "app": {
+    "[project]/Dropbox/Documents/GitHub/Plothole/app/[[...slug]]/page": []
+  },
+  "appUsingSizeAdjust": true,
   "pages": {},
   "pagesUsingSizeAdjust": false
 }

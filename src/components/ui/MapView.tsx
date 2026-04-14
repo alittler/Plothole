@@ -5,6 +5,7 @@ import { Location, TimelineEvent, Character, MapPath } from '../../types';
 import { generateId } from '../../services/storageService';
 import { createGridLayer } from '../../utils/gridLayer';
 import creaturesData from '@alittler/creatures';
+import '@flaticon/flaticon-uicons/css/solid/all.css';
 
 interface MapViewProps {
   locations: Location[];
@@ -277,10 +278,10 @@ export const MapView: React.FC<MapViewProps> = ({
     setTempMeasureB(null);
   };
 
-  // Get emoji icon for creature category
+  // Get icon for creature category
   const getCreatureIcon = (category: string): string => {
     switch (category) {
-      case 'Dragons': return '🐉';
+      case 'Dragons': return '<i class="fi fi-ss-dragon"></i>';
       case 'Hybrid animals': return '🦙';
       case 'Hybrids of human and animal': return '🧟';
       case 'Anthromorphic': return '👤';
@@ -349,11 +350,15 @@ export const MapView: React.FC<MapViewProps> = ({
       // Add creatures from euro-bestiary dataset
       creaturesData.forEach(creature => {
         if (creature.lat && creature.lon) {
-          const icon = getCreatureIcon(creature.category);
+          const iconHtml = getCreatureIcon(creature.category);
+          // Check if it's a Flaticon icon (contains <i) or emoji
+          const isFlaticonIcon = iconHtml.includes('<i');
           const marker = L.marker([creature.lat, creature.lon], {
             icon: L.divIcon({
               className: 'creature-marker',
-              html: `<div class="flex items-center justify-center text-2xl drop-shadow-lg hover:scale-125 transition-transform cursor-pointer">${icon}</div>`,
+              html: isFlaticonIcon 
+                ? `<div class="flex items-center justify-center text-xl drop-shadow-lg hover:scale-125 transition-transform cursor-pointer text-slate-700 dark:text-slate-300">${iconHtml}</div>`
+                : `<div class="flex items-center justify-center text-2xl drop-shadow-lg hover:scale-125 transition-transform cursor-pointer">${iconHtml}</div>`,
               iconSize: [32, 32],
               iconAnchor: [16, 16],
               popupAnchor: [0, -16]

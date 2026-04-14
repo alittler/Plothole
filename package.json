@@ -17,6 +17,7 @@
     "@aws-sdk/lib-storage": "^3.1024.0",
     "@aws-sdk/s3-request-presigner": "^3.1024.0",
     "@clerk/clerk-react": "^5.61.3",
+    "@flaticon/flaticon-uicons": "^3.3.1",
     "@google/genai": "^1.29.0",
     "@sentry/node": "^10.43.0",
     "@tailwindcss/vite": "^4.1.14",
