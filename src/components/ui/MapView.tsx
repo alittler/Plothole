@@ -59,6 +59,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const [isReady, setIsReady] = useState(false);
   const [shortcuts, setShortcuts] = useState<{ name: string, bounds: L.LatLngBounds, count: number, type: string }[]>([]);
   const [showGrid, setShowGrid] = useState(true);
+  const [showCreatures, setShowCreatures] = useState(true);
 
   // Ledger Draggable State
   const [ledgerPos, setLedgerPos] = useState({ x: 0, y: 0 });
@@ -130,6 +131,16 @@ export const MapView: React.FC<MapViewProps> = ({
   }, [isReady, isRealWorld, imgWidth]);
 
   useEffect(() => { if (isReady) updateShortcuts(); }, [isReady, locations, updateShortcuts]);
+
+  // Toggle creatures layer visibility
+  useEffect(() => {
+    if (!creaturesLayerRef.current || !mapRef.current) return;
+    if (showCreatures) {
+      mapRef.current.addLayer(creaturesLayerRef.current);
+    } else {
+      mapRef.current.removeLayer(creaturesLayerRef.current);
+    }
+  }, [showCreatures]);
 
   const MAP_ICONS: Record<string, string> = {
     castle: '<path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6"/><path d="M21 11v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V11"/><path d="M15 11V8a3 3 0 0 0-6 0v3"/><path d="M9 11h6"/><path d="M7 11V8"/><path d="M17 11V8"/><path d="M12 3v2"/>',
@@ -267,6 +278,18 @@ export const MapView: React.FC<MapViewProps> = ({
     setTempMeasureB(null);
   };
 
+  // Get emoji icon for creature category
+  const getCreatureIcon = (category: string): string => {
+    switch (category) {
+      case 'Dragons': return '🐉';
+      case 'Hybrid animals': return '🦙';
+      case 'Hybrids of human and animal': return '🧟';
+      case 'Anthromorphic': return '👤';
+      case 'Zoomorphic': return '🐺';
+      default: return '👹';
+    }
+  };
+
   const handleConfirmPathName = () => {
     if (pendingPath && pathName.trim()) {
       const namedPath = { ...pendingPath, name: pathName.trim() };
@@ -327,7 +350,16 @@ export const MapView: React.FC<MapViewProps> = ({
       // Add creatures from euro-bestiary dataset
       creaturesData.forEach(creature => {
         if (creature.lat && creature.lon) {
-          const marker = L.marker([creature.lat, creature.lon])
+          const icon = getCreatureIcon(creature.category);
+          const marker = L.marker([creature.lat, creature.lon], {
+            icon: L.divIcon({
+              className: 'creature-marker',
+              html: `<div class="flex items-center justify-center text-2xl drop-shadow-lg hover:scale-125 transition-transform cursor-pointer">${icon}</div>`,
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
+              popupAnchor: [0, -16]
+            })
+          })
             .bindPopup(`
               <div style="font-weight: bold; margin-bottom: 5px;">${creature.name}</div>
               <div style="font-size: 12px;">
@@ -916,6 +948,9 @@ export const MapView: React.FC<MapViewProps> = ({
       {isReady && renderMeasurementResults()}
       <div className="absolute top-48 right-6 z-40 flex flex-col gap-2 pointer-events-auto">
         <button onClick={(e) => { e.stopPropagation(); handleToggleMeasuring(); }} className={`p-3 rounded-2xl shadow-2xl border backdrop-blur-md transition-all ${isMeasuring ? 'bg-amber-500 text-white border-amber-400 ring-4 ring-amber-500/20' : 'bg-white/95 dark:bg-slate-900/95 text-slate-600 dark:text-slate-300 border-white/20 hover:bg-white'}`} title="Measurement Tool"><Ruler size={20} /></button>
+        {isRealWorld && (
+          <button onClick={(e) => { e.stopPropagation(); setShowCreatures(!showCreatures); }} className={`p-3 rounded-2xl shadow-2xl border backdrop-blur-md transition-all ${showCreatures ? 'bg-purple-500 text-white border-purple-400 ring-4 ring-purple-500/20' : 'bg-white/95 dark:bg-slate-900/95 text-slate-600 dark:text-slate-300 border-white/20 hover:bg-white'}`} title="Toggle Creatures">🐉</button>
+        )}
       </div>
       {isMeasuring && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[100] bg-amber-600 text-white px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-2xl animate-pulse pointer-events-none">
