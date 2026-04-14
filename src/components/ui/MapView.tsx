@@ -156,8 +156,14 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   const getMarkerStyle = (loc: Location) => {
+    const icon = loc.icon;
+    // Check if icon is a URL/Path
+    if (icon && (icon.startsWith('/') || icon.startsWith('http') || icon.startsWith('data:'))) {
+      return { isImage: true, src: icon, color: 'bg-indigo-500', svg: '' };
+    }
+
     const type = loc.type.toLowerCase();
-    const iconName = (loc.icon || type).toLowerCase();
+    const iconName = (icon || type).toLowerCase();
     let iconKey = 'landmark';
     let color = 'bg-emerald-500';
     if (iconName.includes('castle') || iconName.includes('fort')) { iconKey = 'castle'; color = 'bg-slate-700'; }
@@ -168,7 +174,7 @@ export const MapView: React.FC<MapViewProps> = ({
     else if (iconName.includes('forest') || iconName.includes('wood')) { iconKey = 'forest'; color = 'bg-green-700'; }
     else if (iconName.includes('mountain')) { iconKey = 'mountain'; color = 'bg-slate-400'; }
     else if (iconName.includes('cave')) { iconKey = 'cave'; color = 'bg-orange-900'; }
-    return { color, svg: MAP_ICONS[iconKey] || MAP_ICONS['landmark'] };
+    return { isImage: false, color, svg: MAP_ICONS[iconKey] || MAP_ICONS['landmark'], src: '' };
   };
 
   const getCharacterMarkerStyle = (char: Character) => {
@@ -282,11 +288,11 @@ export const MapView: React.FC<MapViewProps> = ({
   // Get icon for creature category
   const getCreatureIcon = (category: string): string => {
     switch (category) {
-      case 'Dragons': return '<i class="fi fi-ss-dragon"></i>';
-      case 'Hybrid animals': return '🦙';
-      case 'Hybrids of human and animal': return '🧟';
-      case 'Anthromorphic': return '👤';
-      case 'Zoomorphic': return '🐺';
+      case 'Dragons': return '<img src="/assets/map-icons/dragon.png" style="width: 24px; height: 24px; object-fit: contain;" />';
+      case 'Hybrid animals': return '<img src="/assets/map-icons/chimera.png" style="width: 24px; height: 24px; object-fit: contain;" />';
+      case 'Hybrids of human and animal': return '<img src="/assets/map-icons/minotaur.png" style="width: 24px; height: 24px; object-fit: contain;" />';
+      case 'Anthromorphic': return '<img src="/assets/map-icons/cyclops.png" style="width: 24px; height: 24px; object-fit: contain;" />';
+      case 'Zoomorphic': return '<img src="/assets/map-icons/bear.png" style="width: 24px; height: 24px; object-fit: contain;" />';
       default: return '👹';
     }
   };
@@ -352,12 +358,15 @@ export const MapView: React.FC<MapViewProps> = ({
       creaturesData.forEach(creature => {
         if (creature.lat && creature.lon) {
           const iconHtml = getCreatureIcon(creature.category);
-          // Check if it's a Flaticon icon (contains <i) or emoji
+          // Check if it's an image icon (contains <img), Flaticon icon (<i), or emoji
+          const isImageIcon = iconHtml.includes('<img');
           const isFlaticonIcon = iconHtml.includes('<i');
           const marker = L.marker([creature.lat, creature.lon], {
             icon: L.divIcon({
               className: 'creature-marker',
-              html: isFlaticonIcon 
+              html: isImageIcon
+                ? `<div class="flex items-center justify-center drop-shadow-lg hover:scale-125 transition-transform cursor-pointer">${iconHtml}</div>`
+                : isFlaticonIcon 
                 ? `<div class="flex items-center justify-center text-xl drop-shadow-lg hover:scale-125 transition-transform cursor-pointer text-slate-700 dark:text-slate-300">${iconHtml}</div>`
                 : `<div class="flex items-center justify-center text-2xl drop-shadow-lg hover:scale-125 transition-transform cursor-pointer">${iconHtml}</div>`,
               iconSize: [32, 32],
@@ -805,14 +814,20 @@ export const MapView: React.FC<MapViewProps> = ({
               iconAnchor: [16, 40],
               html: `<div class="group/marker relative flex flex-col items-center">
                 <div class="relative transition-transform duration-300 group-hover/marker:scale-110 ${loc.type === 'Region' ? 'opacity-40' : ''}">
-                  <div class="w-8 h-10 relative flex items-center justify-center filter drop-shadow-xl">
-                    <svg viewBox="0 0 24 30" class="w-full h-full fill-current ${style.color.replace('bg-', 'text-')}" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 18 12 18s12-9 12-18c0-6.63-5.37-12-12-12z" fill="currentColor" stroke="white" stroke-width="1" />
-                    </svg>
-                    <div class="absolute top-[6px] w-4 h-4 flex items-center justify-center text-white">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">${style.svg}</svg>
+                  ${style.isImage ? `
+                    <div class="w-10 h-10 rounded-full border-2 border-white shadow-2xl overflow-hidden bg-white ring-2 ring-black/5">
+                      <img src="${style.src}" class="w-full h-full object-cover" />
                     </div>
-                  </div>
+                  ` : `
+                    <div class="w-8 h-10 relative flex items-center justify-center filter drop-shadow-xl">
+                      <svg viewBox="0 0 24 30" class="w-full h-full fill-current ${style.color.replace('bg-', 'text-')}" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 18 12 18s12-9 12-18c0-6.63-5.37-12-12-12z" fill="currentColor" stroke="white" stroke-width="1" />
+                      </svg>
+                      <div class="absolute top-[6px] w-4 h-4 flex items-center justify-center text-white">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">${style.svg}</svg>
+                      </div>
+                    </div>
+                  `}
                 </div>
               </div>`
             })
