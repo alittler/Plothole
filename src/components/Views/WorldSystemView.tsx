@@ -12,7 +12,7 @@ import { Modal } from '../ui/Modal';
 
 interface WorldSystemViewProps {
   currentView: ViewType;
-  onChangeView: (view: ViewType) => void;
+  onChangeView: (view: ViewType, params?: { creatureId?: number }) => void;
   data: ProjectData;
   onAddLocation: (l: Location) => void;
   onAddArtifact: (a: Artifact) => void;
@@ -410,6 +410,9 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                       }}
                       onCharacterClick={(id) => {
                         onLinkClick('characters', id);
+                      }}
+                      onCreatureClick={(creatureId) => {
+                        onChangeView(ViewType.BESTIARY, { creatureId });
                       }}
                       onCharacterPlace={handleCharacterPlace}
                       onCharacterMove={handleCharacterMove}

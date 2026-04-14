@@ -15,6 +15,7 @@ interface Creature {
 
 interface BestiaryBrowserViewProps {
   onImportCreature?: (creature: Creature) => void;
+  selectedCreatureId?: number | null;
 }
 
 // Fix Leaflet marker icons
@@ -25,7 +26,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImportCreature }) => {
+export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImportCreature, selectedCreatureId }) => {
   const [creatures, setCreatures] = useState<Creature[]>([]);
   const [filteredCreatures, setFilteredCreatures] = useState<Creature[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,6 +61,24 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
       setIsLoading(false);
     }
   }, []);
+
+  // Handle selectedCreatureId from parent
+  useEffect(() => {
+    if (selectedCreatureId && creatures.length > 0) {
+      const creature = creatures.find(c => c.id === selectedCreatureId);
+      if (creature) {
+        setSelectedCreature(creature);
+        setExpandedCreatureId(creature.id.toString());
+        // Scroll sidebar to show the creature
+        const element = document.getElementById(`creature-${creature.id}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-purple-500');
+          setTimeout(() => element.classList.remove('ring-2', 'ring-purple-500'), 2000);
+        }
+      }
+    }
+  }, [selectedCreatureId, creatures]);
 
   // Initialize map
   useEffect(() => {
@@ -253,6 +272,7 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
                 <div className="divide-y divide-slate-200 dark:divide-slate-800">
                   {filteredCreatures.map(creature => (
                     <div
+                      id={`creature-${creature.id}`}
                       key={creature.id}
                       className={`p-3 cursor-pointer transition-colors ${
                         selectedCreature?.id === creature.id

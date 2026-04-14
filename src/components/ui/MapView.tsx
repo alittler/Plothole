@@ -17,6 +17,7 @@ interface MapViewProps {
   onDeletePath?: (id: string) => void;
   onLocationClick?: (id: string) => void;
   onCharacterClick?: (id: string) => void;
+  onCreatureClick?: (creatureId: number) => void;
   onMapClick?: (x: number, y: number) => void;
   onLocationPlace?: (id: string, x: number, y: number) => void;
   onCharacterPlace?: (id: string, x: number, y: number) => void;
@@ -45,7 +46,7 @@ interface MapViewProps {
 }
 
 export const MapView: React.FC<MapViewProps> = ({ 
-  locations, characters = [], showCharacters = true, paths = [], onAddPath, onUpdatePath, onDeletePath, onLocationClick, onCharacterClick, onMapClick, onLocationPlace, onCharacterPlace, onLocationMove, onCharacterMove, onLocationUnplace, onCharacterUnplace, onLocationUndo, onLocationReset, onLocationLock, onCharacterLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef, onViewChange, onScaleCalibrated,
+  locations, characters = [], showCharacters = true, paths = [], onAddPath, onUpdatePath, onDeletePath, onLocationClick, onCharacterClick, onCreatureClick, onMapClick, onLocationPlace, onCharacterPlace, onLocationMove, onCharacterMove, onLocationUnplace, onCharacterUnplace, onLocationUndo, onLocationReset, onLocationLock, onCharacterLock, onDimensionsDetected, onLinkClick, rootMapImage, mapScale, mapUnit, defaultView, zoomInRef, zoomOutRef, centerMapRef, fitAllLocationsRef, getViewStateRef, onViewChange, onScaleCalibrated,
   isRealWorld = false
 }) => {
   const mapRef = useRef<L.Map | null>(null);
@@ -370,8 +371,17 @@ export const MapView: React.FC<MapViewProps> = ({
                 <div><strong>Category:</strong> ${creature.category}</div>
                 <div><strong>Alignment:</strong> ${creature.alignment}</div>
                 ${creature.lore ? `<div style="margin-top: 5px; font-size: 11px; max-width: 200px;">${creature.lore.substring(0, 150)}...</div>` : ''}
+                <button class="creature-bestiary-btn" data-creature-id="${creature.id}" style="margin-top: 8px; padding: 4px 8px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 500;">View in Bestiary</button>
               </div>
             `)
+            .on('popupopen', () => {
+              const btn = document.querySelector(`[data-creature-id="${creature.id}"]`);
+              if (btn) {
+                btn.addEventListener('click', () => {
+                  onCreatureClick?.(creature.id);
+                });
+              }
+            })
             .addTo(creaturesLayer);
         }
       });

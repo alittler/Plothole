@@ -174,7 +174,13 @@ const App: React.FC = () => {
   }, [isAuthLoading, auth0User, appSettings.adminEmails]);
 
   const currentView = (decodeURIComponent(location.pathname.slice(1)) as ViewType) || ViewType.BOOKSHELF;
-  const setCurrentView = (view: ViewType) => navigate(`/${view}`);
+  const [selectedCreatureId, setSelectedCreatureId] = useState<number | null>(null);
+  const setCurrentView = (view: ViewType, params?: { creatureId?: number }) => {
+    if (params?.creatureId !== undefined) {
+      setSelectedCreatureId(params.creatureId);
+    }
+    navigate(`/${view}`);
+  };
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -1536,7 +1542,7 @@ const handleRestoreCommit = async (commit: Commit) => {
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
 
       case ViewType.BESTIARY:
-        return <BestiaryBrowserView />;
+        return <BestiaryBrowserView selectedCreatureId={selectedCreatureId} />;
 
       /* case ViewType.STORY_ARCHITECT:
         return <StoryArchitectView projectsMetadata={projectsMetadata} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); await refreshMetadata(); setCurrentView(ViewType.DASHBOARD); } }} onUpdateProject={updateProjectData} currentUser={currentUser} />; */
