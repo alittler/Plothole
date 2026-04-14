@@ -33,8 +33,8 @@ export function BrowserRouterWrapper({ children }: { children: ReactNode }) {
       cacheLocation="localstorage"
       useRefreshTokens={true}
       onRedirectCallback={(appState) => {
-        // Navigate to the path after login, or to home page
-        window.location.pathname = appState?.returnTo || '/';
+        // Don't redirect here - let React Router handle navigation
+        // The app will naturally re-render when auth state updates
       }}
     >
       <BrowserRouter>

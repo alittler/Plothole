@@ -80,21 +80,28 @@ const App: React.FC = () => {
 
   const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
     try {
-      const token = await getAccessTokenSilently();
-      if (!token) {
-        console.error(`[Auth] No token available for ${url}`);
-        throw new Error('No access token available');
+      // Try to get token, but don't fail if unavailable
+      let token: string | undefined;
+      try {
+        token = await getAccessTokenSilently();
+      } catch (tokenErr) {
+        console.warn(`[Auth] Could not get access token silently:`, tokenErr);
+        // If token retrieval fails, try without auth (for local storage access)
+        token = undefined;
       }
+
+      const headers = { ...options.headers };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(url, {
         ...options,
-        headers: {
-          ...options.headers,
-          'Authorization': `Bearer ${token}`
-        }
+        headers
       });
       return response;
     } catch (err) {
-      console.error(`[Auth] Error fetching token for ${url}:`, err);
+      console.error(`[Auth] Error in fetchWithAuth for ${url}:`, err);
       throw err;
     }
   }, [getAccessTokenSilently]);
