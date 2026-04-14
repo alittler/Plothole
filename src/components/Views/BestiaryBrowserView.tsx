@@ -148,6 +148,21 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Explore 213 mythical creatures from European folklore & legend</p>
             </div>
           </div>
+          {/* Attribution */}
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Dataset sourced from{' '}
+              <a
+                href="https://github.com/alittler/euro-bestiary"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-600 dark:text-purple-400 hover:underline font-medium"
+              >
+                alittler/euro-bestiary
+              </a>
+              {' '}on GitHub
+            </p>
+          </div>
         </div>
       </header>
 
@@ -231,9 +246,9 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
                 <div className="divide-y divide-slate-200 dark:divide-slate-800">
                   {filteredCreatures.map(creature => (
                     <div
-                      key={creature.ID}
+                      key={creature.id}
                       className={`p-3 cursor-pointer transition-colors ${
-                        selectedCreature?.ID === creature.ID
+                        selectedCreature?.id === creature.id
                           ? 'bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-600'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
@@ -260,14 +275,14 @@ export const BestiaryBrowserView: React.FC<BestiaryBrowserViewProps> = ({ onImpo
                           }}
                           className="ml-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0"
                         >
-                          {expandedCreatureId === creature.ID ? (
+                          {expandedCreatureId === creature.id ? (
                             <ChevronUp className="w-4 h-4" />
                           ) : (
                             <ChevronDown className="w-4 h-4" />
                           )}
                         </button>
                       </div>
-                      {onImportCreature && expandedCreatureId === creature.ID && (
+                      {onImportCreature && expandedCreatureId === creature.id && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
