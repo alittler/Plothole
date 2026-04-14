@@ -735,7 +735,16 @@ export const MapView: React.FC<MapViewProps> = ({
     if (!isReady || !mapRef.current) return;
     const map = mapRef.current;
     try {
-      map.eachLayer(l => { if (l instanceof L.Marker && !(l.options.icon?.options as any).className?.includes('measure-node')) map.removeLayer(l); });
+      // Remove location/character markers but preserve creatures and measure nodes
+      map.eachLayer(l => { 
+        if (l instanceof L.Marker) {
+          const className = (l.options.icon?.options as any).className;
+          // Keep measure-node and creature markers (those without custom-marker class)
+          if (className?.includes('custom-marker')) {
+            map.removeLayer(l);
+          }
+        }
+      });
       locations.forEach(loc => {
         if (loc.x !== undefined && loc.y !== undefined) {
           const latlng = L.latLng(loc.y, loc.x);
