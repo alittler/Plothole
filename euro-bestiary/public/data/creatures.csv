@@ -1,0 +1,214 @@
+ID,Name,Category,Alignment,Lat,Lon,Lore
+1,Ankou,Anthromorphic,Neutral,48.2,-2.93,The personification of death who collects souls.
+2,Apsat,Anthromorphic,Benevolent,42.31,43.4,God of birds and fish; protects hunters.
+3,Banshee,Anthromorphic,Neutral,53.35,-6.26,Spirit whose wailing foretells a death.
+4,Barbegazi,Anthromorphic,Benevolent,45.92,6.87,Mountain men with giant snowshoe feet.
+5,Barstukas,Anthromorphic,Benevolent,55.17,23.89,Tiny earth men living under elder trees.
+6,Basajaun,Anthromorphic,Benevolent,43.01,-1.12,Lord of the Forest; taught humans agriculture.
+7,Bean-nighe,Anthromorphic,Neutral,56.49,-4.2,Washer at the ford who cleans bloodied shrouds.
+8,Bwbach,Anthromorphic,Ambivalent,52.13,-3.78,Helpful brownie who hates dissent.
+9,Clurichaun,Anthromorphic,Ambivalent,52.34,-8.68,Drunken cousin of the leprechaun.
+10,Domovoy,Anthromorphic,Benevolent,50.45,30.52,Protective Slavic household spirit.
+11,Duergar,Anthromorphic,Malicious,55.28,-1.94,Malicious dark-dwelling dwarves.
+12,Dwarf,Anthromorphic,Ambivalent,51.8,10.5,Subterranean master smiths.
+13,Gnome,Anthromorphic,Neutral,53.06,-4.07,Earth-dwellers guarding treasure.
+14,Haltija,Anthromorphic,Benevolent,69.3,21.26,Guardian spirit of people or homes.
+15,Kallikantzaros,Anthromorphic,Malicious,40.08,22.36,Chaos-causing Christmas goblins.
+16,Kikimora,Anthromorphic,Ambivalent,60.5,31.5,Helpful or chaotic female house spirit.
+17,Korrigans,Anthromorphic,Ambivalent,48.1,-3,Fae dancing in stone circles.
+18,Leprechaun,Anthromorphic,Ambivalent,54.04,-6.18,Solitary cobbler guarding gold.
+19,Leshy,Anthromorphic,Ambivalent,52.73,23.86,Forest guardian of variable size.
+20,Lutin,Anthromorphic,Ambivalent,48.01,-2.28,Prankish French spirit.
+21,Aitvaras,Zoomorphic,Ambivalent,55.35,26,Rooster or fireball house spirit.
+22,Afanc,Zoomorphic,Malicious,52.89,-3.61,Lake beast causing floods.
+23,Black Shuck,Zoomorphic,Malicious,52.45,1.46,Spectral dog; omen of death.
+24,Càssait-Bheinn,Zoomorphic,Neutral,56.8,-5,Giant elusive mountain bird.
+25,Cirein-cròin,Zoomorphic,Malicious,57.9,-6.3,Whale-eating sea serpent.
+26,Fenrir,Zoomorphic,Malicious,61.63,8.31,Wolf destined to kill Odin.
+27,Iku-Turso,Zoomorphic,Malicious,59.9,25.5,terrifying sea monster.
+28,Kraken,Zoomorphic,Neutral,64,5,Colossal ship-sinking beast.
+29,Lavellan,Zoomorphic,Malicious,57.5,-3.5,Poisonous rat-like creature.
+30,Marool,Zoomorphic,Malicious,60.5,-1,Multi-eyed fish demon.
+31,Nessie,Zoomorphic,Neutral,57.32,-4.42,Loch Ness resident.
+32,Otso,Zoomorphic,Benevolent,64,28,Finnish bear spirit.
+33,Sleipnir,Zoomorphic,Benevolent,65,-18,Eight-legged divine horse.
+34,Water Horse,Zoomorphic,Malicious,53,-8,Predatory aquatic pony.
+35,Wolpertinger,Zoomorphic,Neutral,49,13,"Antlered, winged rabbit."
+36,Cu Sith,Zoomorphic,Ambivalent,56,-5,Giant green hound.
+37,Cadejo,Zoomorphic,Ambivalent,36,-5,Spectral dog protector or curse.
+38,Barghest,Zoomorphic,Malicious,53.95,-1.08,Demonic dog with large teeth.
+39,Gallytrot,Zoomorphic,Malicious,52.63,1.29,White shadowy dog.
+40,Moddey Dhoo,Zoomorphic,Malicious,54.22,-4.69,Spectral black spaniel.
+41,Centaur,Hybrids of human and animal,Ambivalent,39.44,23.05,"Half-human, half-horse."
+42,Satyr,Hybrids of human and animal,Ambivalent,37.5,22.2,"Half-human, half-goat legs."
+43,Minotaur,Hybrids of human and animal,Malicious,35.31,25.16,"Bull head, human body."
+44,Harpy,Hybrids of human and animal,Malicious,37.25,21,"Woman head, bird body."
+45,Scylla,Hybrids of human and animal,Malicious,38.25,15.71,Multi-headed sea monster.
+46,Mermaid,Hybrids of human and animal,Ambivalent,46.43,0.12,"Human torso, fish tail."
+47,Sirena,Hybrids of human and animal,Ambivalent,43.46,-3.76,Singing sea maidens.
+48,Sphinx,Hybrids of human and animal,Neutral,38.32,23.32,"Lion body, human head, wings."
+49,Manticore,Hybrids of human and animal,Malicious,29.93,52.89,"Human face, lion body, scorpion tail."
+50,Faun,Hybrids of human and animal,Benevolent,41.89,12.49,Peaceful goat-man.
+51,Gorgon,Hybrids of human and animal,Malicious,34.5,24,Snake hair; turns to stone.
+52,Ichthyocentaur,Hybrids of human and animal,Neutral,37.65,24.02,"Human, horse, and fish hybrid."
+53,Lamia,Hybrids of human and animal,Malicious,39.5,22.5,Child-eating half-serpent.
+54,Nixie,Hybrids of human and animal,Ambivalent,48.57,13.46,Water spirit with fish features.
+55,Sileni,Hybrids of human and animal,Ambivalent,38,23.5,Drunken companions of Dionysus.
+56,Triton,Hybrids of human and animal,Neutral,36.4,25.4,Merman sea messenger.
+57,Cynocephaly,Hybrids of human and animal,Neutral,45,25,Dog-headed humans.
+58,Each-Uisge,Hybrids of human and animal,Malicious,56.96,-5.7,Shapeshifting water hunter.
+59,Melusine,Hybrids of human and animal,Ambivalent,46.43,0.12,Water spirit with serpent tail.
+60,Rusalka,Hybrids of human and animal,Malicious,49,32,Vengeful drowning spirit.
+61,Griffin,Hybrid animals,Neutral,49,87,"Lion body, eagle head."
+62,Hippogriff,Hybrid animals,Neutral,42.67,0,Griffin-mare offspring.
+63,Chimera,Hybrid animals,Malicious,36.43,30.45,"Lion, goat, snake hybrid."
+64,Pegasus,Hybrid animals,Benevolent,38.35,22.97,Winged stallion.
+65,Questing Beast,Hybrid animals,Neutral,51.5,-3.5,"Snake, leopard, lion hybrid."
+66,Catoblepas,Hybrid animals,Neutral,9,35,Heavy-headed lethal beast.
+67,Leucrotta,Hybrid animals,Malicious,15,40,Hyena-stag hybrid.
+68,Yale,Hybrid animals,Neutral,52,0,Antelope with swiveling horns.
+70,Hippocamp,Hybrid animals,Neutral,37.65,24.02,Horse-fish hybrid.
+71,Sea-Goat,Hybrid animals,Neutral,35,25,Goat-fish hybrid.
+72,Ophiotaurus,Hybrid animals,Neutral,38.5,22,Bull-serpent hybrid.
+73,Musimon,Hybrid animals,Neutral,40,9,Goat-sheep hybrid.
+74,Monoceros,Hybrid animals,Neutral,20,70,One-horned stag beast.
+69,Cockerel,Hybrid animals,Ambivalent,52.25,21.01,Basilisk-related hybrid bird.
+75,Balaur,Dragons,Malicious,47.16,26.35,Multi-headed weather dragon.
+76,Hydra,Dragons,Malicious,37.55,22.72,Multi-headed swamp serpent.
+77,Zmey,Dragons,Ambivalent,44.8,20.46,Slavic protector/destroyer dragon.
+78,Guivre,Dragons,Malicious,49,1,Venomous legless dragon.
+79,Knucker,Dragons,Malicious,50.84,-0.55,English water dragon.
+80,Lambton Worm,Dragons,Malicious,54.88,-1.52,Giant coiling hill serpent.
+81,Peluda,Dragons,Malicious,48.19,0.66,Porcupine-quilled dragon.
+82,Tarasque,Dragons,Malicious,43.8,4.65,Six-legged turtle-dragon hybrid.
+83,Vouivre,Dragons,Ambivalent,46.5,5.9,Ruby-foreheaded wyvern.
+84,Culebre,Dragons,Malicious,43.19,-4.83,Spanish cave-guarding serpent.
+85,Ladōn,Dragons,Neutral,31,-8,Multi-headed garden guardian.
+86,Python,Dragons,Malicious,38.48,22.5,Earth-dragon of Delphi.
+87,Bolsh,Dragons,Malicious,40.2,19.6,Balkan destructive serpent.
+88,Dragonet,Dragons,Ambivalent,45,15,Small venomous dragon species.
+89,Drakon,Dragons,Neutral,38,23,Giant Greek serpent.
+90,Fire-Drake,Dragons,Malicious,51,10,Classic fire dragon.
+91,Amphisbaena,Dragons,Malicious,30,35,Two-headed serpent.
+92,Basilisk,Dragons,Malicious,45,10,King of serpents; lethal gaze.
+93,Cockatrice,Dragons,Malicious,51.5,-0.12,Rooster-dragon hybrid.
+94,Wyvern,Dragons,Malicious,52,-2,Two-legged winged dragon.
+95,Ouroboros,Dragons,Neutral,35,30,Eternal self-eating serpent.
+96,Colchian Dragon,Dragons,Malicious,42.15,41.67,Golden Fleece guardian.
+97,Pukis,Dragons,Ambivalent,56.5,23.5,Wealth-bringing house dragon.
+98,Aitvaras (Serpent),Dragons,Ambivalent,55.35,26,Fiery sky-serpent spirit.
+99,Chuvash Dragon,Dragons,Malicious,55,47,Shapeshifting deceptive dragon.
+100,Bonnacon,Hybrid animals,Neutral,41,24,Caustic dung defender.
+101,Skvader,Zoomorphic,Neutral,62.39,17.3,Hare-grouse hybrid.
+102,Jackalope,Zoomorphic,Neutral,50,15,Antlered hare.
+103,Karkinos,Zoomorphic,Neutral,37.55,22.72,Hydra's giant crab ally.
+104,Caladrius,Zoomorphic,Benevolent,41.9,12.45,Sickness-predicting bird.
+105,Stymphalian Bird,Zoomorphic,Malicious,37.84,22.45,Metallic man-eating bird.
+106,Salamander,Zoomorphic,Neutral,45,5,Fire-resistant lizard.
+107,Aspidochelone,Zoomorphic,Neutral,60,-10,Island-sized sea monster.
+108,Fastitocalon,Zoomorphic,Neutral,62,-5,Ship-sinking turtle island.
+109,Gulon,Zoomorphic,Malicious,60,15,Gluttonous cat-dog beast.
+110,Caucasian Eagle,Zoomorphic,Malicious,42,44,Prometheus's tormentor.
+111,Kudiani,Anthromorphic,Malicious,42,44,Shapeshifting Georgian sorceress.
+112,Laukosargas,Anthromorphic,Benevolent,56,22.2,Field guardian spirit.
+113,Baubas,Anthromorphic,Malicious,55.52,25.1,Dark spindly spirit.
+114,Vadājs,Anthromorphic,Malicious,57.3,25.5,Lost-leading forest spirit.
+115,Liche,Anthromorphic,Malicious,45.83,1.26,Undead sorcerer.
+116,Dahu,Zoomorphic,Neutral,45.5,6.5,Uneven-legged mountain goat.
+117,Matagot,Anthromorphic,Benevolent,43.6,1.44,Wealth-bringing cat spirit.
+118,Wichtel,Anthromorphic,Benevolent,50,10,Helpful German brownie.
+119,Heinzelmännchen,Anthromorphic,Benevolent,50.94,6.95,Hardworking Cologne gnomes.
+120,Kobold,Anthromorphic,Ambivalent,51,9,Chaotic mine spirit.
+121,Nix,Anthromorphic,Ambivalent,60.7,10.8,Musical water lure.
+122,Nökke,Anthromorphic,Ambivalent,59.32,18.06,Violin-playing water spirit.
+123,Vodyanoy,Anthromorphic,Malicious,53.2,50.15,Drowning frog spirit.
+124,Bolotnik,Anthromorphic,Malicious,53,28,Mimicking swamp spirit.
+125,Polevik,Anthromorphic,Ambivalent,54,38,Grass-haired field spirit.
+126,Ovinnik,Anthromorphic,Malicious,55,35,Vicious cat barn spirit.
+127,Vila,Anthromorphic,Benevolent,43.21,19.05,Healing mountain nymph.
+128,Samovila,Anthromorphic,Ambivalent,42.7,23.33,Dancing forest water nymph.
+129,Zmey Gorynych,Dragons,Malicious,55.75,37.61,Three-headed Russian dragon.
+130,Poludnica,Anthromorphic,Malicious,50,20,Lady Midday strike spirit.
+131,Besta,Zoomorphic,Malicious,40,-8,Portuguese demonic beast.
+132,Mora,Anthromorphic,Malicious,45.1,15.2,Nightmare-causing demon.
+133,Nightmare,Anthromorphic,Malicious,52.52,13.4,Sleep-plaguing spirit.
+134,Hulder,Anthromorphic,Ambivalent,60.47,8.46,Cow-tailed forest spirit.
+135,Troll,Anthromorphic,Malicious,62,9,Sun-vulnerable giants.
+136,Huldra,Anthromorphic,Ambivalent,59.91,10.75,Hollow-backed forest woman.
+137,Fossegrim,Anthromorphic,Neutral,59,9,Fiddle-playing water spirit.
+138,Näkki,Anthromorphic,Malicious,60.17,24.94,Finnish child-drowning spirit.
+139,Ajatar,Anthromorphic,Malicious,61.5,23.76,Disease-spreading forest spirit.
+140,Hiisi,Anthromorphic,Malicious,61,25,Sacred grove turned demon.
+141,Metsatöll,Anthromorphic,Ambivalent,58.59,25,Estonian forest wolf spirit.
+142,Kratt,Anthromorphic,Ambivalent,59.43,24.75,Theft-assisting construct.
+143,Paphos,Anthromorphic,Neutral,34.77,32.42,Creator of living statues.
+144,Telchines,Anthromorphic,Neutral,36.44,28.22,Flipper-handed dog smiths.
+145,Dactyls,Anthromorphic,Benevolent,35.2,24.8,Iron-discovering tiny smiths.
+146,Korybantes,Anthromorphic,Neutral,35.3,25,Armored ritual dancers.
+147,Curetes,Anthromorphic,Benevolent,35.15,24.5,Baby Zeus's shield guardians.
+148,Hecatoncheires,Anthromorphic,Neutral,37.9,23.3,Hundred-armed giants.
+149,Cyclops,Anthromorphic,Malicious,37.5,14.5,One-eyed shepherd smiths.
+150,Lestrygonians,Anthromorphic,Malicious,41.2,13,Odyssean giant cannibals.
+151,Geryon,Anthromorphic,Malicious,36.5,-6.3,Three-bodied giant.
+152,Cacus,Anthromorphic,Malicious,41.88,12.48,Aventine fire giant.
+153,Talos,Anthromorphic,Neutral,35,25,Bronze shore automaton.
+154,Gorgon (Medusa),Anthromorphic,Malicious,37,22,Snake-haired victim turned killer.
+155,Graeae,Anthromorphic,Neutral,38,21,One-eyed sister trio.
+156,Erinyes,Anthromorphic,Malicious,37,22.5,Venomous vengeance deities.
+157,Hesperides,Anthromorphic,Neutral,32,-8,Garden garden nymphs.
+158,Dryad,Anthromorphic,Neutral,38.5,22,Tree-bound spirits.
+159,Hamadryad,Anthromorphic,Neutral,38.6,22.1,Specific life-linked dryad.
+160,Naiad,Anthromorphic,Neutral,38,23,Spring and fountain nymphs.
+161,Oread,Anthromorphic,Neutral,37.9,22.8,Mountain cave nymphs.
+162,Napaeae,Anthromorphic,Neutral,37.7,22.5,Wooded glen nymphs.
+163,Limnades,Anthromorphic,Neutral,37.6,22.3,Lake and marsh nymphs.
+164,Anthousai,Anthromorphic,Neutral,37.5,22.1,Flower-haired nymphs.
+165,Alseids,Anthromorphic,Neutral,37.4,21.9,Grove and undergrowth nymphs.
+166,Leimakids,Anthromorphic,Neutral,37.3,21.7,Meadow and pasture nymphs.
+167,Lampades,Anthromorphic,Neutral,37.94,23.72,Torch-bearing underworld nymphs.
+168,Meliads,Anthromorphic,Neutral,39,22,Ash tree nymphs.
+169,Hydriads,Anthromorphic,Neutral,38.2,21.8,Specific spring water nymphs.
+170,Epimelides,Anthromorphic,Benevolent,37.1,22.1,Orchard and sheep nymphs.
+171,Haliads,Anthromorphic,Neutral,36.5,24.5,Rocky shore sea nymphs.
+172,Psamate,Anthromorphic,Neutral,37.7,24.1,Sandy beach sea nymph.
+173,The Fates,Anthromorphic,Neutral,37.97,23.72,Destiny spinning sisters.
+174,The Muses,Anthromorphic,Benevolent,38.35,22.98,Art and science goddesses.
+175,The Graces,Anthromorphic,Benevolent,38.48,22.84,Beauty and creativity goddesses.
+176,The Horae,Anthromorphic,Benevolent,37.9,23.5,Seasons and time goddesses.
+177,Cerberus,Zoomorphic,Malicious,36.43,22.48,Three-headed underworld dog.
+178,Orthrus,Zoomorphic,Malicious,36,-5.5,Two-headed cattle guardian.
+179,Sphinx (Theban),Hybrids of human and animal,Neutral,38.32,23.32,Winged human-headed riddler.
+180,Arimaspians,Anthromorphic,Ambivalent,60,70,Griffin-warring one-eyed people.
+181,Hyperboreans,Anthromorphic,Benevolent,75,30,Sunshine giants of the north.
+182,Lestrigons,Anthromorphic,Malicious,41.2,13,Giant Odyssean cannibals.
+183,Cicones,Anthromorphic,Ambivalent,40.9,25.4,Fierce Odyssean tribe.
+184,Lotophagi,Anthromorphic,Neutral,33.8,10.8,Apathetic lotus-eaters.
+185,Gorgon (Stheno),Hybrids of human and animal,Malicious,34,24,Murderous eldest Gorgon.
+186,Gorgon (Euryale),Hybrids of human and animal,Malicious,34.1,24.1,Immortal bellowing Gorgon.
+187,Chrysaor,Anthromorphic,Neutral,38.36,22.98,Golden-sworded giant boar.
+188,Khalkotauroi,Hybrid animals,Malicious,42.2,42,Bronze fire-breathing bulls.
+189,Phyllis,Anthromorphic,Neutral,41,23.8,Almond tree figure.
+190,Phaethon,Anthromorphic,Neutral,38,22,Lost solar chariot son.
+191,Satyress,Hybrids of human and animal,Ambivalent,37,22,Female forest satyr.
+192,Oupis,Anthromorphic,Neutral,37.8,22.2,Hunting retinue nymph.
+193,Loxias,Anthromorphic,Neutral,37.9,22.3,Delphic oracle nymph.
+194,Hekaerge,Anthromorphic,Neutral,38,22.4,Offering-bearing northern nymph.
+195,Ciconian Cavalry,Anthromorphic,Malicious,40.9,25.4,Thracian horse warriors.
+196,Lotus Eaters,Anthromorphic,Neutral,33.8,10.8,Peaceful apathy group.
+197,Graeae Sisters,Anthromorphic,Neutral,38,21,Tooth-sharing trio.
+198,Gorgon Stheno,Hybrids of human and animal,Malicious,34,24,Immortal deadly sister.
+199,Gorgon Euryale,Hybrids of human and animal,Malicious,34.1,24.1,Immortal shouting sister.
+200,Pegasus (Winged),Hybrid animals,Benevolent,38.35,22.97,Divine help horse.
+201,Chrysaor (Giant),Anthromorphic,Neutral,38.36,22.98,Sword-bearing giant.
+202,Colchian Dragon (Sleepless),Dragons,Malicious,42.15,41.67,Golden Fleece guardian.
+203,Scylla (Nymph),Anthromorphic,Malicious,38.25,15.71,Nymph turned monster.
+204,Charybdis,Zoomorphic,Malicious,38.26,15.6,Ship-swallowing maelstrom.
+205,Python (Specific),Dragons,Malicious,38.48,22.5,Delphi navel dragon.
+206,Chimera (Fire),Hybrid animals,Malicious,36.43,30.45,Fire-breathing composite beast.
+207,Manticore (Spines),Hybrids of human and animal,Malicious,29.93,52.89,Spine-shooting lion hybrid.
+208,Griffin (Guardian),Hybrid animals,Neutral,50,80,Gold-mine guardian.
+209,Lestrigons (Tribe),Anthromorphic,Malicious,41.2,13,Fleet-destroying cannibals.
+210,Cicones (Force),Anthromorphic,Ambivalent,40.9,25.4,Resilient Thracian tribe.
+211,Hyperboreans (Northern),Anthromorphic,Benevolent,75,30,Happy northern giants.
+212,Colchian Dragon (Fleece),Dragons,Malicious,42.15,41.67,Ever-vigilant serpent.
+213,Khalkotauroi (Bulls),Hybrid animals,Malicious,42.2,42,Fire-breathing bronze bulls.
