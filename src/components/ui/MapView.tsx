@@ -4,6 +4,7 @@ import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maxi
 import { Location, TimelineEvent, Character, MapPath } from '../../types';
 import { generateId } from '../../services/storageService';
 import { createGridLayer } from '../../utils/gridLayer';
+import creaturesData from '@alittler/creatures';
 
 interface MapViewProps {
   locations: Location[];
@@ -287,6 +288,15 @@ export const MapView: React.FC<MapViewProps> = ({
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    
+    // Fix Leaflet marker icons
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+    });
+    
     const map = L.map(containerRef.current, {
       crs: isRealWorld ? L.CRS.EPSG3857 : L.CRS.Simple,
       minZoom: isRealWorld ? 2 : -2,
@@ -308,11 +318,21 @@ export const MapView: React.FC<MapViewProps> = ({
       map.setMinZoom(minZoom);
       map.setView([20, 0], Math.max(minZoom, 2));
       
-      // Add grid layer for real world maps
-      gridLayerRef.current = createGridLayer();
-      if (showGrid) {
-        gridLayerRef.current.addTo(map);
-      }
+      // Add creatures from euro-bestiary dataset
+      creaturesData.forEach(creature => {
+        if (creature.lat && creature.lon) {
+          const marker = L.marker([creature.lat, creature.lon])
+            .bindPopup(`
+              <div style="font-weight: bold; margin-bottom: 5px;">${creature.name}</div>
+              <div style="font-size: 12px;">
+                <div><strong>Category:</strong> ${creature.category}</div>
+                <div><strong>Alignment:</strong> ${creature.alignment}</div>
+                ${creature.lore ? `<div style="margin-top: 5px; font-size: 11px; max-width: 200px;">${creature.lore.substring(0, 150)}...</div>` : ''}
+              </div>
+            `)
+            .addTo(map);
+        }
+      });
     } else {
       map.setView([0, 0], 0);
     }
@@ -548,20 +568,8 @@ export const MapView: React.FC<MapViewProps> = ({
     return () => { map.off('move zoom', handleMove); };
   }, [isReady, isRealWorld]);
 
-  // Grid layer toggle effect
-  useEffect(() => {
-    const map = mapRef.current;
-    const gridLayer = gridLayerRef.current;
-    if (!map || !gridLayer || !isRealWorld) return;
-    
-    if (showGrid) {
-      gridLayer.addTo(map);
-    } else {
-      gridLayer.removeFrom(map);
-    }
-  }, [showGrid, isRealWorld]);
 
-  const handleScaleChange = (desiredSize: number, unit: string) => {
+   const handleScaleChange = (desiredSize: number, unit: string) => {
     if (!mapRef.current) return;
     const map = mapRef.current;
     
