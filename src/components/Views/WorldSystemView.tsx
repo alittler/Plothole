@@ -1,6 +1,7 @@
 // SEED MONSTERS UPDATE
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import 'leaflet/dist/leaflet.css';
 import { ViewType, ProjectData, Location, Artifact, LoreEntry, Note, ProseDocument, User, ProjectMetadata, MapPath, Character } from '../../types';
 import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers, Footprints as PawPrint, Lock, Unlock } from 'lucide-react';
 

@@ -384,6 +384,23 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   useEffect(() => {
+    const handleResize = () => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    
+    if (mapRef.current) {
+      setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, 300);
+    }
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     
     // Fix Leaflet marker icons
