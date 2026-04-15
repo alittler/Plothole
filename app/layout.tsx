@@ -53,6 +53,13 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta charSet="UTF-8" />
+        {/* Manifest & PWA */}
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/logos/plothole_512x512.png" />
+        <link rel="apple-touch-icon" sizes="256x256" href="/logos/plothole_256x256.png" />
+        <link rel="apple-touch-icon" sizes="64x64" href="/logos/plothole_64x64.png" />
+        <link rel="apple-touch-icon" sizes="32x32" href="/logos/plothole_32x32.png" />
+
         {/* Mobile Web App Capabilities */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
