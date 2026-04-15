@@ -137,7 +137,6 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
             </div>
           </div>
         </div>
-        </div>
 
         {/* Footer */}
         <p className="mt-8 text-center text-xs text-slate-500">
