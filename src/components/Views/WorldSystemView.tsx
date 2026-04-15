@@ -269,7 +269,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
   return (
     <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
-      <div className={`transition-all duration-700 ease-in-out overflow-hidden shrink-0 ${isFullscreen ? 'max-h-0 opacity-0' : 'max-h-64 opacity-100'}`}>
+      <div className={`transition-all duration-700 ease-in-out overflow-hidden shrink-0 ${isFullscreen ? 'max-h-0 opacity-0' : 'max-h-0 lg:max-h-64 opacity-0 lg:opacity-100 hidden lg:block'}`}>
         <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-4">
@@ -311,11 +311,11 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden relative">
-        <div className="h-full w-full flex flex-col items-center p-4 md:p-8 relative">
-          <div className={`h-full w-full flex flex-col ${isFullscreen ? 'max-w-none' : 'max-w-6xl'} ${activeTab !== WorldTab.MAP ? 'space-y-12 overflow-y-auto pb-40' : ''}`}>
+        <div className="h-full w-full flex flex-col items-center p-0 lg:p-8 relative">
+          <div className={`h-full w-full flex flex-col ${isFullscreen ? 'max-w-none' : 'max-w-6xl'} ${activeTab !== WorldTab.MAP ? 'space-y-12 overflow-y-auto pb-40 px-4 md:px-8' : ''}`}>
             
             {activeTab === WorldTab.MAP && (
-              <div className="flex-1 min-h-0 relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-100 dark:bg-slate-900 w-full flex flex-col">
+              <div className="flex-1 min-h-0 relative lg:rounded-3xl overflow-hidden border-b lg:border border-slate-200 dark:border-slate-800 shadow-2xl bg-slate-100 dark:bg-slate-900 w-full flex flex-col">
                 
                 {(!data.rootMapImage && !data.isRealWorldMap && !currentMapParentId) ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">

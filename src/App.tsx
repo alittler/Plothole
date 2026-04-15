@@ -1619,7 +1619,40 @@ const handleRestoreCommit = async (commit: Commit) => {
 
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
         {/* Mobile Fixed Binding Header */}
-        <div className={`lg:hidden z-[2000] fixed top-0 left-0 right-0 transition-all duration-500 bg-black ${currentView === ViewType.NOTEPAD ? 'h-[calc(env(safe-area-inset-top)+3.5rem)] shadow-2xl' : 'h-[env(safe-area-inset-top)]'}`}>
+        <div className={`lg:hidden z-[2000] fixed top-0 left-0 right-0 transition-all duration-500 ${currentView === ViewType.NOTEPAD ? 'bg-black h-[calc(env(safe-area-inset-top)+3.5rem)] shadow-2xl' : 'bg-slate-50 dark:bg-slate-950 h-[calc(env(safe-area-inset-top)+3.5rem)]'}`}>
+          <div className="flex items-center justify-between px-6 pt-[env(safe-area-inset-top)] h-full">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className={`p-2 rounded-xl transition-all ${currentView === ViewType.NOTEPAD ? 'text-white hover:bg-white/10' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              >
+                <Menu size={20} />
+              </button>
+              <div className="flex flex-col">
+                <span className={`text-[10px] font-black uppercase tracking-widest leading-none ${currentView === ViewType.NOTEPAD ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                  {projectData?.shortName || 'Plothole'}
+                </span>
+                <span className={`text-xs font-black uppercase tracking-tight ${currentView === ViewType.NOTEPAD ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                  {currentView}
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setCurrentView(ViewType.ADMIN)}
+                className={`p-2 rounded-xl transition-all ${currentView === ViewType.NOTEPAD ? 'text-white hover:bg-white/10' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              >
+                <Search size={20} />
+              </button>
+              <button 
+                onClick={() => setIsAiOpen(true)}
+                className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+              >
+                <Sparkles size={18} />
+              </button>
+            </div>
+          </div>
           {currentView === ViewType.NOTEPAD && (
             <>
               {/* Opaque Leather Texture */}
