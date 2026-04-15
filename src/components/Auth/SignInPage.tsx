@@ -18,6 +18,12 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
   };
 
   const handleGoogleLogin = () => {
+    // Note: For Google OAuth to work, you must:
+    // 1. Enable the "google-oauth2" connection in Auth0 Dashboard
+    // 2. Configure Google OAuth 2.0 credentials in that connection
+    // 3. Add your app's callback URLs to Auth0 settings
+    //
+    // If the connection isn't set up, try the standard login flow instead
     loginWithRedirect({
       authorizationParams: {
         connection: 'google-oauth2',
