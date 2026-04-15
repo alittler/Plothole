@@ -26,7 +26,7 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#06232D] via-[#0a3a47] to-[#06232D] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo & Title */}
         <div className="text-center mb-8">
@@ -91,7 +91,7 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
               <button
                 onClick={onGuestAccess}
                 disabled={isAuthLoading}
-                className="w-full py-3 px-4 bg-transparent border border-slate-600 hover:border-slate-500 disabled:border-slate-700 disabled:cursor-not-allowed text-slate-300 hover:text-white font-semibold rounded-lg transition-colors"
+                className="w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
               >
                 Continue as Guest
               </button>
