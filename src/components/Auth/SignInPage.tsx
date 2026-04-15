@@ -73,35 +73,38 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
               )}
             </button>
 
-            {/* Standard Sign In */}
-            <button
-              onClick={handleLogin}
-              disabled={isAuthLoading}
-              className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              {isAuthLoading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <LogIn size={18} />
-                  Sign In
-                </>
-              )}
-            </button>
-
-            {/* Continue as Guest */}
-            {onGuestAccess && (
+            {/* Sign In and Guest - Side by Side */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Standard Sign In */}
               <button
-                onClick={onGuestAccess}
+                onClick={handleLogin}
                 disabled={isAuthLoading}
-                className="w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+                className="py-3 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
               >
-                Continue as Guest
+                {isAuthLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <LogIn size={18} />
+                    Sign In
+                  </>
+                )}
               </button>
-            )}
+
+              {/* Continue as Guest */}
+              {onGuestAccess && (
+                <button
+                  onClick={onGuestAccess}
+                  disabled={isAuthLoading}
+                  className="py-3 px-4 bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+                >
+                  Guest
+                </button>
+              )}
+            </div>
 
             {/* Create Account */}
             <button
