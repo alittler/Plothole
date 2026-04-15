@@ -530,9 +530,13 @@ export const MapView: React.FC<MapViewProps> = ({
     const mouseMoveHandler = (e: L.LeafletMouseEvent) => { if (isMeasuring && points.length > 0) setTempMeasureB(e.latlng); };
 
     const viewHandler = () => {
-      updateShortcuts();
-      const center = map.getCenter();
-      onViewChangeRef.current?.({ x: center.lng, y: center.lat, zoom: map.getZoom() });
+      // Debounce the heavy shortcut calculations
+      const timer = setTimeout(() => {
+        updateShortcuts();
+        const center = map.getCenter();
+        onViewChangeRef.current?.({ x: center.lng, y: center.lat, zoom: map.getZoom() });
+      }, 100);
+      return () => clearTimeout(timer);
     };
 
     map.on('click', clickHandler);
@@ -869,20 +873,21 @@ export const MapView: React.FC<MapViewProps> = ({
     );
   };
 
+  const projectMarkersLayerRef = useRef<L.LayerGroup | null>(null);
+
   useEffect(() => {
     if (!isReady || !mapRef.current) return;
     const map = mapRef.current;
+    
+    // Create the project markers layer if it doesn't exist
+    if (!projectMarkersLayerRef.current) {
+      projectMarkersLayerRef.current = L.layerGroup().addTo(map);
+    }
+    
+    const layer = projectMarkersLayerRef.current;
+    layer.clearLayers();
+
     try {
-      // Remove location/character markers but preserve creatures and measure nodes
-      map.eachLayer(l => { 
-        if (l instanceof L.Marker) {
-          const className = (l.options.icon?.options as any).className;
-          // Keep measure-node and creature markers (those without custom-marker class)
-          if (className?.includes('custom-marker')) {
-            map.removeLayer(l);
-          }
-        }
-      });
       locations.forEach(loc => {
         if (loc.x !== undefined && loc.y !== undefined) {
           const latlng = L.latLng(loc.y, loc.x);
@@ -914,7 +919,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 </div>
               </div>`
             })
-          }).addTo(map);
+          }).addTo(layer);
           marker.bindTooltip(loc.name, { permanent: false, direction: 'top', offset: [0, -10] });
           marker.bindPopup(`<div class="p-4 min-w-[200px] space-y-3 bg-white dark:bg-slate-900 rounded-2xl"><div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2"><div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${loc.type}</div><button class="lock-toggle-map p-1.5 rounded-lg transition-all ${isLocLocked ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400 hover:bg-amber-50 hover:text-amber-500'}">${isLocLocked ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>'}</button></div><div class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">${loc.name}</div><div class="flex gap-2 pt-2"><button class="edit-map-btn flex-1 px-3 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/20">Edit</button><button class="remove-map-btn px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center">Remove</button></div></div>`, { className: 'custom-map-popup', closeButton: false, offset: [0, -30] });
           marker.on('popupopen', (e) => {
@@ -974,7 +979,7 @@ export const MapView: React.FC<MapViewProps> = ({
                   <rect x="9" y="11" width="6" height="7" rx="0.5" fill="white" stroke="white" stroke-width="0.5"></rect>
                 </svg>`
               })
-            }).addTo(map);
+            }).addTo(layer);
 
             marker.bindTooltip(char.name, { permanent: false, direction: 'top', offset: [0, -10] });
             marker.bindPopup(`<div class="p-4 min-w-[200px] space-y-3 bg-white dark:bg-slate-900 rounded-2xl"><div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2"><div class="text-[10px] font-black text-rose-500 uppercase tracking-widest">Creature</div><button class="lock-toggle-char p-1.5 rounded-lg transition-all ${isCharLocked ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500'}">${isCharLocked ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>'}</button></div><div class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">${char.name}</div><div class="flex gap-2 pt-2"><button class="edit-char-btn flex-1 px-3 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/20">Dossier</button><button class="remove-char-btn px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center">Recall</button></div></div>`, { className: 'custom-map-popup', closeButton: false, offset: [0, -30] });
