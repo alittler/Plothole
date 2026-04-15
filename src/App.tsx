@@ -57,7 +57,7 @@ import { ensureCreatureBestiaryEntries } from './utils/creatureUtils';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool, Trash2, Loader2 } from 'lucide-react';
+import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool, Trash2, Loader2, Search } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { SignInPage } from './components/Auth/SignInPage';
 
