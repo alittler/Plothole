@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { Loader2, LogIn, UserPlus, ChevronDown } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, ChevronDown, Mail, RotateCcw } from 'lucide-react';
 
 export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAccess }) => {
   const [showOtherOptions, setShowOtherOptions] = useState(false);
@@ -14,6 +14,14 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
     loginWithRedirect({
       authorizationParams: {
         screen_hint: 'signup',
+      },
+    });
+  };
+
+  const handlePasswordReset = () => {
+    loginWithRedirect({
+      authorizationParams: {
+        screen_hint: 'reset_password',
       },
     });
   };
@@ -68,25 +76,6 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
               )}
             </button>
 
-            {/* Standard Sign In */}
-            <button
-              onClick={handleLogin}
-              disabled={isAuthLoading}
-              className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              {isAuthLoading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <LogIn size={18} />
-                  Sign In
-                </>
-              )}
-            </button>
-
             {/* Continue as Guest */}
             {onGuestAccess && (
               <button
@@ -114,11 +103,32 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
                 <div className="absolute top-full left-0 right-0 mt-2 bg-slate-700 border border-slate-600 rounded-lg overflow-hidden z-10">
                   <button
                     onClick={() => {
+                      handleLogin();
+                      setShowOtherOptions(false);
+                    }}
+                    disabled={isAuthLoading}
+                    className="w-full py-3 px-4 hover:bg-slate-600 disabled:bg-slate-700/50 disabled:cursor-not-allowed text-white font-semibold transition-colors flex items-center justify-start gap-2 border-b border-slate-600"
+                  >
+                    {isAuthLoading ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      <>
+                        <Mail size={18} />
+                        Sign in with Email
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
                       handleSignUp();
                       setShowOtherOptions(false);
                     }}
                     disabled={isAuthLoading}
-                    className="w-full py-3 px-4 hover:bg-slate-600 disabled:bg-slate-700/50 disabled:cursor-not-allowed text-white font-semibold transition-colors flex items-center justify-start gap-2"
+                    className="w-full py-3 px-4 hover:bg-slate-600 disabled:bg-slate-700/50 disabled:cursor-not-allowed text-white font-semibold transition-colors flex items-center justify-start gap-2 border-b border-slate-600"
                   >
                     {isAuthLoading ? (
                       <>
@@ -129,6 +139,27 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
                       <>
                         <UserPlus size={18} />
                         Create Account
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      handlePasswordReset();
+                      setShowOtherOptions(false);
+                    }}
+                    disabled={isAuthLoading}
+                    className="w-full py-3 px-4 hover:bg-slate-600 disabled:bg-slate-700/50 disabled:cursor-not-allowed text-white font-semibold transition-colors flex items-center justify-start gap-2"
+                  >
+                    {isAuthLoading ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Resetting...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw size={18} />
+                        Reset Password
                       </>
                     )}
                   </button>
