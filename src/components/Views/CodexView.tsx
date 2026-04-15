@@ -4,6 +4,7 @@ import { ProjectData, HierarchicalEntity } from '../../types';
 import { Book, Search, FileText, Plus, Scroll, BookMarked, Box, MoreHorizontal, Wand2, MapPin } from 'lucide-react';
 import { WikiText } from '../ui/WikiText';
 import { CardActions } from '../ui/CardActions';
+import { ViewHeader } from '../Layout/ViewHeader';
 import { generateId } from '../../services/storageService';
 
 interface CodexViewProps {
@@ -113,64 +114,40 @@ export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, 
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
-      <header className="p-4 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md z-10 shrink-0">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <div className="space-y-0 hidden sm:block">
-              <h1 className="ph-section-title text-2xl md:text-3xl flex items-center gap-3">
-                <Book size={32} className="text-indigo-600" /> Story Codex
-              </h1>
-            </div>
-            <div className="relative ml-auto">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="ph-input pl-12 w-64"
-              />
-            </div>
-          </div>
-          <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
-            <div className="sm:hidden flex items-center gap-2 shrink-0">
-              <Book size={24} className="text-indigo-600" />
-            </div>
-            {Object.values(CodexTab).map(tab => {
-              const Icon = {
-                [CodexTab.LORE]: Scroll,
-                [CodexTab.LEXICON]: BookMarked,
-                [CodexTab.ARTIFACTS]: Box,
-                [CodexTab.BESTIARY]: Wand2,
-                [CodexTab.OTHER]: MoreHorizontal
-              }[tab];
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`ph-tab ${activeTab === tab ? "ph-tab-active" : "ph-tab-inactive"}`}
-                  title={tab}
-                >
-                  <Icon size={14} />
-                  <span className="hidden sm:inline">{tab}</span>
-                </button>
-              );
-            })}
-          </div>
+      <ViewHeader
+        icon={Book}
+        title="Story Codex"
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder={`Search ${activeTab.toLowerCase()}...`}
+      >
+        <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
+          {Object.values(CodexTab).map(tab => {
+            const Icon = {
+              [CodexTab.LORE]: Scroll,
+              [CodexTab.LEXICON]: BookMarked,
+              [CodexTab.ARTIFACTS]: Box,
+              [CodexTab.BESTIARY]: Wand2,
+              [CodexTab.OTHER]: MoreHorizontal
+            }[tab];
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`ph-tab ${activeTab === tab ? "ph-tab-active" : "ph-tab-inactive"}`}
+                title={tab}
+              >
+                <Icon size={14} />
+                <span className="hidden sm:inline">{tab}</span>
+              </button>
+            );
+          })}
         </div>
-      </header>
+      </ViewHeader>
 
       <div className="flex-1 overflow-y-auto p-0 md:p-8 custom-scrollbar">
         <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 min-h-full pb-40">
-          <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input 
-                type="text" 
-                placeholder={`Search ${activeTab.toLowerCase()}...`} 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="ph-input pl-12 w-full"
-              />
-            </div>
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-8 p-4 md:p-0">
             <button
               onClick={handleAddEntry}
               className="ph-button-primary w-full sm:w-auto"

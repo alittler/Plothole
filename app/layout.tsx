@@ -60,6 +60,12 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover" />
         {/* Format Detection */}
         <meta name="format-detection" content="telephone=no" />
+        {/* Circular Favicon Styling */}
+        <style>{`
+          link[rel="apple-touch-icon"] {
+            border-radius: 30%;
+          }
+        `}</style>
       </head>
       <body>
         <ClientWrapper>
