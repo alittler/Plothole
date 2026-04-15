@@ -63,8 +63,8 @@ import { SignInPage } from './components/Auth/SignInPage';
 
 const DEMO_USER: User = {
   id: 'user-1',
-  name: 'Guest Architect',
-  email: 'writer@plothole.ai',
+  name: 'Anonymous Writer',
+  email: 'guest@plothole.local',
   role: 'admin',
   lastActive: Date.now(),
   themeColor: '59 130 246',
@@ -1614,6 +1614,7 @@ const handleRestoreCommit = async (commit: Commit) => {
         isServerConnected={isServerConnected}
         isCloudStorage={isCloudStorageActive()}
         lastModified={projectData?.lastModified}
+        isGuest={isGuest}
       />
 
       <main className="flex-1 h-full relative overflow-hidden flex flex-col">
