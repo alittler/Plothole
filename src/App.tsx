@@ -83,16 +83,29 @@ const App: React.FC = () => {
       // Try to get token, but don't fail if unavailable
       let token: string | undefined;
       try {
-        token = await getAccessTokenSilently();
-      } catch (tokenErr) {
+        token = await getAccessTokenSilently({
+          authorizationParams: {
+            audience: 'https://dev-t0pa1ah6r1n2wc4a.us.auth0.com/api/v2/',
+            scope: 'openid profile email offline_access'
+          }
+        });
+      } catch (tokenErr: any) {
         console.warn(`[Auth] Could not get access token silently:`, tokenErr);
-        // If token retrieval fails, try without auth (for local storage access)
+        // If it's a login_required error, we should stop trying to sync to cloud
+        if (tokenErr.error === 'login_required' || tokenErr.error === 'consent_required') {
+          console.error("[Auth] Login required. Disabling cloud storage for this session.");
+          setCloudStorageEnabled(false, null);
+        }
         token = undefined;
       }
 
-      const headers = { ...options.headers };
+      const headers = { ...options.headers } as Record<string, string>;
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+      } else if (isAuthenticated) {
+        // If we are supposed to be authenticated but have no token, don't make the request
+        console.warn(`[Auth] Authenticated but no token available for ${url}. Skipping request.`);
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
       }
 
       const response = await fetch(url, {
@@ -104,7 +117,7 @@ const App: React.FC = () => {
       console.error(`[Auth] Error in fetchWithAuth for ${url}:`, err);
       throw err;
     }
-  }, [getAccessTokenSilently]);
+  }, [getAccessTokenSilently, isAuthenticated]);
 
   const [projectsMetadata, setProjectsMetadata] = useState<ProjectMetadata[]>([]);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);

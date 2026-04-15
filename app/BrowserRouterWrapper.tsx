@@ -27,7 +27,8 @@ export function BrowserRouterWrapper({ children }: { children: ReactNode }) {
       clientId={process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID || 'Q7IpCDbQGniIiqT7V2qmHXFf2ZBiEvSe'}
       authorizationParams={{
         redirect_uri: getRedirectUri(),
-        // Include additional params for better error handling
+        audience: 'https://dev-t0pa1ah6r1n2wc4a.us.auth0.com/api/v2/',
+        scope: 'openid profile email offline_access',
         response_mode: 'query',
       }}
       cacheLocation="localstorage"

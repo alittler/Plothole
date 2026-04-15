@@ -395,20 +395,30 @@ export const isCloudStorageActive = () => useCloudStorage && serverHealthy;
 
 // Existing persistence methods (wrapped for Cloud support)
 export const saveProjectData = async (data: ProjectData): Promise<void> => {
-  if (useCloudStorage && authFetch) {
+  if (useCloudStorage && serverHealthy && authFetch) {
     try {
       const res = await authFetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
+      
+      if (res.status === 401 || res.status === 403) {
+        console.warn("[Storage] Cloud unauthorized. Disabling cloud sync for this session.");
+        setServerHealth(false);
+        throw new Error('Cloud unauthorized');
+      }
+
       if (!res.ok) throw new Error('Failed to save to cloud');
       // Wait a tiny bit for the DB transaction to fully commit before resolving
       await new Promise(resolve => setTimeout(resolve, 100));
       return;
     } catch (e) {
       console.error("Cloud save failed, falling back to local:", e);
-      setServerHealth(false);
+      // Only set unhealthy if it was a network error or 401
+      if (e instanceof Error && (e.message.includes('unauthorized') || e.message.includes('Failed to fetch'))) {
+        setServerHealth(false);
+      }
     }
   }
 
