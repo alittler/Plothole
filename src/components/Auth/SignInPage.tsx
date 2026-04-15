@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { Loader2, LogIn, UserPlus, ChevronDown } from 'lucide-react';
+import { Loader2, LogIn, UserPlus } from 'lucide-react';
 
 export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAccess }) => {
-  const [showOtherOptions, setShowOtherOptions] = useState(false);
   const { loginWithRedirect, isLoading: isAuthLoading } = useAuth0();
 
   const handleLogin = () => {
@@ -98,43 +97,26 @@ export const SignInPage: React.FC<{ onGuestAccess?: () => void }> = ({ onGuestAc
               </button>
             )}
 
-            {/* Other Options Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowOtherOptions(!showOtherOptions)}
-                disabled={isAuthLoading}
-                className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-700/50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                Other
-                <ChevronDown size={18} className={`transition-transform ${showOtherOptions ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* Dropdown Content */}
-              {showOtherOptions && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-700 border border-slate-600 rounded-lg overflow-hidden z-10">
-                  <button
-                    onClick={() => {
-                      handleSignUp();
-                      setShowOtherOptions(false);
-                    }}
-                    disabled={isAuthLoading}
-                    className="w-full py-3 px-4 hover:bg-slate-600 disabled:bg-slate-700/50 disabled:cursor-not-allowed text-white font-semibold transition-colors flex items-center justify-start gap-2"
-                  >
-                    {isAuthLoading ? (
-                      <>
-                        <Loader2 size={18} className="animate-spin" />
-                        Creating account...
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus size={18} />
-                        Create Account
-                      </>
-                    )}
-                  </button>
-                </div>
+            {/* Create Account */}
+            <button
+              onClick={() => {
+                handleSignUp();
+              }}
+              disabled={isAuthLoading}
+              className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-700/50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {isAuthLoading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  <UserPlus size={18} />
+                  Create Account
+                </>
               )}
-            </div>
+            </button>
           </div>
         </div>
 
