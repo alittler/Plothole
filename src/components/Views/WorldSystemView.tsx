@@ -39,10 +39,10 @@ interface WorldSystemViewProps {
 }
 
 enum WorldTab {
+  MAP = 'Map',
   LOCATIONS = 'Locations & Paths',
   INVENTORY = 'Inventory',
-  RECIPE_BOOK = 'Recipe Book',
-  BESTIARY = 'Bestiary'
+  RECIPE_BOOK = 'Recipe Book'
 }
 
 interface Creature {
@@ -112,7 +112,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   currentUser
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get('tab') as WorldTab) || WorldTab.LOCATIONS;
+  const activeTab = (searchParams.get('tab') as WorldTab) || WorldTab.MAP;
   const setActiveTab = (tab: WorldTab) => setSearchParams({ tab });
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
@@ -230,7 +230,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
   // Initialize bestiary map with Leaflet
   useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current || creatures.length === 0 || activeTab !== WorldTab.BESTIARY) return;
+    if (!mapContainerRef.current || mapInstanceRef.current || creatures.length === 0 || activeTab !== WorldTab.MAP) return;
 
     import('leaflet').then(({ default: L }) => {
       const map = L.map(mapContainerRef.current!).setView([54.5260, 15.2551], 3);
@@ -427,10 +427,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   className={`ph-tab ${activeTab === tab ? "ph-tab-active" : "ph-tab-inactive"}`}
                   title={tab}
                 >
+                  {tab === WorldTab.MAP && <Globe size={14} />}
                   {tab === WorldTab.LOCATIONS && <MapPin size={14} />}
                   {tab === WorldTab.INVENTORY && <Box size={14} />}
                   {tab === WorldTab.RECIPE_BOOK && <Book size={14} />}
-                  {tab === WorldTab.BESTIARY && <BookOpen size={14} />}
                   <span className="hidden sm:inline">{tab}</span>
                 </button>
               ))}
@@ -757,7 +757,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
               </section>
             )}
 
-            {activeTab === WorldTab.BESTIARY && (
+            {activeTab === WorldTab.MAP && (
               <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 h-full flex flex-col">
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
                   <div className="flex items-center gap-4">
