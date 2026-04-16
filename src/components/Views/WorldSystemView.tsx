@@ -870,14 +870,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
             )}
 
             {activeTab === WorldTab.MAP && (
-              <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 h-full flex flex-col">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl"><MapPin size={24} /></div>
-                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">European Mythical Creatures</h2><p className="text-sm text-slate-500 uppercase font-bold tracking-widest">200+ creatures mapped</p></div>
-                  </div>
-                </div>
-
+              <section className="h-full flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700 overflow-hidden">
                 {isCreaturesLoading ? (
                   <div className="flex items-center justify-center h-96 text-slate-600 dark:text-slate-400">
                     <div className="flex flex-col items-center gap-2">
