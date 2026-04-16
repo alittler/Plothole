@@ -40,6 +40,7 @@ interface WorldSystemViewProps {
 
 enum WorldTab {
   MAP = 'Map',
+  MAP2 = 'Map2',
   LOCATIONS = 'Locations & Paths',
   INVENTORY = 'Inventory',
   RECIPE_BOOK = 'Recipe Book'
@@ -428,6 +429,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   title={tab}
                 >
                   {tab === WorldTab.MAP && <Globe size={14} />}
+                  {tab === WorldTab.MAP2 && <MapIcon size={14} />}
                   {tab === WorldTab.LOCATIONS && <MapPin size={14} />}
                   {tab === WorldTab.INVENTORY && <Box size={14} />}
                   {tab === WorldTab.RECIPE_BOOK && <Book size={14} />}
@@ -1192,6 +1194,95 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   </button>
                 </div>
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MAP2 Tab - Project Map Viewer */}
+      {activeTab === WorldTab.MAP2 && (
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <div className="h-full w-full flex flex-col">
+            {data && (
+              <MapView
+                locations={filteredLocations}
+                characters={data.characters.filter(c => c.x !== undefined && c.y !== undefined && c.parentId === (currentMapParentId || undefined))}
+                showCharacters={showCharacters}
+                paths={data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'))?.paths || []}
+                onAddPath={(path) => {
+                  const map = data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'));
+                  if (map) {
+                    onUpdateProject({ maps: data.maps.map(m => m.id === map.id ? { ...m, paths: [...(m.paths || []), path] } : m) });
+                  }
+                }}
+                onUpdatePath={(path) => {
+                  const map = data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'));
+                  if (map) {
+                    onUpdateProject({ maps: data.maps.map(m => m.id === map.id ? { ...m, paths: (m.paths || []).map(p => p.id === path.id ? path : p) } : m) });
+                  }
+                }}
+                onDeletePath={(id) => {
+                  const map = data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'));
+                  if (map) {
+                    onUpdateProject({ maps: data.maps.map(m => m.id === map.id ? { ...m, paths: (m.paths || []).filter(p => p.id !== id) } : m) });
+                  }
+                }}
+                onLocationClick={(id) => {
+                  const loc = data.locations.find(l => l.id === id);
+                  if (loc) setSelectedLocationId(id);
+                }}
+                onCharacterClick={(id) => onLinkClick('character', id)}
+                onMapClick={(x, y) => {
+                  setShowAddLocationDialog(true);
+                  setAddLocationMethod('xy');
+                  setLocationX(x.toString());
+                  setLocationY(y.toString());
+                }}
+                onLocationPlace={handleLocationPlace}
+                onCharacterPlace={handleCharacterPlace}
+                onLocationMove={(id, x, y) => {
+                  const loc = data.locations.find(l => l.id === id);
+                  if (loc) onUpdateLocation({ ...loc, x, y, parentId: currentMapParentId || undefined, mapId: currentMapParentId || 'root' });
+                }}
+                onCharacterMove={handleCharacterMove}
+                onLocationUnplace={(id) => {
+                  const loc = data.locations.find(l => l.id === id);
+                  if (loc) onUpdateLocation({ ...loc, x: undefined, y: undefined });
+                }}
+                onCharacterUnplace={(id) => {
+                  const char = data.characters.find(c => c.id === id);
+                  if (char) onUpdateCharacter({ ...char, x: undefined, y: undefined });
+                }}
+                onLocationUndo={onLocationUndo}
+                onLocationReset={onLocationReset}
+                onLocationLock={(id, isLocked) => {
+                  const loc = data.locations.find(l => l.id === id);
+                  if (loc) onUpdateLocation({ ...loc, locked: isLocked });
+                }}
+                onCharacterLock={(id, isLocked) => {
+                  const char = data.characters.find(c => c.id === id);
+                  if (char) onUpdateCharacter({ ...char, locked: isLocked });
+                }}
+                onDimensionsDetected={setMapDimensions}
+                onLinkClick={onLinkClick}
+                rootMapImage={data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'))?.image}
+                mapScale={localScale}
+                mapUnit={localUnit}
+                defaultView={data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'))?.defaultView}
+                zoomInRef={zoomInRef}
+                zoomOutRef={zoomOutRef}
+                centerMapRef={centerMapRef}
+                fitAllLocationsRef={fitAllLocationsRef}
+                getViewStateRef={getViewStateRef}
+                onViewChange={(view) => {
+                  const map = data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'));
+                  if (map) {
+                    onUpdateProject({ maps: data.maps.map(m => m.id === map.id ? { ...m, defaultView: view } : m) });
+                  }
+                }}
+                onScaleCalibrated={(newScale) => setLocalScale(newScale)}
+                isRealWorld={false}
+              />
             )}
           </div>
         </div>
