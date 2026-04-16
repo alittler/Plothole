@@ -51,7 +51,6 @@ import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
-import { EuroBestiaryMapView } from './components/Views/EuroBestiaryMapView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
@@ -1564,9 +1563,6 @@ const handleRestoreCommit = async (commit: Commit) => {
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
-
-      case ViewType.BESTIARY:
-        return <EuroBestiaryMapView selectedCreatureId={selectedCreatureId} />;
 
       /* case ViewType.STORY_ARCHITECT:
         return <StoryArchitectView projectsMetadata={projectsMetadata} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); await refreshMetadata(); setCurrentView(ViewType.DASHBOARD); } }} onUpdateProject={updateProjectData} currentUser={currentUser} />; */

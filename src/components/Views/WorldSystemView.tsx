@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import { ViewType, ProjectData, Location, Artifact, LoreEntry, Note, ProseDocument, User, ProjectMetadata, MapPath, Character } from '../../types';
-import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers, Footprints as PawPrint, Lock, Unlock } from 'lucide-react';
+import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers, Footprints as PawPrint, Lock, Unlock, BookOpen } from 'lucide-react';
 
 import { MapView } from '../ui/MapView';
 import { WikiText } from '../ui/WikiText';
@@ -41,8 +41,34 @@ interface WorldSystemViewProps {
 enum WorldTab {
   LOCATIONS = 'Locations & Paths',
   INVENTORY = 'Inventory',
-  RECIPE_BOOK = 'Recipe Book'
+  RECIPE_BOOK = 'Recipe Book',
+  BESTIARY = 'Bestiary'
 }
+
+interface Creature {
+  id: number;
+  name: string;
+  category: string;
+  alignment: string;
+  lat: number;
+  lon: number;
+  lore: string;
+}
+
+const ALIGNMENT_COLORS: Record<string, string> = {
+  'Benevolent': '#22c55e',
+  'Neutral': '#8b5cf6',
+  'Malicious': '#ef4444',
+  'Ambivalent': '#f59e0b',
+};
+
+const CATEGORY_ICONS: Record<string, string> = {
+  'Anthromorphic': '👤',
+  'Zoomorphic': '🦁',
+  'Hybrids': '🐉',
+  'Dragons': '🐲',
+  'Other': '✨',
+};
 
 // Parse directional coordinates like "51.5280° N, 123.1207° W" to +/- format
 function parseDirectionalCoordinates(input: string): { lat: number; lng: number } | null {
@@ -110,6 +136,18 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   const [editingArtifact, setEditingArtifact] = useState<Artifact | null>(null);
   const [editingPath, setEditingPath] = useState<MapPath | null>(null);
 
+  // Bestiary State
+  const [creatures, setCreatures] = useState<Creature[]>([]);
+  const [filteredCreatures, setFilteredCreatures] = useState<Creature[]>([]);
+  const [selectedCreature, setSelectedCreature] = useState<Creature | null>(null);
+  const [creatureSearchTerm, setCreatureSearchTerm] = useState('');
+  const [creatureCategoryFilter, setCreatureCategoryFilter] = useState<string>('');
+  const [creatureAlignmentFilter, setCreatureAlignmentFilter] = useState<string>('');
+  const [isCreaturesLoading, setIsCreaturesLoading] = useState(true);
+  const [creatureCategories, setCreatureCategories] = useState<string[]>([]);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+
   // Add Location Dialog State
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
   const [addLocationMethod, setAddLocationMethod] = useState<'search' | 'coords' | 'xy' | null>(null);
@@ -146,6 +184,97 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isScaleOpen]);
+
+  // Load creatures data
+  useEffect(() => {
+    const loadCreatures = async () => {
+      try {
+        const response = await fetch('/data/creatures.json');
+        const data: Creature[] = await response.json();
+        setCreatures(data);
+        setFilteredCreatures(data);
+        
+        const uniqueCategories = [...new Set(data.map(c => c.category))].sort();
+        setCreatureCategories(uniqueCategories);
+        setIsCreaturesLoading(false);
+      } catch (error) {
+        console.error('Error loading creatures:', error);
+        setIsCreaturesLoading(false);
+      }
+    };
+
+    loadCreatures();
+  }, []);
+
+  // Filter creatures
+  useEffect(() => {
+    let filtered = creatures;
+
+    if (creatureSearchTerm) {
+      filtered = filtered.filter(c =>
+        c.name.toLowerCase().includes(creatureSearchTerm.toLowerCase()) ||
+        c.lore.toLowerCase().includes(creatureSearchTerm.toLowerCase())
+      );
+    }
+
+    if (creatureCategoryFilter) {
+      filtered = filtered.filter(c => c.category === creatureCategoryFilter);
+    }
+
+    if (creatureAlignmentFilter) {
+      filtered = filtered.filter(c => c.alignment === creatureAlignmentFilter);
+    }
+
+    setFilteredCreatures(filtered);
+  }, [creatureSearchTerm, creatureCategoryFilter, creatureAlignmentFilter, creatures]);
+
+  // Initialize bestiary map with Leaflet
+  useEffect(() => {
+    if (!mapContainerRef.current || mapInstanceRef.current || creatures.length === 0 || activeTab !== WorldTab.BESTIARY) return;
+
+    import('leaflet').then(({ default: L }) => {
+      const map = L.map(mapContainerRef.current!).setView([54.5260, 15.2551], 3);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      creatures.forEach((creature) => {
+        const color = ALIGNMENT_COLORS[creature.alignment] || '#6b7280';
+        const marker = L.circleMarker([creature.lat, creature.lon], {
+          radius: 8,
+          fillColor: color,
+          color: '#fff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.8,
+        });
+
+        const popupContent = `
+          <div style="font-weight: bold; font-size: 0.875rem;">${CATEGORY_ICONS[creature.category]} ${creature.name}</div>
+          <div style="font-size: 0.75rem; color: #666;">${creature.category}</div>
+          <div style="font-size: 0.75rem; margin-top: 0.25rem;">${creature.lore}</div>
+        `;
+
+        marker.bindPopup(popupContent);
+        marker.on('click', () => {
+          setSelectedCreature(creature);
+        });
+
+        marker.addTo(map);
+      });
+
+      mapInstanceRef.current = map;
+    });
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [creatures, activeTab]);
 
   const DEFAULT_MAP = `data:image/svg+xml,%3Csvg width='800' height='600' viewBox='0 0 800 600' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f5f1e6'/%3E%3Cpath d='M0 0l800 600M800 0L0 600' stroke='%23e2e8f0' stroke-width='1'/%3E%3Ccircle cx='400' cy='300' r='100' fill='none' stroke='%23cbd5e1' stroke-dasharray='10,10'/%3E%3Ctext x='400' y='310' font-family='serif' font-size='24' fill='%2394a3b8' text-anchor='middle' font-style='italic'%3EUncharted Territory%3C/text%3E%3C/svg%3E`;
 
@@ -301,6 +430,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   {tab === WorldTab.LOCATIONS && <MapPin size={14} />}
                   {tab === WorldTab.INVENTORY && <Box size={14} />}
                   {tab === WorldTab.RECIPE_BOOK && <Book size={14} />}
+                  {tab === WorldTab.BESTIARY && <BookOpen size={14} />}
                   <span className="hidden sm:inline">{tab}</span>
                 </button>
               ))}
@@ -624,6 +754,125 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     Keep track of recipes found throughout your story world. Each recipe includes basic ingredients and a source URL for reference. Perfect for worldbuilding - what do people in your world eat and drink?
                   </p>
                 </div>
+              </section>
+            )}
+
+            {activeTab === WorldTab.BESTIARY && (
+              <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 h-full flex flex-col">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl"><MapPin size={24} /></div>
+                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">European Mythical Creatures</h2><p className="text-sm text-slate-500 uppercase font-bold tracking-widest">200+ creatures mapped</p></div>
+                  </div>
+                </div>
+
+                {isCreaturesLoading ? (
+                  <div className="flex items-center justify-center h-96 text-slate-600 dark:text-slate-400">
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 size={32} className="animate-spin" />
+                      <p>Loading creatures...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col min-h-0">
+                    {/* Filters */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                      <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search creatures..."
+                          value={creatureSearchTerm}
+                          onChange={(e) => setCreatureSearchTerm(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+
+                      <select
+                        value={creatureCategoryFilter}
+                        onChange={(e) => setCreatureCategoryFilter(e.target.value)}
+                        className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">All Categories</option>
+                        {creatureCategories.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={creatureAlignmentFilter}
+                        onChange={(e) => setCreatureAlignmentFilter(e.target.value)}
+                        className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">All Alignments</option>
+                        {Object.keys(ALIGNMENT_COLORS).map((alignment) => (
+                          <option key={alignment} value={alignment}>
+                            {alignment}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-4">
+                      Showing {filteredCreatures.length} of {creatures.length} creatures
+                    </div>
+
+                    {/* Map and Details */}
+                    <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+                      {/* Map */}
+                      <div className="flex-1 min-w-0">
+                        <div ref={mapContainerRef} className="w-full h-full rounded-lg overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
+                      </div>
+
+                      {/* Sidebar - Selected creature details */}
+                      {selectedCreature && (
+                        <div className="w-80 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
+                          <div className="p-6 space-y-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-2xl">{CATEGORY_ICONS[selectedCreature.category]}</span>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                                  {selectedCreature.name}
+                                </h3>
+                              </div>
+                              <div className="space-y-1 text-sm">
+                                <p className="text-slate-600 dark:text-slate-400">
+                                  <span className="font-semibold">Category:</span> {selectedCreature.category}
+                                </p>
+                                <p className="flex items-center gap-2">
+                                  <span className="font-semibold">Alignment:</span>
+                                  <span
+                                    className="px-2 py-1 rounded-full text-white text-xs font-semibold"
+                                    style={{ backgroundColor: ALIGNMENT_COLORS[selectedCreature.alignment] }}
+                                  >
+                                    {selectedCreature.alignment}
+                                  </span>
+                                </p>
+                                <p className="text-slate-600 dark:text-slate-400">
+                                  <span className="font-semibold">Location:</span> {selectedCreature.lat.toFixed(2)}°, {selectedCreature.lon.toFixed(2)}°
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                              <div className="flex items-start gap-2">
+                                <Book size={16} className="mt-1 text-indigo-600 flex-shrink-0" />
+                                <div>
+                                  <p className="font-semibold text-slate-900 dark:text-white mb-2 text-sm">Lore</p>
+                                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    {selectedCreature.lore}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </section>
             )}
           </div>

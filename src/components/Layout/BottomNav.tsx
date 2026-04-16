@@ -42,7 +42,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     };
   }, []);
 
-  const defaultOrder = [ViewType.BOOKSHELF, ViewType.DASHBOARD, ViewType.NOTEPAD, ViewType.RESEARCH, ViewType.BESTIARY];
+  const defaultOrder = [ViewType.BOOKSHELF, ViewType.DASHBOARD, ViewType.NOTEPAD, ViewType.RESEARCH];
   const order = bottomNavOrder || defaultOrder;
 
   const getViewLabel = (view: ViewType) => {
@@ -57,7 +57,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       case ViewType.TOOLBOX: return 'Toolbox';
       case ViewType.SETTINGS: return 'Settings';
       case ViewType.ADMIN: return 'Admin';
-      case ViewType.BESTIARY: return 'Bestiary';
       default: return 'Page';
     }
   };
@@ -75,7 +74,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       case ViewType.TOOLBOX: return <Wrench size={size} />;
       case ViewType.SETTINGS: return <Settings size={size} />;
       case ViewType.ADMIN: return <Shield size={size} />;
-      case ViewType.BESTIARY: return <Wand2 size={size} />;
       default: return <Zap size={size} />;
     }
   };
