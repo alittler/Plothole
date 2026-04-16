@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet.markercluster/dist/MarkerCluster.css';
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
-import MarkerClusterGroup from 'leaflet.markercluster';
-import { Search, MapPin, Book, Filter } from 'lucide-react';
+import { Search, MapPin, Book } from 'lucide-react';
 
 interface Creature {
   id: number;
@@ -21,10 +16,10 @@ interface EuroBestiaryMapViewProps {
 }
 
 const ALIGNMENT_COLORS: Record<string, string> = {
-  'Benevolent': '#22c55e',    // green
-  'Neutral': '#8b5cf6',       // purple
-  'Malicious': '#ef4444',     // red
-  'Ambivalent': '#f59e0b',    // amber
+  'Benevolent': '#22c55e',
+  'Neutral': '#8b5cf6',
+  'Malicious': '#ef4444',
+  'Ambivalent': '#f59e0b',
 };
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -37,9 +32,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 export const EuroBestiaryMapView: React.FC<EuroBestiaryMapViewProps> = ({ selectedCreatureId }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<L.Map | null>(null);
-  const markers = useRef<Map<number, L.Marker>>(new Map());
-  const markerCluster = useRef<any>(null);
+  const mapInstance = useRef<any>(null);
 
   const [creatures, setCreatures] = useState<Creature[]>([]);
   const [filteredCreatures, setFilteredCreatures] = useState<Creature[]>([]);
@@ -93,82 +86,64 @@ export const EuroBestiaryMapView: React.FC<EuroBestiaryMapViewProps> = ({ select
     setFilteredCreatures(filtered);
   }, [searchTerm, categoryFilter, alignmentFilter, creatures]);
 
-  // Initialize map
+  // Initialize map with Leaflet
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+    if (!mapContainer.current || mapInstance.current || creatures.length === 0) return;
 
-    map.current = L.map(mapContainer.current).setView([54.5260, 15.2551], 3);
+    // Dynamically load Leaflet to avoid SSR issues
+    import('leaflet').then(({ default: L }) => {
+      // Initialize map
+      const map = L.map(mapContainer.current).setView([54.5260, 15.2551], 3);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(map.current);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
 
-    markerCluster.current = new MarkerClusterGroup({
-      maxClusterRadius: 80,
-      iconCreateFunction: (cluster: any) => {
-        const childCount = cluster.getChildCount();
-        let c = ' marker-cluster-';
-        if (childCount < 10) c += 'small';
-        else if (childCount < 100) c += 'medium';
-        else c += 'large';
-        return new L.DivIcon({
-          html: `<div><span>${childCount}</span></div>`,
-          className: 'marker-cluster' + c,
-          iconSize: new L.Point(40, 40),
+      // Add markers for creatures
+      creatures.forEach((creature) => {
+        const color = ALIGNMENT_COLORS[creature.alignment] || '#6b7280';
+        const marker = L.circleMarker([creature.lat, creature.lon], {
+          radius: 8,
+          fillColor: color,
+          color: '#fff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.8,
         });
-      },
-    });
 
-    map.current.addLayer(markerCluster.current);
-  }, []);
+        const popupContent = `
+          <div style="font-weight: bold; font-size: 0.875rem;">${CATEGORY_ICONS[creature.category]} ${creature.name}</div>
+          <div style="font-size: 0.75rem; color: #666;">${creature.category}</div>
+          <div style="font-size: 0.75rem; margin-top: 0.25rem;">${creature.lore}</div>
+        `;
 
-  // Update markers when filtered creatures change
-  useEffect(() => {
-    if (!map.current || !markerCluster.current) return;
+        marker.bindPopup(popupContent);
+        marker.on('click', () => {
+          setSelectedCreature(creature);
+        });
 
-    // Clear existing markers
-    markerCluster.current.clearLayers();
-    markers.current.clear();
-
-    // Add new markers
-    filteredCreatures.forEach((creature) => {
-      const color = ALIGNMENT_COLORS[creature.alignment] || '#6b7280';
-      const icon = CATEGORY_ICONS[creature.category] || '✨';
-
-      const marker = L.circleMarker([creature.lat, creature.lon], {
-        radius: 8,
-        fillColor: color,
-        color: '#fff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.8,
+        marker.addTo(map);
       });
 
-      marker.bindPopup(`
-        <div class="font-semibold text-sm">${icon} ${creature.name}</div>
-        <div class="text-xs text-gray-600">${creature.category}</div>
-        <div class="text-xs mt-1">${creature.lore}</div>
-      `);
-
-      marker.on('click', () => {
-        setSelectedCreature(creature);
-      });
-
-      markerCluster.current.addLayer(marker);
-      markers.current.set(creature.id, marker);
+      mapInstance.current = map;
     });
-  }, [filteredCreatures]);
 
-  // Highlight selected creature
+    return () => {
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+    };
+  }, [creatures]);
+
+  // Update map when selected creature changes
   useEffect(() => {
-    if (selectedCreatureId) {
+    if (selectedCreatureId && mapInstance.current) {
       const creature = creatures.find(c => c.id === selectedCreatureId);
       if (creature) {
         setSelectedCreature(creature);
-        if (map.current) {
-          map.current.setView([creature.lat, creature.lon], 6);
-        }
+        mapInstance.current.setView([creature.lat, creature.lon], 6);
       }
     }
   }, [selectedCreatureId, creatures]);
@@ -243,7 +218,7 @@ export const EuroBestiaryMapView: React.FC<EuroBestiaryMapViewProps> = ({ select
       <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Map */}
         <div className="flex-1 min-w-0">
-          <div ref={mapContainer} className="w-full h-full rounded-lg overflow-hidden" />
+          <div ref={mapContainer} className="w-full h-full rounded-lg overflow-hidden bg-white dark:bg-slate-900" />
         </div>
 
         {/* Sidebar - Selected creature details */}
