@@ -149,6 +149,12 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
 
+  // Locations Map (MAP2) State
+  const [selectedLocationForMap, setSelectedLocationForMap] = useState<Location | null>(null);
+  const [locationSearchTerm, setLocationSearchTermForMap] = useState('');
+  const locationsMapContainerRef = useRef<HTMLDivElement>(null);
+  const locationsMapInstanceRef = useRef<any>(null);
+
   // Add Location Dialog State
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
   const [addLocationMethod, setAddLocationMethod] = useState<'search' | 'coords' | 'xy' | null>(null);
@@ -276,6 +282,57 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
       }
     };
   }, [creatures, activeTab]);
+
+  // Initialize locations map (MAP2) with Leaflet
+  useEffect(() => {
+    if (!locationsMapContainerRef.current || locationsMapInstanceRef.current || data.locations.length === 0 || activeTab !== WorldTab.MAP2) return;
+
+    // Filter locations that have coordinates
+    const locationsWithCoords = data.locations.filter(l => l.x !== undefined && l.y !== undefined);
+    if (locationsWithCoords.length === 0) return;
+
+    import('leaflet').then(({ default: L }) => {
+      const map = L.map(locationsMapContainerRef.current!).setView([54.5260, 15.2551], 3);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      locationsWithCoords.forEach((location) => {
+        const marker = L.circleMarker([location.y, location.x], {
+          radius: 8,
+          fillColor: '#3b82f6',
+          color: '#fff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.8,
+        });
+
+        const popupContent = `
+          <div style="font-weight: bold; font-size: 0.875rem;">${location.name}</div>
+          <div style="font-size: 0.75rem; color: #666;">${location.type}</div>
+          ${location.description ? `<div style="font-size: 0.75rem; margin-top: 0.25rem;">${location.description}</div>` : ''}
+        `;
+
+        marker.bindPopup(popupContent);
+        marker.on('click', () => {
+          setSelectedLocationForMap(location);
+        });
+
+        marker.addTo(map);
+      });
+
+      locationsMapInstanceRef.current = map;
+    });
+
+    return () => {
+      if (locationsMapInstanceRef.current) {
+        locationsMapInstanceRef.current.remove();
+        locationsMapInstanceRef.current = null;
+      }
+    };
+  }, [data.locations, activeTab]);
 
   const DEFAULT_MAP = `data:image/svg+xml,%3Csvg width='800' height='600' viewBox='0 0 800 600' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23f5f1e6'/%3E%3Cpath d='M0 0l800 600M800 0L0 600' stroke='%23e2e8f0' stroke-width='1'/%3E%3Ccircle cx='400' cy='300' r='100' fill='none' stroke='%23cbd5e1' stroke-dasharray='10,10'/%3E%3Ctext x='400' y='310' font-family='serif' font-size='24' fill='%2394a3b8' text-anchor='middle' font-style='italic'%3EUncharted Territory%3C/text%3E%3C/svg%3E`;
 
@@ -1199,72 +1256,75 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
         </div>
       )}
 
-      {/* MAP2 Tab - Project Map Viewer */}
+      {/* MAP2 Tab - Locations Map (Leaflet/OSM) */}
       {activeTab === WorldTab.MAP2 && (
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          <div className="h-full w-full flex flex-col">
-            {data && (
-              <MapView
-                locations={filteredLocations}
-                characters={data.characters.filter(c => c.x !== undefined && c.y !== undefined && c.parentId === (currentMapParentId || undefined))}
-                showCharacters={showCharacters}
-                paths={[]}
-                onLocationClick={(id) => {
-                  const loc = data.locations.find(l => l.id === id);
-                  if (loc) setSelectedLocationId(id);
-                }}
-                onCharacterClick={(id) => onLinkClick('character', id)}
-                onMapClick={(x, y) => {
-                  setShowAddLocationDialog(true);
-                  setAddLocationMethod('xy');
-                  setLocationX(x.toString());
-                  setLocationY(y.toString());
-                }}
-                onLocationPlace={handleLocationPlace}
-                onCharacterPlace={handleCharacterPlace}
-                onLocationMove={(id, x, y) => {
-                  const loc = data.locations.find(l => l.id === id);
-                  if (loc) onUpdateLocation({ ...loc, x, y, parentId: currentMapParentId || undefined, mapId: currentMapParentId || 'root' });
-                }}
-                onCharacterMove={handleCharacterMove}
-                onLocationUnplace={(id) => {
-                  const loc = data.locations.find(l => l.id === id);
-                  if (loc) onUpdateLocation({ ...loc, x: undefined, y: undefined });
-                }}
-                onCharacterUnplace={(id) => {
-                  const char = data.characters.find(c => c.id === id);
-                  if (char) onUpdateCharacter({ ...char, x: undefined, y: undefined });
-                }}
-                onLocationUndo={onLocationUndo}
-                onLocationReset={onLocationReset}
-                onLocationLock={(id, isLocked) => {
-                  const loc = data.locations.find(l => l.id === id);
-                  if (loc) onUpdateLocation({ ...loc, locked: isLocked });
-                }}
-                onCharacterLock={(id, isLocked) => {
-                  const char = data.characters.find(c => c.id === id);
-                  if (char) onUpdateCharacter({ ...char, locked: isLocked });
-                }}
-                onDimensionsDetected={setMapDimensions}
-                onLinkClick={onLinkClick}
-                rootMapImage={data.rootMapImage}
-                mapScale={data.mapScale || localScale}
-                mapUnit={data.mapUnit || localUnit}
-                defaultView={undefined}
-                zoomInRef={zoomInRef}
-                zoomOutRef={zoomOutRef}
-                centerMapRef={centerMapRef}
-                fitAllLocationsRef={fitAllLocationsRef}
-                getViewStateRef={getViewStateRef}
-                onScaleCalibrated={(newScale) => {
-                  setLocalScale(newScale);
-                  onUpdateProject({ mapScale: newScale });
-                }}
-                isRealWorld={false}
-              />
-            )}
+        <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 h-full flex flex-col">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl"><MapIcon size={24} /></div>
+              <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Project Locations Map</h2><p className="text-sm text-slate-500 uppercase font-bold tracking-widest">Interactive map</p></div>
+            </div>
           </div>
-        </div>
+
+          {data.locations.filter(l => l.x !== undefined && l.y !== undefined).length === 0 ? (
+            <div className="flex items-center justify-center h-96 text-slate-600 dark:text-slate-400">
+              <div className="flex flex-col items-center gap-2 text-center">
+                <MapPin size={32} />
+                <p>No locations with coordinates to display</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+              {/* Map */}
+              <div className="flex-1 min-w-0">
+                <div ref={locationsMapContainerRef} className="w-full h-full rounded-lg overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
+              </div>
+
+              {/* Sidebar - Selected location details */}
+              {selectedLocationForMap && (
+                <div className="w-80 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <MapPin size={20} className="text-blue-600" />
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                          {selectedLocationForMap.name}
+                        </h3>
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        <p className="text-slate-600 dark:text-slate-400">
+                          <span className="font-semibold">Type:</span> {selectedLocationForMap.type}
+                        </p>
+                        <p className="text-slate-600 dark:text-slate-400">
+                          <span className="font-semibold">Source:</span> {selectedLocationForMap.source === 'ai' ? '📚 Manuscript' : '✏️ Manual'}
+                        </p>
+                        {selectedLocationForMap.x !== undefined && selectedLocationForMap.y !== undefined && (
+                          <p className="text-slate-600 dark:text-slate-400">
+                            <span className="font-semibold">Coordinates:</span> {selectedLocationForMap.y.toFixed(2)}°, {selectedLocationForMap.x.toFixed(2)}°
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedLocationForMap.description && (
+                      <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                        <div className="flex items-start gap-2">
+                          <FileText size={16} className="mt-1 text-blue-600 flex-shrink-0" />
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white mb-2 text-sm">Description</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                              {selectedLocationForMap.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       )}
     </div>
   );
