@@ -553,7 +553,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
       <div className="flex-1 min-h-0 overflow-hidden relative">
         <div className="h-full w-full flex flex-col items-center p-0 lg:p-8 relative">
-          <div className={`h-full w-full flex flex-col ${isFullscreen ? 'max-w-none' : 'max-w-6xl'} space-y-12 overflow-y-auto pb-40 px-4 md:px-8`}>
+          <div className={`h-full w-full flex flex-col ${activeTab === WorldTab.MAP ? '' : `${isFullscreen ? 'max-w-none' : 'max-w-6xl'} space-y-12 overflow-y-auto pb-40`} px-4 md:px-8`}>
             
             {activeTab === WorldTab.LOCATIONS && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -870,7 +870,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
             )}
 
             {activeTab === WorldTab.MAP && (
-              <section className="h-full flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700 overflow-hidden">
+              <section className="h-full w-full flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700 overflow-hidden">
                 {isCreaturesLoading ? (
                   <div className="flex items-center justify-center h-96 text-slate-600 dark:text-slate-400">
                     <div className="flex flex-col items-center gap-2">
@@ -879,9 +879,9 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex-1 flex flex-col min-h-0">
+                  <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6">
                     {/* Filters */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                       <div className="relative">
                         <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
                         <input
