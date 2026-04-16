@@ -956,68 +956,101 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Sidebar - Selected creature details */}
+                      {/* Sidebar - Selected creature details card */}
                       {selectedCreature && (
-                        <div className="w-80 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
-                          <div className="p-6 space-y-4">
-                            <div>
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-2xl">{CATEGORY_ICONS[selectedCreature.category]}</span>
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                                  {selectedCreature.name}
-                                </h3>
+                        <div className="w-96 border-l border-slate-200 dark:border-slate-800 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 overflow-y-auto shadow-lg">
+                          <div className="p-6 space-y-6">
+                            {/* Header */}
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="text-4xl">{CATEGORY_ICONS[selectedCreature.category]}</div>
+                                  <div className="flex-1">
+                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white">
+                                      {selectedCreature.name}
+                                    </h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-widest mt-1">
+                                      Creature of Legend
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="space-y-1 text-sm">
-                                <p className="text-slate-600 dark:text-slate-400">
-                                  <span className="font-semibold">Category:</span> {selectedCreature.category}
-                                </p>
-                                <p className="flex items-center gap-2">
-                                  <span className="font-semibold">Alignment:</span>
+                            </div>
+
+                            {/* Classification */}
+                            <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4 space-y-3">
+                              <div>
+                                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase font-bold tracking-widest mb-1">Category</p>
+                                <p className="text-sm font-semibold text-slate-900 dark:text-white">{selectedCreature.category}</p>
+                              </div>
+                              <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase font-bold tracking-widest mb-2">Alignment</p>
+                                <div className="flex items-center gap-2">
                                   <span
-                                    className="px-2 py-1 rounded-full text-white text-xs font-semibold"
+                                    className="px-3 py-1.5 rounded-full text-white text-xs font-bold uppercase tracking-widest inline-block"
                                     style={{ backgroundColor: ALIGNMENT_COLORS[selectedCreature.alignment] }}
                                   >
                                     {selectedCreature.alignment}
                                   </span>
-                                </p>
-                                <p className="text-slate-600 dark:text-slate-400">
-                                  <span className="font-semibold">Location:</span> {selectedCreature.lat.toFixed(2)}°, {selectedCreature.lon.toFixed(2)}°
-                                </p>
+                                </div>
                               </div>
                             </div>
 
-                            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                              <div className="flex items-start gap-2">
-                                <Book size={16} className="mt-1 text-indigo-600 flex-shrink-0" />
-                                <div>
-                                  <p className="font-semibold text-slate-900 dark:text-white mb-2 text-sm">Lore</p>
-                                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            {/* Geographic Location */}
+                            <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
+                              <div className="flex items-start gap-3">
+                                <MapPin size={18} className="mt-0.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-xs text-slate-600 dark:text-slate-400 uppercase font-bold tracking-widest mb-2">Geographic Location</p>
+                                  <p className="text-sm font-mono text-slate-900 dark:text-white">
+                                    {selectedCreature.lat.toFixed(4)}°N, {selectedCreature.lon.toFixed(4)}°E
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                                    {Math.abs(selectedCreature.lat).toFixed(2)}° {selectedCreature.lat >= 0 ? 'North' : 'South'}, {Math.abs(selectedCreature.lon).toFixed(2)}° {selectedCreature.lon >= 0 ? 'East' : 'West'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Lore/Description */}
+                            <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
+                              <div className="flex items-start gap-3">
+                                <Book size={18} className="mt-0.5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                                <div className="flex-1">
+                                  <p className="font-bold text-slate-900 dark:text-white mb-2 text-sm">Lore & Legend</p>
+                                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-serif italic">
                                     {selectedCreature.lore}
                                   </p>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
-                              <p className="font-semibold text-slate-900 dark:text-white mb-2 text-sm">Map Tools</p>
+                            {/* Creature ID */}
+                            <div className="text-xs text-slate-500 dark:text-slate-500 text-center py-2 border-t border-slate-200 dark:border-slate-800">
+                              Creature ID: {selectedCreature.id}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-3">
+                              <p className="font-semibold text-slate-900 dark:text-white text-sm uppercase tracking-widest">Map Tools</p>
                               <button
                                 onClick={() => setIsPlacingLocationOnCreatureMap(!isPlacingLocationOnCreatureMap)}
-                                className={`w-full py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                                className={`w-full py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ${
                                   isPlacingLocationOnCreatureMap
-                                    ? 'bg-emerald-500 text-white'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
+                                    ? 'bg-emerald-500 text-white shadow-lg'
+                                    : 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700'
                                 }`}
                               >
                                 {isPlacingLocationOnCreatureMap ? '✓ Click map to place' : '+ Place Location'}
                               </button>
                               <button
                                 onClick={() => centerMapRef.current?.()}
-                                className="w-full py-2 px-3 rounded-lg text-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                className="w-full py-2.5 px-3 rounded-lg text-sm font-semibold bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
                               >
-                                📍 Center on Location
+                                📍 Center on Creature
                               </button>
                             </div>
-                          </div>
+                           </div>
                         </div>
                       )}
                     </div>
