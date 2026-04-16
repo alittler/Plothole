@@ -51,8 +51,6 @@ import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
-import { BestiaryBrowserView } from './components/Views/BestiaryBrowserView';
-import { ensureCreatureBestiaryEntries } from './utils/creatureUtils';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
@@ -683,16 +681,7 @@ const App: React.FC = () => {
   }, [checkApiKey, isAuthenticated, isAuthLoading, fetchWithAuth]); // Re-run when auth state or Auth0 status changes
 
   // Auto-generate bestiary entries for creatures when project loads
-  useEffect(() => {
-    if (!projectData) return;
-    
-    const updatedProject = ensureCreatureBestiaryEntries(projectData);
-    
-    // Only update if new creatures were added
-    if (updatedProject.entities && updatedProject.entities.length > projectData.entities?.length) {
-      setProjectData(updatedProject);
-    }
-  }, [projectData?.id]); // Only run when project changes
+  // (Disabled - BestiaryBrowserView has been removed)
 
   useEffect(() => {
     if (!projectData) return;
@@ -1576,7 +1565,7 @@ const handleRestoreCommit = async (commit: Commit) => {
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
 
       case ViewType.BESTIARY:
-        return <BestiaryBrowserView selectedCreatureId={selectedCreatureId} />;
+        return <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Bestiary view has been removed.</div>;
 
       /* case ViewType.STORY_ARCHITECT:
         return <StoryArchitectView projectsMetadata={projectsMetadata} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); await refreshMetadata(); setCurrentView(ViewType.DASHBOARD); } }} onUpdateProject={updateProjectData} currentUser={currentUser} />; */
