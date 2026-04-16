@@ -121,6 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
     { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
     { id: ViewType.MAP, label: 'Atlas', icon: Map, projectOnly: true },
+    { id: ViewType.BESTIARY, label: 'Bestiary', icon: BookOpen, projectOnly: true },
     { id: ViewType.TIMELINE, label: 'History', icon: Calendar, projectOnly: true },
     { id: ViewType.CODEX, label: 'Codex', icon: Book, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: BookOpen, projectOnly: true },
@@ -137,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
       {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.BESTIARY, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH].includes(i.id))
       },
       {
         title: 'System',
