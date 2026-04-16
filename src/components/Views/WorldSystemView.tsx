@@ -145,6 +145,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   const [creatureAlignmentFilter, setCreatureAlignmentFilter] = useState<string>('');
   const [isCreaturesLoading, setIsCreaturesLoading] = useState(true);
   const [creatureCategories, setCreatureCategories] = useState<string[]>([]);
+  const [isPlacingLocationOnCreatureMap, setIsPlacingLocationOnCreatureMap] = useState(false);
+  const [creatureMapLocationMarkers, setCreatureMapLocationMarkers] = useState<Map<string, any>>(new Map());
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
 
@@ -271,6 +273,58 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
         marker.addTo(map);
       });
 
+      // Add location markers if any have been placed
+      const locationsWithCoords = data.locations.filter(l => l.x !== undefined && l.y !== undefined);
+      const newMarkers = new Map<string, any>();
+      
+      locationsWithCoords.forEach((location) => {
+        const locationMarker = L.circleMarker([location.y, location.x], {
+          radius: 10,
+          fillColor: '#10b981',
+          color: '#fff',
+          weight: 3,
+          opacity: 1,
+          fillOpacity: 0.7,
+          dashArray: '5, 5'
+        });
+
+        locationMarker.bindPopup(`<div style="font-weight: bold; font-size: 0.875rem;">${location.name}</div>`);
+        locationMarker.addTo(map);
+        newMarkers.set(location.id, locationMarker);
+      });
+
+      setCreatureMapLocationMarkers(newMarkers);
+
+      // Handle map clicks for placement mode
+      map.on('click', (e: any) => {
+        if (isPlacingLocationOnCreatureMap && selectedCreature) {
+          const { lat, lng } = e.latlng;
+          // Create new location at clicked coordinates
+          const newLocation: Location = {
+            id: generateId(),
+            name: `Location near ${selectedCreature.name}`,
+            description: `Found near ${selectedCreature.name}`,
+            type: 'Notable Site',
+            x: lng,
+            y: lat,
+            source: 'manual',
+          };
+          onAddLocation(newLocation);
+          setIsPlacingLocationOnCreatureMap(false);
+        }
+      });
+
+      // Store refs for zoom controls
+      zoomInRef.current = () => map.zoomIn();
+      zoomOutRef.current = () => map.zoomOut();
+      centerMapRef.current = () => map.setView([54.5260, 15.2551], 3);
+      fitAllLocationsRef.current = () => {
+        if (locationsWithCoords.length > 0) {
+          const group = L.featureGroup(locationsWithCoords.map(loc => L.marker([loc.y, loc.x])));
+          map.fitBounds(group.getBounds().pad(0.1));
+        }
+      };
+
       mapInstanceRef.current = map;
     });
 
@@ -280,7 +334,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, [creatures, activeTab]);
+  }, [creatures, data.locations, activeTab, isPlacingLocationOnCreatureMap, selectedCreature, onAddLocation]);
 
   // Initialize locations map (MAP2) with Leaflet
   useEffect(() => {
@@ -879,9 +933,34 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
                     {/* Map and Details */}
                     <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
-                      {/* Map */}
-                      <div className="flex-1 min-w-0">
+                      {/* Map Container */}
+                      <div className="flex-1 min-w-0 relative">
                         <div ref={mapContainerRef} className="w-full h-full rounded-lg overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
+                        
+                        {/* Map Controls */}
+                        <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+                          <button
+                            onClick={() => zoomInRef.current?.()}
+                            className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                            title="Zoom in"
+                          >
+                            <Plus size={18} className="text-slate-600 dark:text-slate-300" />
+                          </button>
+                          <button
+                            onClick={() => zoomOutRef.current?.()}
+                            className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                            title="Zoom out"
+                          >
+                            <Minus size={18} className="text-slate-600 dark:text-slate-300" />
+                          </button>
+                          <button
+                            onClick={() => fitAllLocationsRef.current?.()}
+                            className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                            title="Fit all locations"
+                          >
+                            <Maximize2 size={18} className="text-slate-600 dark:text-slate-300" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Sidebar - Selected creature details */}
@@ -924,6 +1003,26 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                                   </p>
                                 </div>
                               </div>
+                            </div>
+
+                            <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
+                              <p className="font-semibold text-slate-900 dark:text-white mb-2 text-sm">Map Tools</p>
+                              <button
+                                onClick={() => setIsPlacingLocationOnCreatureMap(!isPlacingLocationOnCreatureMap)}
+                                className={`w-full py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                                  isPlacingLocationOnCreatureMap
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
+                                }`}
+                              >
+                                {isPlacingLocationOnCreatureMap ? '✓ Click map to place' : '+ Place Location'}
+                              </button>
+                              <button
+                                onClick={() => centerMapRef.current?.()}
+                                className="w-full py-2 px-3 rounded-lg text-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                              >
+                                📍 Center on Location
+                              </button>
                             </div>
                           </div>
                         </div>
