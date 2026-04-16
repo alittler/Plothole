@@ -1208,25 +1208,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 locations={filteredLocations}
                 characters={data.characters.filter(c => c.x !== undefined && c.y !== undefined && c.parentId === (currentMapParentId || undefined))}
                 showCharacters={showCharacters}
-                paths={data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'))?.paths || []}
-                onAddPath={(path) => {
-                  const map = data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'));
-                  if (map) {
-                    onUpdateProject({ maps: data.maps.map(m => m.id === map.id ? { ...m, paths: [...(m.paths || []), path] } : m) });
-                  }
-                }}
-                onUpdatePath={(path) => {
-                  const map = data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'));
-                  if (map) {
-                    onUpdateProject({ maps: data.maps.map(m => m.id === map.id ? { ...m, paths: (m.paths || []).map(p => p.id === path.id ? path : p) } : m) });
-                  }
-                }}
-                onDeletePath={(id) => {
-                  const map = data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'));
-                  if (map) {
-                    onUpdateProject({ maps: data.maps.map(m => m.id === map.id ? { ...m, paths: (m.paths || []).filter(p => p.id !== id) } : m) });
-                  }
-                }}
+                paths={[]}
                 onLocationClick={(id) => {
                   const loc = data.locations.find(l => l.id === id);
                   if (loc) setSelectedLocationId(id);
@@ -1265,22 +1247,19 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 }}
                 onDimensionsDetected={setMapDimensions}
                 onLinkClick={onLinkClick}
-                rootMapImage={data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'))?.image}
-                mapScale={localScale}
-                mapUnit={localUnit}
-                defaultView={data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'))?.defaultView}
+                rootMapImage={data.rootMapImage}
+                mapScale={data.mapScale || localScale}
+                mapUnit={data.mapUnit || localUnit}
+                defaultView={undefined}
                 zoomInRef={zoomInRef}
                 zoomOutRef={zoomOutRef}
                 centerMapRef={centerMapRef}
                 fitAllLocationsRef={fitAllLocationsRef}
                 getViewStateRef={getViewStateRef}
-                onViewChange={(view) => {
-                  const map = data.maps.find(m => m.id === currentMapParentId || (currentMapParentId === null && m.id === 'root'));
-                  if (map) {
-                    onUpdateProject({ maps: data.maps.map(m => m.id === map.id ? { ...m, defaultView: view } : m) });
-                  }
+                onScaleCalibrated={(newScale) => {
+                  setLocalScale(newScale);
+                  onUpdateProject({ mapScale: newScale });
                 }}
-                onScaleCalibrated={(newScale) => setLocalScale(newScale)}
                 isRealWorld={false}
               />
             )}
