@@ -878,9 +878,9 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6">
-                    {/* Toolbar */}
-                    <div className="flex gap-3 mb-4 flex-wrap items-center">
+                  <>
+                    {/* Toolbar - Fixed at top */}
+                    <div className="flex gap-3 px-4 md:px-6 pt-4 md:pt-6 pb-3 flex-wrap items-center border-b border-slate-200 dark:border-slate-800 shrink-0">
                       <button
                         onClick={() => setIsCreatureSearchOpen(!isCreatureSearchOpen)}
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
@@ -937,34 +937,36 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
                     {/* Search Panel */}
                     {isCreatureSearchOpen && (
-                      <div className="mb-4 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <div className="flex gap-2 items-center">
-                          <Search size={18} className="text-slate-600 dark:text-slate-400 flex-shrink-0" />
-                          <input
-                            type="text"
-                            placeholder="Search creatures by name or lore..."
-                            value={creatureSearchTerm}
-                            onChange={(e) => setCreatureSearchTerm(e.target.value)}
-                            autoFocus
-                            className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <button
-                            onClick={() => setIsCreatureSearchOpen(false)}
-                            className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                          >
-                            <X size={18} className="text-slate-600 dark:text-slate-400" />
-                          </button>
+                      <div className="px-4 md:px-6 pb-3 shrink-0 border-b border-slate-200 dark:border-slate-800">
+                        <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <div className="flex gap-2 items-center">
+                            <Search size={18} className="text-slate-600 dark:text-slate-400 flex-shrink-0" />
+                            <input
+                              type="text"
+                              placeholder="Search creatures by name or lore..."
+                              value={creatureSearchTerm}
+                              onChange={(e) => setCreatureSearchTerm(e.target.value)}
+                              autoFocus
+                              className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <button
+                              onClick={() => setIsCreatureSearchOpen(false)}
+                              className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                            >
+                              <X size={18} className="text-slate-600 dark:text-slate-400" />
+                            </button>
+                          </div>
+                          {creatureSearchTerm && (
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                              Found {filteredCreatures.length} of {creatures.length} creatures
+                            </p>
+                          )}
                         </div>
-                        {creatureSearchTerm && (
-                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
-                            Found {filteredCreatures.length} of {creatures.length} creatures
-                          </p>
-                        )}
                       </div>
                     )}
 
                     {/* Map and Details */}
-                    <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+                    <div className="flex-1 flex gap-4 overflow-hidden min-h-0 p-4 md:p-6">
                       {/* Map Container */}
                       <div className="flex-1 min-w-0 relative">
                         <div ref={mapContainerRef} className="w-full h-full rounded-lg overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
@@ -1093,7 +1095,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         </div>
                       )}
                     </div>
-                  </div>
+                  </>
                 )}
               </section>
             )}
