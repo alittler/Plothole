@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Book } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
 
 interface Creature {
   id: number;
