@@ -147,6 +147,9 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   const [creatureCategories, setCreatureCategories] = useState<string[]>([]);
   const [isPlacingLocationOnCreatureMap, setIsPlacingLocationOnCreatureMap] = useState(false);
   const [creatureMapLocationMarkers, setCreatureMapLocationMarkers] = useState<Map<string, any>>(new Map());
+  const [isCreatureSearchOpen, setIsCreatureSearchOpen] = useState(false);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  const [visibleLayers, setVisibleLayers] = useState({ creatures: true, locations: true });
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
 
@@ -214,7 +217,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
     loadCreatures();
   }, []);
 
-  // Filter creatures
+  // Filter creatures by search only
   useEffect(() => {
     let filtered = creatures;
 
@@ -225,16 +228,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
       );
     }
 
-    if (creatureCategoryFilter) {
-      filtered = filtered.filter(c => c.category === creatureCategoryFilter);
-    }
-
-    if (creatureAlignmentFilter) {
-      filtered = filtered.filter(c => c.alignment === creatureAlignmentFilter);
-    }
-
     setFilteredCreatures(filtered);
-  }, [creatureSearchTerm, creatureCategoryFilter, creatureAlignmentFilter, creatures]);
+  }, [creatureSearchTerm, creatures]);
 
   // Initialize bestiary map with Leaflet
   useEffect(() => {
@@ -249,6 +244,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
       }).addTo(map);
 
       creatures.forEach((creature) => {
+        if (!visibleLayers.creatures) return;
+        
         const color = ALIGNMENT_COLORS[creature.alignment] || '#6b7280';
         const marker = L.circleMarker([creature.lat, creature.lon], {
           radius: 8,
@@ -278,6 +275,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
       const newMarkers = new Map<string, any>();
       
       locationsWithCoords.forEach((location) => {
+        if (!visibleLayers.locations) return;
+        
         const locationMarker = L.circleMarker([location.y, location.x], {
           radius: 10,
           fillColor: '#10b981',
@@ -334,7 +333,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
         mapInstanceRef.current = null;
       }
     };
-  }, [creatures, data.locations, activeTab, isPlacingLocationOnCreatureMap, selectedCreature, onAddLocation]);
+  }, [creatures, data.locations, activeTab, isPlacingLocationOnCreatureMap, selectedCreature, onAddLocation, visibleLayers]);
 
   // Initialize locations map (MAP2) with Leaflet
   useEffect(() => {
@@ -880,49 +879,89 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   </div>
                 ) : (
                   <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6">
-                    {/* Filters */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                      <div className="relative">
-                        <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
-                        <input
-                          type="text"
-                          placeholder="Search creatures..."
-                          value={creatureSearchTerm}
-                          onChange={(e) => setCreatureSearchTerm(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
+                    {/* Toolbar */}
+                    <div className="flex gap-3 mb-4 flex-wrap items-center">
+                      <button
+                        onClick={() => setIsCreatureSearchOpen(!isCreatureSearchOpen)}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                        title="Search creatures"
+                      >
+                        <Search size={16} />
+                        <span className="hidden sm:inline">Search</span>
+                      </button>
+
+                      <button
+                        onClick={() => setVisibleLayers({ ...visibleLayers, creatures: !visibleLayers.creatures })}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                          visibleLayers.creatures
+                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white'
+                            : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                        }`}
+                        title="Toggle creatures layer"
+                      >
+                        🐉 <span className="hidden sm:inline">Creatures</span>
+                      </button>
+
+                      <button
+                        onClick={() => setVisibleLayers({ ...visibleLayers, locations: !visibleLayers.locations })}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                          visibleLayers.locations
+                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white'
+                            : 'bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                        }`}
+                        title="Toggle locations layer"
+                      >
+                        📍 <span className="hidden sm:inline">Locations</span>
+                      </button>
+
+                      <div className="flex-1" />
+
+                      <button
+                        onClick={() => onAddLocation({ id: generateId(), name: 'New Location from Manuscript', description: 'Added from manuscript analysis', type: 'Notable Site', source: 'ai' })}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                        title="Add location from manuscript"
+                      >
+                        <Plus size={16} />
+                        <span className="hidden sm:inline">Add Location</span>
+                      </button>
+
+                      <button
+                        onClick={() => setIsMapFullscreen(!isMapFullscreen)}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-lg text-sm font-semibold transition-colors"
+                        title="Toggle fullscreen"
+                      >
+                        <Maximize2 size={16} />
+                        <span className="hidden sm:inline">Fullscreen</span>
+                      </button>
+                    </div>
+
+                    {/* Search Panel */}
+                    {isCreatureSearchOpen && (
+                      <div className="mb-4 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div className="flex gap-2 items-center">
+                          <Search size={18} className="text-slate-600 dark:text-slate-400 flex-shrink-0" />
+                          <input
+                            type="text"
+                            placeholder="Search creatures by name or lore..."
+                            value={creatureSearchTerm}
+                            onChange={(e) => setCreatureSearchTerm(e.target.value)}
+                            autoFocus
+                            className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <button
+                            onClick={() => setIsCreatureSearchOpen(false)}
+                            className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                          >
+                            <X size={18} className="text-slate-600 dark:text-slate-400" />
+                          </button>
+                        </div>
+                        {creatureSearchTerm && (
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                            Found {filteredCreatures.length} of {creatures.length} creatures
+                          </p>
+                        )}
                       </div>
-
-                      <select
-                        value={creatureCategoryFilter}
-                        onChange={(e) => setCreatureCategoryFilter(e.target.value)}
-                        className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="">All Categories</option>
-                        {creatureCategories.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
-                          </option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={creatureAlignmentFilter}
-                        onChange={(e) => setCreatureAlignmentFilter(e.target.value)}
-                        className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="">All Alignments</option>
-                        {Object.keys(ALIGNMENT_COLORS).map((alignment) => (
-                          <option key={alignment} value={alignment}>
-                            {alignment}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-4">
-                      Showing {filteredCreatures.length} of {creatures.length} creatures
-                    </div>
+                    )}
 
                     {/* Map and Details */}
                     <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
