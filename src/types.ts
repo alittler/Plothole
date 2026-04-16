@@ -296,9 +296,6 @@ export interface ProjectData {
   mapUnit?: string;
   mapDefaultView?: any;
   paths?: MapPath[];
-
-  // Generated maps (from Fantasy Map Generator)
-  generatedMaps?: GeneratedMap[];
 }
 
 export interface MapPath {
@@ -460,25 +457,6 @@ export interface ProseDocument {
   title: string;
   content: string;
   lastModified: number;
-}
-
-export interface GeneratedMap {
-  id: string;
-  kingdomName: string;
-  image?: string; // PNG/SVG as data URL
-  geoJsonData?: any; // Raw geographic data
-  seedParameters?: string; // Random seed for reproducibility
-  demographicParams?: {
-    physicalAreaSqMiles: number;
-    populationDensity: 'Desolate' | 'Low' | 'Settled' | 'Average' | 'High' | 'Maximum';
-    totalPopulation?: number;
-    numSettlements?: number;
-    numCities?: number;
-    numCastles?: number;
-  };
-  fullMapState?: any; // Complete Azgaar state for re-editing
-  createdAt: number;
-  updatedAt: number;
 }
 
 export interface Relationship {
