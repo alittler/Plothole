@@ -66,17 +66,18 @@ export async function POST(request: NextRequest) {
         });
         
         const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-        let url = await getSignedUrl(s3Client, getCommand, { expiresIn });
+        const presignedUrl = await getSignedUrl(s3Client, getCommand, { expiresIn });
         
-        // Force region-agnostic format if requested (remove .s3.[region]. from the URL)
-        // From: https://bucket.s3.us-east-1.amazonaws.com/...
-        // To:   https://bucket.s3.amazonaws.com/...
-        if (url.includes('.s3.') && url.includes('.amazonaws.com')) {
-          url = url.replace(/\.s3\.[a-z0-9-]+\.amazonaws\.com/, '.s3.amazonaws.com');
-        }
+        // The region-agnostic format AWS requested (only works if bucket is public)
+        const publicUrl = `https://${s3Bucket}.s3.amazonaws.com/${key}`;
         
-        console.log('[Upload] File uploaded to S3. URL generated:', url);
-        return NextResponse.json({ url });
+        console.log('[Upload] File uploaded to S3.');
+        console.log('[Upload] Public URL:', publicUrl);
+        
+        return NextResponse.json({ 
+          url: publicUrl, // Use the agnostic format as primary
+          presignedUrl: presignedUrl 
+        });
       } catch (s3Err) {
         console.error('[Upload] S3 Upload failed:', s3Err);
         // Fallback to direct URL if signing fails (using region-agnostic format)

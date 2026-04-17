@@ -49,16 +49,6 @@ const isS3Configured = !!(
 
 console.log(`[S3] Initializing with region: ${process.env.AWS_REGION || 'us-west-2'} (Bucket: ${s3Bucket})`);
 
-/**
- * Formats an S3 URL to be region-agnostic as requested by AWS
- */
-const formatS3Url = (url: string): string => {
-  if (url.includes('.s3.') && url.includes('.amazonaws.com')) {
-    return url.replace(/\.s3\.[a-z0-9-]+\.amazonaws\.com/, '.s3.amazonaws.com');
-  }
-  return url;
-};
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -248,9 +238,14 @@ async function startServer() {
             Key: key,
           });
           const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-          const url = formatS3Url(await getSignedUrl(s3Client, command, { expiresIn }));
-          console.log('File uploaded to S3. URL generated:', key);
-          return res.json({ url });
+          const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+          const publicUrl = `https://${s3Bucket}.s3.amazonaws.com/${key}`;
+          
+          console.log('File uploaded to S3. URL generated:', publicUrl);
+          return res.json({ 
+            url: publicUrl,
+            presignedUrl: presignedUrl 
+          });
         } catch (signErr) {
           console.error('Failed to generate presigned URL:', signErr);
           // Fallback: Construct direct S3 URL if signing fails
@@ -302,7 +297,11 @@ async function startServer() {
               Key: s3Key,
             });
             const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-            presignedUrl = formatS3Url(await getSignedUrl(s3Client, command, { expiresIn }));
+            const secureUrl = await getSignedUrl(s3Client, command, { expiresIn });
+            presignedUrl = secureUrl; // Keep for internal use if needed
+            // Use agnostic public format for the primary URL
+            const agnosticUrl = `https://${s3Bucket}.s3.amazonaws.com/${s3Key}`;
+            presignedUrl = agnosticUrl; 
           } catch (signErr) {
             console.error('Failed to generate presigned URL for source-upload:', signErr);
             // Fallback: Construct direct S3 URL if signing fails
@@ -408,7 +407,7 @@ async function startServer() {
           Key: s3Key,
         });
         const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-        publicMetaUrl = formatS3Url(await getSignedUrl(s3Client, command, { expiresIn }));
+        publicMetaUrl = `https://${s3Bucket}.s3.amazonaws.com/${s3Key}`;
       } catch (err) {
         console.error('Failed to generate presigned URL for metadata:', err);
       }
@@ -441,7 +440,7 @@ async function startServer() {
             Key: s3Key,
           });
           const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-          mdUrl = formatS3Url(await getSignedUrl(s3Client, command, { expiresIn }));
+          mdUrl = `https://${s3Bucket}.s3.amazonaws.com/${s3Key}`;
         } catch (err) {
           console.error('Failed to generate presigned URL for markdown:', err);
         }
@@ -792,9 +791,13 @@ async function startServer() {
       });
 
       const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-      const url = formatS3Url(await getSignedUrl(s3Client, command, { expiresIn }));
+      const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+      const publicUrl = `https://${s3Bucket}.s3.amazonaws.com/${key}`;
 
-      res.json({ url });
+      res.json({ 
+        url: publicUrl,
+        presignedUrl: presignedUrl 
+      });
     } catch (err) {
       console.error('Failed to generate presigned URL:', err);
       res.status(500).json({ 

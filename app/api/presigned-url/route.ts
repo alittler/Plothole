@@ -44,14 +44,13 @@ export async function POST(request: NextRequest) {
 
     const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
     try {
-      let url = await getSignedUrl(s3Client, command, { expiresIn });
-      
-      // Force region-agnostic format (remove .s3.[region]. from the URL)
-      if (url.includes('.s3.') && url.includes('.amazonaws.com')) {
-        url = url.replace(/\.s3\.[a-z0-9-]+\.amazonaws\.com/, '.s3.amazonaws.com');
-      }
+      const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+      const publicUrl = `https://${s3Bucket}.s3.amazonaws.com/${key}`;
 
-      return NextResponse.json({ url });
+      return NextResponse.json({ 
+        url: publicUrl,
+        presignedUrl: presignedUrl 
+      });
     } catch (signErr) {
       console.error('[Presigned URL API] Failed to sign URL, falling back to public format:', signErr);
       const publicUrl = `https://${s3Bucket}.s3.amazonaws.com/${key}`;
