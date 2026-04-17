@@ -443,6 +443,10 @@ export interface Note {
   isCanon?: boolean;
   expandedContent?: string;
   metaSummary?: string;
+  note_type?: 'global' | 'ephemeral';
+  anchor_target?: string;
+  created?: string;
+  modified?: string;
 }
 
 export interface Inspiration {

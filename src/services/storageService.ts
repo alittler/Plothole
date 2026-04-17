@@ -835,7 +835,8 @@ export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
     anchor_target: refNote.anchor_target,
     note_type: refNote.note_type,
     created: new Date().toISOString(),
-    modified: new Date().toISOString()
+    modified: new Date().toISOString(),
+    timestamp: Date.now()
   }));
 
   return {

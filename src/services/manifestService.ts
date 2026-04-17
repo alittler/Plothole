@@ -165,7 +165,7 @@ export const saveManifest = async (
     const tempKey = `${manifestPath}.tmp.${Date.now()}`;
 
     // Convert records to JSONL format
-    const manifestContent = records.map((r) => JSON.stringify(r)).join('\n');
+    let manifestContent = records.map((r) => JSON.stringify(r)).join('\n');
     if (records.length > 0) {
       manifestContent += '\n'; // Trailing newline for JSONL
     }

@@ -11,7 +11,7 @@ import { Resend } from 'resend';
 import * as Sentry from "@sentry/node";
 import multer from 'multer';
 import multerS3 from 'multer-s3';
-import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, PutBucketLifecycleConfigurationCommand } from '@aws-sdk/client-s3';
+import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, PutBucketLifecycleConfigurationCommand, ExpirationStatus } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { default as simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
@@ -74,13 +74,13 @@ const setupS3LifecyclePolicy = async () => {
       Rules: [
         {
           Id: 'delete-test-uploads-3days',
-          Status: 'Enabled',
+          Status: ExpirationStatus.Enabled,
           Filter: { Prefix: 'uploads/test-' },
           Expiration: { Days: 3 },
         },
         {
           Id: 'delete-temp-files-7days',
-          Status: 'Enabled',
+          Status: ExpirationStatus.Enabled,
           Filter: { Prefix: 'temp/' },
           Expiration: { Days: 7 },
         },

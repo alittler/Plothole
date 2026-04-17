@@ -1,4 +1,5 @@
-import * as pdfParse from 'pdf-parse';
+import _pdfParse from 'pdf-parse';
+const pdfParse: any = _pdfParse;
 import Tesseract from 'tesseract.js';
 import * as fs from 'fs';
 import * as path from 'path';
