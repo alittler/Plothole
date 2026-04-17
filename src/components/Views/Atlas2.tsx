@@ -2,16 +2,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ViewType, ProjectData, Location, Artifact, LoreEntry, Note, ProseDocument, User, ProjectMetadata, MapPath, Character } from '../../types';
-import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers, Footprints as PawPrint, Lock, Unlock, Sun, Star } from 'lucide-react';
+import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers, Footprints as PawPrint, Lock, Unlock } from 'lucide-react';
 
 import { MapView } from '../ui/MapView2';
-import { CelestialTrackerView } from './CelestialTrackerView';
 import { WikiText } from '../ui/WikiText';
 import { generateId } from '../../services/storageService';
 import { RichEditor } from '../ui/RichEditor';
 import { Modal } from '../ui/Modal';
 
-interface WorldSystemViewProps {
+interface Atlas2Props {
   currentView: ViewType;
   onChangeView: (view: ViewType, params?: { creatureId?: number }) => void;
   data: ProjectData;
@@ -42,8 +41,7 @@ enum WorldTab {
   MAP = 'Interactive Map',
   LOCATIONS = 'Locations & Paths',
   INVENTORY = 'Inventory',
-  RECIPE_BOOK = 'Recipe Book',
-  CELESTIAL = 'Celestial Tracker'
+  RECIPE_BOOK = 'Recipe Book'
 }
 
 // Parse directional coordinates like "51.5280° N, 123.1207° W" to +/- format
@@ -66,7 +64,7 @@ function parseDirectionalCoordinates(input: string): { lat: number; lng: number 
   return { lat, lng };
 }
 
-export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
+export const Atlas2: React.FC<Atlas2Props> = ({
   data, 
   onUpdateProject, 
   onLinkClick,
@@ -320,7 +318,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   {tab === WorldTab.LOCATIONS && <MapPin size={14} />}
                   {tab === WorldTab.INVENTORY && <Box size={14} />}
                   {tab === WorldTab.RECIPE_BOOK && <Book size={14} />}
-                  {tab === WorldTab.CELESTIAL && <Star size={14} />}
                   <span className="hidden sm:inline">{tab}</span>
                 </button>
               ))}
@@ -1045,15 +1042,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   </p>
                 </div>
               </section>
-            )}
-
-            {activeTab === WorldTab.CELESTIAL && (
-              <div className="w-full h-full min-h-screen bg-slate-950 rounded-lg overflow-hidden">
-                <CelestialTrackerView
-                  locations={data.locations || []}
-                  selectedCharacter={null}
-                />
-              </div>
             )}
           </div>
         </div>

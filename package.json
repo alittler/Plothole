@@ -24,6 +24,12 @@
     "@tiptap/react": "^3.20.6",
     "@tiptap/starter-kit": "^3.20.6",
     "@types/dompurify": "^3.2.0",
+    "@uppy/core": "^5.2.0",
+    "@uppy/dashboard": "^5.1.1",
+    "@uppy/dropbox": "^5.1.0",
+    "@uppy/google-drive": "^5.1.0",
+    "@uppy/react": "^5.2.0",
+    "@uppy/xhr-upload": "^5.2.0",
     "@vercel/toolbar": "^0.2.2",
     "@xyflow/react": "^12.10.1",
     "better-sqlite3": "^12.4.1",
@@ -60,7 +66,9 @@
     "remark-gfm": "^4.0.1",
     "resend": "^6.9.3",
     "simple-git": "^3.33.0",
-    "tesseract.js": "^7.0.0"
+    "suncalc": "^1.9.0",
+    "tesseract.js": "^7.0.0",
+    "uppy": "^5.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",

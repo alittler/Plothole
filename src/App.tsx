@@ -27,6 +27,7 @@ import {
   } from './services/storageService';
   import { 
   analyzeStoryText, generateBookCover, generateCharacterPhysicalDescription, doubleProcessNote, extractThemesFromNotes, extractSoftAnchors, auditPlotThreads,
+  scanForContinuityErrors,
   DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid, analyzeRelationships, unifiedAnalysisSchema, detectManuscriptStructure
   } from './services/geminiService';
 import { initGitForProject, commitToGit, getGitLog, updateIntegrityHash } from './services/versioningService';
@@ -43,6 +44,7 @@ import { ResearchHubView } from './components/Views/ResearchHubView';
 import { CharacterView } from './components/Views/CharacterView';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
 import { WorldSystemView } from './components/Views/WorldSystemView';
+import { Atlas2 } from './components/Views/Atlas2';
 import { PlotSystemView } from './components/Views/PlotSystemView';
 import { SettingsView } from './components/Views/SettingsView';
 import { AdminView } from './components/Views/AdminView';
@@ -771,6 +773,22 @@ const App: React.FC = () => {
       removeTask('Auditing Plot Threads');
     }
   };
+  
+  const handleScanContinuity = async () => {
+    if (!projectData) return;
+    setIsAnalyzing(true);
+    addTask('Continuity Audit');
+    try {
+      const manuscript = (projectData.chapters || []).map(c => c.content).join('\n\n');
+      const errors = await scanForContinuityErrors(manuscript, projectData);
+      await updateProjectData({ continuityErrors: errors });
+    } catch (e) {
+      handleError(e);
+    } finally {
+      setIsAnalyzing(false);
+      removeTask('Continuity Audit');
+    }
+  };
 
   // Server Health Heartbeat
   useEffect(() => {
@@ -831,8 +849,27 @@ const handleRestoreCommit = async (commit: Commit) => {
     } catch (e) {
       console.error("Git init failed", e);
     }
+
+    let finalTitle = title || 'Sample Project';
+    let finalShortName = shortName || (useSample ? 'Sample' : '');
+
+    // If it's a sample project or empty title, handle incremental naming
+    if (useSample || !title) {
+      const existingTitles = projectsMetadata.map(p => p.title);
+      if (existingTitles.includes(finalTitle)) {
+        let counter = 2;
+        while (existingTitles.includes(`${finalTitle} ${counter}`)) {
+          counter++;
+        }
+        finalTitle = `${finalTitle} ${counter}`;
+        if (finalShortName) {
+          finalShortName = `${finalShortName} ${counter}`;
+        }
+      }
+    }
+
     let newProject: ProjectData = {
-      id, title, shortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: [], sources: [],
+      id, title: finalTitle, shortName: finalShortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: [], sources: [],
       lastProcessedManuscriptSha: '', lastProcessedPromptSha: '',
       wordCount: 0,
       charCount: 0,
@@ -919,8 +956,8 @@ const handleRestoreCommit = async (commit: Commit) => {
 
       newProject = {
         ...newProject,
-        title: title || 'Sample Project',
-        shortName: shortName || 'Sample',
+        title: finalTitle,
+        shortName: finalShortName,
         summary: 'In a world where memories are currency, a young archivist discovers a forgotten vault that could rewrite history—or erase it entirely.',
         themes: ['Memory', 'Power', 'Legacy', 'Sacrifice'],
         entities: [
@@ -1461,19 +1498,56 @@ const handleRestoreCommit = async (commit: Commit) => {
       case ViewType.MATRIX:
       case ViewType.PLOT_ANALYSIS:
       case ViewType.CALENDAR:
-        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={(c) => updateProjectData({ calendars: projectData.calendars.map(cal => cal.id === c.id ? c : cal) })} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => {}} onExtractSoftAnchors={handleExtractSoftAnchors} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
+        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={(c) => updateProjectData({ calendars: projectData.calendars.map(cal => cal.id === c.id ? c : cal) })} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => {}} onExtractSoftAnchors={handleExtractSoftAnchors} onScanContinuity={handleScanContinuity} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
 
       case ViewType.MAP:
+      case ViewType.ATLAS2:
       case ViewType.LOCATIONS:
       case ViewType.ENCYCLOPEDIA:
       case ViewType.INVENTORY:
       case ViewType.DICTIONARY:
       case ViewType.GALLERY:
-        return projectData ? <WorldSystemView 
-          currentView={currentView} 
-          onChangeView={setCurrentView} 
-          data={projectData} 
-          onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
+        if (!projectData) return null;
+        if (currentView === ViewType.ATLAS2) {
+          return <Atlas2 
+            currentView={currentView} 
+            onChangeView={setCurrentView} 
+            data={projectData} 
+            onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
+            onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
+            onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })}
+            onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })} 
+            onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })} 
+            onLinkClick={handleLinkClick} 
+            onUpdateMapOrder={() => {}} 
+            currentMapParentId={currentMapParentId} 
+            onMapChange={setCurrentMapParentId} 
+            onUpdateProject={updateProjectData} 
+            onAddArtifact={(a) => updateProjectData({ artifacts: [...(projectData.artifacts || []), a] })} 
+            onUpdateArtifact={(a) => updateProjectData({ artifacts: projectData.artifacts?.map(ar => ar.id === a.id ? a : ar) })} 
+            onDeleteArtifact={(id) => updateProjectData({ artifacts: projectData.artifacts?.filter(ar => ar.id !== id) })} 
+            onAddLore={(l) => updateProjectData({ lore: [...(projectData.lore || []), l] })} 
+            onDeleteLore={(id) => updateProjectData({ lore: projectData.lore?.filter(lo => lo.id !== id) })} 
+            isFullscreen={isMapFullscreen} 
+            onToggleFullscreen={() => setIsMapFullscreen(!isMapFullscreen)}
+            onLocationUndo={(id) => {
+              const loc = projectData.locations.find(l => l.id === id);
+              if (loc && loc.prevX !== undefined && loc.prevY !== undefined) {
+                updateProjectData({ locations: projectData.locations.map(l => l.id === id ? { ...l, x: loc.prevX, y: loc.prevY, prevX: undefined, prevY: undefined } : l) });
+              }
+            }}
+            onLocationReset={(id) => {
+              const loc = projectData.locations.find(l => l.id === id);
+              if (loc && loc.matchedX !== undefined && loc.matchedY !== undefined) {
+                updateProjectData({ locations: projectData.locations.map(l => l.id === id ? { ...l, x: loc.matchedX, y: loc.matchedY } : l) });
+              }
+            }}
+          />;
+        }
+        return <WorldSystemView
+          currentView={currentView}
+          onChangeView={setCurrentView}
+          data={projectData}          onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
           onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
           onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })}
  
@@ -1503,7 +1577,7 @@ const handleRestoreCommit = async (commit: Commit) => {
               updateProjectData({ locations: projectData.locations.map(l => l.id === id ? { ...l, x: loc.matchedX, y: loc.matchedY } : l) });
             }
           }}
-        /> : null;
+        />;
 
       case ViewType.TOOLBOX:
         return projectData ? (

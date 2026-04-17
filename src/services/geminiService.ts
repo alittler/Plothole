@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
-import { ManuscriptAnalysisResponse, Note, ProjectData, Character, Relationship, Artifact, LoreEntry, TimelineEvent, AnalysisOptions, AppPrompts, Language, Plotline, MatrixCell } from "../types";
+import { ManuscriptAnalysisResponse, Note, ProjectData, Character, Relationship, Artifact, LoreEntry, TimelineEvent, AnalysisOptions, AppPrompts, Language, Plotline, MatrixCell, ContinuityError, EntitySpan } from "../types";
 import { getAppPrompts, generateId, getApiKey, saveApiKey, getAppSettings } from "./storageService";
 
 let initializedApiKey: string | null = null;
@@ -174,6 +174,7 @@ export const DEFAULT_PROMPTS: AppPrompts = {
   TOOLBOX_URL_ANALYSIS: "Analyze this URL for creative writer utility.",
   GENERATE_CONLANG_WORD: 'Construct a word for "{word}" in "{langName}".',
   CONNECT_NOTES: "Synthesize these notes into a narrative thread.",
+  CONTINUITY_CHECK: "Identify factual contradictions or narrative inconsistencies within the manuscript and existing project data.",
   AI_MODEL: "gemini-2.5-flash"
 };
 
@@ -1093,5 +1094,126 @@ Provide a helpful, concise answer based on the source material that could help p
   } catch (err) {
     console.error("Source Analysis Error:", err);
     throw new Error("Failed to analyze source material. Please try again.");
+  }
+};
+
+export const scanForContinuityErrors = async (
+  manuscript: string, 
+  projectData: ProjectData
+): Promise<ContinuityError[]> => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
+
+  const entityData = {
+    characters: projectData.characters.map(c => ({ name: c.name, traits: c.traits, physical: c.physicalFeatures })),
+    locations: projectData.locations.map(l => ({ name: l.name, type: l.type, description: l.description })),
+    timeline: projectData.timeline.map(e => ({ title: e.title, date: e.date }))
+  };
+
+  const systemInstruction = `You are a master continuity editor. 
+  Your goal is to find factual contradictions between the provided manuscript and the existing world database.
+  Look for:
+  1. Physical changes (e.g. eye color, height).
+  2. Temporal errors (e.g. traveling impossible distances in short time).
+  3. Character details (e.g. name spellings, relative relationships).
+  4. Setting details.
+  
+  Return strictly a JSON array of ContinuityError objects.`;
+
+  const prompt = `
+  EXISTING DATABASE:
+  ${JSON.stringify(entityData)}
+
+  MANUSCRIPT SNIPPET:
+  ${manuscript.substring(0, 50000)}
+  `;
+
+  try {
+    const response = await withRetry(() => ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              type: { type: Type.STRING, enum: ["character", "location", "timeline", "artifact", "lore", "general"] },
+              severity: { type: Type.STRING, enum: ["low", "medium", "high"] },
+              message: { type: Type.STRING },
+              context: { type: Type.STRING },
+              entityIds: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ["id", "type", "severity", "message", "context"]
+          }
+        }
+      }
+    }));
+    const errors = safeJsonParse(response.text, []);
+    return errors.map((e: any) => ({ ...e, id: e.id || generateId() }));
+  } catch (err) {
+    console.error("Continuity Scan Error:", err);
+    return [];
+  }
+};
+
+export const extractEntitySpans = async (
+  text: string, 
+  projectData: ProjectData
+): Promise<EntitySpan[]> => {
+  const ai = getAiClient();
+  const prompts = await getCurrentPrompts();
+  const model = prompts.AI_MODEL || "gemini-2.5-flash";
+
+  const entities = [
+    ...projectData.characters.map(c => ({ id: c.id, name: c.name, type: 'character' as const })),
+    ...projectData.locations.map(l => ({ id: l.id, name: l.name, type: 'location' as const })),
+    ...projectData.lore?.map(l => ({ id: l.id, name: l.term, type: 'lore' as const })) || []
+  ];
+
+  const systemInstruction = `You are a text analysis engine. Find all mentions of the provided entities within the text. 
+  Return strictly a JSON array of EntitySpan objects with start/end character offsets.
+  The offsets must be accurate for the provided text.`;
+
+  const prompt = `
+  ENTITIES TO FIND:
+  ${JSON.stringify(entities)}
+
+  TEXT:
+  ${text.substring(0, 10000)}
+  `;
+
+  try {
+    const response = await withRetry(() => ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              entityId: { type: Type.STRING },
+              entityName: { type: Type.STRING },
+              type: { type: Type.STRING, enum: ["character", "location", "artifact", "lore"] },
+              start: { type: Type.INTEGER },
+              end: { type: Type.INTEGER },
+              snippet: { type: Type.STRING }
+            },
+            required: ["entityId", "entityName", "type", "start", "end", "snippet"]
+          }
+        }
+      }
+    }));
+    return safeJsonParse(response.text, []);
+  } catch (err) {
+    console.error("Entity Span Extraction Error:", err);
+    return [];
   }
 };

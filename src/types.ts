@@ -28,7 +28,9 @@ export enum ViewType {
   WORKSPACE_HUB = 'WorkspaceHub',
   SYSTEM_HUB = 'SystemHub',
   RESEARCH = 'Research',
-  BESTIARY = 'Bestiary'
+  BESTIARY = 'Bestiary',
+  ATLAS2 = 'Atlas2',
+  CELESTIAL = 'Celestial'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -279,6 +281,7 @@ export interface ProjectData {
     nodes: any[];
     edges: any[];
   };
+  continuityErrors?: ContinuityError[];
 
   wikiSettings?: {
     includeCharacters?: boolean;
@@ -564,6 +567,7 @@ export interface User {
     colorfulIcons: boolean;
     semanticSearchEnabled: boolean;
     reducedMotion?: boolean;
+    mapLanguage?: string;
   };
 }
 
@@ -653,3 +657,20 @@ export interface AnalysisOptions {
   extractLore?: boolean;
 }
 
+export interface ContinuityError {
+  id: string;
+  type: 'character' | 'location' | 'timeline' | 'artifact' | 'lore' | 'general';
+  severity: 'low' | 'medium' | 'high';
+  message: string;
+  context: string; // The text that triggered the error
+  entityIds?: string[]; // Related entity IDs
+}
+
+export interface EntitySpan {
+  entityId: string;
+  entityName: string;
+  type: 'character' | 'location' | 'artifact' | 'lore';
+  start: number;
+  end: number;
+  snippet: string;
+}

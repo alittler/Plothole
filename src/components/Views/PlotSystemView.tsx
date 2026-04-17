@@ -16,6 +16,7 @@ interface PlotSystemViewProps {
   onUpdateTimelineEvent: (e: TimelineEvent) => void;
   onAnalyzePlot: () => void;
   onExtractSoftAnchors: () => void;
+  onScanContinuity: () => void;
   onUpdateProject: (updates: Partial<ProjectData>) => void;
   isAnalyzing?: boolean;
 }
@@ -23,11 +24,12 @@ interface PlotSystemViewProps {
 enum PlotTab {
   TIMELINE = 'Timeline',
   CALENDAR = 'Calendar',
-  REVISIONS = 'Revisions'
+  REVISIONS = 'Revisions',
+  AUDIT = 'Audit'
 }
 
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
-  data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, isAnalyzing, onLinkClick
+  data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, onScanContinuity, isAnalyzing, onLinkClick
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as PlotTab) || PlotTab.TIMELINE;
@@ -143,6 +145,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                 {tab === PlotTab.TIMELINE && <List size={14} />}
                 {tab === PlotTab.CALENDAR && <Clock size={14} />}
                 {tab === PlotTab.REVISIONS && <FileText size={14} />}
+                {tab === PlotTab.AUDIT && <Sparkles size={14} />}
                 <span className="hidden sm:inline">{tab}</span>
               </button>
             ))}
@@ -278,19 +281,64 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
             </div>
           )}
 
-          {activeTab === PlotTab.REVISIONS && (
-            <div className="space-y-6 animate-in fade-in duration-500">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Revision Log</h2>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                   Incremental Changes
+          {activeTab === PlotTab.AUDIT && (
+            <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Continuity Scan</h2>
+                  <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">Identify factual contradictions in the world.</p>
                 </div>
+                <button 
+                  onClick={onScanContinuity}
+                  disabled={isAnalyzing}
+                  className="ph-button-primary w-full sm:w-auto flex items-center justify-center gap-2"
+                >
+                  {isAnalyzing ? <span className="animate-spin inline-block">⏳</span> : <Sparkles size={16} />} 
+                  {isAnalyzing ? "Scanning..." : "Perform AI Audit"}
+                </button>
               </div>
 
-              <div className="bg-slate-900 rounded-2xl p-8 md:p-12 shadow-2xl border border-slate-800 overflow-hidden">
-                <pre className="font-mono text-xs md:text-sm leading-relaxed text-emerald-400/90 overflow-x-auto whitespace-pre-wrap">
-                  {data.history_diff || 'No revision history recorded yet.'}
-                </pre>
+              <div className="space-y-4">
+                {(!data.continuityErrors || data.continuityErrors.length === 0) ? (
+                  <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
+                    <Sparkles size={48} className="text-slate-200" />
+                    <p className="text-slate-400 font-serif italic text-sm px-6">No continuity errors detected yet. Run a scan to find inconsistencies.</p>
+                  </div>
+                ) : (
+                  data.continuityErrors.map(error => (
+                    <div key={error.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border-l-8 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md" style={{ borderLeftColor: error.severity === 'high' ? '#ef4444' : error.severity === 'medium' ? '#f59e0b' : '#3b82f6' }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
+                            error.severity === 'high' ? 'bg-red-100 text-red-600' : 
+                            error.severity === 'medium' ? 'bg-amber-100 text-amber-600' : 
+                            'bg-blue-100 text-blue-600'
+                          }`}>
+                            {error.severity} priority
+                          </span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{error.type}</span>
+                        </div>
+                      </div>
+                      <p className="text-slate-800 dark:text-slate-200 font-bold mb-2">{error.message}</p>
+                      <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl text-xs font-mono text-slate-500 border border-slate-100 dark:border-slate-800 italic">
+                        "{error.context}"
+                      </div>
+                      {error.entityIds && error.entityIds.length > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {error.entityIds.map(id => (
+                            <button 
+                              key={id}
+                              onClick={() => onLinkClick('admin', id)}
+                              className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-[9px] font-bold text-slate-500 rounded hover:bg-indigo-100 hover:text-indigo-600 transition-colors"
+                            >
+                              Explore {id.substring(0, 8)}...
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
