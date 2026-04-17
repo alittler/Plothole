@@ -49,6 +49,16 @@ const isS3Configured = !!(
 
 console.log(`[S3] Initializing with region: ${process.env.AWS_REGION || 'us-west-2'} (Bucket: ${s3Bucket})`);
 
+/**
+ * Formats an S3 URL to be region-agnostic as requested by AWS
+ */
+const formatS3Url = (url: string): string => {
+  if (url.includes('.s3.') && url.includes('.amazonaws.com')) {
+    return url.replace(/\.s3\.[a-z0-9-]+\.amazonaws\.com/, '.s3.amazonaws.com');
+  }
+  return url;
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -238,13 +248,13 @@ async function startServer() {
             Key: key,
           });
           const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-          const url = await getSignedUrl(s3Client, command, { expiresIn });
-          console.log('File uploaded to S3. Presigned URL generated:', key);
+          const url = formatS3Url(await getSignedUrl(s3Client, command, { expiresIn }));
+          console.log('File uploaded to S3. URL generated:', key);
           return res.json({ url });
         } catch (signErr) {
           console.error('Failed to generate presigned URL:', signErr);
           // Fallback: Construct direct S3 URL if signing fails
-          const fallbackUrl = `https://${s3Bucket}.s3.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${key}`;
+          const fallbackUrl = `https://${s3Bucket}.s3.amazonaws.com/${key}`;
           console.log('Falling back to direct S3 URL:', fallbackUrl);
           return res.json({ url: fallbackUrl, presigned: false });
         }
@@ -292,11 +302,11 @@ async function startServer() {
               Key: s3Key,
             });
             const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-            presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+            presignedUrl = formatS3Url(await getSignedUrl(s3Client, command, { expiresIn }));
           } catch (signErr) {
             console.error('Failed to generate presigned URL for source-upload:', signErr);
             // Fallback: Construct direct S3 URL if signing fails
-            presignedUrl = `https://${s3Bucket}.s3.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${s3Key}`;
+            presignedUrl = `https://${s3Bucket}.s3.amazonaws.com/${s3Key}`;
             console.log('Using direct S3 URL fallback:', presignedUrl);
           }
         } catch (s3Err) {
@@ -398,7 +408,7 @@ async function startServer() {
           Key: s3Key,
         });
         const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-        publicMetaUrl = await getSignedUrl(s3Client, command, { expiresIn });
+        publicMetaUrl = formatS3Url(await getSignedUrl(s3Client, command, { expiresIn }));
       } catch (err) {
         console.error('Failed to generate presigned URL for metadata:', err);
       }
@@ -431,7 +441,7 @@ async function startServer() {
             Key: s3Key,
           });
           const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-          mdUrl = await getSignedUrl(s3Client, command, { expiresIn });
+          mdUrl = formatS3Url(await getSignedUrl(s3Client, command, { expiresIn }));
         } catch (err) {
           console.error('Failed to generate presigned URL for markdown:', err);
         }
@@ -782,7 +792,7 @@ async function startServer() {
       });
 
       const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-      const url = await getSignedUrl(s3Client, command, { expiresIn });
+      const url = formatS3Url(await getSignedUrl(s3Client, command, { expiresIn }));
 
       res.json({ url });
     } catch (err) {

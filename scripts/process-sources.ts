@@ -78,7 +78,7 @@ async function main() {
 
   try {
     if (command === 'process') {
-      console.log(`\n📄 Processing sources in s3://${bucket}/${prefix}`);
+      console.log(`\n📄 Processing sources in https://${bucket}.s3.amazonaws.com/${prefix}`);
       console.log('==================================================\n');
 
       const result = await processFolder(bucket, prefix);
@@ -96,7 +96,7 @@ async function main() {
         }
       }
     } else if (command === 'verify') {
-      console.log(`\n🔍 Verifying manifest for s3://${bucket}/${prefix}`);
+      console.log(`\n🔍 Verifying manifest for https://${bucket}.s3.amazonaws.com/${prefix}`);
       console.log('==================================================\n');
 
       const result = await verifyFolder(bucket, prefix);

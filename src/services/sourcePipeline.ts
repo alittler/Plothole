@@ -144,7 +144,7 @@ export const processFolder = async (
 
   try {
     console.log(
-      `[Source Pipeline] Starting processing for s3://${bucket}/${prefix}`
+      `[Source Pipeline] Starting processing for https://${bucket}.s3.amazonaws.com/${prefix}`
     );
 
     // Load existing manifest
@@ -273,7 +273,7 @@ export const verifyFolder = async (
 
   try {
     console.log(
-      `[Source Verification] Starting verification for s3://${bucket}/${prefix}`
+      `[Source Verification] Starting verification for https://${bucket}.s3.amazonaws.com/${prefix}`
     );
 
     // Load manifest

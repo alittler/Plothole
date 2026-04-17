@@ -5,16 +5,20 @@ import fs from 'fs';
 import path from 'path';
 import { getUserId } from '@/app/api/auth';
 
+const region = process.env.AWS_REGION || 'us-west-2';
+const s3Bucket = process.env.AWS_S3_BUCKET || 'plothole-uploads';
+
 // S3 Client Configuration
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-west-2',
+  region: region,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
   },
 });
 
-const s3Bucket = process.env.AWS_S3_BUCKET || '';
+console.log(`[Upload API] Initialized S3 client for region: ${region}, bucket: ${s3Bucket}`);
+
 const isS3Configured = !!(
   process.env.AWS_ACCESS_KEY_ID && 
   process.env.AWS_SECRET_ACCESS_KEY && 
@@ -31,15 +35,16 @@ export async function POST(request: NextRequest) {
     // }
 
     const formData = await request.formData();
-    const file = formData.get('image') as File | null;
+    // Accept either 'image' (custom) or 'file' (Uppy/default)
+    const file = (formData.get('image') || formData.get('file')) as File | null;
 
     if (!file) {
-      console.error('[Upload] No file in request');
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      console.error('[Upload] No file in request. FormData keys:', Array.from(formData.keys()));
+      return NextResponse.json({ error: 'No file uploaded. Expected "image" or "file" field.' }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = file.name;
+    const filename = file.name || 'uploaded-file';
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const fileExt = path.extname(filename);
     const key = `uploads/image-${uniqueSuffix}${fileExt}`;
@@ -61,14 +66,21 @@ export async function POST(request: NextRequest) {
         });
         
         const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-        const url = await getSignedUrl(s3Client, getCommand, { expiresIn });
+        let url = await getSignedUrl(s3Client, getCommand, { expiresIn });
         
-        console.log('[Upload] File uploaded to S3. Presigned URL generated:', key);
+        // Force region-agnostic format if requested (remove .s3.[region]. from the URL)
+        // From: https://bucket.s3.us-east-1.amazonaws.com/...
+        // To:   https://bucket.s3.amazonaws.com/...
+        if (url.includes('.s3.') && url.includes('.amazonaws.com')) {
+          url = url.replace(/\.s3\.[a-z0-9-]+\.amazonaws\.com/, '.s3.amazonaws.com');
+        }
+        
+        console.log('[Upload] File uploaded to S3. URL generated:', url);
         return NextResponse.json({ url });
       } catch (s3Err) {
         console.error('[Upload] S3 Upload failed:', s3Err);
-        // Fallback to direct URL if signing fails
-        const fallbackUrl = `https://${s3Bucket}.s3.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${key}`;
+        // Fallback to direct URL if signing fails (using region-agnostic format)
+        const fallbackUrl = `https://${s3Bucket}.s3.amazonaws.com/${key}`;
         return NextResponse.json({ url: fallbackUrl, presigned: false });
       }
     }
@@ -88,11 +100,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url });
 
   } catch (error) {
-    console.error('[Upload] Error in upload endpoint:', error);
+    console.error('[Upload API] Error in upload endpoint:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Provide a helpful hint for the common "specified endpoint" error
+    let hint = '';
+    if (errorMessage.includes('must be addressed using the specified endpoint')) {
+      hint = ` REGION MISMATCH: Your AWS_REGION ("${region}") does not match the bucket's actual region. Please check your .env file.`;
+    }
+
     return NextResponse.json(
-      { error: `Upload processing failed: ${errorMessage}` },
+      { error: `Upload processing failed: ${errorMessage}${hint}` },
       { status: 500 }
     );
   }
+
 }
