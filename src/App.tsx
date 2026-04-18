@@ -1,13 +1,13 @@
 // FORCE REFRESH - PLOTHOLE V2
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
-import { 
-  ProjectData, ProjectMetadata, User, ViewType, Note, 
+import {
+  ProjectData, ProjectMetadata, User, ViewType, Note,
   AppPrompts, AppSettings, ToolboxLink, Artifact, LoreEntry, TimelineEvent, Idea, ChangeLogEntry, Relationship, SemanticDocument, ProseDocument, Chapter
 } from './types';
-import { 
-  getAllProjectsMetadata, loadProjectById, saveProjectData, 
-  deleteProject, getAllGlobalNotes, saveGlobalNote, 
+import {
+  getAllProjectsMetadata, loadProjectById, saveProjectData,
+  deleteProject, getAllGlobalNotes, saveGlobalNote,
   deleteGlobalNote, clearDatabase, clearAllGlobalNotes,
   getAllGlobalResources, saveGlobalResource, deleteGlobalResource,
   exportFullArchive,
@@ -24,12 +24,12 @@ import {
   setCloudStorageEnabled,
   isCloudStorageActive,
   setServerHealth
-  } from './services/storageService';
-  import { 
+} from './services/storageService';
+import {
   analyzeStoryText, generateBookCover, generateCharacterPhysicalDescription, doubleProcessNote, extractThemesFromNotes, extractSoftAnchors, auditPlotThreads,
   scanForContinuityErrors,
   DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid, analyzeRelationships, unifiedAnalysisSchema, detectManuscriptStructure
-  } from './services/geminiService';
+} from './services/geminiService';
 import { initGitForProject, commitToGit, getGitLog, updateIntegrityHash } from './services/versioningService';
 import { Commit, BackupStatus } from './types';
 
@@ -53,7 +53,6 @@ import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
-import { DynamicForgeView } from './components/Views/DynamicForgeView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
@@ -125,7 +124,7 @@ const App: React.FC = () => {
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [globalResources, setGlobalResources] = useState<ToolboxLink[]>([]);
   const [appPrompts, setAppPromptsState] = useState<AppPrompts>(DEFAULT_PROMPTS);
-  const [appSettings, setAppSettings] = useState<AppSettings>({ 
+  const [appSettings, setAppSettings] = useState<AppSettings>({
     appName: 'Plothole — Your Story, Decoded',
     adminEmails: ['alittler86@gmail.com'],
     defaultToolboxLinks: [
@@ -173,17 +172,17 @@ const App: React.FC = () => {
       }
     ]
   });
-  
+
   const [currentUser, setCurrentUser] = useState<User>(DEMO_USER);
   const [isServerConnected, setIsServerConnected] = useState(true);
-  
+
   // Sync Auth0 user with app user
   useEffect(() => {
     if (!isAuthLoading && auth0User) {
       const email = auth0User.email || '';
-      const isAdmin = (auth0User['https://plothole.ai/roles']?.includes('admin')) || 
-                      (appSettings.adminEmails?.includes(email)) ||
-                      (process.env.NODE_ENV === 'development' && email.endsWith('@plothole.ai'));
+      const isAdmin = (auth0User['https://plothole.ai/roles']?.includes('admin')) ||
+        (appSettings.adminEmails?.includes(email)) ||
+        (process.env.NODE_ENV === 'development' && email.endsWith('@plothole.ai'));
 
       setCurrentUser(prev => ({
         ...prev,
@@ -268,7 +267,7 @@ const App: React.FC = () => {
     try {
       // If editing the active project, update it and save
       if (projectData?.id === id) {
-        const updated = {...projectData, title, author, shortName};
+        const updated = { ...projectData, title, author, shortName };
         setProjectData(updated);
         await saveProjectData(updated);
       }
@@ -313,7 +312,7 @@ const App: React.FC = () => {
 
   const updateProjectData = useCallback(async (updatesOrFn: Partial<ProjectData> | ((prev: ProjectData) => Partial<ProjectData>)) => {
     if (!projectData) return;
-    
+
     try {
       // 1. Calculate updates
       const prev = projectData;
@@ -362,7 +361,7 @@ const App: React.FC = () => {
     try {
       const manuscriptText = projectData.latestManuscriptText || '';
       const promptText = JSON.stringify(appPrompts) + JSON.stringify(unifiedAnalysisSchema);
-      
+
       const [currentManuscriptSha, currentPromptSha] = await Promise.all([
         generateSHA256(manuscriptText),
         generateSHA256(promptText)
@@ -383,7 +382,7 @@ const App: React.FC = () => {
       const analysis = await analyzeStoryText(manuscriptText, projectData.aiContextLimit, undefined, (msg) => {
         setProcessingStatus(msg);
       });
-      
+
       setProcessingStatus("Merging Data Fragments...");
       // Smart Merge logic
       const updates: Partial<ProjectData> = {
@@ -397,7 +396,7 @@ const App: React.FC = () => {
 
       if (analysis.characters.length > 0) {
         const existingChars = [...projectData.characters];
-        
+
         // Helper function to determine tier based on role
         const getTierFromRole = (role: string): number => {
           const lowerRole = role.toLowerCase();
@@ -409,24 +408,24 @@ const App: React.FC = () => {
             return 3; // Background tier (Minor, etc.)
           }
         };
-        
+
         // Process each analyzed character
         for (const nc of analysis.characters) {
           const idx = existingChars.findIndex(ec => ec.name.toLowerCase() === nc.name.toLowerCase());
           const characterTier = getTierFromRole(nc.role || 'Minor');
           const isCoreTier = characterTier === 1;
-          
+
           if (idx >= 0) {
             // Update existing character: prefer new data for job/role if current is empty
-            existingChars[idx] = { 
-              ...existingChars[idx], 
+            existingChars[idx] = {
+              ...existingChars[idx],
               job: existingChars[idx].job || nc.job || '',
               role: (existingChars[idx].role === 'Supporting' || existingChars[idx].role === 'Minor') ? (nc.role || existingChars[idx].role) : existingChars[idx].role,
               description: existingChars[idx].description.length < 10 ? (nc.description || existingChars[idx].description) : existingChars[idx].description,
               firstMentionOffset: nc.firstMentionOffset || existingChars[idx].firstMentionOffset,
               tier: existingChars[idx].tier !== undefined ? existingChars[idx].tier : characterTier
             };
-            
+
             // Auto-generate physical description for core tier characters if missing
             if (isCoreTier && (!existingChars[idx].physicalFeatures || existingChars[idx].physicalFeatures.length < 20)) {
               try {
@@ -448,7 +447,7 @@ const App: React.FC = () => {
             // Add tier to new character based on their role
             const newChar = { ...nc, tier: characterTier };
             existingChars.push(newChar);
-            
+
             // Auto-generate physical description for new core tier characters if missing
             if (isCoreTier && (!nc.physicalFeatures || nc.physicalFeatures.length < 20)) {
               try {
@@ -543,8 +542,8 @@ const App: React.FC = () => {
           await updateProjectData({ relationships: [...existing, ...newRels] });
         }
       }
-    } catch (e) { handleError(e); } finally { 
-      setIsExtractingRelationships(false); 
+    } catch (e) { handleError(e); } finally {
+      setIsExtractingRelationships(false);
       removeTask('Analyzing Relationships');
     }
   };
@@ -590,7 +589,7 @@ const App: React.FC = () => {
         list[index] = { ...list[index], [key]: value };
         const updated = { ...prev, [projectKey]: list, lastModified: Date.now() };
         // Save to IndexedDB immediately, but skip full commit generation for speed
-        saveProjectData(updated); 
+        saveProjectData(updated);
         return updated;
       }
       return prev;
@@ -609,16 +608,16 @@ const App: React.FC = () => {
   };
 
   const handleError = useCallback((err: any) => {
-      console.error("App Error:", err);
-      const msg = err.message || String(err);
-      if (msg.includes("AI_CONFIG_ERROR") || msg.includes("API Key")) {
-          setAiError("AI services are unavailable: Please check your environment configuration.");
-      } else if (msg.includes("quota") || msg.includes("limit")) {
-          setAiError("AI Rate Limit reached. Please wait a moment and try again.");
-      } else {
-          setAiError(`An unexpected error occurred: ${msg.substring(0, 100)}`);
-      }
-      setTimeout(() => setAiError(null), 8000);
+    console.error("App Error:", err);
+    const msg = err.message || String(err);
+    if (msg.includes("AI_CONFIG_ERROR") || msg.includes("API Key")) {
+      setAiError("AI services are unavailable: Please check your environment configuration.");
+    } else if (msg.includes("quota") || msg.includes("limit")) {
+      setAiError("AI Rate Limit reached. Please wait a moment and try again.");
+    } else {
+      setAiError(`An unexpected error occurred: ${msg.substring(0, 100)}`);
+    }
+    setTimeout(() => setAiError(null), 8000);
   }, []);
 
   useEffect(() => {
@@ -632,7 +631,7 @@ const App: React.FC = () => {
     const init = async () => {
       try {
         console.log(`[Init] Auth0 loaded: ${!isAuthLoading}, Authenticated: ${isAuthenticated}, UserId: ${auth0User?.sub}`);
-        
+
         // Configure storage first
         console.log(`[Init] Configuring storage. Cloud enabled: ${isAuthenticated === true}`);
         setCloudStorageEnabled(isAuthenticated === true, fetchWithAuth);
@@ -645,7 +644,7 @@ const App: React.FC = () => {
           getAppPrompts(),
           getAppSettings()
         ]);
-        
+
         console.log(`[Init] Received ${meta?.length || 0} projects`);
         setProjectsMetadata(meta || []);
         setGlobalNotes(notes);
@@ -688,91 +687,74 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!projectData) return;
-    
-    const now = new Date();
-    const lastBackupTime = projectData.backupSettings?.lastBackupTime;
-    
-    let shouldBackup = false;
-    
-    if (!lastBackupTime) {
-      // First time backup
-      shouldBackup = true;
-    } else {
-      const lastDate = new Date(lastBackupTime);
-      // Check if it's a different day
-      if (now.getDate() !== lastDate.getDate() || 
-          now.getMonth() !== lastDate.getMonth() || 
-          now.getFullYear() !== lastDate.getFullYear()) {
-        shouldBackup = true;
-      }
-    }
+    const totalWords = (projectData.chapters || []).reduce((acc, c) => acc + (c.wordCount || 0), 0);
+    const commitCount = projectData.commits?.length || 0;
+
+    const wordMilestone = Math.floor(totalWords / 5000) * 5000;
+    const commitMilestone = Math.floor(commitCount / 10) * 10;
+
+    const shouldBackup = (wordMilestone > 0 && wordMilestone > lastBackupMilestone.words) ||
+      (commitMilestone > 0 && commitMilestone > lastBackupMilestone.commits);
 
     if (shouldBackup) {
-      console.log(`Daily backup trigger active. Preparing snapshot...`);
-      
+      console.log(`Milestone reached. Triggering backup...`);
+      setLastBackupMilestone({ words: wordMilestone, commits: commitMilestone });
+
       const backupId = generateId();
-      const totalWords = (projectData.chapters || []).reduce((acc, c) => acc + (c.wordCount || 0), 0);
-      
       const newBackup: BackupStatus = {
         id: backupId,
-        timestamp: now.getTime(),
+        timestamp: Date.now(),
         wordCount: totalWords,
         hash: projectData.integrityHash || '',
         status: 'pending'
       };
 
-      // Update backup settings in project data
-      const updatedSettings: BackupSettings = {
-        ...(projectData.backupSettings || { frequency: 'daily' }),
-        lastBackupTime: now.getTime()
-      };
-
-      // Pessimistic update to project data
+      // Pessimistic update to project data to show "pending"
       const updatedBackups = [...(projectData.backups || []), newBackup];
-      const directUpdate = { ...projectData, backups: updatedBackups, backupSettings: updatedSettings };
-      
+      // We don't want to trigger ANOTHER commit here, so we bypass updateProjectData
+      const directUpdate = { ...projectData, backups: updatedBackups };
       setProjectData(directUpdate);
       saveProjectData(directUpdate);
 
       // Automated backup logic
       const doFetch = (isAuthenticated && fetchWithAuth) ? fetchWithAuth : fetch.bind(window);
-      
+
       doFetch('/api/backup-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          projectTitle: projectData.title, 
+        body: JSON.stringify({
+          projectTitle: projectData.title,
           wordCount: totalWords,
           hash: projectData.integrityHash,
-          backupData: projectData 
+          backupData: projectData
         })
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          // Poll for verification
-          setTimeout(() => {
-            doFetch(`/api/verify-backup/${data.resendId}`)
-            .then(res => res.json())
-            .then(verifyData => {
-              if (verifyData.status === 'delivered') {
-                setProjectData(prev => {
-                  if (!prev) return null;
-                  const updated: ProjectData = {
-                    ...prev,
-                    backups: prev.backups?.map(b => b.id === backupId ? { ...b, status: 'delivered' as const, resendId: data.resendId } : b)
-                  };
-                  saveProjectData(updated);
-                  return updated;
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            // Poll for verification
+            setTimeout(() => {
+              doFetch(`/api/verify-backup/${data.resendId}`)
+                .then(res => res.json())
+                .then(verifyData => {
+                  if (verifyData.status === 'delivered') {
+                    setProjectData(prev => {
+                      if (!prev) return null;
+                      const updated: ProjectData = {
+                        ...prev,
+                        backups: prev.backups?.map(b => b.id === backupId ? { ...b, status: 'delivered' as const, resendId: data.resendId } : b)
+                      };
+                      saveProjectData(updated);
+                      return updated;
+                    });
+                  }
                 });
-              }
-            });
-          }, 5000);
-        }
-      })
-      .catch(err => console.error("Backup failed", err));
+            }, 5000);
+          }
+        })
+        .catch(err => console.error("Backup failed", err));
     }
-  }, [projectData?.id, projectData?.backupSettings?.lastBackupTime, fetchWithAuth, isAuthenticated]);
+  }, [projectData, lastBackupMilestone, fetchWithAuth, isAuthenticated]);
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--color-primary', currentUser.themeColor);
@@ -793,7 +775,7 @@ const App: React.FC = () => {
       removeTask('Auditing Plot Threads');
     }
   };
-  
+
   const handleScanContinuity = async () => {
     if (!projectData) return;
     setIsAnalyzing(true);
@@ -831,7 +813,7 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-const createCommit = async (project: ProjectData, message: string): Promise<Commit> => {
+  const createCommit = async (project: ProjectData, message: string): Promise<Commit> => {
     const files = [
       { path: 'manuscript.md', content: project.chapters?.map(c => c.content).join('\n\n') || '' }
     ];
@@ -845,7 +827,7 @@ const createCommit = async (project: ProjectData, message: string): Promise<Comm
     };
   };
 
-const handleRestoreCommit = async (commit: Commit) => {
+  const handleRestoreCommit = async (commit: Commit) => {
     if (!projectData || !commit.snapshot) return;
     if (confirm(`Are you sure you want to restore the manuscript to the state of commit [${commit.hash.slice(0, 8)}]? Current unsaved changes (if any) will be lost.`)) {
       // Create a NEW commit for the restoration action itself
@@ -862,7 +844,7 @@ const handleRestoreCommit = async (commit: Commit) => {
     }
   };
 
-    const handleCreateProject = async (title: string, author: string, useSample: boolean, shortName?: string, existingId?: string) => {
+  const handleCreateProject = async (title: string, author: string, useSample: boolean, shortName?: string, existingId?: string) => {
     const id = existingId || generateId();
     try {
       if (!existingId) await initGitForProject(id);
@@ -897,7 +879,7 @@ const handleRestoreCommit = async (commit: Commit) => {
       manuscript: '',
       history_diff: '',
       assets: []
-      };
+    };
     if (useSample) {
       const ch1Content = `<!-- #CHAPTER_1 -->\n# Chapter 1: The Weight of Ink\n\nThe Great Archive was always cold. Arthur Penhaligon pulled his cloak tighter as he navigated the towering shelves of the Forbidden Wing.`;
       const ch2Content = `<!-- #CHAPTER_2 -->\n# Chapter 2: Shadows of the Spire\n\nThe Obsidian Spire pierced the gray clouds like a needle of dark glass.`;
@@ -954,15 +936,15 @@ const handleRestoreCommit = async (commit: Commit) => {
       ];
 
       const chapters = [
-        { 
+        {
           id: generateId(), title: 'Chapter 1: The Weight of Ink', content: ch1Content, order: 1, status: 'Draft' as const, lastModified: Date.now(), wordCount: ch1Content.trim().split(/\s+/).length,
           scenes: [{ id: generateId(), title: 'Scene 1', content: ch1Content, wordCount: ch1Content.trim().split(/\s+/).length }]
         },
-        { 
+        {
           id: generateId(), title: 'Chapter 2: Shadows of the Spire', content: ch2Content, order: 2, status: 'Draft' as const, lastModified: Date.now(), wordCount: ch2Content.trim().split(/\s+/).length,
           scenes: [{ id: generateId(), title: 'Scene 1', content: ch2Content, wordCount: ch2Content.trim().split(/\s+/).length }]
         },
-        { 
+        {
           id: generateId(), title: 'Chapter 3: The Echo in the Wards', content: ch3Content, order: 3, status: 'Draft' as const, lastModified: Date.now(), wordCount: ch3Content.trim().split(/\s+/).length,
           scenes: [{ id: generateId(), title: 'Scene 1', content: ch3Content, wordCount: ch3Content.trim().split(/\s+/).length }]
         }
@@ -1036,12 +1018,12 @@ const handleRestoreCommit = async (commit: Commit) => {
       if (existingIdx >= 0) {
         // Only update if existing is very short or AI source
         if (updatedCharacters[existingIdx].description.length < ac.description.length || updatedCharacters[existingIdx].source === 'ai') {
-           updatedCharacters[existingIdx] = { 
-             ...updatedCharacters[existingIdx], 
-             ...ac,
-             traits: Array.from(new Set([...updatedCharacters[existingIdx].traits, ...(ac.traits || [])])),
-             source: 'ai'
-           };
+          updatedCharacters[existingIdx] = {
+            ...updatedCharacters[existingIdx],
+            ...ac,
+            traits: Array.from(new Set([...updatedCharacters[existingIdx].traits, ...(ac.traits || [])])),
+            source: 'ai'
+          };
         }
       } else {
         updatedCharacters.push({ ...ac, id: generateId(), source: 'ai' });
@@ -1077,12 +1059,12 @@ const handleRestoreCommit = async (commit: Commit) => {
     if (content) {
       updates.chapters = [
         ...(projectData.chapters || []),
-        { 
-          id: generateId(), 
-          title: `Imported ${new Date().toLocaleDateString()}`, 
-          content, 
-          order: (projectData.chapters?.length || 0), 
-          status: 'Draft' as const, 
+        {
+          id: generateId(),
+          title: `Imported ${new Date().toLocaleDateString()}`,
+          content,
+          order: (projectData.chapters?.length || 0),
+          status: 'Draft' as const,
           lastModified: Date.now(),
           scenes: [],
           wordCount: content.trim().split(/\s+/).filter(w => w.length > 0).length
@@ -1134,10 +1116,10 @@ const handleRestoreCommit = async (commit: Commit) => {
     try {
       const manuscriptText = projectData.chapters?.map(c => c.content).join('\n') || '';
       if (!manuscriptText) throw new Error("No manuscript content to analyze.");
-      
+
       const existingEvents = projectData.timeline.map(e => ({ id: e.id, title: e.title, uei: e.uei || 0 }));
       const newAnchors = await extractSoftAnchors(manuscriptText, existingEvents);
-      
+
       if (newAnchors && newAnchors.length > 0) {
         const generatedEvents = newAnchors.map(a => ({
           id: generateId(),
@@ -1195,7 +1177,7 @@ const handleRestoreCommit = async (commit: Commit) => {
 
   const handleToggleCanon = async (noteId: string, isCanon: boolean) => {
     let targetNote: Note | undefined;
-    
+
     // Check global notes
     const globalNote = globalNotes.find(n => n.id === noteId);
     if (globalNote) {
@@ -1233,23 +1215,23 @@ const handleRestoreCommit = async (commit: Commit) => {
           created: new Date().toISOString(),
           modified: new Date().toISOString()
         }));
-        
+
         // Add new notes to global notes
         const existingIds = new Set(globalNotes.map(n => n.id));
         const notesToAdd = newNotes.filter(n => !existingIds.has(n.id));
-        
+
         const updatedNotes = [...globalNotes, ...notesToAdd];
         setGlobalNotes(updatedNotes);
-        
+
         // Save each new note
         for (const note of notesToAdd) {
           await saveGlobalNote(note);
         }
-        
+
         setProcessingStatus(`Imported ${notesToAdd.length} notes from Vault`);
         return;
       }
-      
+
       // Handle Book (.plothole) files (ZIP format)
       if (file.name.endsWith('.plothole')) {
         const projectData = await unpackProject(file);
@@ -1262,10 +1244,10 @@ const handleRestoreCommit = async (commit: Commit) => {
           return;
         }
       }
-      
+
       const text = await file.text();
       let data: any;
-      
+
       if (file.name.endsWith('.json')) {
         data = JSON.parse(text);
         data.author = currentUser.name;
@@ -1283,11 +1265,11 @@ const handleRestoreCommit = async (commit: Commit) => {
         setProcessingStatus("Detecting Manuscript Structure...");
         const structure = await detectManuscriptStructure(text);
         let generatedChapters: any[] = [];
-        
+
         try {
           const regex = new RegExp(`(${structure.chapterPattern})`, 'gim');
           const parts = text.split(regex);
-          
+
           if (parts.length > 1) {
             // First part is prologue/front-matter
             if (parts[0].trim().length > 0) {
@@ -1302,12 +1284,12 @@ const handleRestoreCommit = async (commit: Commit) => {
                 wordCount: parts[0].trim().split(/\s+/).filter(w => w.length > 0).length
               });
             }
-            
+
             for (let i = 1; i < parts.length; i += 2) {
               const header = parts[i].trim();
-              const body = (parts[i+1] || '').trim();
+              const body = (parts[i + 1] || '').trim();
               const combined = header + '\n\n' + body;
-              
+
               generatedChapters.push({
                 id: generateId(),
                 title: header.substring(0, 50), // keep title reasonable
@@ -1325,21 +1307,21 @@ const handleRestoreCommit = async (commit: Commit) => {
         }
 
         if (generatedChapters.length === 0) {
-          generatedChapters = [{ 
-            id: generateId(), 
-            title: 'Imported Chapter', 
-            content: text, 
-            order: 0, 
-            status: 'Draft' as const, 
+          generatedChapters = [{
+            id: generateId(),
+            title: 'Imported Chapter',
+            content: text,
+            order: 0,
+            status: 'Draft' as const,
             lastModified: Date.now(),
             scenes: [],
-            wordCount: text.trim().split(/\s+/).filter(w => w.length > 0).length 
+            wordCount: text.trim().split(/\s+/).filter(w => w.length > 0).length
           }];
         }
 
         setProcessingStatus("Architecting World...");
         const finalCharacters = analysis.characters.map(c => ({ ...c, id: generateId(), source: 'ai' as const }));
-        
+
         // Map relationship names to character IDs
         const finalRelationships = (analysis.relationships || []).map(rel => {
           const src = finalCharacters.find(c => c.name.toLowerCase() === (rel.sourceId || '').toLowerCase());
@@ -1368,7 +1350,7 @@ const handleRestoreCommit = async (commit: Commit) => {
           chapters: generatedChapters
         };
       }
-      
+
       if (data) {
         if (!data.id) data.id = generateId();
         await saveProjectData(data);
@@ -1394,7 +1376,7 @@ const handleRestoreCommit = async (commit: Commit) => {
         <Shield size={48} className="mb-4 text-red-500/50" />
         <h2 className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white mb-2">Access Denied</h2>
         <p className="font-serif italic max-w-md">The archives in this sector are restricted to High Architects. Please return to your workstation.</p>
-        <button 
+        <button
           onClick={() => setCurrentView(ViewType.BOOKSHELF)}
           className="mt-8 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-indigo-700 transition-colors"
         >
@@ -1404,7 +1386,7 @@ const handleRestoreCommit = async (commit: Commit) => {
     }
 
     if (!projectData && ![ViewType.BOOKSHELF, ViewType.TOOLBOX, ViewType.ADMIN, ViewType.SETTINGS, ViewType.NOTEPAD].includes(currentView)) {
-        return <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock drafting tools.</div>;
+      return <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock drafting tools.</div>;
     }
 
     switch (currentView) {
@@ -1416,20 +1398,20 @@ const handleRestoreCommit = async (commit: Commit) => {
           onRefreshMetadata={refreshMetadata}
           fetchWithAuth={fetchWithAuth}
           onSelectProject={async (id) => {
-            const d = await loadProjectById(id); 
-            if (d) { 
-              setProjectData(d); 
+            const d = await loadProjectById(id);
+            if (d) {
+              setProjectData(d);
               setIsDashboardModalOpen(true);
-            } 
-          }} 
+            }
+          }}
           onDeselectProject={() => {
             setProjectData(null);
           }}
-          onCreateProject={handleCreateProject} 
-          onUploadProject={handleUploadProject} 
+          onCreateProject={handleCreateProject}
+          onUploadProject={handleUploadProject}
           onDeleteProject={handleDeleteProject}
           onEditProject={handleEditProject}
-          onOpenDashboard={() => setIsDashboardModalOpen(true)} 
+          onOpenDashboard={() => setIsDashboardModalOpen(true)}
           isAnalyzing={isAnalyzing}
         />;
 
@@ -1437,7 +1419,7 @@ const handleRestoreCommit = async (commit: Commit) => {
         return <ResearchSystemView
           currentView={currentView}
           onChangeView={setCurrentView}
-          data={{...projectData, notes: globalNotes} as any}
+          data={{ ...projectData, notes: globalNotes } as any}
           projectsMetadata={projectsMetadata}
           currentUser={currentUser}
           activeTasks={activeTasks}
@@ -1457,31 +1439,31 @@ const handleRestoreCommit = async (commit: Commit) => {
               }
               await updateProjectData({ notes: [noteToSave, ...(projectData.notes || [])] });
             } else {
-              setGlobalNotes(prev => [noteToSave, ...prev]); 
-              await saveGlobalNote(noteToSave); 
+              setGlobalNotes(prev => [noteToSave, ...prev]);
+              await saveGlobalNote(noteToSave);
             }
-          }} 
-          onAddIdeaToProject={handleAddIdeaToProject} 
-          onToggleCanon={handleToggleCanon} 
-          onDeleteNote={handleDeleteNote} 
+          }}
+          onAddIdeaToProject={handleAddIdeaToProject}
+          onToggleCanon={handleToggleCanon}
+          onDeleteNote={handleDeleteNote}
           onDeleteAllNotes={async () => {
             setGlobalNotes([]);
             for (const note of globalNotes) await deleteGlobalNote(note.id);
             if (projectData?.notes) await updateProjectData({ notes: [] });
-          }} 
-          onLinkClick={handleLinkClick} 
-          onAddDoubleProcessedNote={handleDoubleProcessNote} 
-          onUpdateProject={updateProjectData} 
+          }}
+          onLinkClick={handleLinkClick}
+          onAddDoubleProcessedNote={handleDoubleProcessNote}
+          onUpdateProject={updateProjectData}
           semanticSearchEnabled={currentUser.preferences?.semanticSearchEnabled}
           onCreateProject={handleCreateProject}
           onUploadProject={handleUploadProject}
           onDeleteProject={handleDeleteProject}
-          onSelectProject={async (id) => { 
-            const d = await loadProjectById(id); 
-            if (d) { 
-              setProjectData(d); 
+          onSelectProject={async (id) => {
+            const d = await loadProjectById(id);
+            if (d) {
+              setProjectData(d);
               setIsDashboardModalOpen(true);
-            } 
+            }
           }}
           onOpenDashboard={() => setIsDashboardModalOpen(true)}
           isAnalyzing={isAnalyzing}
@@ -1498,27 +1480,27 @@ const handleRestoreCommit = async (commit: Commit) => {
         /> : null;
 
       case ViewType.DASHBOARD:
-        return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => {}} onLoadSample={() => handleCreateProject(projectData?.title || 'The Obsidian Citadel', projectData?.author || 'Junior Archivist', true, projectData?.shortName || 'Citadel', projectData?.id)} isAnalyzing={isAnalyzing} error={null} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={(t) => {
-            setIsAnalyzing(true);
-            addTask('Analyzing Project');
-            analyzeStoryText(t, undefined, { extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true })
+        return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => { }} onLoadSample={() => handleCreateProject(projectData?.title || 'The Obsidian Citadel', projectData?.author || 'Junior Archivist', true, projectData?.shortName || 'Citadel', projectData?.id)} isAnalyzing={isAnalyzing} error={null} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={(t) => {
+          setIsAnalyzing(true);
+          addTask('Analyzing Project');
+          analyzeStoryText(t, undefined, { extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true })
             .then(a => updateProjectData({ summary: a.summary, themes: a.themes }))
             .catch(handleError)
             .finally(() => {
               setIsAnalyzing(false);
               removeTask('Analyzing Project');
             });
-        }} onRestoreHistory={() => {}} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onExportVault={handleExportVault} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p)} isGeneratingCover={isGeneratingCover} onUpdateProcessedFiles={handleUpdateProcessedFiles} isUpdatingProcessed={isUpdatingProcessed} onLinkClick={handleLinkClick} 
-         onUpdateProject={updateProjectData} 
-         onSave={handleManualSave}
-         currentUser={currentUser} 
-         /> : null;
+        }} onRestoreHistory={() => { }} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onExportVault={handleExportVault} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p)} isGeneratingCover={isGeneratingCover} onUpdateProcessedFiles={handleUpdateProcessedFiles} isUpdatingProcessed={isUpdatingProcessed} onLinkClick={handleLinkClick}
+          onUpdateProject={updateProjectData}
+          onSave={handleManualSave}
+          currentUser={currentUser}
+        /> : null;
       case ViewType.TIMELINE:
       case ViewType.BOARD:
       case ViewType.MATRIX:
       case ViewType.PLOT_ANALYSIS:
       case ViewType.CALENDAR:
-        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={(c) => updateProjectData({ calendars: projectData.calendars.map(cal => cal.id === c.id ? c : cal) })} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => {}} onExtractSoftAnchors={handleExtractSoftAnchors} onScanContinuity={handleScanContinuity} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
+        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={(c) => updateProjectData({ calendars: projectData.calendars.map(cal => cal.id === c.id ? c : cal) })} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => { }} onExtractSoftAnchors={handleExtractSoftAnchors} onScanContinuity={handleScanContinuity} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
 
       case ViewType.MAP:
       case ViewType.ATLAS2:
@@ -1529,26 +1511,26 @@ const handleRestoreCommit = async (commit: Commit) => {
       case ViewType.GALLERY:
         if (!projectData) return null;
         if (currentView === ViewType.ATLAS2) {
-          return <Atlas2 
-            currentView={currentView} 
-            onChangeView={setCurrentView} 
-            data={projectData} 
+          return <Atlas2
+            currentView={currentView}
+            onChangeView={setCurrentView}
+            data={projectData}
             onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
             onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
             onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })}
-            onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })} 
-            onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })} 
-            onLinkClick={handleLinkClick} 
-            onUpdateMapOrder={() => {}} 
-            currentMapParentId={currentMapParentId} 
-            onMapChange={setCurrentMapParentId} 
-            onUpdateProject={updateProjectData} 
-            onAddArtifact={(a) => updateProjectData({ artifacts: [...(projectData.artifacts || []), a] })} 
-            onUpdateArtifact={(a) => updateProjectData({ artifacts: projectData.artifacts?.map(ar => ar.id === a.id ? a : ar) })} 
-            onDeleteArtifact={(id) => updateProjectData({ artifacts: projectData.artifacts?.filter(ar => ar.id !== id) })} 
-            onAddLore={(l) => updateProjectData({ lore: [...(projectData.lore || []), l] })} 
-            onDeleteLore={(id) => updateProjectData({ lore: projectData.lore?.filter(lo => lo.id !== id) })} 
-            isFullscreen={isMapFullscreen} 
+            onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })}
+            onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })}
+            onLinkClick={handleLinkClick}
+            onUpdateMapOrder={() => { }}
+            currentMapParentId={currentMapParentId}
+            onMapChange={setCurrentMapParentId}
+            onUpdateProject={updateProjectData}
+            onAddArtifact={(a) => updateProjectData({ artifacts: [...(projectData.artifacts || []), a] })}
+            onUpdateArtifact={(a) => updateProjectData({ artifacts: projectData.artifacts?.map(ar => ar.id === a.id ? a : ar) })}
+            onDeleteArtifact={(id) => updateProjectData({ artifacts: projectData.artifacts?.filter(ar => ar.id !== id) })}
+            onAddLore={(l) => updateProjectData({ lore: [...(projectData.lore || []), l] })}
+            onDeleteLore={(id) => updateProjectData({ lore: projectData.lore?.filter(lo => lo.id !== id) })}
+            isFullscreen={isMapFullscreen}
             onToggleFullscreen={() => setIsMapFullscreen(!isMapFullscreen)}
             onLocationUndo={(id) => {
               const loc = projectData.locations.find(l => l.id === id);
@@ -1567,23 +1549,23 @@ const handleRestoreCommit = async (commit: Commit) => {
         return <WorldSystemView
           currentView={currentView}
           onChangeView={setCurrentView}
-          data={projectData}          onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
+          data={projectData} onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
           onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
           onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })}
- 
-          onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })} 
-          onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })} 
-          onLinkClick={handleLinkClick} 
-          onUpdateMapOrder={() => {}} 
-          currentMapParentId={currentMapParentId} 
-          onMapChange={setCurrentMapParentId} 
-          onUpdateProject={updateProjectData} 
-          onAddArtifact={(a) => updateProjectData({ artifacts: [...(projectData.artifacts || []), a] })} 
-          onUpdateArtifact={(a) => updateProjectData({ artifacts: projectData.artifacts?.map(ar => ar.id === a.id ? a : ar) })} 
-          onDeleteArtifact={(id) => updateProjectData({ artifacts: projectData.artifacts?.filter(ar => ar.id !== id) })} 
-          onAddLore={(l) => updateProjectData({ lore: [...(projectData.lore || []), l] })} 
-          onDeleteLore={(id) => updateProjectData({ lore: projectData.lore?.filter(lo => lo.id !== id) })} 
-          isFullscreen={isMapFullscreen} 
+
+          onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })}
+          onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })}
+          onLinkClick={handleLinkClick}
+          onUpdateMapOrder={() => { }}
+          currentMapParentId={currentMapParentId}
+          onMapChange={setCurrentMapParentId}
+          onUpdateProject={updateProjectData}
+          onAddArtifact={(a) => updateProjectData({ artifacts: [...(projectData.artifacts || []), a] })}
+          onUpdateArtifact={(a) => updateProjectData({ artifacts: projectData.artifacts?.map(ar => ar.id === a.id ? a : ar) })}
+          onDeleteArtifact={(id) => updateProjectData({ artifacts: projectData.artifacts?.filter(ar => ar.id !== id) })}
+          onAddLore={(l) => updateProjectData({ lore: [...(projectData.lore || []), l] })}
+          onDeleteLore={(id) => updateProjectData({ lore: projectData.lore?.filter(lo => lo.id !== id) })}
+          isFullscreen={isMapFullscreen}
           onToggleFullscreen={() => setIsMapFullscreen(!isMapFullscreen)}
           onLocationUndo={(id) => {
             const loc = projectData.locations.find(l => l.id === id);
@@ -1601,10 +1583,10 @@ const handleRestoreCommit = async (commit: Commit) => {
 
       case ViewType.TOOLBOX:
         return projectData ? (
-          <ToolboxView 
-            data={projectData} 
-            defaultResources={appSettings.defaultToolboxLinks || []} 
-            onUpdateProject={updateProjectData} 
+          <ToolboxView
+            data={projectData}
+            defaultResources={appSettings.defaultToolboxLinks || []}
+            onUpdateProject={updateProjectData}
           />
         ) : (
           <div className="h-full flex items-center justify-center text-slate-400 font-serif italic text-lg p-12 text-center bg-slate-50 dark:bg-slate-950">
@@ -1612,20 +1594,14 @@ const handleRestoreCommit = async (commit: Commit) => {
           </div>
         );
 
-      case ViewType.DYNAMIC_FORGE:
-        return projectData ? <DynamicForgeView
-          data={projectData}
-          onUpdateProject={updateProjectData}
-        /> : null;
-
       case ViewType.ADMIN:
-        return <AdminView 
-          data={projectData} 
+        return <AdminView
+          data={projectData}
           globalNotes={globalNotes}
-          appPrompts={appPrompts} 
+          appPrompts={appPrompts}
           appSettings={appSettings}
           onSaveSettings={async (s) => { setAppSettings(s); await saveAppSettings(s); }}
-          onSavePrompts={async (p) => { setAppPromptsState(p); await saveAppPrompts(p); }} 
+          onSavePrompts={async (p) => { setAppPromptsState(p); await saveAppPrompts(p); }}
           onUpdateProject={updateProjectData}
           projectsMetadata={projectsMetadata}
           onDeleteGlobalNote={async id => {
@@ -1635,23 +1611,23 @@ const handleRestoreCommit = async (commit: Commit) => {
           onLinkClick={handleLinkClick}
           onChangeView={setCurrentView}
           currentUser={currentUser}
-          />;
+        />;
       case ViewType.SETTINGS:
         const handleClearGlobalNotes = async () => {
           await clearAllGlobalNotes();
           setGlobalNotes([]);
         };
-        return <SettingsView 
-          projectData={projectData} 
-          globalNotes={globalNotes} 
-          onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }} 
-          onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }} 
-          onClearGlobalNotes={handleClearGlobalNotes} 
-          currentUser={currentUser} 
-          onUpdateUser={u => setCurrentUser(prev => ({...prev, ...u}))} 
-          onUpdateProject={d => updateProjectData(d)} 
-          onChangeView={setCurrentView} 
-          onLinkClick={handleLinkClick} 
+        return <SettingsView
+          projectData={projectData}
+          globalNotes={globalNotes}
+          onImportProject={async d => { await saveProjectData(d); await refreshMetadata(); }}
+          onFactoryReset={async () => { await clearDatabase(); window.location.reload(); }}
+          onClearGlobalNotes={handleClearGlobalNotes}
+          currentUser={currentUser}
+          onUpdateUser={u => setCurrentUser(prev => ({ ...prev, ...u }))}
+          onUpdateProject={d => updateProjectData(d)}
+          onChangeView={setCurrentView}
+          onLinkClick={handleLinkClick}
           fetchWithAuth={fetchWithAuth}
         />;
 
@@ -1667,7 +1643,7 @@ const handleRestoreCommit = async (commit: Commit) => {
       /* case ViewType.STORY_ARCHITECT:
         return <StoryArchitectView projectsMetadata={projectsMetadata} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); await refreshMetadata(); setCurrentView(ViewType.DASHBOARD); } }} onUpdateProject={updateProjectData} currentUser={currentUser} />; */
 
-      default: 
+      default:
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
   }, [isLoaded, isAuthLoading, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, isExtractingRelationships, isUpdatingProcessed, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleDeleteProject, handleUploadProject, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, handleQuickUpdate]);
@@ -1721,7 +1697,7 @@ const handleRestoreCommit = async (commit: Commit) => {
         <div className={`lg:hidden z-[2000] fixed top-0 left-0 right-0 transition-all duration-500 ${currentView === ViewType.NOTEPAD ? 'bg-black h-[calc(env(safe-area-inset-top)+3.5rem)] shadow-2xl' : 'bg-slate-50 dark:bg-slate-950 h-[calc(env(safe-area-inset-top)+3.5rem)]'}`}>
           <div className="flex items-center justify-between px-6 pt-[env(safe-area-inset-top)] h-full">
             <div className="flex items-center gap-3">
-              <button 
+              <button
                 onClick={() => setIsMobileSidebarOpen(true)}
                 className={`p-2 rounded-xl transition-all ${currentView === ViewType.NOTEPAD ? 'text-white hover:bg-white/10' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
               >
@@ -1736,15 +1712,15 @@ const handleRestoreCommit = async (commit: Commit) => {
                 </span>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={() => setCurrentView(ViewType.ADMIN)}
                 className={`p-2 rounded-xl transition-all ${currentView === ViewType.NOTEPAD ? 'text-white hover:bg-white/10' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
               >
                 <Search size={20} />
               </button>
-              <button 
+              <button
                 onClick={() => setIsAiOpen(true)}
                 className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
               >
@@ -1755,14 +1731,14 @@ const handleRestoreCommit = async (commit: Commit) => {
           {currentView === ViewType.NOTEPAD && (
             <>
               {/* Opaque Leather Texture */}
-              <div 
-                className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/leather.png')] opacity-100 pointer-events-none" 
+              <div
+                className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/leather.png')] opacity-100 pointer-events-none"
               />
-              
+
               {/* Rugged Texture Overlay (matches paper noise) */}
-              <div 
+              <div
                 className="absolute inset-0 opacity-[0.15] pointer-events-none"
-                style={{ 
+                style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg width='256' height='256' viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' /%3E%3C/svg%3E")`
                 }}
               />
@@ -1808,7 +1784,7 @@ const handleRestoreCommit = async (commit: Commit) => {
             {viewContent}
           </div>
         </div>
-        
+
         {/* Mobile Floating Nav */}
         <BottomNav
           currentView={currentView}
@@ -1844,7 +1820,7 @@ const handleRestoreCommit = async (commit: Commit) => {
         </div>
       </main>
       <AiAssistant projectData={projectData} isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} onToggle={() => setIsAiOpen(!isAiOpen)} currentUser={currentUser} />
-      
+
       {/* Admin Note Canvas */}
       <AnimatePresence>
         {isAdminNoteOpen && (
@@ -1854,8 +1830,8 @@ const handleRestoreCommit = async (commit: Commit) => {
             exit={{ y: window.innerWidth < 1024 ? '-100%' : 0, x: window.innerWidth < 1024 ? 0 : '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className={`fixed z-[1500] bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col
-              ${window.innerWidth < 1024 
-                ? 'inset-x-0 top-0 max-h-[calc(100vh-12rem)] rounded-b-[3rem] border-b' 
+              ${window.innerWidth < 1024
+                ? 'inset-x-0 top-0 max-h-[calc(100vh-12rem)] rounded-b-[3rem] border-b'
                 : 'inset-y-0 right-0 w-[450px] border-l'}`}
           >
             <div className="lg:hidden h-[env(safe-area-inset-top)] bg-slate-950 w-full shrink-0" />
@@ -1866,7 +1842,7 @@ const handleRestoreCommit = async (commit: Commit) => {
                 </div>
                 <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">Admin Notes</h2>
               </div>
-              <button 
+              <button
                 onClick={() => setIsAdminNoteOpen(false)}
                 className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
               >
@@ -1877,11 +1853,11 @@ const handleRestoreCommit = async (commit: Commit) => {
             <div className="flex-1 overflow-y-auto p-6 relative">
               {/* Corkboard Texture/Design */}
               <div className="absolute inset-0 bg-[#d2b48c]/10 dark:bg-slate-900 opacity-30 pointer-events-none" />
-              
+
               <div className="relative z-10 space-y-6">
                 {/* Persistent Input at Top */}
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-lg border border-white/20">
-                  <textarea 
+                  <textarea
                     autoFocus
                     placeholder="Quick draft an administrative note... (Enter to save)"
                     className="w-full h-24 bg-transparent border-none focus:ring-0 text-sm font-serif resize-none"
@@ -1932,7 +1908,7 @@ const handleRestoreCommit = async (commit: Commit) => {
                 {/* Scrivener-style vertical row of notes */}
                 <div className="space-y-4">
                   {(projectData?.notes || globalNotes).filter(n => n.tags.includes('admin_note')).map(note => (
-                    <div 
+                    <div
                       key={note.id}
                       className="group relative bg-white dark:bg-slate-800 p-5 rounded-lg shadow-md border-t-4 border-t-amber-300 dark:border-t-amber-900 transition-all hover:shadow-xl"
                     >
@@ -1940,7 +1916,7 @@ const handleRestoreCommit = async (commit: Commit) => {
                       <p className="text-sm text-slate-700 dark:text-slate-300 font-serif leading-relaxed">{note.content}</p>
                       <div className="mt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
                         <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(note.timestamp).toLocaleDateString()}</span>
-                        <button 
+                        <button
                           onClick={async () => {
                             if (projectData) {
                               await updateProjectData({ notes: projectData.notes.filter(n => n.id !== note.id) });
@@ -1962,7 +1938,7 @@ const handleRestoreCommit = async (commit: Commit) => {
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {projectData && (
         <Modal
           isOpen={isDashboardModalOpen}
@@ -1971,27 +1947,27 @@ const handleRestoreCommit = async (commit: Commit) => {
           maxWidth="max-w-6xl"
         >
           <div className="h-[80vh] overflow-y-auto no-scrollbar">
-            <DashboardView 
+            <DashboardView
               projectData={projectData}
               globalNotes={globalNotes}
-              onUpdateProject={updateProjectData} 
-              onLinkClick={(type, id) => { 
-                setIsDashboardModalOpen(false); 
-                handleLinkClick(type, id); 
-              }} 
-              onExportProject={exportProjectPlothole} 
+              onUpdateProject={updateProjectData}
+              onLinkClick={(type, id) => {
+                setIsDashboardModalOpen(false);
+                handleLinkClick(type, id);
+              }}
+              onExportProject={exportProjectPlothole}
               onGenerateCover={handleGenerateCover}
               isGeneratingCover={isAnalyzing}
               onAuditThreads={handleAuditThreads}
               isAnalyzing={isAnalyzing}
               onRestoreCommit={handleRestoreCommit}
               currentUser={currentUser}
-              onFileUpload={() => {}}
+              onFileUpload={() => { }}
               onLoadSample={() => handleCreateProject(projectData?.title || 'The Obsidian Citadel', projectData?.author || 'Junior Archivist', true, projectData?.shortName || 'Citadel', projectData?.id)}
               onExport={handleExportVault}
               onExportVault={handleExportVault}
-              onRestoreHistory={() => {}}
-              onAnalyzeText={() => {}}
+              onRestoreHistory={() => { }}
+              onAnalyzeText={() => { }}
               onUpdateProcessedFiles={handleUpdateProcessedFiles}
               isUpdatingProcessed={isUpdatingProcessed}
               error={null}
@@ -1999,7 +1975,7 @@ const handleRestoreCommit = async (commit: Commit) => {
           </div>
         </Modal>
       )}
-      
+
       <Modal
         isOpen={isLicensesOpen}
         onClose={() => setIsLicensesOpen(false)}
@@ -2009,88 +1985,88 @@ const handleRestoreCommit = async (commit: Commit) => {
           <p className="text-xs text-slate-500 italic leading-relaxed">
             Plothole is built upon the incredible work of the open source community. Below is a documentation of our third-party dependencies as per standard archival practices.
           </p>
-          
+
           <div className="space-y-4">
             {[
-              { 
-                name: 'React Flow (@xyflow/react)', 
+              {
+                name: 'React Flow (@xyflow/react)',
                 maintainer: 'webkid.io / xyflow',
                 usage: 'Powers the Relationship Graph visualization in Character View.',
                 status: 'Actively Maintained',
                 cost: 'Free (MIT License)'
               },
-              { 
-                name: 'Tiptap', 
+              {
+                name: 'Tiptap',
                 maintainer: 'überdosis',
                 usage: 'Core rich-text engine for the Semantic Editor.',
                 status: 'Actively Maintained',
                 cost: 'Free (MIT License)'
               },
-              { 
-                name: 'Fuse.js', 
+              {
+                name: 'Fuse.js',
                 maintainer: 'Kiro Risk',
                 usage: 'Advanced fuzzy-search logic for the Entity Explorer.',
                 status: 'Actively Maintained',
                 cost: 'Free (Apache 2.0)'
               },
-              { 
-                name: 'docx', 
+              {
+                name: 'docx',
                 maintainer: 'Volodymyr Baydalka',
                 usage: 'Generates Microsoft Word files for manuscript export.',
                 status: 'Actively Maintained',
                 cost: 'Free (MIT License)'
               },
-              { 
-                name: 'Leaflet', 
+              {
+                name: 'Leaflet',
                 maintainer: 'Volodymyr Agafonkin',
                 usage: 'Geospatial mapping engine for the World Atlas.',
                 status: 'Actively Maintained',
                 cost: 'Free (BSD-2)'
               },
-              { 
-                name: 'Lucide', 
+              {
+                name: 'Lucide',
                 maintainer: 'Lucide Contributors',
                 usage: 'Provides all iconography across the application interface.',
                 status: 'Actively Maintained',
                 cost: 'Free (ISC License)'
               },
-              { 
-                name: 'Simple Git', 
+              {
+                name: 'Simple Git',
                 maintainer: 'Steve King',
                 usage: 'Enables automatic Git versioning for story worlds.',
                 status: 'Actively Maintained',
                 cost: 'Free (MIT License)'
               },
-              { 
-                name: 'pdf-parse', 
+              {
+                name: 'pdf-parse',
                 maintainer: 'Nicklas Teigen',
                 usage: 'Server-side extraction of text from uploaded PDF research.',
                 status: 'Maintained',
                 cost: 'Free (MIT License)'
               },
-              { 
-                name: 'JSZip', 
+              {
+                name: 'JSZip',
                 maintainer: 'Stuart Knightley',
                 usage: 'Bundles and packages project files for local exports.',
                 status: 'Actively Maintained',
                 cost: 'Free (MIT / GPLv3)'
               },
-              { 
-                name: 'Express', 
+              {
+                name: 'Express',
                 maintainer: 'OpenJS Foundation',
                 usage: 'Standard server framework for Plothole storage APIs.',
                 status: 'Actively Maintained',
                 cost: 'Free (MIT License)'
               },
-              { 
-                name: 'Gemini (Google GenAI)', 
+              {
+                name: 'Gemini (Google GenAI)',
                 maintainer: 'Google',
                 usage: 'The "Oracle" AI processing and narrative synthesis.',
                 status: 'Actively Maintained',
                 cost: 'Commercial (Usage-based API costs apply)'
               },
-              { 
-                name: 'Clerk', 
+              {
+                name: 'Clerk',
                 maintainer: 'Clerk, Inc.',
                 usage: 'Secure user authentication and session management.',
                 status: 'Actively Maintained',
@@ -2114,9 +2090,9 @@ const handleRestoreCommit = async (commit: Commit) => {
           </div>
 
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-center">
-            <a 
-              href="/licenses.txt" 
-              target="_blank" 
+            <a
+              href="/licenses.txt"
+              target="_blank"
               rel="noreferrer"
               className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-xl transition-all"
             >
@@ -2133,13 +2109,13 @@ const handleRestoreCommit = async (commit: Commit) => {
     // BrowserRouter puts the path in the pathname
     const path = location.pathname;
     const parts = path.split('/').filter(Boolean); // Split by / and remove empty strings
-    
+
     // Exclude app view routes (these are ViewType names)
     const viewTypeValues = Object.values(ViewType);
     if (parts.length === 0 || viewTypeValues.includes(parts[0] as ViewType)) {
       return false;
     }
-    
+
     // Public wiki routes: /{username} or /{username}/{bookname}
     // We expect the first part to be the username
     return parts.length === 1 || parts.length === 2;
