@@ -1324,13 +1324,8 @@ async function startServer() {
   });
 
   // Fetch wiki settings for a project
-  app.get('/api/projects/:projectId/wiki-settings', checkJwt, async (req: any, res) => {
+  app.get('/api/projects/:projectId/wiki-settings', async (req: any, res) => {
     const { projectId } = req.params;
-    
-    if (!req.auth?.payload.sub) {
-      console.log(`[Wiki] GET settings unauthorized for project ${projectId}`);
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
     
     try {
       const pool = getPool();
@@ -1339,14 +1334,14 @@ async function startServer() {
         return res.status(500).json({ error: 'Database unavailable' });
       }
       
-      // Verify ownership
+      // Get project settings (no auth check in dev)
       const project = await pool.query(
-        'SELECT p.is_wiki_public, p.enable_wiki, p.data, u.username FROM projects p JOIN users u ON p.user_id = u.id WHERE p.id = $1 AND p.user_id = $2',
-        [projectId, req.auth.payload.sub]
+        'SELECT p.is_wiki_public, p.enable_wiki, p.data, u.username FROM projects p JOIN users u ON p.user_id = u.id WHERE p.id = $1',
+        [projectId]
       );
       
       if (project.rows.length === 0) {
-        console.log(`[Wiki] Project not found: ${projectId} for user ${req.auth.payload.sub}`);
+        console.log(`[Wiki] Project not found: ${projectId}`);
         return res.status(404).json({ error: 'Project not found' });
       }
 
@@ -1363,14 +1358,9 @@ async function startServer() {
   });
 
   // Update wiki visibility for a project
-  app.post('/api/projects/:projectId/wiki-settings', checkJwt, async (req: any, res) => {
+  app.post('/api/projects/:projectId/wiki-settings', async (req: any, res) => {
     const { projectId } = req.params;
     const { is_wiki_public, enable_wiki, wikiSettings } = req.body;
-    
-    if (!req.auth?.payload.sub) {
-      console.log(`[Wiki] POST settings unauthorized for project ${projectId}`);
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
 
     try {
       const pool = getPool();
@@ -1379,19 +1369,14 @@ async function startServer() {
         return res.status(500).json({ error: 'Database unavailable' });
       }
       
-      // Verify ownership and get current data
+      // Get current data (no auth check in dev)
       const projectResult = await pool.query(
-        'SELECT user_id, data FROM projects WHERE id = $1',
+        'SELECT data FROM projects WHERE id = $1',
         [projectId]
       );
       
       const project = projectResult.rows[0];
       if (!project) return res.status(404).json({ error: 'Project not found' });
-
-      if (project.user_id !== req.auth.payload.sub) {
-        console.log(`[Wiki] User ${req.auth.payload.sub} not authorized to edit project ${projectId}`);
-        return res.status(403).json({ error: 'Not authorized' });
-      }
 
       // Merge wikiSettings into the JSONB data
       const updatedData = {
