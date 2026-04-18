@@ -1,3 +1,0 @@
-module.exports=[64097,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(65921);a.n(d("[project]/Dropbox/Documents/GitHub/Plothole/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>"))},50633,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(65921);a.n(d("[project]/Dropbox/Documents/GitHub/Plothole/node_modules/next/dist/client/components/builtin/global-error.js"))},57100,a=>{"use strict";a.i(64097);var b=a.i(50633);a.n(b)},61175,a=>{a.n(a.i(57100))}];
-
-//# sourceMappingURL=0oi0_next_dist_client_components_builtin_global-error_0-3cqu1.js.map
