@@ -15,11 +15,11 @@ const characterFields = {
     defaultValue: '2',
   }),
   role: fields.text({ label: 'Role/Title' }),
-  description: fields.multiline({ label: 'Physical Description' }),
+  description: fields.text({ label: 'Physical Description', multiline: true }),
   
   // Tier 1 (Core)
-  motivation: fields.multiline({ label: 'Motivation' }),
-  conflict: fields.multiline({ label: 'Central Conflict' }),
+  motivation: fields.text({ label: 'Motivation', multiline: true }),
+  conflict: fields.text({ label: 'Central Conflict', multiline: true }),
   aliases: fields.array(fields.text({ label: 'Alias' }), {
     label: 'Known Aliases',
     itemLabel: (props) => props.value,
@@ -70,7 +70,7 @@ const locationFields = {
     ],
     defaultValue: '2',
   }),
-  description: fields.multiline({ label: 'Description' }),
+  description: fields.text({ label: 'Description', multiline: true }),
   
   // Location-specific fields
   climate: fields.text({ label: 'Climate' }),
@@ -109,11 +109,11 @@ const itemFields = {
     ],
     defaultValue: '2',
   }),
-  description: fields.multiline({ label: 'Description' }),
+  description: fields.text({ label: 'Description', multiline: true }),
   
   // Item properties
   origin: fields.text({ label: 'Origin/Creator' }),
-  powers: fields.multiline({ label: 'Powers/Abilities' }),
+  powers: fields.text({ label: 'Powers/Abilities', multiline: true }),
   owner: fields.text({ label: 'Current Owner ID' }),
   location: fields.text({ label: 'Current Location' }),
   
@@ -140,7 +140,7 @@ const eventFields = {
     ],
     defaultValue: '2',
   }),
-  description: fields.multiline({ label: 'Description' }),
+  description: fields.text({ label: 'Description', multiline: true }),
   
   // Event timeline
   startDate: fields.text({ label: 'Start Date' }),
@@ -153,7 +153,7 @@ const eventFields = {
     label: 'Attendees',
     itemLabel: (props) => props.value,
   }),
-  consequences: fields.multiline({ label: 'Consequences/Impact' }),
+  consequences: fields.text({ label: 'Consequences/Impact', multiline: true }),
   
   source: fields.select({
     label: 'Source',
@@ -178,11 +178,11 @@ const loreFields = {
     ],
     defaultValue: '2',
   }),
-  description: fields.multiline({ label: 'Description' }),
+  description: fields.text({ label: 'Description', multiline: true }),
   
   // Lore properties
-  origin: fields.multiline({ label: 'Origin/History' }),
-  significance: fields.multiline({ label: 'Significance to Story' }),
+  origin: fields.text({ label: 'Origin/History', multiline: true }),
+  significance: fields.text({ label: 'Significance to Story', multiline: true }),
   relatedConcepts: fields.array(fields.text({ label: 'Related Concept' }), {
     label: 'Related Concepts',
     itemLabel: (props) => props.value,
@@ -203,7 +203,7 @@ const relationshipFields = {
   entityA: fields.text({ label: 'First Entity ID', validation: { isRequired: true } }),
   entityB: fields.text({ label: 'Second Entity ID', validation: { isRequired: true } }),
   relationship: fields.text({ label: 'Relationship Type', validation: { isRequired: true } }),
-  description: fields.multiline({ label: 'Relationship Description' }),
+  description: fields.text({ label: 'Relationship Description', multiline: true }),
   bidirectional: fields.checkbox({ label: 'Is Bidirectional?' }),
 };
 
