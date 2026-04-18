@@ -1,0 +1,14 @@
+id: example-character
+name: Example Character
+species: Human
+tier: '2'
+role: Supporting Character
+description: This is an example character created to demonstrate the Keystatic integration.
+job: Merchant
+age: '32'
+traits:
+  - Clever
+  - Cautious
+  - Ambitious
+primary_trait: Clever
+source: manual

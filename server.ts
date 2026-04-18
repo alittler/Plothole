@@ -239,19 +239,14 @@ async function startServer() {
           });
           const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
           const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
-          const publicUrl = `https://${s3Bucket}.s3.amazonaws.com/${key}`;
           
-          console.log('File uploaded to S3. URL generated:', publicUrl);
+          console.log('File uploaded to S3. Presigned URL generated for key:', key);
           return res.json({ 
-            url: publicUrl,
-            presignedUrl: presignedUrl 
+            url: presignedUrl
           });
         } catch (signErr) {
           console.error('Failed to generate presigned URL:', signErr);
-          // Fallback: Construct direct S3 URL if signing fails
-          const fallbackUrl = `https://${s3Bucket}.s3.amazonaws.com/${key}`;
-          console.log('Falling back to direct S3 URL:', fallbackUrl);
-          return res.json({ url: fallbackUrl, presigned: false });
+          res.status(500).json({ error: 'Failed to generate presigned URL' });
         }
       }
 
@@ -297,16 +292,11 @@ async function startServer() {
               Key: s3Key,
             });
             const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-            const secureUrl = await getSignedUrl(s3Client, command, { expiresIn });
-            presignedUrl = secureUrl; // Keep for internal use if needed
-            // Use agnostic public format for the primary URL
-            const agnosticUrl = `https://${s3Bucket}.s3.amazonaws.com/${s3Key}`;
-            presignedUrl = agnosticUrl; 
+            presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
           } catch (signErr) {
             console.error('Failed to generate presigned URL for source-upload:', signErr);
-            // Fallback: Construct direct S3 URL if signing fails
-            presignedUrl = `https://${s3Bucket}.s3.amazonaws.com/${s3Key}`;
-            console.log('Using direct S3 URL fallback:', presignedUrl);
+            res.status(500).json({ error: 'Failed to generate presigned URL' });
+            return;
           }
         } catch (s3Err) {
           console.error('Failed to upload to S3 during source-upload:', s3Err);
@@ -407,7 +397,7 @@ async function startServer() {
           Key: s3Key,
         });
         const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-        publicMetaUrl = `https://${s3Bucket}.s3.amazonaws.com/${s3Key}`;
+        publicMetaUrl = await getSignedUrl(s3Client, command, { expiresIn });
       } catch (err) {
         console.error('Failed to generate presigned URL for metadata:', err);
       }
@@ -440,7 +430,7 @@ async function startServer() {
             Key: s3Key,
           });
           const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
-          mdUrl = `https://${s3Bucket}.s3.amazonaws.com/${s3Key}`;
+          mdUrl = await getSignedUrl(s3Client, command, { expiresIn });
         } catch (err) {
           console.error('Failed to generate presigned URL for markdown:', err);
         }
@@ -792,11 +782,9 @@ async function startServer() {
 
       const expiresIn = parseInt(process.env.PRESIGNED_URL_EXPIRY || '3600', 10);
       const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
-      const publicUrl = `https://${s3Bucket}.s3.amazonaws.com/${key}`;
 
       res.json({ 
-        url: publicUrl,
-        presignedUrl: presignedUrl 
+        url: presignedUrl
       });
     } catch (err) {
       console.error('Failed to generate presigned URL:', err);
@@ -1002,12 +990,30 @@ async function startServer() {
     if (!resend) return res.status(503).json({ error: 'Resend not configured' });
 
     try {
+      const backupFilename = `${projectTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+      
       const email = await resend.emails.send({
         from: 'Plothole Backups <backups@resend.dev>',
         to: 'alittler86@gmail.com',
         subject: `[Milestone] Backup: ${projectTitle} [${hash?.slice(0, 8)}] (${wordCount} words)`,
-        html: `<p>Automated backup for project: <strong>${projectTitle}</strong></p><p>Hash: <code>${hash}</code></p><p>Current word count: ${wordCount}</p><p>The encrypted .plothole file is attached (simulated for now, would be a base64 attachment in production).</p>`
+        html: `
+          <h2>Automated Project Backup</h2>
+          <p>A new milestone has been reached for project: <strong>${projectTitle}</strong></p>
+          <ul>
+            <li><strong>Word Count:</strong> ${wordCount}</li>
+            <li><strong>Integrity Hash:</strong> <code>${hash}</code></li>
+            <li><strong>Date:</strong> ${new Date().toLocaleString()}</li>
+          </ul>
+          <p>The project data is attached as a JSON file. You can import this file back into Plothole if needed.</p>
+        `,
+        attachments: [
+          {
+            filename: backupFilename,
+            content: Buffer.from(JSON.stringify(backupData, null, 2))
+          }
+        ]
       });
+      console.log(`[Backup] Email sent for ${projectTitle} (${wordCount} words). Resend ID: ${(email.data as any)?.id}`);
       res.json({ success: true, resendId: (email.data as any)?.id });
     } catch (err) {
       console.error(err);
@@ -1088,13 +1094,27 @@ async function startServer() {
         [JSON.stringify(projectData), projectId]
       );
 
-      // Simulate sending the backup email (would be async in production)
+      // Send the actual backup email
       if (resend) {
+        const backupFilename = `${projectData.title.replace(/\s+/g, '_')}_TEST_${new Date().toISOString().split('T')[0]}.json`;
         resend.emails.send({
           from: 'Plothole Backups <backups@resend.dev>',
           to: 'alittler86@gmail.com',
           subject: `[Test] Backup: ${projectData.title} [${backup.hash}] (${backup.wordCount} words)`,
-          html: `<p>Test backup for project: <strong>${projectData.title}</strong></p><p>Hash: <code>${backup.hash}</code></p><p>Word count: ${backup.wordCount}</p>`
+          html: `
+            <h2>Test Project Backup</h2>
+            <p>This is a manually triggered test backup for: <strong>${projectData.title}</strong></p>
+            <ul>
+              <li><strong>Word Count:</strong> ${backup.wordCount}</li>
+              <li><strong>Integrity Hash:</strong> <code>${backup.hash}</code></li>
+            </ul>
+          `,
+          attachments: [
+            {
+              filename: backupFilename,
+              content: Buffer.from(JSON.stringify(projectData, null, 2))
+            }
+          ]
         }).catch((err: any) => console.error('Backup email failed:', err));
       }
 
