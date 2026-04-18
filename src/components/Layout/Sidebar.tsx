@@ -126,6 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.CODEX, label: 'Codex', icon: Book, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: BookOpen, projectOnly: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
+    { id: ViewType.DYNAMIC_FORGE, label: 'Forge', icon: Database, projectOnly: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
     { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
     ];
@@ -138,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
       {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.ATLAS2, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.ATLAS2, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH, ViewType.DYNAMIC_FORGE].includes(i.id))
       },
       {
         title: 'System',
@@ -228,7 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                   {isMenuOpen && (
                     <div data-section="page-menu" className="absolute left-full top-0 ml-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 flex flex-col gap-1 p-2 custom-scrollbar">
                       {sections.map((section) => (
-                        <div key={section.label} className="flex flex-col gap-1">
+                        <div key={section.title} className="flex flex-col gap-1">
                           {section.items.map(item => {
                             const isActive = currentView === item.id;
                             const isDisabled = item.projectOnly && !hasActiveProject;

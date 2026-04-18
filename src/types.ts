@@ -30,7 +30,8 @@ export enum ViewType {
   RESEARCH = 'Research',
   BESTIARY = 'Bestiary',
   ATLAS2 = 'Atlas2',
-  CELESTIAL = 'Celestial'
+  CELESTIAL = 'Celestial',
+  DYNAMIC_FORGE = 'DynamicForge'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -113,6 +114,31 @@ export interface HierarchicalEntity {
   description?: string;
   fieldNotes?: { label: string; value: string }[]; 
   metadata?: Record<string, any>;
+}
+
+// ==========================================
+// DYNAMIC FORGE TYPES
+// ==========================================
+
+export type CollectionFieldType = 'text' | 'number' | 'long' | 'date' | 'boolean' | 'select' | 'tags';
+
+export interface CollectionField {
+  id: string;
+  key: string;
+  label: string;
+  type: CollectionFieldType;
+  group?: string;
+  options?: string[]; // For 'select' type
+  required?: boolean;
+}
+
+export interface DynamicCollection {
+  id: string;
+  name: string;
+  icon?: string;
+  description?: string;
+  fields: CollectionField[];
+  items: any[];
 }
 
 export interface AssetMetadata {
@@ -299,6 +325,7 @@ export interface ProjectData {
   mapUnit?: string;
   mapDefaultView?: any;
   paths?: MapPath[];
+  dynamicCollections?: DynamicCollection[];
 }
 
 export interface MapPath {

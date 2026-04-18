@@ -292,7 +292,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                 <Database size={18} className="text-indigo-600" /> Backups & Archives
               </h2>
-              <p className="text-sm text-slate-500">Backup information coming soon</p>
+              
+              {projectData.backups && projectData.backups.length > 0 ? (
+                <div className="space-y-3">
+                  {projectData.backups.sort((a, b) => b.timestamp - a.timestamp).map(backup => (
+                    <div key={backup.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${backup.status === 'delivered' ? 'bg-emerald-500' : backup.status === 'pending' ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white text-sm">
+                            {new Date(backup.timestamp).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {backup.wordCount} words • {backup.status}
+                          </p>
+                        </div>
+                      </div>
+                      {backup.status !== 'delivered' && (
+                        <button 
+                          onClick={() => {
+                            const doFetch = (fetchWithAuth || fetch.bind(window));
+                            doFetch(`/api/resend-backup/${backup.id}`, { 
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ projectId: projectData.id })
+                            }).catch(err => console.error("Resend failed", err));
+                          }}
+                          className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors"
+                        >
+                          Resend
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-slate-500 italic">No automated backups recorded yet.</p>
+                  <p className="text-xs text-slate-400 mt-1">Backups are triggered automatically when you reach major word count milestones.</p>
+                </div>
+              )}
             </section>
           )}
         </div>

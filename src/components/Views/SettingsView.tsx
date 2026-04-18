@@ -199,8 +199,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       onUpdateProject({
         ...projectData,
         backupSettings: {
-          frequency,
-          enabled: isBackupEnabled,
+          ...(projectData.backupSettings || { enabled: true }),
+          frequency: frequency,
           lastBackupTime: projectData.backupSettings?.lastBackupTime,
           nextBackupTime: projectData.backupSettings?.nextBackupTime
         }

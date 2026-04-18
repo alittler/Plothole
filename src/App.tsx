@@ -53,6 +53,7 @@ import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
+import { DynamicForgeView } from './components/Views/DynamicForgeView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
@@ -687,37 +688,56 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!projectData) return;
-    const totalWords = (projectData.chapters || []).reduce((acc, c) => acc + (c.wordCount || 0), 0);
-    const commitCount = projectData.commits?.length || 0;
-
-    const wordMilestone = Math.floor(totalWords / 5000) * 5000;
-    const commitMilestone = Math.floor(commitCount / 10) * 10;
-
-    const shouldBackup = (wordMilestone > 0 && wordMilestone > lastBackupMilestone.words) || 
-                       (commitMilestone > 0 && commitMilestone > lastBackupMilestone.commits);
+    
+    const now = new Date();
+    const lastBackupTime = projectData.backupSettings?.lastBackupTime;
+    
+    let shouldBackup = false;
+    
+    if (!lastBackupTime) {
+      // First time backup
+      shouldBackup = true;
+    } else {
+      const lastDate = new Date(lastBackupTime);
+      // Check if it's a different day
+      if (now.getDate() !== lastDate.getDate() || 
+          now.getMonth() !== lastDate.getMonth() || 
+          now.getFullYear() !== lastDate.getFullYear()) {
+        shouldBackup = true;
+      }
+    }
 
     if (shouldBackup) {
-      console.log(`Milestone reached. Triggering backup...`);
-      setLastBackupMilestone({ words: wordMilestone, commits: commitMilestone });
-
+      console.log(`Daily backup trigger active. Preparing snapshot...`);
+      
       const backupId = generateId();
+      const totalWords = (projectData.chapters || []).reduce((acc, c) => acc + (c.wordCount || 0), 0);
+      
       const newBackup: BackupStatus = {
         id: backupId,
-        timestamp: Date.now(),
+        timestamp: now.getTime(),
         wordCount: totalWords,
         hash: projectData.integrityHash || '',
         status: 'pending'
       };
 
-      // Pessimistic update to project data to show "pending"
+      // Update backup settings in project data
+      const updatedSettings: BackupSettings = {
+        ...(projectData.backupSettings || { frequency: 'daily' }),
+        lastBackupTime: now.getTime()
+      };
+
+      // Pessimistic update to project data
       const updatedBackups = [...(projectData.backups || []), newBackup];
-      // We don't want to trigger ANOTHER commit here, so we bypass updateProjectData
-      const directUpdate = { ...projectData, backups: updatedBackups };
+      const directUpdate = { ...projectData, backups: updatedBackups, backupSettings: updatedSettings };
+      
       setProjectData(directUpdate);
       saveProjectData(directUpdate);
 
       // Automated backup logic
-      fetch('/api/backup-email', {
+      const doFetch = (isAuthenticated && fetchWithAuth) ? fetchWithAuth : fetch.bind(window);
+      
+      doFetch('/api/backup-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -732,7 +752,7 @@ const App: React.FC = () => {
         if (data.success) {
           // Poll for verification
           setTimeout(() => {
-            fetch(`/api/verify-backup/${data.resendId}`)
+            doFetch(`/api/verify-backup/${data.resendId}`)
             .then(res => res.json())
             .then(verifyData => {
               if (verifyData.status === 'delivered') {
@@ -752,7 +772,7 @@ const App: React.FC = () => {
       })
       .catch(err => console.error("Backup failed", err));
     }
-  }, [projectData, lastBackupMilestone]);
+  }, [projectData?.id, projectData?.backupSettings?.lastBackupTime, fetchWithAuth, isAuthenticated]);
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--color-primary', currentUser.themeColor);
@@ -1591,6 +1611,12 @@ const handleRestoreCommit = async (commit: Commit) => {
             Initialize a story world to access the Writer's Toolbox.
           </div>
         );
+
+      case ViewType.DYNAMIC_FORGE:
+        return projectData ? <DynamicForgeView
+          data={projectData}
+          onUpdateProject={updateProjectData}
+        /> : null;
 
       case ViewType.ADMIN:
         return <AdminView 

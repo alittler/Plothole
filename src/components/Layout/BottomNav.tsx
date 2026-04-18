@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType } from '../../types';
-import { Book, Search, Zap, LayoutGrid, Menu, FileText, Users, Map, Calendar, X, HelpCircle, Settings, Shield, Wrench, Wand2 } from 'lucide-react';
+import { Book, Search, Zap, LayoutGrid, Menu, FileText, Users, Map, Calendar, X, HelpCircle, Settings, Shield, Wrench, Wand2, Database } from 'lucide-react';
 
 interface BottomNavProps {
   currentView: ViewType;
@@ -57,6 +57,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       case ViewType.TOOLBOX: return 'Toolbox';
       case ViewType.SETTINGS: return 'Settings';
       case ViewType.ADMIN: return 'Admin';
+      case ViewType.DYNAMIC_FORGE: return 'Forge';
       default: return 'Page';
     }
   };
@@ -74,6 +75,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       case ViewType.TOOLBOX: return <Wrench size={size} />;
       case ViewType.SETTINGS: return <Settings size={size} />;
       case ViewType.ADMIN: return <Shield size={size} />;
+      case ViewType.DYNAMIC_FORGE: return <Database size={size} />;
       default: return <Zap size={size} />;
     }
   };
