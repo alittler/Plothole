@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType } from '../../types';
-import { Book, Search, Zap, LayoutGrid, Menu, FileText, Users, Map, Calendar, X, HelpCircle, Settings, Shield, Wrench, Wand2, Database } from 'lucide-react';
+import { Book, Search, Zap, LayoutGrid, Menu, FileText, Users, Map, Calendar, X, HelpCircle, Settings, Shield, Wrench, Wand2 } from 'lucide-react';
 
 interface BottomNavProps {
   currentView: ViewType;
@@ -24,9 +24,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       document.body.appendChild(div);
       const insetBottom = parseInt(window.getComputedStyle(div).paddingBottom);
       document.body.removeChild(div);
-      
+
       // Method 2: Compare visual viewport to layout viewport
-      const isCramped = window.visualViewport 
+      const isCramped = window.visualViewport
         ? window.visualViewport.height < document.documentElement.clientHeight - 20
         : false;
 
@@ -57,7 +57,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       case ViewType.TOOLBOX: return 'Toolbox';
       case ViewType.SETTINGS: return 'Settings';
       case ViewType.ADMIN: return 'Admin';
-      case ViewType.DYNAMIC_FORGE: return 'Forge';
       default: return 'Page';
     }
   };
@@ -75,7 +74,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       case ViewType.TOOLBOX: return <Wrench size={size} />;
       case ViewType.SETTINGS: return <Settings size={size} />;
       case ViewType.ADMIN: return <Shield size={size} />;
-      case ViewType.DYNAMIC_FORGE: return <Database size={size} />;
       default: return <Zap size={size} />;
     }
   };
@@ -85,12 +83,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <div className={`fixed bottom-0 left-0 right-0 z-[1000] lg:hidden transition-transform duration-500 ease-in-out ${isSidebarOpen ? 'translate-y-1/3' : 'translate-y-0'}`}>
-      <div 
+      <div
         data-section="bottom-navbar"
         style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${extraPadding})` }}
         className="bg-slate-900/90 dark:bg-white/90 backdrop-blur-2xl border-t border-white/20 dark:border-black/10 px-4 pt-3 flex items-start justify-around rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)]"
       >
-        
+
         {order.map((view, index) => {
           const isActive = currentView === view;
           const isProjectOnly = [ViewType.DASHBOARD, ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(view);
@@ -110,11 +108,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 key={`nav-${view}`}
                 onClick={() => onChangeView(view)}
                 title={getViewLabel(view)}
-                className={`flex items-center justify-center -translate-y-4 w-14 h-14 rounded-full transition-all shadow-[0_15px_30px_rgba(0,0,0,0.5)] ${
-                  isActive 
-                    ? 'text-white bg-indigo-600 scale-110 ring-4 ring-white dark:ring-slate-900 shadow-indigo-600/50' 
+                className={`flex items-center justify-center -translate-y-4 w-14 h-14 rounded-full transition-all shadow-[0_15px_30px_rgba(0,0,0,0.5)] ${isActive
+                    ? 'text-white bg-indigo-600 scale-110 ring-4 ring-white dark:ring-slate-900 shadow-indigo-600/50'
                     : 'text-slate-950 bg-amber-400 dark:bg-amber-500 ring-4 ring-amber-400/20 dark:ring-amber-500/20 hover:scale-105'
-                }`}
+                  }`}
               >
                 <FileText size={28} strokeWidth={1.5} />
               </button>
@@ -127,11 +124,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 key={`nav-${view}`}
                 onClick={() => onChangeView(view)}
                 title={getViewLabel(view)}
-                className={`flex items-center justify-center -translate-y-4 w-14 h-14 rounded-full transition-all shadow-[0_15px_30px_rgba(0,0,0,0.5)] ${
-                  isActive 
-                    ? 'text-white bg-indigo-600 scale-110 ring-4 ring-white dark:ring-slate-900 shadow-indigo-600/50' 
+                className={`flex items-center justify-center -translate-y-4 w-14 h-14 rounded-full transition-all shadow-[0_15px_30px_rgba(0,0,0,0.5)] ${isActive
+                    ? 'text-white bg-indigo-600 scale-110 ring-4 ring-white dark:ring-slate-900 shadow-indigo-600/50'
                     : 'text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 ring-4 ring-slate-200/20 dark:ring-slate-700/20 hover:scale-105'
-                }`}
+                  }`}
               >
                 {getViewIcon(view, isActive, 24)}
               </button>
@@ -157,7 +153,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         >
           {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
-        
+
       </div>
     </div>
   );

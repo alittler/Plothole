@@ -30,8 +30,7 @@ export enum ViewType {
   RESEARCH = 'Research',
   BESTIARY = 'Bestiary',
   ATLAS2 = 'Atlas2',
-  CELESTIAL = 'Celestial',
-  DYNAMIC_FORGE = 'DynamicForge'
+  CELESTIAL = 'Celestial'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -48,12 +47,12 @@ export interface HierarchicalEntity {
   tier: EntityTier;
   species: string;
   type: 'Character' | 'Location' | 'Item' | 'Event' | 'Lore' | string;
-  
+
   // Tier 1 (Core)
   motivation?: string;
   conflict?: string;
   aliases?: string[];
-  
+
   // Tier 2 (Supporting)
   primary_trait?: string;
   location_id?: string;
@@ -109,36 +108,11 @@ export interface HierarchicalEntity {
   narrower?: string[];
   related?: string[];
   scopeNote?: string;
-  
+
   // Generic / Tier 3
   description?: string;
-  fieldNotes?: { label: string; value: string }[]; 
+  fieldNotes?: { label: string; value: string }[];
   metadata?: Record<string, any>;
-}
-
-// ==========================================
-// DYNAMIC FORGE TYPES
-// ==========================================
-
-export type CollectionFieldType = 'text' | 'number' | 'long' | 'date' | 'boolean' | 'select' | 'tags';
-
-export interface CollectionField {
-  id: string;
-  key: string;
-  label: string;
-  type: CollectionFieldType;
-  group?: string;
-  options?: string[]; // For 'select' type
-  required?: boolean;
-}
-
-export interface DynamicCollection {
-  id: string;
-  name: string;
-  icon?: string;
-  description?: string;
-  fields: CollectionField[];
-  items: any[];
 }
 
 export interface AssetMetadata {
@@ -205,7 +179,7 @@ export interface Source {
   author?: string; // Maps to dc:creator / bibtex:author
   citation?: string;
   filename?: string;
-  
+
   // Dublin Core (DCMI) Compatibility
   dc_title?: string;
   dc_creator?: string;
@@ -236,7 +210,7 @@ export interface Source {
   bibtex_isbn?: string;
   bibtex_issn?: string;
   bibtex_doi?: string;
-  
+
   // Academic Citation Fields (Legacy Sync)
   publisher?: string;
   publicationYear?: string;
@@ -256,14 +230,14 @@ export interface ProjectData {
   summary: string;
   lastModified: number;
   coverImage?: string;
-  
+
   // Legacy fields (kept for migration/UI compatibility)
   characters: Character[];
   locations: Location[];
   artifacts?: Artifact[];
   lore?: LoreEntry[];
   sources?: Source[];
-  codexSources?: {id: string; name: string; content: string}[];
+  codexSources?: { id: string; name: string; content: string }[];
   timeline: TimelineEvent[];
   relationships: Relationship[];
   chapters?: Chapter[];
@@ -275,11 +249,11 @@ export interface ProjectData {
   corkboardNotes?: ProseDocument[]; // Separate collection for corkboard snippets
   semanticDocuments?: SemanticDocument[];
   userToolboxLinks?: ToolboxLink[];
-  
+
   // Research Hub fields
-  researchSources?: {id: string; name: string; type: string; uploadDate: number; size: number; extractionStatus: string; notes?: string}[];
-  researchNotes?: {id: string; title: string; content: string; sourceIds: string[]; scriptureCitations: string[]; tags: string[]; createdAt: number; updatedAt: number}[];
-  
+  researchSources?: { id: string; name: string; type: string; uploadDate: number; size: number; extractionStatus: string; notes?: string }[];
+  researchNotes?: { id: string; title: string; content: string; sourceIds: string[]; scriptureCitations: string[]; tags: string[]; createdAt: number; updatedAt: number }[];
+
   // Modular Tiered Architecture fields
   entities: HierarchicalEntity[];
   manuscript: string; // The baseline text
@@ -325,7 +299,6 @@ export interface ProjectData {
   mapUnit?: string;
   mapDefaultView?: any;
   paths?: MapPath[];
-  dynamicCollections?: DynamicCollection[];
 }
 
 export interface MapPath {
@@ -403,7 +376,7 @@ export interface Character {
   affiliation?: string;
   knowsAbout?: string[];
   fieldNotes?: { label: string; value: string }[];
-  
+
   // Map placement fields
   x?: number;
   y?: number;
@@ -499,7 +472,7 @@ export interface Relationship {
   targetId: string; // Node B
   type: string;     // The edge label / predicate
   description?: string;
-  
+
   // Standard Graph Metadata (JGF/RDF)
   predicate?: string; // Standardized URI or slug for the relationship
   weight?: number;    // Strength of connection (0.0 to 1.0)

@@ -115,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isMenuOpen]);
-  
+
   const allNavItems: NavItem[] = [
     { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
@@ -126,10 +126,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.CODEX, label: 'Codex', icon: Book, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: BookOpen, projectOnly: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
-    { id: ViewType.DYNAMIC_FORGE, label: 'Forge', icon: Database, projectOnly: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
     { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
-    ];
+  ];
 
   const sections: SidebarSection[] = React.useMemo(() => {
     const baseSections: SidebarSection[] = [
@@ -139,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
       {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.ATLAS2, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH, ViewType.DYNAMIC_FORGE].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.ATLAS2, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH].includes(i.id))
       },
       {
         title: 'System',
@@ -182,13 +181,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Mobile Overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-[1000] lg:hidden backdrop-blur-sm transition-opacity"
           onClick={onClose}
         />
       )}
 
-      <aside 
+      <aside
         data-section="sidebar"
         onClick={(e) => {
           // If the user clicks the empty space at the bottom of the sidebar, close it
@@ -210,8 +209,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center justify-between">
             {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white uppercase">{appName.replace(' — Your Story, Decoded', '')}</span>}
             <div className="flex items-center gap-2">
-              <button 
-                onClick={onToggleCollapse} 
+              <button
+                onClick={onToggleCollapse}
                 className="hidden lg:block p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white"
                 title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
               >
@@ -226,10 +225,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <Layout size={20} />
                   </button>
-                                                  {isMenuOpen && (
+                  {isMenuOpen && (
                     <div data-section="page-menu" className="absolute left-full top-0 ml-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 flex flex-col gap-1 p-2 custom-scrollbar">
                       {sections.map((section) => (
-                        <div key={section.title} className="flex flex-col gap-1">
+                        <div key={section.label} className="flex flex-col gap-1">
                           {section.items.map(item => {
                             const isActive = currentView === item.id;
                             const isDisabled = item.projectOnly && !hasActiveProject;
@@ -239,13 +238,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 title={item.label}
                                 onClick={() => handleNavItemClick(item)}
                                 disabled={isDisabled}
-                                className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all group ${
-                                  isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''
-                                } ${
-                                  !isActive && !isDisabled ? 'hover:bg-slate-800 hover:text-slate-200' : ''
-                                } ${
-                                  isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''
-                                }`}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all group ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''
+                                  } ${!isActive && !isDisabled ? 'hover:bg-slate-800 hover:text-slate-200' : ''
+                                  } ${isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''
+                                  }`}
                               >
                                 <item.icon size={18} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors shrink-0`} />
                                 <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>
@@ -275,8 +271,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               </div>
               <p className="text-[8px] text-slate-500 font-medium leading-tight">
-                {!isServerConnected 
-                  ? 'Server unreachable. Data is NOT syncing.' 
+                {!isServerConnected
+                  ? 'Server unreachable. Data is NOT syncing.'
                   : 'Sign in to enable cloud sync.'}
               </p>
             </div>
@@ -291,9 +287,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {section.items.map(item => {
                 const isDisabled = item.projectOnly && !hasActiveProject;
                 if (item.adminOnly && currentUser.role !== 'admin') return null;
-                
+
                 const isActive = currentView === item.id;
-                
+
                 return (
                   <button
                     key={item.id}
@@ -337,25 +333,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </nav>
 
-        <div 
+        <div
           onClick={() => window.innerWidth < 1024 && onClose()}
           className="p-4 border-t border-slate-800/50"
         >
           <div className={`flex items-center gap-3 px-4 py-2 ${isCollapsed ? 'justify-center px-0' : ''}`}>
             {!isCollapsed && (
-              <div 
+              <div
                 className="flex-1 flex flex-col min-w-0"
               >
                 <span className="text-xs font-bold text-white truncate">{currentUser.name}</span>
                 <span className="text-[10px] text-slate-500 truncate uppercase tracking-tighter">{currentUser.role} Account</span>
               </div>
             )}
-            <div 
+            <div
               className={`${isCollapsed ? '' : 'shrink-0'} flex items-center gap-2`}
               onClick={(e) => e.stopPropagation()}
             >
               {!isCollapsed && currentUser.role === 'admin' && (
-                <button 
+                <button
                   onClick={() => {
                     // Logic to toggle admin note will be passed from App
                     const event = new CustomEvent('toggleAdminNote');
