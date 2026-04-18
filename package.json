@@ -37,6 +37,8 @@
     "@xyflow/react": "^12.10.1",
     "better-sqlite3": "^12.4.1",
     "cors": "^2.8.6",
+    "decap-cms-app": "^3.12.2",
+    "decap-cms-media-library-uploadcare": "^3.0.2",
     "diff": "^8.0.4",
     "docx": "^9.6.1",
     "dompurify": "^3.3.3",

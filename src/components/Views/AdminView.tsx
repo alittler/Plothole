@@ -5,10 +5,9 @@ import {
   Shield, Sparkles, Save, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, Grid3x3, GripVertical, Eye, EyeOff, Users, Calendar, Menu, QrCode, BookOpen
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, GripVertical, Eye, EyeOff, Users, Calendar, Menu, QrCode, BookOpen
 } from 'lucide-react';
 
-import { CardCatalogueView } from './CardCatalogueView';
 import { generateId } from '../../services/storageService';
 import { CharacterCard } from '../ui/CharacterCard';
 import { HierarchicalEntity } from '../../types';
@@ -34,7 +33,6 @@ enum AdminTab {
   CONNECT = 'Connect',
   USERS = 'Users',
   TOOLBOX = 'Toolbox',
-  CARD_CATALOGUE = 'Card Catalogue',
   PLOTHOLE_FORMAT = 'File Format',
   SCRIPTURE_MYTHOLOGY = 'Scripture & Mythology'
 }
@@ -612,15 +610,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </div>
             </section>
           </div>
-        );
-
-      case AdminTab.CARD_CATALOGUE:
-        return data ? (
-          <div className="h-full flex flex-col min-h-0 animate-in fade-in duration-500">
-            <CardCatalogueView data={data} onUpdateProject={onUpdateProject} onLinkClick={onLinkClick} />
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center p-20"><div className="text-center space-y-4"><Grid3x3 size={48} className="mx-auto text-slate-200" /><p className="text-slate-400 italic font-serif">Load a project to access the Card Catalogue.</p></div></div>
         );
 
       case AdminTab.PLOTHOLE_FORMAT:
@@ -1217,7 +1206,6 @@ books:
                 {tab === AdminTab.CONNECT && <QrCode size={18} />}
                 {tab === AdminTab.USERS && <User size={18} />}
                 {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
-                {tab === AdminTab.CARD_CATALOGUE && <Grid3x3 size={18} />}
                 {tab === AdminTab.PLOTHOLE_FORMAT && <Archive size={18} />}
                 {tab === AdminTab.SCRIPTURE_MYTHOLOGY && <BookOpen size={18} />}
               </div>
