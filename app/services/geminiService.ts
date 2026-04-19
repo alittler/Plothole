@@ -40,7 +40,74 @@ const getAiClient = () => {
   if (!apiKey || apiKey === 'undefined' || apiKey.trim().length < 10) {
     throw new Error("AI_CONFIG_ERROR: No valid API Key detected. Please click 'Connect Key' at the top of the screen.");
   }
-  return new GoogleGenAI({ apiKey });
+  
+  // Detect if this is an OpenRouter key (typically starts with sk-or-)
+  const isOpenRouter = apiKey.startsWith('sk-or-') || apiKey.includes('openrouter');
+  
+  return {
+    isOpenRouter,
+    apiKey,
+    google: !isOpenRouter ? new GoogleGenAI({ apiKey }) : null
+  };
+};
+
+const callAi = async (prompt: string | any, modelName: string, schema?: any, systemInstruction?: string) => {
+  const client = getAiClient();
+  
+  if (client.isOpenRouter) {
+    // OpenRouter implementation
+    const promptText = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
+    const messages: any[] = [];
+    
+    if (systemInstruction) {
+      messages.push({ "role": "system", "content": systemInstruction });
+    }
+    
+    messages.push({ 
+      "role": "user", 
+      "content": promptText + (schema ? "\n\nIMPORTANT: Return ONLY valid JSON matching this schema: " + JSON.stringify(schema) : "") 
+    });
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${client.apiKey}`,
+        "Content-Type": "application/json",
+        "X-Title": "Plothole"
+      },
+      body: JSON.stringify({
+        "model": modelName.includes('/') ? modelName : `google/${modelName}`,
+        "messages": messages,
+        "response_format": schema ? { "type": "json_object" } : undefined
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`OpenRouter Error: ${error.error?.message || response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } else {
+    // Standard Google implementation
+    const config: any = {};
+    if (schema) {
+      config.responseMimeType = "application/json";
+      config.responseSchema = schema;
+    }
+    if (systemInstruction) {
+      config.systemInstruction = systemInstruction;
+    }
+
+    const result = await client.google!.models.generateContent({
+      model: modelName,
+      contents: Array.isArray(prompt) ? prompt : [{ role: 'user', parts: [{ text: typeof prompt === 'string' ? prompt : JSON.stringify(prompt) }] }],
+      config: Object.keys(config).length > 0 ? config : undefined
+    });
+    
+    return result.text || "";
+  }
 };
 
 const safeJsonParse = (jsonString: string | undefined, defaultValue: any) => {
@@ -255,16 +322,8 @@ export const analyzeStoryText = async (text: string, tokenLimit?: number, option
     if (onProgress) onProgress(progressMsg);
     
     try {
-      const res = await withRetry(() => ai.models.generateContent({
-        model,
-        contents: [{ role: 'user', parts: [{ text: chunk }] }],
-        config: { 
-          systemInstruction,
-          responseMimeType: "application/json", 
-          responseSchema: unifiedAnalysisSchema
-        }
-      }));
-      const parsed = safeJsonParse(res.text, {});
+      const text = await withRetry(() => callAi(chunk, model, unifiedAnalysisSchema, systemInstruction));
+      const parsed = safeJsonParse(text, {});
       if (Object.keys(parsed).length > 0) {
         results.push(parsed);
       }
@@ -324,89 +383,66 @@ export const analyzeStoryText = async (text: string, tokenLimit?: number, option
 };
 
 export const detectManuscriptStructure = async (snippet: string): Promise<{actPattern: string, chapterPattern: string, scenePattern: string}> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
   const systemInstruction = "Identify novel structure patterns (Acts, Chapters, Scenes) from the text. Return JSON with Javascript Regex strings (using ^ for start-of-line).";
+  const prompt = `Analyze this manuscript snippet and find the splitting patterns: ${snippet.substring(0, 10000)}`;
 
-  const response = await withRetry(() => ai.models.generateContent({
-    model,
-    contents: `Analyze this manuscript snippet and find the splitting patterns: ${snippet.substring(0, 10000)}`,
-    config: {
-      systemInstruction,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          actPattern: { type: Type.STRING, description: "Regex for Parts or Acts (e.g. ^Part [0-9]+)" },
-          chapterPattern: { type: Type.STRING, description: "Regex for Chapters (e.g. ^Chapter [0-9]+)" },
-          scenePattern: { type: Type.STRING, description: "Regex for Scene breaks (e.g. ^\\\\*\\\\*\\\\*)" }
-        },
-        required: ["actPattern", "chapterPattern", "scenePattern"]
-      }
-    }
-  }));
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      actPattern: { type: Type.STRING, description: "Regex for Parts or Acts (e.g. ^Part [0-9]+)" },
+      chapterPattern: { type: Type.STRING, description: "Regex for Chapters (e.g. ^Chapter [0-9]+)" },
+      scenePattern: { type: Type.STRING, description: "Regex for Scene breaks (e.g. ^\\\\*\\\\*\\\\*)" }
+    },
+    required: ["actPattern", "chapterPattern", "scenePattern"]
+  };
 
-  return safeJsonParse(response.text, { actPattern: "^Part\\s+[0-9]+", chapterPattern: "^Chapter\\s+[0-9]+", scenePattern: "^\\*\\*\\*" });
+  const text = await withRetry(() => callAi(prompt, model, schema, systemInstruction));
+
+  return safeJsonParse(text, { actPattern: "^Part\\s+[0-9]+", chapterPattern: "^Chapter\\s+[0-9]+", scenePattern: "^\\*\\*\\*" });
 };
 
 export const getEvocativeTitles = async (scenes: {id: string, content: string}[]): Promise<{id: string, title: string}[]> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
 
   const payload = scenes.map(s => `ID: ${s.id}\nCONTENT: ${s.content.substring(0, 500)}`).join('\n\n---\n\n');
-
-  const response = await withRetry(() => ai.models.generateContent({
-    model,
-    contents: `Generate 3-5 word evocative titles for these scenes:\n\n${payload}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING },
-            title: { type: Type.STRING }
-          },
-          required: ["id", "title"]
-        }
-      }
+  const schema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        id: { type: Type.STRING },
+        title: { type: Type.STRING }
+      },
+      required: ["id", "title"]
     }
-  }));
+  };
 
-  return safeJsonParse(response.text, []);
+  const text = await withRetry(() => callAi(`Generate 3-5 word evocative titles for these scenes:\n\n${payload}`, model, schema));
+
+  return safeJsonParse(text, []);
 };
 
 export const doubleProcessNote = async (rawNote: string): Promise<{ expanded: string, summary: string, tags: string[] }> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
 
-  const expansionRes = await withRetry(() => ai.models.generateContent({
-    model,
-    contents: [{ role: 'user', parts: [{ text: `${prompts.NOTE_ENHANCEMENT}\n\nNote: ${rawNote}` }] }]
-  }));
-  const expandedText = expansionRes.text || rawNote;
+  const expandedText = await withRetry(() => callAi(`${prompts.NOTE_ENHANCEMENT}\n\nNote: ${rawNote}`, model)) || rawNote;
 
-  const processingRes = await withRetry(() => ai.models.generateContent({
-    model,
-    contents: [{ role: 'user', parts: [{ text: `${prompts.PROCESS_RAW_NOTES}\n\nText: ${expandedText}` }] }],
-    config: { 
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-          insights: { type: Type.STRING }
-        }
-      }
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      summary: { type: Type.STRING },
+      tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+      insights: { type: Type.STRING }
     }
-  }));
+  };
 
-  const meta = safeJsonParse(processingRes.text, { summary: "", tags: [] });
+  const processingRes = await withRetry(() => callAi(`${prompts.PROCESS_RAW_NOTES}\n\nText: ${expandedText}`, model, schema));
+
+  const meta = safeJsonParse(processingRes, { summary: "", tags: [] });
   return {
     expanded: expandedText,
     summary: meta.summary + (meta.insights ? `\n\nInsight: ${meta.insights}` : ""),
@@ -415,7 +451,6 @@ export const doubleProcessNote = async (rawNote: string): Promise<{ expanded: st
 };
 
 export const generateBookCover = async (title: string, author: string, summary: string): Promise<string | null> => {
-  const ai = getAiClient();
   // First, generate a text description
   const descPrompt = `Create a vivid, atmospheric book cover description for "${title}" by ${author}. 
 Based on this summary: ${summary}
@@ -423,20 +458,7 @@ Based on this summary: ${summary}
 Write 2-3 sentences describing the visual composition, mood, color palette, and key visual elements. 
 Be poetic and evocative. Do not mention the title or author in the description.`;
   
-  const descResponse = await withRetry(() => 
-    ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: { parts: [{ text: descPrompt }] },
-    })
-  );
-  
-  let description = '';
-  const candidate = descResponse.candidates?.[0];
-  if (candidate && candidate.content && candidate.content.parts) {
-    for (const part of candidate.content.parts) {
-      if (part.text) description = part.text;
-    }
-  }
+  const description = await withRetry(() => callAi(descPrompt, 'gemini-2.0-flash'));
   
   // Now extract key visual keywords from the description for image search
   const keywordPrompt = `Extract 3-5 key visual keywords from this book cover description for use in an image search. 
@@ -444,20 +466,8 @@ Return ONLY the keywords as a comma-separated list, nothing else.
 
 Description: ${description}`;
   
-  const keywordResponse = await withRetry(() =>
-    ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: { parts: [{ text: keywordPrompt }] },
-    })
-  );
-  
-  let keywords = 'book, abstract, art';
-  const keywordCandidate = keywordResponse.candidates?.[0];
-  if (keywordCandidate && keywordCandidate.content && keywordCandidate.content.parts) {
-    for (const part of keywordCandidate.content.parts) {
-      if (part.text) keywords = part.text.trim();
-    }
-  }
+  const keywordsText = await withRetry(() => callAi(keywordPrompt, 'gemini-2.0-flash'));
+  const keywords = keywordsText?.trim() || 'book, abstract, art';
   
   // Use Pixabay API (free, no authentication required)
   try {
@@ -489,7 +499,6 @@ Description: ${description}`;
 };
 
 export const generateCharacterPhysicalDescription = async (character: { name: string; role: string; age?: string; job?: string; traits?: string[]; description?: string }): Promise<string> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
   
@@ -506,104 +515,69 @@ Current description: ${character.description || 'none provided'}
 Write a vivid 2-3 sentence physical description including height, build, distinctive features, and overall appearance. 
 Make it specific and evocative. Focus on visual details that bring the character to life.`;
 
-  const response = await withRetry(() =>
-    ai.models.generateContent({
-      model,
-      contents: { parts: [{ text: prompt }] },
-    })
-  );
-  
-  let description = '';
-  const candidate = response.candidates?.[0];
-  if (candidate && candidate.content && candidate.content.parts) {
-    for (const part of candidate.content.parts) {
-      if (part.text) description = part.text;
-    }
-  }
+  const description = await withRetry(() => callAi(prompt, model));
   
   return description.trim();
 };
 
 export const processRawNotes = async (text: string): Promise<{content: string, category: string, tags: string[], analysis: string}[]> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
-  const response = await ai.models.generateContent({
-    model,
-    contents: `Analyze and extract entities: ${text}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            content: { type: Type.STRING },
-            category: { type: Type.STRING },
-            tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-            analysis: { type: Type.STRING }
-          },
-          required: ["content", "category", "tags", "analysis"]
-        }
-      }
+  const schema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        content: { type: Type.STRING },
+        category: { type: Type.STRING },
+        tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+        analysis: { type: Type.STRING }
+      },
+      required: ["content", "category", "tags", "analysis"]
     }
-  });
-  return safeJsonParse(response.text, []);
+  };
+
+  const resText = await callAi(`Analyze and extract entities: ${text}`, model, schema);
+  return safeJsonParse(resText, []);
 };
 
 export const extractThemesFromNotes = async (notes: Note[]): Promise<string[]> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
   const text = notes.map(n => n.content).join('\n');
-  const response = await ai.models.generateContent({
-    model,
-    contents: `Extract literary themes: ${text}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
-    }
-  });
-  return safeJsonParse(response.text, []);
+  const schema = { type: Type.ARRAY, items: { type: Type.STRING } };
+
+  const resText = await callAi(`Extract literary themes: ${text}`, model, schema);
+  return safeJsonParse(resText, []);
 };
 
 export const askProjectAI = async (prompt: string, projectData: ProjectData | null): Promise<string> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
   const context = projectData ? `Project Title: ${projectData.title}` : "No project context.";
-  const response = await ai.models.generateContent({
-    model,
-    contents: `${context}\n\nUser Question: ${prompt}`,
-  });
-  return response.text || "No response generated.";
+  
+  return await callAi(`${context}\n\nUser Question: ${prompt}`, model);
 };
 
 export const analyzeRelationships = async (text: string, characters: Character[]): Promise<Relationship[]> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
   const charNames = characters.map(c => c.name).join(', ');
-  const response = await ai.models.generateContent({
-    model,
-    contents: `Identify relationships between (${charNames}) in: ${text}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            sourceId: { type: Type.STRING },
-            targetId: { type: Type.STRING },
-            type: { type: Type.STRING },
-            description: { type: Type.STRING }
-          }
-        }
+  const schema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        sourceId: { type: Type.STRING },
+        targetId: { type: Type.STRING },
+        type: { type: Type.STRING },
+        description: { type: Type.STRING }
       }
     }
-  });
-  const data = safeJsonParse(response.text, []);
+  };
+
+  const resText = await callAi(`Identify relationships between (${charNames}) in: ${text}`, model, schema);
+  const data = safeJsonParse(resText, []);
   return data.map((rel: any) => ({
     id: generateId(),
     sourceId: characters.find(c => c.name === rel.sourceId)?.id || rel.sourceId,
@@ -614,43 +588,30 @@ export const analyzeRelationships = async (text: string, characters: Character[]
 };
 
 export const analyzeUrlForToolbox = async (url: string): Promise<{label: string, category: string, description: string}> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
-  const response = await ai.models.generateContent({
-    model,
-    contents: `Analyze website utility for a writer: ${url}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: { label: { type: Type.STRING }, category: { type: Type.STRING }, description: { type: Type.STRING } }
-      }
-    }
-  });
-  return safeJsonParse(response.text, { label: url, category: 'General', description: '' });
+  const schema = {
+    type: Type.OBJECT,
+    properties: { label: { type: Type.STRING }, category: { type: Type.STRING }, description: { type: Type.STRING } }
+  };
+
+  const resText = await callAi(`Analyze website utility for a writer: ${url}`, model, schema);
+  return safeJsonParse(resText, { label: url, category: 'General', description: '' });
 };
 
 export const generateConlangWord = async (language: Language, word: string): Promise<{translation: string, etymology: string}> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
-  const response = await ai.models.generateContent({
-    model,
-    contents: `Construct word for "${word}" based on phonology rules of ${language}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: { translation: { type: Type.STRING }, etymology: { type: Type.STRING } }
-      }
-    }
-  });
-  return safeJsonParse(response.text, { translation: word, etymology: '' });
+  const schema = {
+    type: Type.OBJECT,
+    properties: { translation: { type: Type.STRING }, etymology: { type: Type.STRING } }
+  };
+
+  const resText = await callAi(`Construct word for "${word}" based on phonology rules of ${language}`, model, schema);
+  return safeJsonParse(resText, { translation: word, etymology: '' });
 };
 
 export const analyzeConlangPhonology = async (dictionary: string): Promise<string> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
   const prompt = `
@@ -668,34 +629,25 @@ export const analyzeConlangPhonology = async (dictionary: string): Promise<strin
     3. Concise linguistic explanation.
     4. Examples from the provided data.
   `;
-  const response = await ai.models.generateContent({
-    model,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-  });
-  return response.text || "Phonological analysis inconclusive.";
+  
+  return await callAi(prompt, model);
 };
 
 export const analyzePlotMatrix = async (events: TimelineEvent[]): Promise<{ plotlines: Plotline[], cells: MatrixCell[] }> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
   const eventData = events.map(e => e.title).join(', ');
-  const response = await ai.models.generateContent({
-    model,
-    contents: `Identify major subplots and development plotlines: ${eventData}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          plotlines: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, color: { type: Type.STRING } } } },
-          cells: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { eventTitle: { type: Type.STRING }, plotlineTitle: { type: Type.STRING }, content: { type: Type.STRING } } } }
-        }
-      }
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      plotlines: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, color: { type: Type.STRING } } } },
+      cells: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { eventTitle: { type: Type.STRING }, plotlineTitle: { type: Type.STRING }, content: { type: Type.STRING } } } }
     }
-  });
+  };
 
-  const data = safeJsonParse(response.text, { plotlines: [], cells: [] });
+  const resText = await callAi(`Identify major subplots and development plotlines: ${eventData}`, model, schema);
+
+  const data = safeJsonParse(resText, { plotlines: [], cells: [] });
   const plotlines: Plotline[] = (data.plotlines || []).map((p: any) => ({ ...p, id: generateId() }));
   const cells: MatrixCell[] = (data.cells || []).map((c: any) => {
     const event = events.find(e => e.title === c.eventTitle);
@@ -707,38 +659,30 @@ export const analyzePlotMatrix = async (events: TimelineEvent[]): Promise<{ plot
 };
 
 export const generateSourceGuide = async (text: string) => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      summary: { type: Type.STRING },
+      topics: { type: Type.ARRAY, items: { type: Type.STRING } },
+      questions: { type: Type.ARRAY, items: { type: Type.STRING } }
+    },
+    required: ["summary", "topics", "questions"]
+  };
   
-  const response = await ai.models.generateContent({
-    model,
-    contents: `Analyze the following source text and provide a JSON response with three keys:
+  const resText = await callAi(`Analyze the following source text and provide a JSON response with three keys:
 1. "summary": A brief 2-3 sentence summary of the text.
 2. "topics": An array of 3-5 key topics or themes found in the text.
 3. "questions": An array of 3-5 suggested questions a user could ask to explore this text further.
 
 Source Text:
-${text.substring(0, 15000)}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          topics: { type: Type.ARRAY, items: { type: Type.STRING } },
-          questions: { type: Type.ARRAY, items: { type: Type.STRING } }
-        },
-        required: ["summary", "topics", "questions"]
-      }
-    }
-  });
+${text.substring(0, 15000)}`, model, schema);
   
-  return safeJsonParse(response.text, { summary: "", topics: [], questions: [] });
+  return safeJsonParse(resText, { summary: "", topics: [], questions: [] });
 };
 
 export const stenoResearch = async (text: string) => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
   const prompt = `
@@ -756,20 +700,13 @@ export const stenoResearch = async (text: string) => {
     ---
   `;
   
-  const response = await withRetry(() => ai.models.generateContent({
-    model,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-  }));
-
-  return response.text || "Research analysis failed.";
-
+  return await withRetry(() => callAi(prompt, model));
 };
 
 /**
  * Generic chat function for the AI Assistant.
  */
 export const smartExtractSources = async (text: string): Promise<{ title: string; author: string; content: string; citation: string; url?: string; type: 'text' | 'web' }[]> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
 
@@ -787,14 +724,8 @@ export const smartExtractSources = async (text: string): Promise<{ title: string
     TEXT: ${text}`;
 
   try {
-    const response = await withRetry(() => ai.models.generateContent({
-      model,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json"
-      }
-    }));
-    return safeJsonParse(response.text, []);
+    const resText = await withRetry(() => callAi(prompt, model, null));
+    return safeJsonParse(resText, []);
   } catch (error) {
     console.error("Smart Extract Error:", error);
     return [];
@@ -834,37 +765,29 @@ export const chatWithAssistant = async (
 };
 
 export const semanticSearchNotes = async (query: string, notes: Note[]): Promise<string[]> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
 
   const noteData = notes.map(n => `ID: ${n.id}\nCONTENT: ${n.content}\nTAGS: ${n.tags.join(', ')}`).join('\n\n---\n\n');
+  const schema = {
+    type: Type.ARRAY,
+    items: { type: Type.STRING }
+  };
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: `You are a semantic search engine. Given a query and a list of notes, return the IDs of the most relevant notes in order of relevance. Return strictly a JSON array of strings.
+  const resText = await callAi(`You are a semantic search engine. Given a query and a list of notes, return the IDs of the most relevant notes in order of relevance. Return strictly a JSON array of strings.
 
 Query: ${query}
 
 Notes:
-${noteData}`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING }
-      }
-    }
-  });
+${noteData}`, model, schema);
 
-  return safeJsonParse(response.text, []);
+  return safeJsonParse(resText, []);
 };
 
 export const extractSoftAnchors = async (
   text: string, 
   existingEvents: { id: string, title: string, uei: number }[]
 ): Promise<{ title: string; description: string; uei: number; referenceEventId: string; date: string }[]> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
   
@@ -892,61 +815,54 @@ Text to analyze:
 ${text}
   `;
 
-  const response = await withRetry(() => ai.models.generateContent({
-    model,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING },
-            description: { type: Type.STRING },
-            uei: { type: Type.INTEGER },
-            referenceEventId: { type: Type.STRING },
-            date: { type: Type.STRING }
-          },
-          required: ["title", "description", "uei", "referenceEventId", "date"]
-        }
-      }
+  const schema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING },
+        description: { type: Type.STRING },
+        uei: { type: Type.INTEGER },
+        referenceEventId: { type: Type.STRING },
+        date: { type: Type.STRING }
+      },
+      required: ["title", "description", "uei", "referenceEventId", "date"]
     }
-  }));
+  };
 
-  return safeJsonParse(response.text, []);
+  const resText = await withRetry(() => callAi(prompt, model, schema));
+
+  return safeJsonParse(resText, []);
 };
 
 export const performOCR = async (base64Image: string): Promise<string> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
 
-  const prompt = `
+  const promptText = `
     Perform high-accuracy OCR on the attached image. 
     Extract all visible text, including handwritten notes, character sketches details, or research clippings.
     Format the output as clean Markdown.
   `;
 
-  try {
-    const response = await withRetry(() => ai.models.generateContent({
-      model,
-      contents: [
+  const prompt = [
+    {
+      role: 'user',
+      parts: [
+        { text: promptText },
         {
-          role: 'user',
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: "image/jpeg",
-                data: base64Image.split(',')[1] || base64Image
-              }
-            }
-          ]
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: base64Image.split(',')[1] || base64Image
+          }
         }
       ]
-    }));
-    return response.text || "";
+    }
+  ];
+
+  try {
+    const resText = await withRetry(() => callAi(prompt, model));
+    return resText || "";
   } catch (error) {
     console.error("OCR Error:", error);
     return "Failed to extract text from image.";
@@ -954,7 +870,6 @@ export const performOCR = async (base64Image: string): Promise<string> => {
 };
 
 export const notebookLMProcess = async (text: string, type: 'text' | 'pdf' | 'image'): Promise<{ markdown: string, metadata: any }> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
 
@@ -980,13 +895,9 @@ export const notebookLMProcess = async (text: string, type: 'text' | 'pdf' | 'im
     - Followed immediately by the index.json text block in valid JSON format.
   `;
 
-  const response = await withRetry(() => ai.models.generateContent({
-    model,
-    contents: [{ role: 'user', parts: [{ text: `Process this ${type} content using the Bundle Method:\n\n${text}` }] }],
-    config: { systemInstruction }
-  }));
+  const resText = await withRetry(() => callAi(`Process this ${type} content using the Bundle Method:\n\n${text}`, model, null, systemInstruction));
 
-  const fullText = response.text || "";
+  const fullText = resText || "";
   
   // Extract Markdown block
   const mdMatch = fullText.match(/```markdown\n([\s\S]*?)\n```/) || fullText.match(/```\n([\s\S]*?)\n```/);
@@ -1024,7 +935,6 @@ export const auditPlotThreads = async (
   chapters: { title: string, content: string }[], 
   timeline: TimelineEvent[]
 ): Promise<{ id: string; type: 'character' | 'mystery' | 'plot-point'; content: string; message: string }[]> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
 
@@ -1045,28 +955,23 @@ Return a JSON array of objects:
 [{ "id": "uuid", "type": "character|mystery|plot-point", "content": "Name/Subject", "message": "Why it is a dead thread" }]
   `;
 
+  const schema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        id: { type: Type.STRING },
+        type: { type: Type.STRING, enum: ["character", "mystery", "plot-point"] },
+        content: { type: Type.STRING },
+        message: { type: Type.STRING }
+      },
+      required: ["id", "type", "content", "message"]
+    }
+  };
+
   try {
-    const response = await withRetry(() => ai.models.generateContent({
-      model,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              type: { type: Type.STRING, enum: ["character", "mystery", "plot-point"] },
-              content: { type: Type.STRING },
-              message: { type: Type.STRING }
-            },
-            required: ["id", "type", "content", "message"]
-          }
-        }
-      }
-    }));
-    return safeJsonParse(response.text, []);
+    const resText = await withRetry(() => callAi(prompt, model, schema));
+    return safeJsonParse(resText, []);
   } catch (err) {
     console.error("Plot Audit Error:", err);
     return [];
@@ -1074,7 +979,6 @@ Return a JSON array of objects:
 };
 
 export const analyzeSourceForCodex = async (sourceContent: string, question: string): Promise<string> => {
-  const ai = getAiClient();
   const prompts = await getCurrentPrompts();
   const model = prompts.AI_MODEL || "gemini-2.0-flash";
 
@@ -1091,11 +995,7 @@ Provide a helpful, concise answer based on the source material that could help p
   `;
 
   try {
-    const response = await withRetry(() => ai.models.generateContent({
-      model,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }]
-    }));
-    return response.text;
+    return await withRetry(() => callAi(prompt, model));
   } catch (err) {
     console.error("Source Analysis Error:", err);
     throw new Error("Failed to analyze source material. Please try again.");
