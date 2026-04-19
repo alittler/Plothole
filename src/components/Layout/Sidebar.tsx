@@ -376,6 +376,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             </div>
           </div>
+          {commitHash && !isCollapsed && (
+            <div className="mt-2 px-4 flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
+              <Hash size={10} className="text-slate-500" />
+              <span className="text-[9px] font-mono text-slate-500 uppercase tracking-tighter">
+                {commitHash.substring(0, 7)}
+              </span>
+            </div>
+          )}
         </div>
       </aside>
     </>

@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
     const version = process.env.npm_package_version || '0.0.0';
     return NextResponse.json({
       version,
+      commit: process.env.NEXT_PUBLIC_GIT_COMMIT_HASH || 'unknown',
       name: 'Plothole',
       timestamp: new Date().toISOString(),
     });
