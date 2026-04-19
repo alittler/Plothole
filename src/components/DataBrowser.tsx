@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ChevronRight, Folder, RotateCw } from 'lucide-react';
+import { Loader2, ChevronRight, Folder, RotateCw, LayoutGrid, Trees } from 'lucide-react';
 import { DataEditor } from './DataEditor';
+import { FileExplorer } from './FileExplorer';
 
 const CATEGORIES = [
   { id: 'characters', label: '👤 Characters' },
@@ -20,6 +21,7 @@ export const DataBrowser: React.FC<DataBrowserProps> = ({ onClose }) => {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [viewMode, setViewMode] = useState<'categories' | 'tree'>('categories');
 
   useEffect(() => {
     if (selectedCategory) {
@@ -58,6 +60,33 @@ export const DataBrowser: React.FC<DataBrowserProps> = ({ onClose }) => {
         filename={selectedFile}
         onClose={() => setSelectedFile(null)}
       />
+    );
+  }
+
+  // If in tree view mode, show file explorer
+  if (viewMode === 'tree') {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between gap-2 p-4 border-b bg-gray-50">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">File Explorer</h2>
+          </div>
+          <button
+            onClick={() => setViewMode('categories')}
+            className="flex items-center gap-1 px-3 py-1 text-sm text-gray-600 hover:bg-white rounded border"
+            title="Switch to category view"
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Categories
+          </button>
+        </div>
+        <FileExplorer
+          onSelectFile={(category, filename) => {
+            setSelectedCategory(category);
+            setSelectedFile(filename);
+          }}
+        />
+      </div>
     );
   }
 
@@ -126,16 +155,26 @@ export const DataBrowser: React.FC<DataBrowserProps> = ({ onClose }) => {
   // Show category selector
   return (
     <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center p-4 border-b">
-        <h2 className="text-xl font-bold">Data Editor</h2>
-        {onClose && (
+      <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+        <h2 className="text-lg font-semibold">Data Editor</h2>
+        <div className="flex items-center gap-2">
           <button
-            onClick={onClose}
-            className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
+            onClick={() => setViewMode('tree')}
+            className="flex items-center gap-1 px-3 py-1 text-sm text-gray-600 hover:bg-white rounded border"
+            title="Switch to file tree view"
           >
-            Close
+            <Trees className="w-4 h-4" />
+            Explore
           </button>
-        )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
+            >
+              Close
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
