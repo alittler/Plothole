@@ -56,15 +56,6 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
-// Validate ../../app/keystatic/[[...conf]]/page.tsx
-{
-  type __IsExpected<Specific extends AppPageConfig<"/keystatic/[[...conf]]">> = Specific
-  const handler = {} as typeof import("../../app/keystatic/[[...conf]]/page.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
-
 // Validate ../../app/api/backup-email/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/backup-email">> = Specific
@@ -87,15 +78,6 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/health">> = Specific
   const handler = {} as typeof import("../../app/api/health/route.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
-
-// Validate ../../app/api/keystatic/[...conf]/route.ts
-{
-  type __IsExpected<Specific extends RouteHandlerConfig<"/api/keystatic/[...conf]">> = Specific
-  const handler = {} as typeof import("../../app/api/keystatic/[...conf]/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -194,15 +176,6 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 
 
 
-
-// Validate ../../app/keystatic/layout.tsx
-{
-  type __IsExpected<Specific extends LayoutConfig<"/keystatic">> = Specific
-  const handler = {} as typeof import("../../app/keystatic/layout.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
 
 // Validate ../../app/layout.tsx
 {
