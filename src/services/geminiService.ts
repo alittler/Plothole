@@ -243,6 +243,7 @@ export const analyzeStoryText = async (text: string, tokenLimit?: number, option
   }
 
   const results = [];
+  const errors = [];
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     const progressMsg = `Analyzing manuscript chunk ${i+1}/${chunks.length}...`;
@@ -264,12 +265,17 @@ export const analyzeStoryText = async (text: string, tokenLimit?: number, option
         results.push(parsed);
       }
     } catch (e) {
-      console.error(`Chunk ${i+1} failed:`, e);
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      console.error(`Chunk ${i+1} failed:`, errorMsg);
+      errors.push(`Chunk ${i+1}: ${errorMsg}`);
     }
   }
 
   if (results.length === 0) {
-    throw new Error("AI failed to return any valid analysis results.");
+    const errorDetails = errors.length > 0 
+      ? `\n\nDetails:\n${errors.join('\n')}`
+      : '';
+    throw new Error(`AI failed to return any valid analysis results.${errorDetails}`);
   }
 
   // Merge Results
