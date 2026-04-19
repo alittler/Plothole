@@ -9,7 +9,7 @@ async function testGemini() {
   }
 
   const genAI = new GoogleGenAI({ apiKey });
-  const modelName = "gemini-2.5-flash"; // Testing the model we just set
+  const modelName = "gemini-2.0-flash"; // Testing the model we just set
 
   console.log(`Testing Gemini API with model: ${modelName}...`);
   try {

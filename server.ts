@@ -949,7 +949,7 @@ async function startServer() {
             TOOLBOX_URL_ANALYSIS: "Analyze this URL for creative writer utility.",
             GENERATE_CONLANG_WORD: 'Construct a word for "{word}" in "{langName}".',
             CONNECT_NOTES: "Synthesize these notes into a narrative thread.",
-            AI_MODEL: "gemini-2.5-flash"
+            AI_MODEL: "gemini-2.0-flash"
           });
         }
         res.status(404).json({ error: 'Global not found' });
