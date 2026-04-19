@@ -30,6 +30,7 @@ import {
   scanForContinuityErrors,
   DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid, analyzeRelationships, unifiedAnalysisSchema, detectManuscriptStructure
 } from './services/geminiService';
+import { syncDataToEditor } from './services/dataSyncService';
 import { initGitForProject, commitToGit, getGitLog, updateIntegrityHash } from './services/versioningService';
 import { Commit, BackupStatus } from './types';
 
@@ -479,6 +480,17 @@ const App: React.FC = () => {
       }
 
       await updateProjectData(updates);
+      
+      // Sync extracted data to Data Editor filesystem
+      setProcessingStatus("Syncing data to Data Editor...");
+      await syncDataToEditor({
+        characters: updates.characters,
+        locations: analysis.locations,
+        events: analysis.timeline,
+        artifacts: analysis.artifacts,
+        lore: analysis.lore
+      });
+      
       alert("Processor synced successfully.");
     } catch (err) {
       handleError(err);
