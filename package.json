@@ -71,7 +71,8 @@
     "simple-git": "^3.33.0",
     "suncalc": "^1.9.0",
     "tesseract.js": "^7.0.0",
-    "uppy": "^5.2.4"
+    "uppy": "^5.2.4",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
