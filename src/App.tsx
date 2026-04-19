@@ -1367,6 +1367,19 @@ const App: React.FC = () => {
         if (!data.id) data.id = generateId();
         await saveProjectData(data);
         setProjectData(data);
+        
+        // Sync extracted data to Data Editor filesystem
+        if (!file.name.endsWith('.plothole') && !file.name.endsWith('.json')) {
+          setProcessingStatus("Syncing data to Data Editor...");
+          await syncDataToEditor({
+            characters: data.characters,
+            locations: data.locations,
+            events: data.timeline,
+            artifacts: data.artifacts,
+            lore: data.lore
+          });
+        }
+        
         await refreshMetadata();
         setCurrentView(ViewType.DASHBOARD);
       }
