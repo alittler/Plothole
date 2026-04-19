@@ -44,7 +44,7 @@ export const CardActions: React.FC<CardActionsProps> = ({
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-50">
+          <div className="absolute left-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-[9999]">
             {onEdit && (
               <button
                 onClick={handleEdit}
@@ -69,7 +69,7 @@ export const CardActions: React.FC<CardActionsProps> = ({
         {/* Click outside to close */}
         {isOpen && (
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[9998]"
             onClick={() => setIsOpen(false)}
           />
         )}
