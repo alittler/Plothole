@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
 
 interface CardActionsProps {
@@ -16,6 +17,18 @@ export const CardActions: React.FC<CardActionsProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + 8,
+        left: rect.left
+      });
+    }
+  }, [isOpen]);
 
   const handleEdit = () => {
     setIsOpen(false);
@@ -36,15 +49,22 @@ export const CardActions: React.FC<CardActionsProps> = ({
     <>
       <div className={`relative ${className}`}>
         <button
+          ref={buttonRef}
           onClick={() => setIsOpen(!isOpen)}
           className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
           title="More options"
         >
           <MoreHorizontal size={16} />
         </button>
+      </div>
 
-        {isOpen && (
-          <div className="absolute left-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-[9999]">
+      {isOpen && menuPos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
+          <div 
+            className="fixed w-40 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-[9999]"
+            style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px` }}
+          >
             {onEdit && (
               <button
                 onClick={handleEdit}
@@ -64,16 +84,9 @@ export const CardActions: React.FC<CardActionsProps> = ({
               </button>
             )}
           </div>
-        )}
-
-        {/* Click outside to close */}
-        {isOpen && (
-          <div
-            className="fixed inset-0 z-[9998]"
-            onClick={() => setIsOpen(false)}
-          />
-        )}
-      </div>
+        </>,
+        document.body
+      )}
 
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (
