@@ -7,14 +7,17 @@ let initializedApiKey: string | null = null;
 export const initializeApiKey = async () => {
   const metaEnv = (import.meta as any).env || {};
   const windowEnv = (window as any)._env_ || {};
-  
-  initializedApiKey = metaEnv.VITE_GEMINI_API_KEY || 
+
+  initializedApiKey = metaEnv.NEXT_PUBLIC_GEMINI_API_KEY ||
+                      metaEnv.VITE_GEMINI_API_KEY || 
                       (window as any).GEMINI_API_KEY || 
+                      (window as any).NEXT_PUBLIC_GEMINI_API_KEY ||
+                      windowEnv.NEXT_PUBLIC_GEMINI_API_KEY ||
                       windowEnv.VITE_GEMINI_API_KEY ||
-                      (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) || 
+                      (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_GEMINI_API_KEY : null) ||
+                      (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) ||
                       await getApiKey('gemini_api_key');
 };
-
 export const isApiKeyValid = () => {
   return !!initializedApiKey && initializedApiKey.trim().length >= 10;
 };
