@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_AUTH0_DOMAIN: process.env.AUTH0_DOMAIN,
     NEXT_PUBLIC_AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
     NEXT_PUBLIC_GIT_COMMIT_HASH: gitCommitHash,
-    NEXT_PUBLIC_GEMINI_API_KEY: process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY,
+    NEXT_PUBLIC_GEMINI_API_KEY: process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API || process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY,
   },
   async rewrites() {
     return {

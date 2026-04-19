@@ -9,12 +9,16 @@ export const initializeApiKey = async () => {
   const windowEnv = (window as any)._env_ || {};
 
   initializedApiKey = metaEnv.NEXT_PUBLIC_GEMINI_API_KEY ||
+                      metaEnv.NEXT_PUBLIC_GEMINI_API ||
                       metaEnv.VITE_GEMINI_API_KEY || 
                       (window as any).GEMINI_API_KEY || 
                       (window as any).NEXT_PUBLIC_GEMINI_API_KEY ||
+                      (window as any).NEXT_PUBLIC_GEMINI_API ||
                       windowEnv.NEXT_PUBLIC_GEMINI_API_KEY ||
+                      windowEnv.NEXT_PUBLIC_GEMINI_API ||
                       windowEnv.VITE_GEMINI_API_KEY ||
                       (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_GEMINI_API_KEY : null) ||
+                      (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_GEMINI_API : null) ||
                       (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) ||
                       await getApiKey('gemini_api_key');
 };
