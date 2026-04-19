@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ChevronRight, Folder } from 'lucide-react';
+import { Loader2, ChevronRight, Folder, RotateCw } from 'lucide-react';
 import { DataEditor } from './DataEditor';
 
 const CATEGORIES = [
@@ -66,18 +66,28 @@ export const DataBrowser: React.FC<DataBrowserProps> = ({ onClose }) => {
     const categoryLabel = CATEGORIES.find(c => c.id === selectedCategory)?.label || selectedCategory;
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center gap-2 p-4 border-b">
+        <div className="flex items-center justify-between gap-2 p-4 border-b">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setSelectedCategory(null);
+                setFiles([]);
+              }}
+              className="text-blue-600 hover:text-blue-700"
+            >
+              Data Editor
+            </button>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <span className="font-semibold">{categoryLabel}</span>
+          </div>
           <button
-            onClick={() => {
-              setSelectedCategory(null);
-              setFiles([]);
-            }}
-            className="text-blue-600 hover:text-blue-700"
+            onClick={() => loadFiles(selectedCategory)}
+            disabled={loading}
+            className="p-2 hover:bg-gray-100 rounded text-gray-600 hover:text-gray-900 disabled:opacity-50"
+            title="Refresh file list"
           >
-            Data Editor
+            <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-          <span className="font-semibold">{categoryLabel}</span>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">

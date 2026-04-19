@@ -115,21 +115,6 @@ export interface HierarchicalEntity {
   metadata?: Record<string, any>;
 }
 
-export interface CollectionField {
-  key: string;
-  label: string;
-  type: 'text' | 'number' | 'long' | 'select' | 'boolean';
-  options?: string[];
-}
-
-export interface DynamicCollection {
-  id: string;
-  name: string;
-  icon: string;
-  fields: CollectionField[];
-  items: any[];
-}
-
 export interface AssetMetadata {
   filename: string;
   description: string;
@@ -314,7 +299,6 @@ export interface ProjectData {
   mapUnit?: string;
   mapDefaultView?: any;
   paths?: MapPath[];
-  customCollections?: DynamicCollection[];
 }
 
 export interface MapPath {
