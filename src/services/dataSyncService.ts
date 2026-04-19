@@ -1,9 +1,12 @@
 /**
  * Service to sync AI-generated manuscript data to the `/data/` filesystem
  * This makes the data accessible through the Data Editor
+ * Structure: /data/[author]/[book-title]/[category]/[file].json
  */
 
 export interface DataSyncPayload {
+  author?: string;
+  bookTitle?: string;
   characters?: Array<{
     id?: string;
     name: string;
@@ -47,41 +50,45 @@ export interface DataSyncPayload {
 
 /**
  * Save AI-generated data to the Data Editor filesystem
+ * Organized as /data/[author]/[book-title]/[category]/[file].json
  */
 export const syncDataToEditor = async (payload: DataSyncPayload): Promise<void> => {
   try {
+    const author = sanitizePath(payload.author || 'Unknown Author');
+    const bookTitle = sanitizePath(payload.bookTitle || 'Untitled Book');
+
     // Save characters
     if (payload.characters && payload.characters.length > 0) {
       for (const character of payload.characters) {
-        await saveDataFile('characters', character);
+        await saveDataFile(author, bookTitle, 'characters', character);
       }
     }
 
     // Save locations
     if (payload.locations && payload.locations.length > 0) {
       for (const location of payload.locations) {
-        await saveDataFile('locations', location);
+        await saveDataFile(author, bookTitle, 'locations', location);
       }
     }
 
     // Save events
     if (payload.events && payload.events.length > 0) {
       for (const event of payload.events) {
-        await saveDataFile('events', event);
+        await saveDataFile(author, bookTitle, 'events', event);
       }
     }
 
     // Save artifacts/items
     if (payload.artifacts && payload.artifacts.length > 0) {
       for (const artifact of payload.artifacts) {
-        await saveDataFile('items', artifact);
+        await saveDataFile(author, bookTitle, 'items', artifact);
       }
     }
 
     // Save lore
     if (payload.lore && payload.lore.length > 0) {
       for (const item of payload.lore) {
-        await saveDataFile('lore', item);
+        await saveDataFile(author, bookTitle, 'lore', item);
       }
     }
   } catch (error) {
@@ -91,18 +98,38 @@ export const syncDataToEditor = async (payload: DataSyncPayload): Promise<void> 
 };
 
 /**
- * Save a single data item to the Data Editor
+ * Sanitize path component to be filesystem-safe
  */
-async function saveDataFile(category: string, item: any): Promise<void> {
+function sanitizePath(str: string): string {
+  return str
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-_ ]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 100);
+}
+
+/**
+ * Save a single data item to the Data Editor
+ * Path: /data/[author]/[book-title]/[category]/[filename].json
+ */
+async function saveDataFile(author: string, bookTitle: string, category: string, item: any): Promise<void> {
   // Generate filename from name, term, or title
   const name = item.name || item.term || item.title || 'unknown';
-  const filename = `${name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}.json`;
+  const filename = sanitizePath(name) + '.json';
 
   try {
     const response = await fetch('/api/data/write', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category, filename, content: item })
+      body: JSON.stringify({
+        category,
+        filename,
+        content: item,
+        author,
+        bookTitle
+      })
     });
 
     if (!response.ok) {

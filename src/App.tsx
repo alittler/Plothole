@@ -484,6 +484,8 @@ const App: React.FC = () => {
       // Sync extracted data to Data Editor filesystem
       setProcessingStatus("Syncing data to Data Editor...");
       await syncDataToEditor({
+        author: projectData.author,
+        bookTitle: projectData.title,
         characters: updates.characters,
         locations: analysis.locations,
         events: analysis.timeline,
@@ -1372,6 +1374,8 @@ const App: React.FC = () => {
         if (!file.name.endsWith('.plothole') && !file.name.endsWith('.json')) {
           setProcessingStatus("Syncing data to Data Editor...");
           await syncDataToEditor({
+            author: data.author,
+            bookTitle: data.title,
             characters: data.characters,
             locations: data.locations,
             events: data.timeline,
