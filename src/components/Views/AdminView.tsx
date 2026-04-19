@@ -11,6 +11,7 @@ import {
 import { generateId } from '../../services/storageService';
 import { CharacterCard } from '../ui/CharacterCard';
 import { HierarchicalEntity } from '../../types';
+import { DataBrowser } from '../DataBrowser';
 
 interface AdminViewProps {
   data: ProjectData | null;
@@ -34,7 +35,8 @@ enum AdminTab {
   USERS = 'Users',
   TOOLBOX = 'Toolbox',
   PLOTHOLE_FORMAT = 'File Format',
-  SCRIPTURE_MYTHOLOGY = 'Scripture & Mythology'
+  SCRIPTURE_MYTHOLOGY = 'Scripture & Mythology',
+  DATA_EDITOR = 'Data Editor'
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
@@ -1177,6 +1179,9 @@ books:
             )}
           </div>
         );
+
+      case AdminTab.DATA_EDITOR:
+        return <DataBrowser />;
 
       default: return null;
     }

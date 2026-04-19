@@ -74,6 +74,33 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../app/api/data/list/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/data/list">> = Specific
+  const handler = {} as typeof import("../../app/api/data/list/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/data/read/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/data/read">> = Specific
+  const handler = {} as typeof import("../../app/api/data/read/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/data/write/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/data/write">> = Specific
+  const handler = {} as typeof import("../../app/api/data/write/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../app/api/health/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/health">> = Specific
