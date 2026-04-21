@@ -25,11 +25,6 @@ import {
   isCloudStorageActive,
   setServerHealth
 } from './services/storageService';
-import {
-  analyzeStoryText, generateBookCover, generateCharacterPhysicalDescription, doubleProcessNote, extractThemesFromNotes, extractSoftAnchors, auditPlotThreads,
-  scanForContinuityErrors,
-  DEFAULT_PROMPTS, initializeApiKey, isApiKeyValid, analyzeRelationships, unifiedAnalysisSchema, detectManuscriptStructure
-} from './services/geminiService';
 import { syncDataToEditor } from './services/dataSyncService';
 import { initGitForProject, commitToGit, getGitLog, updateIntegrityHash } from './services/versioningService';
 import { Commit, BackupStatus } from './types';
@@ -37,7 +32,6 @@ import { Commit, BackupStatus } from './types';
 // Components
 import { Sidebar } from './components/Layout/Sidebar';
 import { BottomNav } from './components/Layout/BottomNav';
-import { AiAssistant } from './components/ui/AiAssistant';
 import { BookshelfView } from './components/Views/BookshelfView';
 import { DashboardView } from './components/Views/DashboardView';
 import { ResearchSystemView } from './components/Views/ResearchSystemView';
@@ -58,7 +52,7 @@ import { PublicProfileView } from './components/Views/PublicProfileView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, X, Sparkles, Menu, LogOut, Shield, FileText, Database, PenTool, Trash2, Loader2, Search } from 'lucide-react';
+import { AlertCircle, X, Menu, LogOut, Shield, FileText, Database, PenTool, Trash2, Loader2, Search } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { SignInPage } from './components/Auth/SignInPage';
 
@@ -69,7 +63,7 @@ const DEMO_USER: User = {
   role: 'admin',
   lastActive: Date.now(),
   themeColor: '59 130 246',
-  preferences: { themeMode: 'light', fontSize: 'md', fontFamily: 'sans', landingPage: ViewType.BOOKSHELF, aiVerbosity: 'detailed', colorfulIcons: true, semanticSearchEnabled: false }
+  preferences: { themeMode: 'light', fontSize: 'md', fontFamily: 'sans', landingPage: ViewType.BOOKSHELF, colorfulIcons: true, semanticSearchEnabled: false }
 };
 
 
@@ -124,7 +118,7 @@ const App: React.FC = () => {
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [globalResources, setGlobalResources] = useState<ToolboxLink[]>([]);
-  const [appPrompts, setAppPromptsState] = useState<AppPrompts>(DEFAULT_PROMPTS);
+  const [appPrompts, setAppPromptsState] = useState<AppPrompts>({ systemPrompt: '', charAnalysisPrompt: '', locationPrompt: '', timelinePrompt: '', themePrompt: '' });
   const [appSettings, setAppSettings] = useState<AppSettings>({
     appName: 'Plothole — Your Story, Decoded',
     adminEmails: ['alittler86@gmail.com'],
@@ -206,7 +200,6 @@ const App: React.FC = () => {
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isAiOpen, setIsAiOpen] = useState(false);
   const [isAdminNoteOpen, setIsAdminNoteOpen] = useState(false);
 
   useEffect(() => {
@@ -223,7 +216,6 @@ const App: React.FC = () => {
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [activeTasks, setActiveTasks] = useState<string[]>([]);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
-  const [isUpdatingProcessed, setIsUpdatingProcessed] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const addTask = (id: string) => setActiveTasks(prev => [...prev, id]);
@@ -355,154 +347,6 @@ const App: React.FC = () => {
     }
   }, [projectData, refreshMetadata]);
 
-  const handleUpdateProcessedFiles = async () => {
-    if (!projectData) return;
-    setIsUpdatingProcessed(true);
-    addTask('Syncing Processor');
-    try {
-      const manuscriptText = projectData.latestManuscriptText || '';
-      const promptText = JSON.stringify(appPrompts) + JSON.stringify(unifiedAnalysisSchema);
-
-      const [currentManuscriptSha, currentPromptSha] = await Promise.all([
-        generateSHA256(manuscriptText),
-        generateSHA256(promptText)
-      ]);
-
-      const manuscriptChanged = currentManuscriptSha !== projectData.lastProcessedManuscriptSha;
-      const promptsChanged = currentPromptSha !== projectData.lastProcessedPromptSha;
-
-      if (!manuscriptChanged && !promptsChanged) {
-        alert("Manuscript and Blueprint schemas are already up to date.");
-        return;
-      }
-
-      console.log(`Smart Sync: Manuscript changed: ${manuscriptChanged}, Prompts changed: ${promptsChanged}`);
-
-      // Perform re-scan
-      setProcessingStatus("Initializing Blueprint Scan...");
-      const analysis = await analyzeStoryText(manuscriptText, projectData.aiContextLimit, undefined, (msg) => {
-        setProcessingStatus(msg);
-      });
-
-      setProcessingStatus("Merging Data Fragments...");
-      // Smart Merge logic
-      const updates: Partial<ProjectData> = {
-        lastProcessedManuscriptSha: currentManuscriptSha,
-        lastProcessedPromptSha: currentPromptSha,
-        summary: analysis.summary,
-        themes: Array.from(new Set([...projectData.themes, ...analysis.themes])),
-        wordCount: manuscriptText.trim().split(/\s+/).filter(w => w.length > 0).length,
-        charCount: manuscriptText.length
-      };
-
-      if (analysis.characters.length > 0) {
-        const existingChars = [...projectData.characters];
-
-        // Helper function to determine tier based on role
-        const getTierFromRole = (role: string): number => {
-          const lowerRole = role.toLowerCase();
-          if (lowerRole === 'protagonist' || lowerRole === 'antagonist' || lowerRole === 'core') {
-            return 1; // Core tier
-          } else if (lowerRole === 'supporting') {
-            return 2; // Supporting tier
-          } else {
-            return 3; // Background tier (Minor, etc.)
-          }
-        };
-
-        // Process each analyzed character
-        for (const nc of analysis.characters) {
-          const idx = existingChars.findIndex(ec => ec.name.toLowerCase() === nc.name.toLowerCase());
-          const characterTier = getTierFromRole(nc.role || 'Minor');
-          const isCoreTier = characterTier === 1;
-
-          if (idx >= 0) {
-            // Update existing character: prefer new data for job/role if current is empty
-            existingChars[idx] = {
-              ...existingChars[idx],
-              job: existingChars[idx].job || nc.job || '',
-              role: (existingChars[idx].role === 'Supporting' || existingChars[idx].role === 'Minor') ? (nc.role || existingChars[idx].role) : existingChars[idx].role,
-              description: existingChars[idx].description.length < 10 ? (nc.description || existingChars[idx].description) : existingChars[idx].description,
-              firstMentionOffset: nc.firstMentionOffset || existingChars[idx].firstMentionOffset,
-              tier: existingChars[idx].tier !== undefined ? existingChars[idx].tier : characterTier
-            };
-
-            // Auto-generate physical description for core tier characters if missing
-            if (isCoreTier && (!existingChars[idx].physicalFeatures || existingChars[idx].physicalFeatures.length < 20)) {
-              try {
-                setProcessingStatus(`Generating physical description for ${nc.name}...`);
-                const physicalDesc = await generateCharacterPhysicalDescription({
-                  name: existingChars[idx].name,
-                  role: existingChars[idx].role,
-                  age: existingChars[idx].age,
-                  job: existingChars[idx].job,
-                  traits: existingChars[idx].traits,
-                  description: existingChars[idx].description
-                });
-                existingChars[idx].physicalFeatures = physicalDesc;
-              } catch (err) {
-                console.warn(`Failed to generate description for ${nc.name}:`, err);
-              }
-            }
-          } else {
-            // Add tier to new character based on their role
-            const newChar = { ...nc, tier: characterTier };
-            existingChars.push(newChar);
-
-            // Auto-generate physical description for new core tier characters if missing
-            if (isCoreTier && (!nc.physicalFeatures || nc.physicalFeatures.length < 20)) {
-              try {
-                setProcessingStatus(`Generating physical description for ${nc.name}...`);
-                const physicalDesc = await generateCharacterPhysicalDescription({
-                  name: nc.name,
-                  role: nc.role,
-                  age: nc.age,
-                  job: nc.job,
-                  traits: nc.traits,
-                  description: nc.description
-                });
-                const charIdx = existingChars.findIndex(c => c.name === nc.name);
-                if (charIdx >= 0) {
-                  existingChars[charIdx].physicalFeatures = physicalDesc;
-                }
-              } catch (err) {
-                console.warn(`Failed to generate description for ${nc.name}:`, err);
-              }
-            }
-          }
-        }
-        updates.characters = existingChars;
-      }
-
-      // Add new timeline events if manuscript changed
-      if (manuscriptChanged && analysis.timeline.length > 0) {
-        updates.timeline = [...projectData.timeline, ...analysis.timeline.filter(ne => !projectData.timeline.some(ee => ee.title === ne.title))];
-      }
-
-      await updateProjectData(updates);
-      
-      // Sync extracted data to Data Editor filesystem
-      setProcessingStatus("Syncing data to Data Editor...");
-      await syncDataToEditor({
-        author: projectData.author,
-        bookTitle: projectData.title,
-        characters: updates.characters,
-        locations: analysis.locations,
-        events: analysis.timeline,
-        artifacts: analysis.artifacts,
-        lore: analysis.lore
-      });
-      
-      alert("Processor synced successfully.");
-    } catch (err) {
-      handleError(err);
-    } finally {
-      setIsUpdatingProcessed(false);
-      setProcessingStatus(null);
-      removeTask('Syncing Processor');
-    }
-  };
-
   const [currentMapParentId, setCurrentMapParentId] = useState<string | null>(null);
   const [adminTargetId, setAdminTargetId] = useState<string | null>(null);
 
@@ -523,8 +367,6 @@ const App: React.FC = () => {
   }, []);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
   const [lastBackupMilestone, setLastBackupMilestone] = useState<{ words: number, commits: number }>({ words: 0, commits: 0 });
 
   // Listen for Escape key to exit fullscreen
@@ -537,7 +379,6 @@ const App: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isMapFullscreen]);
-  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
   const [isExtractingThemes, setIsExtractingThemes] = useState(false);
   const [isExtractingRelationships, setIsExtractingRelationships] = useState(false);
 
@@ -610,28 +451,8 @@ const App: React.FC = () => {
     });
   }, [projectData]);
 
-  const checkApiKey = useCallback(async () => {
-    await initializeApiKey();
-    const hasKey = isApiKeyValid();
-    setHasApiKey(hasKey);
-    return hasKey;
-  }, []);
-
-  const handleOpenKeySelection = async () => {
-    alert("Please ensure GEMINI_API_KEY is set in your environment secrets.");
-  };
-
   const handleError = useCallback((err: any) => {
     console.error("App Error:", err);
-    const msg = err.message || String(err);
-    if (msg.includes("AI_CONFIG_ERROR") || msg.includes("API Key")) {
-      setAiError("AI services are unavailable: Please check your environment configuration.");
-    } else if (msg.includes("quota") || msg.includes("limit")) {
-      setAiError("AI Rate Limit reached. Please wait a moment and try again.");
-    } else {
-      setAiError(`An unexpected error occurred: ${msg.substring(0, 100)}`);
-    }
-    setTimeout(() => setAiError(null), 8000);
   }, []);
 
   useEffect(() => {
@@ -651,11 +472,10 @@ const App: React.FC = () => {
         setCloudStorageEnabled(isAuthenticated === true, fetchWithAuth);
 
         console.log(`[Init] Fetching metadata...`);
-        const [meta, notes, resources, prompts, settings] = await Promise.all([
+        const [meta, notes, resources, settings] = await Promise.all([
           getAllProjectsMetadata(),
           getAllGlobalNotes(),
           getAllGlobalResources(),
-          getAppPrompts(),
           getAppSettings()
         ]);
 
@@ -663,7 +483,6 @@ const App: React.FC = () => {
         setProjectsMetadata(meta || []);
         setGlobalNotes(notes);
         setGlobalResources(resources);
-        if (prompts) setAppPromptsState(prev => ({ ...prev, ...prompts }));
         if (settings) {
           const finalSettings = { ...settings };
           if (!finalSettings.appName || finalSettings.appName.includes('Steno') || finalSettings.appName === 'Plothole AI') {
@@ -672,8 +491,6 @@ const App: React.FC = () => {
           }
           setAppSettings(prev => ({ ...prev, ...finalSettings }));
         }
-
-        await checkApiKey();
 
         // Auto-load last edited project
         if (meta && meta.length > 0 && !projectData) {
@@ -694,7 +511,7 @@ const App: React.FC = () => {
       }
     };
     init();
-  }, [checkApiKey, isAuthenticated, isAuthLoading, fetchWithAuth]); // Re-run when auth state or Auth0 status changes
+  }, [isAuthenticated, isAuthLoading, fetchWithAuth]); // Re-run when auth state or Auth0 status changes
 
   // Auto-generate bestiary entries for creatures when project loads
   // (Disabled - BestiaryBrowserView has been removed)
@@ -1087,13 +904,10 @@ const App: React.FC = () => {
     }
 
     await updateProjectData(updates);
-    setAiError("Analysis complete. Characters and world details updated.");
-    setTimeout(() => setAiError(null), 5000);
   }, [projectData, updateProjectData]);
 
   const handleDoubleProcessNote = async (text: string) => {
     addTask('double-process');
-    setAiError(null);
     try {
       const res = await doubleProcessNote(text);
       const newNote: Note = { id: generateId(), content: text, expandedContent: res.expanded, metaSummary: res.summary, tags: res.tags, timestamp: Date.now() };
@@ -1126,7 +940,6 @@ const App: React.FC = () => {
     if (!projectData) return;
     setIsAnalyzing(true);
     addTask('Syncing Timeline (Soft Anchors)');
-    setAiError(null);
     try {
       const manuscriptText = projectData.chapters?.map(c => c.content).join('\n') || '';
       if (!manuscriptText) throw new Error("No manuscript content to analyze.");
@@ -1157,21 +970,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleGenerateCover = async () => {
-    if (!projectData) return;
-    setIsGeneratingCover(true);
-    addTask('Generating Cover Art');
-    setAiError(null);
-    try {
-      const coverUrl = await generateBookCover(projectData.title, projectData.author || '', projectData.summary);
-      if (coverUrl) await updateProjectData({ coverImage: coverUrl });
-    } catch (e) {
-      handleError(e);
-    } finally {
-      setIsGeneratingCover(false);
-      removeTask('Generating Cover Art');
-    }
-  };
 
   const handleExportVault = async () => {
     try {
@@ -1268,20 +1066,11 @@ const App: React.FC = () => {
       } else {
         // It's a manuscript text file
         setProcessingStatus("Reading Manuscript...");
-        const analysis = await analyzeStoryText(text, undefined, {
-          extractCharacters: true,
-          extractTimeline: true,
-          extractLocations: true,
-          extractArtifacts: true,
-          extractLore: true
-        }, (msg) => setProcessingStatus(msg));
-
-        setProcessingStatus("Detecting Manuscript Structure...");
-        const structure = await detectManuscriptStructure(text);
         let generatedChapters: any[] = [];
 
+        // Simple parsing: treat "Chapter" prefixed lines as chapter breaks
         try {
-          const regex = new RegExp(`(${structure.chapterPattern})`, 'gim');
+          const regex = /^(Chapter\s+\d+|Chapter\s+[IVivx]+)/gim;
           const parts = text.split(regex);
 
           if (parts.length > 1) {
@@ -1306,7 +1095,7 @@ const App: React.FC = () => {
 
               generatedChapters.push({
                 id: generateId(),
-                title: header.substring(0, 50), // keep title reasonable
+                title: header.substring(0, 50),
                 content: combined,
                 order: generatedChapters.length,
                 status: 'Draft' as const,
@@ -1333,34 +1122,21 @@ const App: React.FC = () => {
           }];
         }
 
-        setProcessingStatus("Architecting World...");
-        const finalCharacters = analysis.characters.map(c => ({ ...c, id: generateId(), source: 'ai' as const }));
-
-        // Map relationship names to character IDs
-        const finalRelationships = (analysis.relationships || []).map(rel => {
-          const src = finalCharacters.find(c => c.name.toLowerCase() === (rel.sourceId || '').toLowerCase());
-          const tgt = finalCharacters.find(c => c.name.toLowerCase() === (rel.targetId || '').toLowerCase());
-          if (src && tgt) {
-            return { ...rel, id: generateId(), sourceId: src.id, targetId: tgt.id };
-          }
-          return null;
-        }).filter(Boolean) as Relationship[];
-
         data = {
           id: generateId(),
-          title: analysis.title || file.name.replace(/\.[^/.]+$/, ""),
+          title: file.name.replace(/\.[^/.]+$/, ""),
           author: currentUser.name,
-          summary: analysis.summary,
+          summary: '',
           lastModified: Date.now(),
           wordCount: text.trim().split(/\s+/).filter(w => w.length > 0).length,
           charCount: text.length,
-          characters: finalCharacters,
-          relationships: finalRelationships,
-          locations: analysis.locations.map(l => ({ ...l, id: generateId(), source: 'ai' as const })),
-          timeline: analysis.timeline.map(e => ({ ...e, id: generateId(), source: 'ai' as const })),
-          themes: analysis.themes,
-          artifacts: analysis.artifacts.map(a => ({ ...a, id: generateId(), source: 'ai' as const })),
-          lore: analysis.lore.map(l => ({ ...l, id: generateId(), source: 'ai' as const })),
+          characters: [],
+          relationships: [],
+          locations: [],
+          timeline: [],
+          themes: [],
+          artifacts: [],
+          lore: [],
           chapters: generatedChapters
         };
       }
@@ -1509,17 +1285,7 @@ const App: React.FC = () => {
         /> : null;
 
       case ViewType.DASHBOARD:
-        return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => { }} onLoadSample={() => handleCreateProject(projectData?.title || 'The Obsidian Citadel', projectData?.author || 'Junior Archivist', true, projectData?.shortName || 'Citadel', projectData?.id)} isAnalyzing={isAnalyzing} error={null} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={(t) => {
-          setIsAnalyzing(true);
-          addTask('Analyzing Project');
-          analyzeStoryText(t, undefined, { extractCharacters: true, extractTimeline: true, extractLocations: true, extractArtifacts: true, extractLore: true })
-            .then(a => updateProjectData({ summary: a.summary, themes: a.themes }))
-            .catch(handleError)
-            .finally(() => {
-              setIsAnalyzing(false);
-              removeTask('Analyzing Project');
-            });
-        }} onRestoreHistory={() => { }} onRestoreCommit={handleRestoreCommit} onGenerateCover={handleGenerateCover} onExportVault={handleExportVault} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p)} isGeneratingCover={isGeneratingCover} onUpdateProcessedFiles={handleUpdateProcessedFiles} isUpdatingProcessed={isUpdatingProcessed} onLinkClick={handleLinkClick}
+        return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => { }} onLoadSample={() => handleCreateProject(projectData?.title || 'The Obsidian Citadel', projectData?.author || 'Junior Archivist', true, projectData?.shortName || 'Citadel', projectData?.id)} isAnalyzing={isAnalyzing} error={null} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={() => { }} onRestoreHistory={() => { }} onRestoreCommit={handleRestoreCommit} onGenerateCover={() => { }} onExportVault={handleExportVault} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p)} isGeneratingCover={false} onUpdateProcessedFiles={() => { }} isUpdatingProcessed={false} onLinkClick={handleLinkClick}
           onUpdateProject={updateProjectData}
           onSave={handleManualSave}
           currentUser={currentUser}
@@ -1675,7 +1441,7 @@ const App: React.FC = () => {
       default:
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
-  }, [isLoaded, isAuthLoading, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isGeneratingCover, isExtractingThemes, isExtractingRelationships, isUpdatingProcessed, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleDeleteProject, handleUploadProject, handleCreateProject, handleGenerateCover, handleDoubleProcessNote, handleError, handleQuickUpdate]);
+  }, [isLoaded, isAuthLoading, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isExtractingThemes, isExtractingRelationships, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleDeleteProject, handleUploadProject, handleCreateProject, handleDoubleProcessNote, handleError, handleQuickUpdate]);
   // Auto-collapse sidebar when entering/exiting Admin or Settings view
   useEffect(() => {
     if (currentView === ViewType.ADMIN || currentView === ViewType.SETTINGS) {
@@ -1702,8 +1468,6 @@ const App: React.FC = () => {
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         onClose={() => setIsMobileSidebarOpen(false)}
         hasActiveProject={!!projectData}
-        onToggleAi={() => setIsAiOpen(!isAiOpen)}
-        isAiOpen={isAiOpen}
         currentUser={currentUser}
         isProcessing={activeTasks.length > 0}
         processingStatus={processingStatus}
@@ -1749,12 +1513,6 @@ const App: React.FC = () => {
               >
                 <Search size={20} />
               </button>
-              <button
-                onClick={() => setIsAiOpen(true)}
-                className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
-              >
-                <Sparkles size={18} />
-              </button>
             </div>
           </div>
           {currentView === ViewType.NOTEPAD && (
@@ -1783,32 +1541,6 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex-1 flex flex-col h-full overflow-hidden pt-[env(safe-area-inset-top)]">
-          {!hasApiKey && (
-            <div className="bg-indigo-600 text-white px-6 py-3 flex items-center justify-between shadow-lg z-[1001]">
-              <div className="flex items-center gap-3 text-sm font-bold">
-                <Sparkles size={18} className="animate-pulse" />
-                <span>Connect your Gemini API Key to unlock AI story analysis features.</span>
-              </div>
-              <button
-                onClick={handleOpenKeySelection}
-                className="px-4 py-1.5 bg-white text-indigo-600 rounded-lg font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-colors shadow-sm"
-              >
-                Connect Key
-              </button>
-            </div>
-          )}
-          {aiError && (
-            <div className="bg-amber-500 text-white px-6 py-4 flex items-center justify-between shadow-2xl animate-in slide-in-from-top duration-300 z-[1000] border-b border-amber-600/50">
-              <div className="flex items-center gap-4 font-bold text-sm">
-                <AlertCircle size={22} className="animate-pulse" />
-                {aiError}
-              </div>
-              <button onClick={() => setAiError(null)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-          )}
-
           <div className="flex-1 overflow-hidden relative">
             {viewContent}
           </div>
@@ -1832,23 +1564,7 @@ const App: React.FC = () => {
         />
         <ActiveArchitect tasks={activeTasks} />
 
-        {/* Desktop Floating Action Buttons */}
-        <div className="hidden lg:flex fixed bottom-8 right-8 flex-row items-center gap-4 z-[1000]">
-          <button
-            onClick={() => setIsAiOpen(!isAiOpen)}
-            className={`p-4 rounded-2xl shadow-2xl transition-all flex items-center justify-center hover:scale-110 ${isAiOpen ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'}`}
-            title="Summon The Oracle"
-          >
-            <div className="relative">
-              <Sparkles size={24} className={activeTasks.length > 0 ? 'animate-spin' : ''} />
-              {activeTasks.length > 0 && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse" />
-              )}
-            </div>
-          </button>
-        </div>
       </main>
-      <AiAssistant projectData={projectData} isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} onToggle={() => setIsAiOpen(!isAiOpen)} currentUser={currentUser} />
 
       {/* Admin Note Canvas */}
       <AnimatePresence>
@@ -1985,8 +1701,8 @@ const App: React.FC = () => {
                 handleLinkClick(type, id);
               }}
               onExportProject={exportProjectPlothole}
-              onGenerateCover={handleGenerateCover}
-              isGeneratingCover={isAnalyzing}
+              onGenerateCover={() => { }}
+              isGeneratingCover={false}
               onAuditThreads={handleAuditThreads}
               isAnalyzing={isAnalyzing}
               onRestoreCommit={handleRestoreCommit}
@@ -1997,8 +1713,8 @@ const App: React.FC = () => {
               onExportVault={handleExportVault}
               onRestoreHistory={() => { }}
               onAnalyzeText={() => { }}
-              onUpdateProcessedFiles={handleUpdateProcessedFiles}
-              isUpdatingProcessed={isUpdatingProcessed}
+              onUpdateProcessedFiles={() => { }}
+              isUpdatingProcessed={false}
               error={null}
             />
           </div>
@@ -2090,8 +1806,8 @@ const App: React.FC = () => {
               {
                 name: 'Gemini (Google GenAI)',
                 maintainer: 'Google',
-                usage: 'The "Oracle" AI processing and narrative synthesis.',
-                status: 'Actively Maintained',
+                usage: 'Previously used for AI-assisted story analysis (now removed).',
+                status: 'Deprecated',
                 cost: 'Commercial (Usage-based API costs apply)'
               },
               {

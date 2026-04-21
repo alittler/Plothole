@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Search, Upload, FileText, Trash2, Loader2, Cpu, Clipboard, Sparkles, ExternalLink, Globe, Image as ImageIcon, BookOpen, Edit2, Save, Copy, Check, Link, Quote, Download, Database, Table, Code, Zap, AlertCircle, FileCode, X, Plus } from 'lucide-react';
 import { Source } from '../../../types';
 import * as pdfjsLib from 'pdfjs-dist';
-import { generateSourceGuide as generateSourceGuideAi, smartExtractSources, performOCR, notebookLMProcess } from '../../../services/geminiService';
+// import { generateSourceGuide as generateSourceGuideAi, smartExtractSources, performOCR, notebookLMProcess } from '../../../services/geminiService';
 import { generateId } from '../../../services/storageService';
 import { Modal } from '../../ui/Modal';
 import { formatCitation, exportAllCitations, CitationStyle } from '../../../utils/citationUtils';

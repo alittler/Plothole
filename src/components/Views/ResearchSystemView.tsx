@@ -4,7 +4,7 @@ import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, Ch
 import { StackedPaper } from '../ui/StackedPaper';
 import { WikiText } from '../ui/WikiText';
 import { RichEditor } from '../ui/RichEditor';
-import { semanticSearchNotes } from '../../services/geminiService';
+// import { semanticSearchNotes } from '../../services/geminiService';
 import { BookshelfView } from './BookshelfView';
 import { ImageUploadInput } from '../ui/ImageUploadInput';
 import { sanitizeHtml } from '../../utils/htmlSanitizer';
@@ -235,7 +235,11 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
     }
     setIsSearching(true);
     try {
-      const results = await semanticSearchNotes(searchQuery, data.notes);
+      // Simple text search fallback (no AI semantic search)
+      const results = data.notes.filter(note => 
+        note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
       setSemanticResults(results);
     } catch (e) {
       console.error(e);

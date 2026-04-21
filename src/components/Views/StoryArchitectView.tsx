@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ProjectData, Character, Location, ViewType } from '../../types';
 import { Upload, FileText, BookOpen, Users, MapPin, Clock, Download, Save, Trash2, Zap } from 'lucide-react';
-import { analyzeStoryText } from '../../services/geminiService';
+// import { analyzeStoryText } from '../../services/geminiService';
 import { saveProjectData, generateId } from '../../services/storageService';
 
 interface StoryArchitectViewProps {
