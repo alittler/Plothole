@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/src/db';
-import { getUserId } from '@/app/api/auth';
+import { getUserId, getAuthPayload } from '@/app/api/auth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,11 +35,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getUserId(request);
-    console.log(`[API/projects] POST userId:`, userId);
+    const authPayload = await getAuthPayload(request);
+    console.log(`[API/projects] POST userId:`, authPayload?.userId, `email:`, authPayload?.email);
 
-    if (!userId) {
-      console.warn('[API/projects] No userId - returning 401');
+    if (!authPayload) {
+      console.warn('[API/projects] No auth payload - returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -53,11 +53,11 @@ export async function POST(request: NextRequest) {
     console.log(`[API/projects] Saving project: ${project.id} (${project.title})`);
     console.log(`[API/projects] Project has ${project.catalogs?.length || 0} catalogs`);
 
-    // Ensure user exists
+    // Ensure user exists with actual email from token
     try {
       await pool.query(
-        'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING',
-        [userId, 'user@example.com']
+        'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET email = $2',
+        [authPayload.userId, authPayload.email]
       );
       console.log('[API/projects] User exists or was created');
     } catch (userErr) {
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     console.log(`[API/projects] Attempting to insert/update project in database`);
     const result = await pool.query(
       'INSERT INTO projects (id, user_id, title, data, last_modified) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET data = $4, title = $3, last_modified = $5',
-      [project.id, userId, project.title, project, Date.now()]
+      [project.id, authPayload.userId, project.title, project, Date.now()]
     );
 
     console.log(`[API/projects] Project ${project.id} saved successfully`);
