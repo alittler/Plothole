@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
 
     const project = await request.json();
     console.log(`[API/projects] Saving project: ${project.id} (${project.title})`);
+    console.log(`[API/projects] Project has ${project.catalogs?.length || 0} catalogs`);
 
     // Ensure user exists
     try {
@@ -58,11 +59,24 @@ export async function POST(request: NextRequest) {
         'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING',
         [userId, 'user@example.com']
       );
+      console.log('[API/projects] User exists or was created');
     } catch (userErr) {
       console.error('[API/projects] Error ensuring user exists:', userErr);
       throw userErr;
     }
 
+    // Validate project data is JSON serializable
+    try {
+      JSON.stringify(project);
+    } catch (parseErr) {
+      console.error('[API/projects] Project data not JSON serializable:', parseErr);
+      return NextResponse.json(
+        { error: 'Invalid project data', details: 'Project data cannot be serialized to JSON' },
+        { status: 400 }
+      );
+    }
+
+    console.log(`[API/projects] Attempting to insert/update project in database`);
     const result = await pool.query(
       'INSERT INTO projects (id, user_id, title, data, last_modified) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET data = $4, title = $3, last_modified = $5',
       [project.id, userId, project.title, project, Date.now()]
@@ -73,6 +87,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[API/projects] ERROR saving project:', error);
     const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : '';
+    console.error('[API/projects] Error stack:', errStack);
     return NextResponse.json(
       { error: 'Failed to save project', details: errMsg },
       { status: 500 }

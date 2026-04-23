@@ -409,7 +409,16 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
         throw new Error('Cloud unauthorized');
       }
 
-      if (!res.ok) throw new Error('Failed to save to cloud');
+      if (!res.ok) {
+        const errText = await res.text();
+        let errDetails = errText;
+        try {
+          const errJson = JSON.parse(errText);
+          errDetails = errJson.details || errJson.error || errText;
+        } catch {}
+        console.error(`[Storage] Cloud save failed with status ${res.status}: ${errDetails}`);
+        throw new Error(`Failed to save to cloud (${res.status}): ${errDetails}`);
+      }
       // Wait a tiny bit for the DB transaction to fully commit before resolving
       await new Promise(resolve => setTimeout(resolve, 100));
       return;
