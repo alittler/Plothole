@@ -119,15 +119,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const allNavItems: NavItem[] = [
     { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
+    { id: ViewType.BOOKSHELF2, label: 'Manuscript Repo', icon: Sparkles, always: true },
     { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
     { id: ViewType.MAP, label: 'Atlas', icon: Map, projectOnly: true },
-    { id: ViewType.ATLAS2, label: 'Atlas2', icon: Map, projectOnly: true },
     { id: ViewType.TIMELINE, label: 'History', icon: Calendar, projectOnly: true },
     { id: ViewType.CODEX, label: 'Codex', icon: Book, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: BookOpen, projectOnly: true },
-    { id: ViewType.DATA_CATALOG, label: 'Data Catalog', icon: Database, projectOnly: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
+    { id: ViewType.DATA_CATALOG, label: 'Data Catalog', icon: Database, projectOnly: true },
     { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
   ];
 
@@ -135,15 +135,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const baseSections: SidebarSection[] = [
       {
         title: 'Workspace',
-        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.BOOKSHELF].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.BOOKSHELF, ViewType.BOOKSHELF2].includes(i.id))
       },
       {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.ATLAS2, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH, ViewType.DATA_CATALOG].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH].includes(i.id))
       },
       {
         title: 'System',
-        items: allNavItems.filter(i => [ViewType.TOOLBOX, ViewType.SETTINGS, ViewType.ADMIN].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.TOOLBOX, ViewType.SETTINGS, ViewType.DATA_CATALOG, ViewType.ADMIN].includes(i.id))
       }
     ];
 

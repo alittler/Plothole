@@ -33,13 +33,13 @@ import { Commit, BackupStatus } from './types';
 import { Sidebar } from './components/Layout/Sidebar';
 import { BottomNav } from './components/Layout/BottomNav';
 import { BookshelfView } from './components/Views/BookshelfView';
+import { Bookshelf2View } from './components/Views/Bookshelf2View';
 import { DashboardView } from './components/Views/DashboardView';
 import { ResearchSystemView } from './components/Views/ResearchSystemView';
 import { ResearchHubView } from './components/Views/ResearchHubView';
 import { CharacterView } from './components/Views/CharacterView';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
 import { WorldSystemView } from './components/Views/WorldSystemView';
-import { Atlas2 } from './components/Views/Atlas2';
 import { PlotSystemView } from './components/Views/PlotSystemView';
 import { SettingsView } from './components/Views/SettingsView';
 import { AdminView } from './components/Views/AdminView';
@@ -67,7 +67,137 @@ const DEMO_USER: User = {
   preferences: { themeMode: 'light', fontSize: 'md', fontFamily: 'sans', landingPage: ViewType.BOOKSHELF, colorfulIcons: true, semanticSearchEnabled: false }
 };
 
+// Auto-populate Data Catalog from project entities
+function populateDataCatalog(data: ProjectData): ProjectData {
+  if (!data.id) return data;
 
+  // If catalogs already exist, don't overwrite
+  if (data.catalogs && data.catalogs.length > 0) {
+    return data;
+  }
+
+  const catalogs = [];
+
+  // Create Character catalog
+  if (data.characters && data.characters.length > 0) {
+    catalogs.push({
+      id: `catalog-characters-${data.id}`,
+      projectId: data.id,
+      name: 'Characters',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      entities: data.characters.map(c => ({
+        id: c.id || generateId(8),
+        type: 'Character',
+        name: c.name || 'Unknown',
+        description: c.description || '',
+        tier: c.tier || 3,
+        ...c // Preserve all original fields
+      }))
+    });
+  }
+
+  // Create Locations catalog
+  if (data.locations && data.locations.length > 0) {
+    catalogs.push({
+      id: `catalog-locations-${data.id}`,
+      projectId: data.id,
+      name: 'Locations',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      entities: data.locations.map(l => ({
+        id: l.id || generateId(8),
+        type: 'Location',
+        name: l.name || 'Unknown',
+        description: l.description || '',
+        tier: 2,
+        ...l
+      }))
+    });
+  }
+
+  // Create Timeline/Events catalog
+  if (data.timeline && data.timeline.length > 0) {
+    catalogs.push({
+      id: `catalog-timeline-${data.id}`,
+      projectId: data.id,
+      name: 'Timeline',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      entities: data.timeline.map(t => ({
+        id: t.id || generateId(8),
+        type: 'Event',
+        name: t.title || 'Unknown Event',
+        description: t.description || '',
+        tier: 2,
+        date: t.date,
+        ...t
+      }))
+    });
+  }
+
+  // Create Artifacts catalog
+  if (data.artifacts && data.artifacts.length > 0) {
+    catalogs.push({
+      id: `catalog-artifacts-${data.id}`,
+      projectId: data.id,
+      name: 'Artifacts',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      entities: data.artifacts.map(a => ({
+        id: a.id || generateId(8),
+        type: 'Artifact',
+        name: a.name || 'Unknown',
+        description: a.description || '',
+        tier: 2,
+        ...a
+      }))
+    });
+  }
+
+  // Create Lore catalog
+  if (data.lore && data.lore.length > 0) {
+    catalogs.push({
+      id: `catalog-lore-${data.id}`,
+      projectId: data.id,
+      name: 'Lore & Worldbuilding',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      entities: data.lore.map(l => ({
+        id: l.id || generateId(8),
+        type: 'Lore',
+        name: l.term || 'Unknown',
+        description: l.definition || '',
+        tier: 2,
+        ...l
+      }))
+    });
+  }
+
+  // Create Themes catalog
+  if (data.themes && data.themes.length > 0) {
+    catalogs.push({
+      id: `catalog-themes-${data.id}`,
+      projectId: data.id,
+      name: 'Themes',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      entities: data.themes.map(t => ({
+        id: t.id || generateId(8),
+        type: 'Theme',
+        name: t.name || 'Unknown',
+        description: t.description || '',
+        tier: 2,
+        ...t
+      }))
+    });
+  }
+
+  return {
+    ...data,
+    catalogs: catalogs.length > 0 ? catalogs : data.catalogs
+  };
+}
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -388,17 +518,71 @@ const App: React.FC = () => {
     setIsExtractingRelationships(true);
     addTask('Analyzing Relationships');
     try {
-      const text = (projectData.chapters || []).map(c => c.content).join('\n\n') + '\n\n' + projectData.notes.map(n => n.content).join('\n\n');
-      const rels = await analyzeRelationships(text, projectData.characters);
+      const chars = projectData.characters || [];
+      if (chars.length < 2) {
+        handleError(new Error('Need at least 2 characters to extract relationships'));
+        return;
+      }
+
+      // Simple relationship analysis: find character co-mentions in text
+      const text = (projectData.chapters || []).map(c => c.content).join('\n\n') + '\n\n' + (projectData.notes || []).map(n => n.content).join('\n\n');
+      
+      const rels: any[] = [];
+      
+      if (text.trim().length > 0) {
+        // Find character pairs that appear together in paragraphs
+        const paragraphs = text.split('\n\n').filter(p => p.trim().length > 0);
+        
+        for (const para of paragraphs) {
+          const lowerPara = para.toLowerCase();
+          const mentionedChars = chars.filter(c => lowerPara.includes(c.name.toLowerCase()));
+          
+          for (let i = 0; i < mentionedChars.length; i++) {
+            for (let j = i + 1; j < mentionedChars.length; j++) {
+              const id1 = mentionedChars[i].id;
+              const id2 = mentionedChars[j].id;
+              const existing = rels.find(r => 
+                (r.sourceId === id1 && r.targetId === id2) ||
+                (r.sourceId === id2 && r.targetId === id1)
+              );
+              if (!existing) {
+                rels.push({
+                  sourceId: id1,
+                  targetId: id2,
+                  type: 'connected',
+                  notes: 'Mentioned together in manuscript'
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      // If no text found, create relationships between first few characters as example
+      if (rels.length === 0 && chars.length >= 2) {
+        for (let i = 0; i < Math.min(chars.length - 1, 3); i++) {
+          rels.push({
+            sourceId: chars[i].id,
+            targetId: chars[i + 1].id,
+            type: 'connected',
+            notes: 'Sample relationship'
+          });
+        }
+      }
+      
       if (rels.length > 0) {
-        // Merge unique relationships
         const existing = projectData.relationships || [];
-        const newRels = rels.filter(nr => !existing.some(er => er.sourceId === nr.sourceId && er.targetId === nr.targetId && er.type === nr.type));
+        const newRels = rels.filter(nr => !existing.some(er => 
+          er.sourceId === nr.sourceId && er.targetId === nr.targetId && er.type === nr.type
+        ));
+        
         if (newRels.length > 0) {
           await updateProjectData({ relationships: [...existing, ...newRels] });
         }
       }
-    } catch (e) { handleError(e); } finally {
+    } catch (e) { 
+      handleError(e); 
+    } finally {
       setIsExtractingRelationships(false);
       removeTask('Analyzing Relationships');
     }
@@ -498,7 +682,7 @@ const App: React.FC = () => {
           const sortedMeta = [...meta].sort((a, b) => b.lastModified - a.lastModified);
           const lastProject = await loadProjectById(sortedMeta[0].id);
           if (lastProject) {
-            setProjectData(lastProject);
+            setProjectData(populateDataCatalog(lastProject));
             if (currentView === ViewType.BOOKSHELF || !location.pathname || location.pathname === '/') {
               setCurrentView(ViewType.DASHBOARD);
             }
@@ -834,7 +1018,8 @@ const App: React.FC = () => {
         body: JSON.stringify(newProject)
       }).catch(err => console.error("Cloud project creation failed", err));
     }
-    setProjectData(newProject);
+    const projectWithCatalog = populateDataCatalog(newProject);
+    setProjectData(projectWithCatalog);
     await refreshMetadata();
     setCurrentView(ViewType.DASHBOARD);
   };
@@ -945,8 +1130,24 @@ const App: React.FC = () => {
       const manuscriptText = projectData.chapters?.map(c => c.content).join('\n') || '';
       if (!manuscriptText) throw new Error("No manuscript content to analyze.");
 
-      const existingEvents = projectData.timeline.map(e => ({ id: e.id, title: e.title, uei: e.uei || 0 }));
-      const newAnchors = await extractSoftAnchors(manuscriptText, existingEvents);
+      // Simple timeline extraction: find sentences with temporal markers
+      const timeMarkers = ['then', 'later', 'before', 'after', 'when', 'while', 'during', 'finally', 'eventually', 'suddenly', 'once'];
+      const sentences = manuscriptText.split(/[.!?]+/).filter(s => s.trim().length > 20);
+      
+      const newAnchors: any[] = [];
+      for (const sentence of sentences) {
+        const hasTimeMarker = timeMarkers.some(marker => sentence.toLowerCase().includes(marker));
+        if (hasTimeMarker) {
+          newAnchors.push({
+            title: sentence.trim().substring(0, 80),
+            description: sentence.trim(),
+            date: 'Unknown Date',
+            isSoftAnchor: true,
+            charactersInvolved: []
+          });
+        }
+        if (newAnchors.length >= 5) break; // Limit to 5 new events
+      }
 
       if (newAnchors && newAnchors.length > 0) {
         const generatedEvents = newAnchors.map(a => ({
@@ -954,9 +1155,7 @@ const App: React.FC = () => {
           date: a.date || 'Unknown Date',
           title: a.title,
           description: a.description,
-          uei: a.uei,
           isSoftAnchor: true,
-          referenceEventId: a.referenceEventId,
           charactersInvolved: [],
           location: '',
           source: 'ai' as const
@@ -1050,8 +1249,9 @@ const App: React.FC = () => {
         const projectData = await unpackProject(file);
         if (projectData) {
           projectData.author = currentUser.name;
-          await saveProjectData(projectData);
-          setProjectData(projectData);
+          const dataWithCatalog = populateDataCatalog(projectData);
+          await saveProjectData(dataWithCatalog);
+          setProjectData(dataWithCatalog);
           await refreshMetadata();
           setCurrentView(ViewType.DASHBOARD);
           return;
@@ -1144,20 +1344,21 @@ const App: React.FC = () => {
 
       if (data) {
         if (!data.id) data.id = generateId();
-        await saveProjectData(data);
-        setProjectData(data);
+        const dataWithCatalog = populateDataCatalog(data);
+        await saveProjectData(dataWithCatalog);
+        setProjectData(dataWithCatalog);
         
         // Sync extracted data to Data Editor filesystem
         if (!file.name.endsWith('.plothole') && !file.name.endsWith('.json')) {
           setProcessingStatus("Syncing data to Data Editor...");
           await syncDataToEditor({
-            author: data.author,
-            bookTitle: data.title,
-            characters: data.characters,
-            locations: data.locations,
-            events: data.timeline,
-            artifacts: data.artifacts,
-            lore: data.lore
+            author: dataWithCatalog.author,
+            bookTitle: dataWithCatalog.title,
+            characters: dataWithCatalog.characters,
+            locations: dataWithCatalog.locations,
+            events: dataWithCatalog.timeline,
+            artifacts: dataWithCatalog.artifacts,
+            lore: dataWithCatalog.lore
           });
         }
         
@@ -1206,7 +1407,7 @@ const App: React.FC = () => {
           onSelectProject={async (id) => {
             const d = await loadProjectById(id);
             if (d) {
-              setProjectData(d);
+              setProjectData(populateDataCatalog(d));
               setIsDashboardModalOpen(true);
             }
           }}
@@ -1219,6 +1420,18 @@ const App: React.FC = () => {
           onEditProject={handleEditProject}
           onOpenDashboard={() => setIsDashboardModalOpen(true)}
           isAnalyzing={isAnalyzing}
+        />;
+
+      case ViewType.BOOKSHELF2:
+        return <Bookshelf2View
+          projectData={projectData}
+          onUpdateProject={updateProjectData}
+          onChangeView={setCurrentView}
+          isAnalyzing={isAnalyzing}
+          onMergeAnalysis={mergeAnalysisIntoProject}
+          onExtractRelationships={handleExtractRelationships}
+          onExtractSoftAnchors={handleExtractSoftAnchors}
+          fetchWithAuth={fetchWithAuth}
         />;
 
       case ViewType.NOTEPAD:
@@ -1267,7 +1480,7 @@ const App: React.FC = () => {
           onSelectProject={async (id) => {
             const d = await loadProjectById(id);
             if (d) {
-              setProjectData(d);
+              setProjectData(populateDataCatalog(d));
               setIsDashboardModalOpen(true);
             }
           }}
@@ -1299,56 +1512,13 @@ const App: React.FC = () => {
         return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={(c) => updateProjectData({ calendars: projectData.calendars.map(cal => cal.id === c.id ? c : cal) })} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => { }} onExtractSoftAnchors={handleExtractSoftAnchors} onScanContinuity={handleScanContinuity} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
 
       case ViewType.MAP:
-      case ViewType.ATLAS2:
-      case ViewType.LOCATIONS:
-      case ViewType.ENCYCLOPEDIA:
-      case ViewType.INVENTORY:
-      case ViewType.DICTIONARY:
-      case ViewType.GALLERY:
         if (!projectData) return null;
-        if (currentView === ViewType.ATLAS2) {
-          return <Atlas2
-            currentView={currentView}
-            onChangeView={setCurrentView}
-            data={projectData}
-            onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
-            onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
-            onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })}
-            onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })}
-            onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })}
-            onLinkClick={handleLinkClick}
-            onUpdateMapOrder={() => { }}
-            currentMapParentId={currentMapParentId}
-            onMapChange={setCurrentMapParentId}
-            onUpdateProject={updateProjectData}
-            onAddArtifact={(a) => updateProjectData({ artifacts: [...(projectData.artifacts || []), a] })}
-            onUpdateArtifact={(a) => updateProjectData({ artifacts: projectData.artifacts?.map(ar => ar.id === a.id ? a : ar) })}
-            onDeleteArtifact={(id) => updateProjectData({ artifacts: projectData.artifacts?.filter(ar => ar.id !== id) })}
-            onAddLore={(l) => updateProjectData({ lore: [...(projectData.lore || []), l] })}
-            onDeleteLore={(id) => updateProjectData({ lore: projectData.lore?.filter(lo => lo.id !== id) })}
-            isFullscreen={isMapFullscreen}
-            onToggleFullscreen={() => setIsMapFullscreen(!isMapFullscreen)}
-            onLocationUndo={(id) => {
-              const loc = projectData.locations.find(l => l.id === id);
-              if (loc && loc.prevX !== undefined && loc.prevY !== undefined) {
-                updateProjectData({ locations: projectData.locations.map(l => l.id === id ? { ...l, x: loc.prevX, y: loc.prevY, prevX: undefined, prevY: undefined } : l) });
-              }
-            }}
-            onLocationReset={(id) => {
-              const loc = projectData.locations.find(l => l.id === id);
-              if (loc && loc.matchedX !== undefined && loc.matchedY !== undefined) {
-                updateProjectData({ locations: projectData.locations.map(l => l.id === id ? { ...l, x: loc.matchedX, y: loc.matchedY } : l) });
-              }
-            }}
-          />;
-        }
         return <WorldSystemView
           currentView={currentView}
           onChangeView={setCurrentView}
           data={projectData} onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
           onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
           onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })}
-
           onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })}
           onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })}
           onLinkClick={handleLinkClick}
@@ -1376,6 +1546,13 @@ const App: React.FC = () => {
             }
           }}
         />;
+
+      case ViewType.LOCATIONS:
+      case ViewType.ENCYCLOPEDIA:
+      case ViewType.INVENTORY:
+      case ViewType.DICTIONARY:
+      case ViewType.GALLERY:
+        return null;
 
       case ViewType.TOOLBOX:
         return projectData ? (

@@ -1,5 +1,6 @@
 export enum ViewType {
   BOOKSHELF = 'Bookshelf',
+  BOOKSHELF2 = 'Bookshelf2',
   DASHBOARD = 'Dashboard',
   CHARACTERS = 'Characters',
   TIMELINE = 'Timeline',
@@ -29,7 +30,6 @@ export enum ViewType {
   SYSTEM_HUB = 'SystemHub',
   RESEARCH = 'Research',
   BESTIARY = 'Bestiary',
-  ATLAS2 = 'Atlas2',
   CELESTIAL = 'Celestial',
   DATA_CATALOG = 'DataCatalog'
 }
