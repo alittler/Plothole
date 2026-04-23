@@ -461,9 +461,13 @@ export const loadProjectById = async (id: string): Promise<ProjectData | null> =
     try {
       const res = await authFetch('/api/projects');
       if (res.ok) {
-        const projects: ProjectData[] = await res.json();
-        const cloudProj = projects.find(p => p.id === id);
-        if (cloudProj) return cloudProj;
+        try {
+          const projects: ProjectData[] = await res.json();
+          const cloudProj = projects.find(p => p.id === id);
+          if (cloudProj) return cloudProj;
+        } catch (parseErr) {
+          console.error("Cloud load parse failed:", parseErr);
+        }
       }
     } catch (e) {
       console.error("Cloud load failed:", e);
@@ -488,21 +492,25 @@ export const getAllProjectsMetadata = async (): Promise<ProjectMetadata[]> => {
       console.log("[Storage] Fetching cloud projects...");
       const res = await authFetch('/api/projects');
       if (res.ok) {
-        const projects: ProjectData[] = await res.json();
-        console.log(`[Storage] Cloud fetch success: ${projects.length} projects`);
-        cloudProjects = projects.map(data => ({
-          id: data.id,
-          title: data.title,
-          author: data.author || '',
-          summary: data.summary,
-          lastModified: data.lastModified || Date.now(),
-          characterCount: data.entities?.filter(e => e.type === 'Character').length || data.characters?.length || 0,
-          locationCount: data.entities?.filter(e => e.type === 'Location').length || data.locations?.length || 0,
-          commitCount: data.commits?.length || 0,
-          backupCount: data.backups?.length || 0,
-          wordCount: data.wordCount || 0,
-          origin: 'cloud'
-        }));
+        try {
+          const projects: ProjectData[] = await res.json();
+          console.log(`[Storage] Cloud fetch success: ${projects.length} projects`);
+          cloudProjects = projects.map(data => ({
+            id: data.id,
+            title: data.title,
+            author: data.author || '',
+            summary: data.summary,
+            lastModified: data.lastModified || Date.now(),
+            characterCount: data.entities?.filter(e => e.type === 'Character').length || data.characters?.length || 0,
+            locationCount: data.entities?.filter(e => e.type === 'Location').length || data.locations?.length || 0,
+            commitCount: data.commits?.length || 0,
+            backupCount: data.backups?.length || 0,
+            wordCount: data.wordCount || 0,
+            origin: 'cloud'
+          }));
+        } catch (parseErr) {
+          console.error("[Storage] Failed to parse cloud projects response:", parseErr);
+        }
       } else {
         console.warn(`[Storage] Cloud fetch failed with status: ${res.status}`);
       }
@@ -570,7 +578,13 @@ export const getAppSettings = async (): Promise<AppSettings | null> => {
   if (useCloudStorage && authFetch) {
     try {
       const res = await authFetch('/api/globals/app_settings');
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        try {
+          return await res.json();
+        } catch (parseErr) {
+          console.error("Parse error in getAppSettings:", parseErr);
+        }
+      }
     } catch (e) { /* ignore fallback */ }
   }
 
@@ -610,7 +624,13 @@ export const getAppPrompts = async (): Promise<AppPrompts | null> => {
   if (useCloudStorage && authFetch) {
     try {
       const res = await authFetch('/api/globals/app_prompts');
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        try {
+          return await res.json();
+        } catch (parseErr) {
+          console.error("Parse error in getAppPrompts:", parseErr);
+        }
+      }
     } catch (e) { /* ignore fallback */ }
   }
 
@@ -650,7 +670,13 @@ export const getAllGlobalNotes = async (): Promise<Note[]> => {
   if (useCloudStorage && authFetch) {
     try {
       const res = await authFetch('/api/notes');
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        try {
+          return await res.json();
+        } catch (parseErr) {
+          console.error("Parse error in getAllGlobalNotes:", parseErr);
+        }
+      }
     } catch (e) { /* ignore fallback */ }
   }
 
@@ -723,8 +749,12 @@ export const getApiKey = async (name: string): Promise<string | null> => {
     try {
       const res = await authFetch(`/api/globals/api_key_${name}`);
       if (res.ok) {
-        const data = await res.json();
-        return data.key || data;
+        try {
+          const data = await res.json();
+          return data.key || data;
+        } catch (parseErr) {
+          console.error("Parse error in getApiKey:", parseErr);
+        }
       }
     } catch (e) { /* fallback */ }
   }
