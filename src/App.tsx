@@ -520,8 +520,7 @@ const App: React.FC = () => {
     try {
       const chars = projectData.characters || [];
       if (chars.length < 2) {
-        handleError(new Error('Need at least 2 characters to extract relationships'));
-        return;
+        throw new Error('Need at least 2 characters to extract relationships');
       }
 
       // Simple relationship analysis: find character co-mentions in text
@@ -581,7 +580,8 @@ const App: React.FC = () => {
         }
       }
     } catch (e) { 
-      handleError(e); 
+      handleError(e);
+      throw e;
     } finally {
       setIsExtractingRelationships(false);
       removeTask('Analyzing Relationships');
@@ -1164,6 +1164,7 @@ const App: React.FC = () => {
       }
     } catch (e) {
       handleError(e);
+      throw e;
     } finally {
       setIsAnalyzing(false);
       removeTask('Syncing Timeline (Soft Anchors)');
