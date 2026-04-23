@@ -125,6 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.TIMELINE, label: 'History', icon: Calendar, projectOnly: true },
     { id: ViewType.CODEX, label: 'Codex', icon: Book, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: BookOpen, projectOnly: true },
+    { id: ViewType.DATA_CATALOG, label: 'Data Catalog', icon: Database, projectOnly: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
     { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
@@ -138,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
       {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.ATLAS2, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.ATLAS2, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH, ViewType.DATA_CATALOG].includes(i.id))
       },
       {
         title: 'System',

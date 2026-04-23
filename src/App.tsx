@@ -46,6 +46,7 @@ import { AdminView } from './components/Views/AdminView';
 import { ToolboxView } from './components/Views/ToolboxView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
+import DataCatalogView from './components/Views/DataCatalogView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
@@ -1428,6 +1429,9 @@ const App: React.FC = () => {
 
       case ViewType.CODEX:
         return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;
+
+      case ViewType.DATA_CATALOG:
+        return projectData ? <DataCatalogView projectData={projectData} onUpdate={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Data Catalog.</div>;
 
       case ViewType.RESEARCH:
         return projectData ? <ResearchHubView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research Hub.</div>;

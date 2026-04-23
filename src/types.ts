@@ -30,7 +30,8 @@ export enum ViewType {
   RESEARCH = 'Research',
   BESTIARY = 'Bestiary',
   ATLAS2 = 'Atlas2',
-  CELESTIAL = 'Celestial'
+  CELESTIAL = 'Celestial',
+  DATA_CATALOG = 'DataCatalog'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -113,6 +114,28 @@ export interface HierarchicalEntity {
   description?: string;
   fieldNotes?: { label: string; value: string }[];
   metadata?: Record<string, any>;
+}
+
+// ==========================================
+// ENTITY CATALOG TYPES (for JSON imports)
+// ==========================================
+
+export interface CatalogEntity {
+  id: string;
+  type: string; // 'Character', 'Location', 'Item', 'Event', etc.
+  name: string;
+  description?: string;
+  tier?: EntityTier;
+  [key: string]: any; // Allow flexible custom fields
+}
+
+export interface EntityCatalog {
+  id: string; // Catalog ID
+  projectId: string; // Associated project
+  name: string; // Catalog name (e.g., "My Worldbuilding")
+  createdAt: number;
+  updatedAt: number;
+  entities: CatalogEntity[];
 }
 
 export interface AssetMetadata {
@@ -260,6 +283,9 @@ export interface ProjectData {
   history_diff: string; // The diff ledger
   assets: AssetMetadata[];
   manifest?: ProjectManifest;
+
+  // Entity Catalog fields (JSON imports)
+  catalogs?: EntityCatalog[];
 
   // System fields
   wordCount?: number;
