@@ -575,19 +575,8 @@ export const generateSHA256 = async (str: string): Promise<string> => {
 };
 
 export const getAppSettings = async (): Promise<AppSettings | null> => {
-  if (useCloudStorage && authFetch) {
-    try {
-      const res = await authFetch('/api/globals/app_settings');
-      if (res.ok) {
-        try {
-          return await res.json();
-        } catch (parseErr) {
-          console.error("Parse error in getAppSettings:", parseErr);
-        }
-      }
-    } catch (e) { /* ignore fallback */ }
-  }
-
+  // Note: Cloud sync for app settings not yet implemented
+  // Just use local storage for now
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_GLOBALS, 'readonly');
@@ -621,19 +610,8 @@ export const saveAppSettings = async (settings: AppSettings): Promise<void> => {
 };
 
 export const getAppPrompts = async (): Promise<AppPrompts | null> => {
-  if (useCloudStorage && authFetch) {
-    try {
-      const res = await authFetch('/api/globals/app_prompts');
-      if (res.ok) {
-        try {
-          return await res.json();
-        } catch (parseErr) {
-          console.error("Parse error in getAppPrompts:", parseErr);
-        }
-      }
-    } catch (e) { /* ignore fallback */ }
-  }
-
+  // Note: Cloud sync for app prompts not yet implemented
+  // Just use local storage for now
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_GLOBALS, 'readonly');
@@ -667,19 +645,8 @@ export const saveAppPrompts = async (prompts: AppPrompts): Promise<void> => {
 };
 
 export const getAllGlobalNotes = async (): Promise<Note[]> => {
-  if (useCloudStorage && authFetch) {
-    try {
-      const res = await authFetch('/api/notes');
-      if (res.ok) {
-        try {
-          return await res.json();
-        } catch (parseErr) {
-          console.error("Parse error in getAllGlobalNotes:", parseErr);
-        }
-      }
-    } catch (e) { /* ignore fallback */ }
-  }
-
+  // Note: Cloud sync for global notes not yet implemented
+  // Just use local storage for now
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_GLOBALS, 'readonly');
@@ -745,20 +712,8 @@ export const clearAllGlobalNotes = async (): Promise<void> => {
 };
 
 export const getApiKey = async (name: string): Promise<string | null> => {
-  if (useCloudStorage && authFetch) {
-    try {
-      const res = await authFetch(`/api/globals/api_key_${name}`);
-      if (res.ok) {
-        try {
-          const data = await res.json();
-          return data.key || data;
-        } catch (parseErr) {
-          console.error("Parse error in getApiKey:", parseErr);
-        }
-      }
-    } catch (e) { /* fallback */ }
-  }
-
+  // Note: Cloud sync for API keys not yet implemented
+  // Just use local storage for now
   const db = await getDB();
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_GLOBALS, 'readonly');
