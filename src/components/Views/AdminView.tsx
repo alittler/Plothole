@@ -301,7 +301,22 @@ export const AdminView: React.FC<AdminViewProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Application Name</label><input type="text" value={settings.appName} onChange={e => setSettings({...settings, appName: e.target.value})} className="bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
                 <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">AI Character Limit</label><input type="number" value={settings.aiCharacterLimit} onChange={e => setSettings({...settings, aiCharacterLimit: parseInt(e.target.value)})} className="bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
+                <div className="flex flex-col gap-2"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Narrative Engine Chunk Size (Words)</label><input type="number" value={settings.narrativeChunkSize || 2000} onChange={e => setSettings({...settings, narrativeChunkSize: parseInt(e.target.value)})} className="bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
               </div>
+
+              <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div className="space-y-1">
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Enable Backup Preview System (Debug)</span>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Show the email notification preview in project archive settings.</p>
+                </div>
+                <button 
+                  onClick={() => setSettings({...settings, enableBackupPreview: !settings.enableBackupPreview})}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${settings.enableBackupPreview ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.enableBackupPreview ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+
               <button onClick={() => onSaveSettings(settings)} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3"><Save size={20} /> Update Configuration</button>
             </section>
 

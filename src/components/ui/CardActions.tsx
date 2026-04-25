@@ -30,6 +30,22 @@ export const CardActions: React.FC<CardActionsProps> = ({
     }
   }, [isOpen]);
 
+  // Handle keyboard shortcuts in delete confirmation dialog
+  useEffect(() => {
+    if (!showDeleteConfirm) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowDeleteConfirm(false);
+      } else if (e.key === 'Enter') {
+        handleConfirmDelete();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showDeleteConfirm]);
+
   const handleEdit = () => {
     setIsOpen(false);
     onEdit?.();

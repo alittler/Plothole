@@ -1,6 +1,5 @@
 export enum ViewType {
   BOOKSHELF = 'Bookshelf',
-  BOOKSHELF2 = 'Bookshelf2',
   DASHBOARD = 'Dashboard',
   CHARACTERS = 'Characters',
   TIMELINE = 'Timeline',
@@ -604,6 +603,8 @@ export interface User {
 export interface AppSettings {
   appName: string;
   aiCharacterLimit?: number;
+  narrativeChunkSize?: number;
+  enableBackupPreview?: boolean;
   adminEmails?: string[];
   sidebarOrder?: ViewType[];
   bottomNavOrder?: ViewType[];

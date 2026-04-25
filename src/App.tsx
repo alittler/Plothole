@@ -33,7 +33,7 @@ import { Commit, BackupStatus } from './types';
 import { Sidebar } from './components/Layout/Sidebar';
 import { BottomNav } from './components/Layout/BottomNav';
 import { BookshelfView } from './components/Views/BookshelfView';
-import { Bookshelf2View } from './components/Views/Bookshelf2View';
+
 import { DashboardView } from './components/Views/DashboardView';
 import { ResearchSystemView } from './components/Views/ResearchSystemView';
 import { ResearchHubView } from './components/Views/ResearchHubView';
@@ -46,6 +46,7 @@ import { AdminView } from './components/Views/AdminView';
 import { ToolboxView } from './components/Views/ToolboxView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
+
 import DataCatalogView from './components/Views/DataCatalogView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
@@ -253,6 +254,8 @@ const App: React.FC = () => {
   const [appSettings, setAppSettings] = useState<AppSettings>({
     appName: 'Plothole — Your Story, Decoded',
     adminEmails: ['alittler86@gmail.com'],
+    narrativeChunkSize: 2000,
+    enableBackupPreview: false,
     defaultToolboxLinks: [
       {
         id: 'demo-demographics',
@@ -317,8 +320,30 @@ const App: React.FC = () => {
         email: email,
         role: isAdmin ? 'admin' : 'editor',
       }));
+
+      // Fetch username from database
+      const fetchUsername = async () => {
+        try {
+          const token = await getAccessTokenSilently();
+          const resp = await fetch('/api/user/username', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.username) {
+              setCurrentUser(prev => ({
+                ...prev,
+                username: data.username
+              }));
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch username:', err);
+        }
+      };
+      fetchUsername();
     }
-  }, [isAuthLoading, auth0User, appSettings.adminEmails]);
+  }, [isAuthLoading, auth0User, appSettings.adminEmails, getAccessTokenSilently]);
 
   const currentView = (decodeURIComponent(location.pathname.slice(1)) as ViewType) || ViewType.BOOKSHELF;
   const [selectedCreatureId, setSelectedCreatureId] = useState<number | null>(null);
@@ -1423,18 +1448,6 @@ const App: React.FC = () => {
           isAnalyzing={isAnalyzing}
         />;
 
-      case ViewType.BOOKSHELF2:
-        return <Bookshelf2View
-          projectData={projectData}
-          onUpdateProject={updateProjectData}
-          onChangeView={setCurrentView}
-          isAnalyzing={isAnalyzing}
-          onMergeAnalysis={mergeAnalysisIntoProject}
-          onExtractRelationships={handleExtractRelationships}
-          onExtractSoftAnchors={handleExtractSoftAnchors}
-          fetchWithAuth={fetchWithAuth}
-        />;
-
       case ViewType.NOTEPAD:
         return <ResearchSystemView
           currentView={currentView}
@@ -1603,6 +1616,7 @@ const App: React.FC = () => {
           onChangeView={setCurrentView}
           onLinkClick={handleLinkClick}
           fetchWithAuth={fetchWithAuth}
+          appSettings={appSettings}
         />;
 
       case ViewType.CODEX:

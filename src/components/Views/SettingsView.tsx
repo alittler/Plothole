@@ -35,10 +35,11 @@ interface SettingsViewProps {
   onChangeView: (v: ViewType) => void;
   onLinkClick?: (type: string, id: string) => void;
   fetchWithAuth?: (url: string, options?: RequestInit) => Promise<Response>;
+  appSettings: AppSettings;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
-  currentUser, onUpdateUser, onFactoryReset, projectData, onUpdateProject, onChangeView, onLinkClick, globalNotes, onClearGlobalNotes, fetchWithAuth
+  currentUser, onUpdateUser, onFactoryReset, projectData, onUpdateProject, onChangeView, onLinkClick, globalNotes, onClearGlobalNotes, fetchWithAuth, appSettings
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as SettingsTab) || SettingsTab.PROFILE;
@@ -65,18 +66,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const doFetch = fetchWithAuth || fetch.bind(window);
 
   // Wiki feature state
-  const [username, setUsername] = React.useState('');
+  const [username, setUsername] = React.useState(currentUser?.username || '');
   const [isLoadingUsername, setIsLoadingUsername] = React.useState(false);
   const [usernameSaved, setUsernameSaved] = React.useState(false);
+
+  // Sync username from currentUser when it changes
+  React.useEffect(() => {
+    if (currentUser?.username) {
+      setUsername(currentUser.username);
+    }
+  }, [currentUser?.username]);
 
   React.useEffect(() => {
     if (activeTab === SettingsTab.ARCHIVE && projectData) {
       fetchArchiveFiles();
     }
-    if (activeTab === SettingsTab.PROFILE) {
+    if (activeTab === SettingsTab.PROFILE && !currentUser?.username) {
       fetchUsername();
     }
-  }, [activeTab, projectData]);
+  }, [activeTab, projectData, currentUser?.username]);
 
   const fetchUsername = async () => {
     try {
@@ -600,7 +608,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       case SettingsTab.ARCHIVE:
         return projectData ? (
           <section className="h-full flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-y-auto animate-in fade-in duration-500">
-            <div className="bg-amber-500 text-white p-2 text-center font-bold uppercase text-[10px] tracking-[0.2em]">DEBUG: Backup Preview System Active</div>
             {/* Backup Resend Section */}
             <div className="p-10 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
               <div className="flex items-center gap-4 mb-6">
@@ -697,73 +704,71 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <p className="text-slate-500 dark:text-slate-400 font-mono text-xs">{formatTime(getNextBackupTime()!)}</p>
                   </div>
                 )}
-                </div>
 
-                {/* Backup Preview Section - Moved Outside for better visibility and padding */}
-                <div className="mt-8 pt-8 border-t border-emerald-200 dark:border-emerald-800/50 space-y-4 pb-20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles size={16} className="text-emerald-600" />
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Backup Preview</h4>
-                </div>
-
-                {/* Email Preview Card */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 rounded-full bg-rose-400" />
-                        <div className="w-2 h-2 rounded-full bg-amber-400" />
-                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                      </div>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase ml-2">Backup Notification Preview</span>
-                    </div>
-                    <Mail size={12} className="text-slate-400" />
-                  </div>
-                  <div className="p-4 space-y-3">
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Subject</p>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-100">[Milestone] Backup: {projectData?.title || 'Project'} [sha-8] ({projectData?.wordCount || 0} words)</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Body</p>
-                      <div className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-100 dark:border-slate-800/50">
-                        <p>Automated backup for project: <strong>{projectData?.title}</strong></p>
-                        <p className="mt-1 text-slate-400 italic">This backup contains the current .plothole files for all books associated with your account.</p>
-                      </div>
+                {appSettings.enableBackupPreview && (
+                  <div className="mt-8 pt-8 border-t border-emerald-200 dark:border-emerald-800/50 space-y-4 pb-20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles size={16} className="text-emerald-600" />
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Backup Preview</h4>
                     </div>
 
-                    {/* Attachments Preview */}
-                    <div className="pt-2">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase mb-2">Attachments (Estimated)</p>
-                      <div className="grid grid-cols-1 gap-2">
-                        <div className="flex items-center justify-between p-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-300 rounded">
-                              <FileText size={12} />
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">{projectData?.title?.replace(/\s+/g, '_')}_current.plothole</span>
+                    {/* Email Preview Card */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                      <div className="bg-slate-50 dark:bg-slate-900/50 p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <div className="w-2 h-2 rounded-full bg-rose-400" />
+                            <div className="w-2 h-2 rounded-full bg-amber-400" />
+                            <div className="w-2 h-2 rounded-full bg-emerald-400" />
                           </div>
-                          <span className="text-[9px] font-mono text-emerald-600/70">CURRENT</span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase ml-2">Backup Notification Preview</span>
+                        </div>
+                        <Mail size={12} className="text-slate-400" />
+                      </div>
+                      <div className="p-4 space-y-3">
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">Subject</p>
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-100">[Milestone] Backup: {projectData?.title || 'Project'} [sha-8] ({projectData?.wordCount || 0} words)</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">Body</p>
+                          <div className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-100 dark:border-slate-800/50">
+                            <p>Automated backup for project: <strong>{projectData?.title}</strong></p>
+                            <p className="mt-1 text-slate-400 italic">This backup contains the current .plothole files for all books associated with your account.</p>
+                          </div>
                         </div>
 
-                        <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-100 dark:border-slate-800/50 opacity-60">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 bg-slate-200 dark:bg-slate-700 text-slate-500 rounded">
-                              <History size={12} />
+                        {/* Attachments Preview */}
+                        <div className="pt-2">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase mb-2">Attachments (Estimated)</p>
+                          <div className="grid grid-cols-1 gap-2">
+                            <div className="flex items-center justify-between p-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                              <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-300 rounded">
+                                  <FileText size={12} />
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">{projectData?.title?.replace(/\s+/g, '_')}_current.plothole</span>
+                              </div>
+                              <span className="text-[9px] font-mono text-emerald-600/70">CURRENT</span>
                             </div>
-                            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">Historical_Snapshots.zip</span>
+
+                            <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-100 dark:border-slate-800/50 opacity-60">
+                              <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-slate-200 dark:bg-slate-700 text-slate-500 rounded">
+                                  <History size={12} />
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">Historical_Snapshots.zip</span>
+                              </div>
+                              <span className="text-[9px] font-mono text-slate-400">UP TO 5 COPIES (MATCHING SHA)</span>
+                            </div>
                           </div>
-                          <span className="text-[9px] font-mono text-slate-400">UP TO 5 COPIES (MATCHING SHA)</span>
                         </div>
                       </div>
-                      <p className="mt-3 text-[9px] text-slate-400 leading-tight italic">
-                        Note: The system sends the current state of all associated books and up to 5 historical versions for each file where SHA codes match established milestones.
-                      </p>
                     </div>
                   </div>
-                </div>
-                </div>
-                </div>
+                )}
+              </div>
+            </div>
 
             {/* Test Email Section */}
             <div className="p-10 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20">
