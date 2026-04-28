@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ProjectData, Note, Commit, BackupStatus, User } from '../../types';
 import { 
   Sparkles, FileText, Users, Map, Calendar, Clock, Edit3, 
@@ -49,9 +49,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, onExportVault, isExporting,
   onUpdateProcessedFiles, isUpdatingProcessed = false, onLinkClick, onUpdateProject, onSave, currentUser
 }) => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const activeTab = (searchParams.get('tab') as DashboardTab) || DashboardTab.HEALTH;
-  const setActiveTab = (tab: DashboardTab) => setSearchParams({ tab });
+  const setActiveTab = (tab: DashboardTab) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', tab);
+    router.push(`?${params.toString()}`);
+  };
 
   const [isIntegrityValid, setIsIntegrityValid] = useState<boolean | null>(null);
 

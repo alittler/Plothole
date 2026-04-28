@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ProjectData, Note, User as AppUser, ViewType, ChangeLogEntry, AppSettings, BackupFrequency } from '../../types';
 import { 
   Settings, User as UserIcon, Database, Shield, Code, Check, 
@@ -41,10 +41,15 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser, onUpdateUser, onFactoryReset, projectData, onUpdateProject, onChangeView, onLinkClick, globalNotes, onClearGlobalNotes, fetchWithAuth, appSettings
 }) => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const activeTab = (searchParams.get('tab') as SettingsTab) || SettingsTab.PROFILE;
   console.log('[SettingsView] Active Tab:', activeTab);
-  const setActiveTab = (tab: SettingsTab) => setSearchParams({ tab });
+  const setActiveTab = (tab: SettingsTab) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', tab);
+    router.push(`?${params.toString()}`);
+  };
 
   const [rawText, setRawText] = React.useState('');
   const [isSaved, setIsSaved] = React.useState(false);

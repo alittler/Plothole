@@ -1,0 +1,12 @@
+{
+  "id": "1NAsxCehEBy7",
+  "name": "Tintagel Castle",
+  "type": "other",
+  "scale": "region",
+  "controlling_faction": "",
+  "inhabitants": [],
+  "is_locked": false,
+  "description": "Ruined castle on the coast of Cornwall, subject of an archaeological dig.",
+  "source": "ai_generated",
+  "field_notes": []
+}

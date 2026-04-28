@@ -1,6 +1,6 @@
 // SEED MONSTERS UPDATE
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ViewType, ProjectData, Location, Artifact, LoreEntry, Note, ProseDocument, User, ProjectMetadata, MapPath, Character } from '../../types';
 import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers, Footprints as PawPrint, Lock, Unlock, Sun, Star } from 'lucide-react';
 
@@ -87,9 +87,14 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   projectsMetadata,
   currentUser
 }) => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const activeTab = (searchParams.get('tab') as WorldTab) || WorldTab.MAP;
-  const setActiveTab = (tab: WorldTab) => setSearchParams({ tab });
+  const setActiveTab = (tab: WorldTab) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', tab);
+    router.push(`?${params.toString()}`);
+  };
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [showOriginPulse, setShowOriginPulse] = useState(false);

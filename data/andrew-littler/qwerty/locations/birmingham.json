@@ -1,0 +1,12 @@
+{
+  "id": "sdORy2BWFQQh",
+  "name": "Birmingham",
+  "type": "other",
+  "scale": "region",
+  "controlling_faction": "",
+  "inhabitants": [],
+  "is_locked": false,
+  "description": "Location where Madeleine arrives at the airport.",
+  "source": "ai_generated",
+  "field_notes": []
+}

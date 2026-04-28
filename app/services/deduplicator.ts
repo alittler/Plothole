@@ -44,12 +44,14 @@ export class Deduplicator {
     const newEntities: any[] = [];
 
     for (const fresh of freshEntities) {
+      if (!fresh.name) continue;
+
       let fuse = this.characterFuse;
       if (fresh.type === 'Location') fuse = this.locationFuse;
       
       const results = fuse.search(fresh.name);
       
-      if (results.length > 0 && results[0].score !== undefined && results[0].score < 0.4) {
+      if (results.length > 0 && results[0].score !== undefined && results[0].score < 0.5) {
         const bestMatch = results[0];
         matches.push({
           existing: bestMatch.item,

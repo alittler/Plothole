@@ -1,0 +1,12 @@
+{
+  "id": "2stsmRymYq9t",
+  "name": "church",
+  "type": "other",
+  "scale": "region",
+  "controlling_faction": "",
+  "inhabitants": [],
+  "is_locked": false,
+  "description": "A large and imposing structure within in the Priory, featuring nave, transepts, choir, presbytery, carved stone capitals, tracery windows, painted frescoes, tiles, gravestones, a double piscina, and the sedilia.",
+  "source": "ai_generated",
+  "field_notes": []
+}

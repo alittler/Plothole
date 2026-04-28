@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ProjectData, AppPrompts, ToolboxLink, ProjectMetadata, Note, AppSettings, ViewType, User as AppUser } from '../../types';
 import { 
   Shield, Sparkles, Save, Trash2, Check, Copy, Edit2, 
@@ -10,8 +10,8 @@ import {
 
 import { generateId } from '../../services/storageService';
 import { CharacterCard } from '../ui/CharacterCard';
+import { PromptPuzzleBuilder } from '../ui/PromptPuzzleBuilder';
 import { HierarchicalEntity } from '../../types';
-import { DataBrowser } from '../DataBrowser';
 
 interface AdminViewProps {
   data: ProjectData | null;
@@ -36,18 +36,21 @@ enum AdminTab {
   TOOLBOX = 'Toolbox',
   PLOTHOLE_FORMAT = 'File Format',
   SCRIPTURE_MYTHOLOGY = 'Scripture & Mythology',
-  DATA_EDITOR = 'Data Editor'
+  AI_ANALYSIS = 'AI Analysis'
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
   data, globalNotes, appPrompts, appSettings, onSaveSettings, onSavePrompts, projectsMetadata, onUpdateProject, onDeleteGlobalNote, onLinkClick, onChangeView, currentUser
 }) => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<AdminTab>((searchParams.get('tab') as AdminTab) || AdminTab.SYSTEM);
 
   const handleSetActiveTab = (tab: AdminTab) => {
     setActiveTab(tab);
-    setSearchParams({ tab });
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', tab);
+    router.push(`?${params.toString()}`);
   };
 
   const [prompts, setPrompts] = useState(appPrompts);
@@ -1195,8 +1198,84 @@ books:
           </div>
         );
 
-      case AdminTab.DATA_EDITOR:
-        return <DataBrowser />;
+      case AdminTab.AI_ANALYSIS:
+        return (
+          <div className="max-w-5xl mx-auto space-y-8 py-8 animate-in fade-in duration-500">
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20"><Cpu size={28} /></div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Manuscript Analysis</h2>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Configure extraction logic and view results.</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {prompts.extractionPuzzle && (
+                  <PromptPuzzleBuilder 
+                    pieces={prompts.extractionPuzzle}
+                    onPiecesChange={(pieces) => setPrompts({...prompts, extractionPuzzle: pieces})}
+                  />
+                )}
+                
+                <button 
+                  onClick={() => onSavePrompts(prompts)} 
+                  className="mt-2 py-3 bg-indigo-600 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
+                >
+                  <Save size={18} /> Save Extraction Puzzle
+                </button>
+
+                {data && (
+                  <div className="space-y-6 pt-8 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Latest Analysis Result (JSON)</label>
+                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded-full">Project: {data.title}</span>
+                      </div>
+                      <textarea 
+                        value={data.latestAnalysisResult || ''} 
+                        onChange={e => onUpdateProject({ latestAnalysisResult: e.target.value })} 
+                        placeholder="Latest analysis results will appear here..."
+                        className="bg-slate-900 text-emerald-400 border-none rounded-2xl px-5 py-4 text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none h-96 resize-none leading-relaxed" 
+                      />
+                      <div className="flex gap-3">
+                        <button 
+                          onClick={() => {
+                            try {
+                              const parsed = JSON.parse(data.latestAnalysisResult || '{}');
+                              onUpdateProject({ latestAnalysisResult: JSON.stringify(parsed, null, 2) });
+                            } catch (e) {
+                              alert("Invalid JSON format");
+                            }
+                          }} 
+                          className="flex-1 py-3 bg-slate-800 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Code size={18} /> Format JSON
+                        </button>
+                        <button 
+                          onClick={() => onUpdateProject({ latestAnalysisResult: data.latestAnalysisResult })} 
+                          className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Save size={18} /> Save Results
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Custom Project Prompt (Overrides Global)</label>
+                      <textarea 
+                        value={data.customAnalysisPrompt || ''} 
+                        onChange={e => onUpdateProject({ customAnalysisPrompt: e.target.value })} 
+                        placeholder="Leave empty to use global prompt..."
+                        className="bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none h-32 resize-none font-mono leading-relaxed" 
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        );
 
       default: return null;
     }
@@ -1228,6 +1307,7 @@ books:
                 {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
                 {tab === AdminTab.PLOTHOLE_FORMAT && <Archive size={18} />}
                 {tab === AdminTab.SCRIPTURE_MYTHOLOGY && <BookOpen size={18} />}
+                {tab === AdminTab.AI_ANALYSIS && <Cpu size={18} />}
               </div>
               <span className="hidden md:inline">{tab}</span>
             </button>

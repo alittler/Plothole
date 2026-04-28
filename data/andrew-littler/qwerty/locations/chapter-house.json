@@ -1,0 +1,12 @@
+{
+  "id": "gFpDk7CnWY9O",
+  "name": "Chapter House",
+  "type": "other",
+  "scale": "region",
+  "controlling_faction": "",
+  "inhabitants": [],
+  "is_locked": false,
+  "description": "A stone building where the monks held meetings and kept their records.",
+  "source": "ai_generated",
+  "field_notes": []
+}

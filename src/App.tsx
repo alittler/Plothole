@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
 import {
   ProjectData, ProjectMetadata, User, ViewType, Note,
-  AppPrompts, AppSettings, ToolboxLink, Artifact, LoreEntry, TimelineEvent, Idea, ChangeLogEntry, Relationship, SemanticDocument, ProseDocument, Chapter
+  AppPrompts, AppSettings, ToolboxLink, Artifact, LoreEntry, TimelineEvent, Idea, ChangeLogEntry, Relationship, SemanticDocument, ProseDocument, Chapter, Character, Location
 } from './types';
 import {
   getAllProjectsMetadata, loadProjectById, saveProjectData,
@@ -25,8 +25,6 @@ import {
   isCloudStorageActive,
   setServerHealth
 } from './services/storageService';
-import { syncDataToEditor } from './services/dataSyncService';
-import { initGitForProject, commitToGit, getGitLog, updateIntegrityHash } from './services/versioningService';
 import { Commit, BackupStatus } from './types';
 
 // Components
@@ -37,21 +35,21 @@ import { BookshelfView } from './components/Views/BookshelfView';
 import { DashboardView } from './components/Views/DashboardView';
 import { ResearchSystemView } from './components/Views/ResearchSystemView';
 import { ResearchHubView } from './components/Views/ResearchHubView';
-import { CharacterView } from './components/Views/CharacterView';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
 import { WorldSystemView } from './components/Views/WorldSystemView';
 import { PlotSystemView } from './components/Views/PlotSystemView';
+import { CharactersView } from './components/Views/CharactersView';
 import { SettingsView } from './components/Views/SettingsView';
 import { AdminView } from './components/Views/AdminView';
 import { ToolboxView } from './components/Views/ToolboxView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
 
-import DataCatalogView from './components/Views/DataCatalogView';
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
+import { UploadProminentModal } from './components/ui/UploadProminentModal';
 import { Modal } from './components/ui/Modal';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, X, Menu, LogOut, Shield, FileText, Database, PenTool, Trash2, Loader2, Search } from 'lucide-react';
@@ -250,7 +248,134 @@ const App: React.FC = () => {
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [globalResources, setGlobalResources] = useState<ToolboxLink[]>([]);
-  const [appPrompts, setAppPromptsState] = useState<AppPrompts>({ systemPrompt: '', charAnalysisPrompt: '', locationPrompt: '', timelinePrompt: '', themePrompt: '' });
+  const [appPrompts, setAppPromptsState] = useState<AppPrompts>({ 
+    systemPrompt: '', 
+    charAnalysisPrompt: '', 
+    locationPrompt: '', 
+    timelinePrompt: '', 
+    themePrompt: '',
+    extractionPuzzle: [
+      {
+        id: 'characters',
+        category: 'characters',
+        label: 'Characters',
+        enabled: true,
+        prompt: `Extract all CHARACTERS from the manuscript. Return as JSON with this exact structure:
+{
+  "characters": [
+    {
+      "name": "Character Name",
+      "role": "protagonist/antagonist/supporting/minor",
+      "tier": 1 or 2 or 3,
+      "physical_description": "Physical appearance only: height, build, distinctive features, clothing style",
+      "description": "Personality, background, and story role",
+      "traits": ["trait1", "trait2", "trait3"],
+      "motivation": "Character's primary motivation",
+      "aliases": ["alternate name", "nickname"],
+      "affiliation": "Faction or group they belong to"
+    }
+  ]
+}`
+      },
+      {
+        id: 'locations',
+        category: 'locations',
+        label: 'Locations',
+        enabled: true,
+        prompt: `Extract all LOCATIONS from the manuscript. Return as JSON with this exact structure:
+{
+  "locations": [
+    {
+      "name": "Location Name",
+      "type": "city/building/region/wilderness/other",
+      "description": "Description of the location",
+      "inhabitants": ["person1", "group1"],
+      "controlling_faction": "Who controls this location"
+    }
+  ]
+}`
+      },
+      {
+        id: 'timeline_events',
+        category: 'timeline_events',
+        label: 'Timeline Events',
+        enabled: true,
+        prompt: `Extract all EVENTS and PLOT POINTS from the manuscript. Return as JSON with this exact structure:
+{
+  "timeline_events": [
+    {
+      "title": "Event Name",
+      "event_type": "battle/political/personal/discovery/death/birth/ceremony/travel/revelation/other",
+      "significance": "minor/major/pivotal",
+      "description": "What happened",
+      "date": "Timeline indicator if available",
+      "participants": ["character1", "character2"],
+      "location": "Location name if relevant",
+      "is_flashback": false
+    }
+  ]
+}`
+      },
+      {
+        id: 'artifacts',
+        category: 'artifacts',
+        label: 'Artifacts',
+        enabled: true,
+        prompt: `Extract all ARTIFACTS, ITEMS, and OBJECTS of significance from the manuscript. Return as JSON with this exact structure:
+{
+  "artifacts": [
+    {
+      "name": "Artifact Name",
+      "type": "weapon/armor/tool/document/relic/container/vehicle/consumable/other",
+      "significance": "minor/major/pivotal",
+      "description": "Appearance and properties",
+      "current_owner": "Owner name if known",
+      "location": "Current location if known"
+    }
+  ]
+}`
+      },
+      {
+        id: 'lore',
+        category: 'lore',
+        label: 'Lore & Worldbuilding',
+        enabled: true,
+        prompt: `Extract all LORE, WORLDBUILDING CONCEPTS, and SYSTEMS from the manuscript. Return as JSON with this exact structure:
+{
+  "lore": [
+    {
+      "term": "Concept Name",
+      "type": "faction/magic_system/cosmology/creature_species/language/religion/law/technology/cultural_practice/other",
+      "tier": "background/minor/moderate/major/foundational",
+      "description": "What this concept is and how it works",
+      "associated_factions": ["faction1", "faction2"],
+      "related_terms": ["related_concept1", "related_concept2"]
+    }
+  ]
+}`
+      },
+      {
+        id: 'relationships',
+        category: 'relationships',
+        label: 'Relationships',
+        enabled: true,
+        prompt: `Extract all CHARACTER RELATIONSHIPS from the manuscript. Return as JSON with this exact structure:
+{
+  "relationships": [
+    {
+      "character_a": "Character Name 1",
+      "character_b": "Character Name 2",
+      "relationship_type": "sibling/parent/ally/rival/mentor/romantic/enemy/acquaintance/unknown",
+      "direction": "mutual/a_to_b/b_to_a",
+      "trust_level": 7,
+      "status": "active/strained/severed/latent/hostile/resolved",
+      "description": "How they interact and their dynamic"
+    }
+  ]
+}`
+      }
+    ]
+  });
   const [appSettings, setAppSettings] = useState<AppSettings>({
     appName: 'Plothole — Your Story, Decoded',
     adminEmails: ['alittler86@gmail.com'],
@@ -263,6 +388,13 @@ const App: React.FC = () => {
         url: 'https://donjon.bin.sh/fantasy/demographics/',
         category: 'World Building',
         description: 'Generate realistic demographic data for fantasy settlements'
+      },
+      {
+        id: 'fantasy-calendar-ext',
+        label: 'Fantasy Calendar',
+        url: 'https://fantasy-calendar.com',
+        category: 'Time & Cosmology',
+        description: 'The premier tool for creating custom fantasy calendars and tracking time.'
       },
       {
         id: 'demo-magic-gen',
@@ -372,6 +504,7 @@ const App: React.FC = () => {
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [activeTasks, setActiveTasks] = useState<string[]>([]);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+  const [uploadingFileName, setUploadingFileName] = useState<string | undefined>(undefined);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const addTask = (id: string) => setActiveTasks(prev => [...prev, id]);
@@ -682,17 +815,19 @@ const App: React.FC = () => {
         setCloudStorageEnabled(isAuthenticated === true, fetchWithAuth);
 
         console.log(`[Init] Fetching metadata...`);
-        const [meta, notes, resources, settings] = await Promise.all([
+        const [meta, notes, resources, settings, prompts] = await Promise.all([
           getAllProjectsMetadata(),
           getAllGlobalNotes(),
           getAllGlobalResources(),
-          getAppSettings()
+          getAppSettings(),
+          getAppPrompts()
         ]);
 
         console.log(`[Init] Received ${meta?.length || 0} projects`);
         setProjectsMetadata(meta || []);
         setGlobalNotes(notes);
         setGlobalResources(resources);
+        if (prompts) setAppPromptsState(prev => ({ ...prev, ...prompts }));
         if (settings) {
           const finalSettings = { ...settings };
           if (!finalSettings.appName || finalSettings.appName.includes('Steno') || finalSettings.appName === 'Plothole AI') {
@@ -1236,12 +1371,152 @@ const App: React.FC = () => {
     }
   };
 
+  // Analyze manuscript using AI to extract characters, locations, and events
+  const analyzeManuscript = async (manuscriptText: string): Promise<{
+    characters: Character[];
+    locations: Location[];
+    events: TimelineEvent[];
+  }> => {
+    try {
+      setProcessingStatus("Analyzing manuscript with AI...");
+      console.log('[Analyze] Starting manuscript analysis');
+
+      // Build combined prompt from enabled puzzle pieces
+      let customPrompt = '';
+      if (appPrompts?.extractionPuzzle && appPrompts.extractionPuzzle.length > 0) {
+        const enabledPieces = appPrompts.extractionPuzzle.filter(p => p.enabled);
+        
+        // Extract just the instructions (remove "Return as:" lines)
+        const instructions = enabledPieces.map(p => {
+          const lines = p.prompt.split('\n');
+          const withoutReturn = lines.filter(line => !line.includes('Return as:')).join('\n').trim();
+          return `[${p.label.toUpperCase()}]\n${withoutReturn}`;
+        }).join('\n\n');
+        
+        // Build final prompt with unified return format
+        customPrompt = `${instructions}
+
+IMPORTANT: Extract and return the data as a SINGLE JSON object with these keys:
+{
+  "characters": [array of extracted characters],
+  "locations": [array of extracted locations],
+  "timeline_events": [array of extracted timeline events],
+  "artifacts": [array of extracted artifacts],
+  "lore": [array of extracted lore entries],
+  "relationships": [array of extracted relationships]
+}
+
+Include only the arrays for enabled sections above.`;
+        
+        console.log(`[Analyze] Built combined prompt from ${enabledPieces.length} puzzle pieces`);
+      }
+
+      const response = await fetch('/api/narrative/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          manuscriptText,
+          customPrompt: customPrompt || undefined,
+          chunkSize: 5000
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('[Analyze] API error:', error);
+        throw new Error(error.error || 'Failed to analyze manuscript');
+      }
+
+      const data = await response.json();
+      const worldState = data.worldState || [];
+      
+      console.log(`[Analyze] Received ${worldState.length} entities from AI`);
+      console.log('[Analyze] WorldState:', JSON.stringify(worldState, null, 2));
+
+      // Transform HierarchicalEntity[] into Character[], Location[], TimelineEvent[]
+      const characters: Character[] = [];
+      const locations: Location[] = [];
+      const events: TimelineEvent[] = [];
+
+      for (const entity of worldState) {
+        console.log(`[Analyze] Processing entity:`, entity.type, entity.name);
+        if (entity.type === 'Character') {
+          characters.push({
+            id: entity.id || generateId(),
+            name: entity.name || 'Unknown',
+            role: entity.role || '',
+            tier: entity.tier || 3,
+            aliases: entity.aliases || [],
+            affiliation: entity.affiliation || '',
+            traits: entity.traits || [],
+            motivation: entity.motivation || '',
+            description: entity.description || '',
+            source: 'ai_generated',
+            first_mention_offset: entity.firstMentionOffset,
+            field_notes: []
+          });
+        } else if (entity.type === 'Location') {
+          locations.push({
+            id: entity.id || generateId(),
+            name: entity.name || 'Unknown',
+            type: (entity.locationType || 'other') as any,
+            scale: 'region',
+            parent_location_id: undefined,
+            controlling_faction: '',
+            inhabitants: [],
+            x: undefined,
+            y: undefined,
+            is_locked: false,
+            description: entity.description || '',
+            source: 'ai_generated',
+            first_mention_offset: entity.firstMentionOffset,
+            field_notes: []
+          });
+        } else if (entity.type === 'Event' || entity.type === 'PlotPoint') {
+          events.push({
+            id: entity.id || generateId(),
+            title: entity.name || entity.title || 'Unknown Event',
+            event_type: 'other',
+            significance: 'major',
+            real_world_sort_key: 0,
+            is_flashback: false,
+            location_id: undefined,
+            participants: entity.charactersInvolved || [],
+            description: entity.description || '',
+            source: 'ai_generated',
+            first_mention_offset: entity.firstMentionOffset,
+            field_notes: []
+          });
+        }
+      }
+
+      console.log(`[Analyze] Transformed: ${characters.length} characters, ${locations.length} locations, ${events.length} events`);
+      return { characters, locations, events };
+
+    } catch (error) {
+      console.error('[Analyze] Analysis failed:', error);
+      setProcessingStatus(`Analysis error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return { characters: [], locations: [], events: [] };
+    }
+  };
+
+  const handleCancelUpload = () => {
+    setIsAnalyzing(false);
+    setUploadingFileName(undefined);
+    setProcessingStatus(null);
+    removeTask('uploading-project');
+    console.log('[Upload] Upload cancelled by user');
+  };
+
   const handleUploadProject = async (file: File) => {
+    console.log('[Upload] Starting file upload:', file.name);
     setIsAnalyzing(true);
+    setUploadingFileName(file.name);
     addTask('uploading-project');
     try {
       // Handle Vault (.pvoid) files
       if (file.name.endsWith('.pvoid')) {
+        console.log('[Upload] Processing Vault file');
         const vaultData = await importVaultFromZip(file);
         // Merge vault notes into global notes
         const newNotes = vaultData.notes.map(note => ({
@@ -1267,11 +1542,13 @@ const App: React.FC = () => {
         }
 
         setProcessingStatus(`Imported ${notesToAdd.length} notes from Vault`);
+        console.log('[Upload] Vault import complete');
         return;
       }
 
       // Handle Book (.plothole) files (ZIP format)
       if (file.name.endsWith('.plothole')) {
+        console.log('[Upload] Processing Plothole file');
         const projectData = await unpackProject(file);
         if (projectData) {
           projectData.author = currentUser.name;
@@ -1280,18 +1557,22 @@ const App: React.FC = () => {
           setProjectData(dataWithCatalog);
           await refreshMetadata();
           setCurrentView(ViewType.DASHBOARD);
+          console.log('[Upload] Plothole file processed');
           return;
         }
       }
 
+      console.log('[Upload] Reading file as text');
       const text = await file.text();
       let data: any;
 
       if (file.name.endsWith('.json')) {
+        console.log('[Upload] Processing JSON file');
         data = JSON.parse(text);
         data.author = currentUser.name;
       } else {
         // It's a manuscript text file
+        console.log('[Upload] Processing manuscript text file');
         setProcessingStatus("Reading Manuscript...");
         let generatedChapters: any[] = [];
 
@@ -1364,39 +1645,45 @@ const App: React.FC = () => {
           themes: [],
           artifacts: [],
           lore: [],
+          entities: [],
           chapters: generatedChapters
         };
-      }
 
-      if (data) {
         if (!data.id) data.id = generateId();
+
+        // Analyze manuscript to extract entities
+        console.log('[Upload] Calling AI analysis...');
+        const { characters, locations, events } = await analyzeManuscript(text);
+        
+        // Merge extracted data into the project
+        data.characters = characters;
+        data.locations = locations;
+        data.timeline = events;
+        
+        console.log(`[Upload] Merged AI results: ${characters.length} chars, ${locations.length} locs, ${events.length} events`);
+
         const dataWithCatalog = populateDataCatalog(data);
+        
+        console.log('[Upload] Saving project data...');
+        // Save the project first
         await saveProjectData(dataWithCatalog);
         setProjectData(dataWithCatalog);
+        console.log('[Upload] Project saved, setting view');
         
-        // Sync extracted data to Data Editor filesystem
-        if (!file.name.endsWith('.plothole') && !file.name.endsWith('.json')) {
-          setProcessingStatus("Syncing data to Data Editor...");
-          await syncDataToEditor({
-            author: dataWithCatalog.author,
-            bookTitle: dataWithCatalog.title,
-            characters: dataWithCatalog.characters,
-            locations: dataWithCatalog.locations,
-            events: dataWithCatalog.timeline,
-            artifacts: dataWithCatalog.artifacts,
-            lore: dataWithCatalog.lore
-          });
-        }
-        
+        console.log('[Upload] Refreshing metadata');
         await refreshMetadata();
         setCurrentView(ViewType.DASHBOARD);
+        console.log('[Upload] Upload complete');
       }
     } catch (err) {
+      console.error('[Upload] Error during upload:', err);
       handleError(err);
     } finally {
       setIsAnalyzing(false);
+      setUploadingFileName(undefined);
       setProcessingStatus(null);
       removeTask('uploading-project');
+      console.log('[Upload] Upload handler finished');
     }
   };
 
@@ -1501,16 +1788,6 @@ const App: React.FC = () => {
           onOpenDashboard={() => setIsDashboardModalOpen(true)}
           isAnalyzing={isAnalyzing}
         />;
-
-      case ViewType.CHARACTERS:
-        return projectData ? <CharacterView
-          data={projectData}
-          appSettings={appSettings}
-          onUpdateProject={updateProjectData}
-          onLinkClick={handleLinkClick}
-          onExtractRelationships={handleExtractRelationships}
-          isExtractingRelationships={isExtractingRelationships}
-        /> : null;
 
       case ViewType.DASHBOARD:
         return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => { }} onLoadSample={() => handleCreateProject(projectData?.title || 'The Obsidian Citadel', projectData?.author || 'Junior Archivist', true, projectData?.shortName || 'Citadel', projectData?.id)} isAnalyzing={isAnalyzing} error={null} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={() => { }} onRestoreHistory={() => { }} onRestoreCommit={handleRestoreCommit} onGenerateCover={() => { }} onExportVault={handleExportVault} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p)} isGeneratingCover={false} onUpdateProcessedFiles={() => { }} isUpdatingProcessed={false} onLinkClick={handleLinkClick}
@@ -1622,14 +1899,19 @@ const App: React.FC = () => {
       case ViewType.CODEX:
         return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;
 
-      case ViewType.DATA_CATALOG:
-        return projectData ? <DataCatalogView projectData={projectData} onUpdate={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Data Catalog.</div>;
-
       case ViewType.RESEARCH:
         return projectData ? <ResearchHubView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research Hub.</div>;
 
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
+
+      case ViewType.CHARACTERS:
+        return projectData ? <CharactersView
+          data={projectData}
+          onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
+          onDeleteCharacter={(id) => updateProjectData({ characters: projectData.characters.filter(char => char.id !== id) })}
+          onLinkClick={handleLinkClick}
+        /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view characters.</div>;
 
       /* case ViewType.STORY_ARCHITECT:
         return <StoryArchitectView projectsMetadata={projectsMetadata} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); await refreshMetadata(); setCurrentView(ViewType.DASHBOARD); } }} onUpdateProject={updateProjectData} currentUser={currentUser} />; */
@@ -1758,7 +2040,18 @@ const App: React.FC = () => {
           hasActiveProject={!!projectData}
           bottomNavOrder={appSettings.bottomNavOrder}
         />
-        <ActiveArchitect tasks={activeTasks} />
+        <ActiveArchitect tasks={activeTasks.filter(t => 
+          t !== 'uploading-project' && 
+          !t.startsWith('Analyzing') && 
+          !t.includes('Audit') && 
+          !t.startsWith('Syncing')
+        )} />
+        <UploadProminentModal 
+          isOpen={activeTasks.includes('uploading-project')} 
+          status={processingStatus}
+          fileName={uploadingFileName}
+          onClose={handleCancelUpload}
+        />
 
       </main>
 

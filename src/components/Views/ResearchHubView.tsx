@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ProjectData, Note } from '../../types';
 import { 
   BookOpen, FileText, Plus, Search, Trash2, Download, Upload, Eye, EyeOff, 
@@ -51,9 +51,14 @@ interface ResearchHubViewProps {
 }
 
 export const ResearchHubView: React.FC<ResearchHubViewProps> = ({ projectData, onUpdateProject }) => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const activeTab = (searchParams.get('tab') as ResearchHubTab) || ResearchHubTab.SOURCES;
-  const setActiveTab = (tab: ResearchHubTab) => setSearchParams({ tab });
+  const setActiveTab = (tab: ResearchHubTab) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', tab);
+    router.push(`?${params.toString()}`);
+  };
 
   // State Management
   const [sources, setSources] = useState<ResearchSource[]>(projectData.researchSources || []);

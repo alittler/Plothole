@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useRouter } from 'next/navigation'; import Link from 'next/link';
 import { BookOpen, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 
 interface PublicBook {

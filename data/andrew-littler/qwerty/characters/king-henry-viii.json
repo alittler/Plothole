@@ -1,0 +1,17 @@
+{
+  "id": "yaEGTGjkDx4m",
+  "name": "King Henry VIII",
+  "role": "supporting",
+  "tier": 2,
+  "aliases": [],
+  "affiliation": "",
+  "traits": [
+    "authoritarian",
+    "calculating",
+    "power-hungry"
+  ],
+  "motivation": "To consolidate his power by acquiring knowledge and leverage over potential dissidents.",
+  "description": "The King of England who commissions John Leland to survey monasteries and libraries for valuable or dangerous texts.",
+  "source": "ai_generated",
+  "field_notes": []
+}

@@ -1,0 +1,12 @@
+{
+  "id": "C7QP24rFmRLP",
+  "name": "Dig Site",
+  "type": "other",
+  "scale": "region",
+  "controlling_faction": "",
+  "inhabitants": [],
+  "is_locked": false,
+  "description": "Excavation area at Tintagel Castle where archaeologists are uncovering artifacts.",
+  "source": "ai_generated",
+  "field_notes": []
+}

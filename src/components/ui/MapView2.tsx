@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
-import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity, Footprints as PawPrint, AlertCircle } from 'lucide-react';
+import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity, Footprints as PawPrint, AlertCircle, RotateCcw } from 'lucide-react';
 import { Location, TimelineEvent, Character, MapPath, ProjectData, HierarchicalEntity } from '../../types';
 import { generateId } from '../../services/storageService';
 import { createGridLayer } from '../../utils/gridLayer';
@@ -69,6 +69,37 @@ export const MapView: React.FC<MapViewProps> = ({
   const [shortcuts, setShortcuts] = useState<{ name: string, bounds: L.LatLngBounds, count: number, type: string }[]>([]);
   const [showGrid, setShowGrid] = useState(true);
   const [selectedCreature, setSelectedCreature] = useState<any | null>(null);
+  const [rotation, setRotation] = useState(0);
+  const [isRotating, setIsRotating] = useState(false);
+
+  // Compass Drag Logic
+  const compassRef = useRef<HTMLDivElement>(null);
+
+  const handleCompassMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsRotating(true);
+
+    const updateRotation = (moveEvent: MouseEvent) => {
+      if (!compassRef.current) return;
+      const rect = compassRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      const angle = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
+      const degrees = angle * (180 / Math.PI) + 90; // Offset by 90 to make North (0) up
+      setRotation(degrees);
+    };
+
+    const handleMouseUp = () => {
+      setIsRotating(false);
+      window.removeEventListener('mousemove', updateRotation);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', updateRotation);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
 
   // Handle Esc key to close creature detail card
   useEffect(() => {
@@ -507,7 +538,7 @@ export const MapView: React.FC<MapViewProps> = ({
             const childCount = cluster.getChildCount();
             const bgColor = getCategoryColor(category);
             return L.divIcon({
-              html: `<div style="background-color: ${bgColor}; width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); font-weight: bold; color: white; font-size: 12px;">
+              html: `<div style="background-color: ${bgColor}; width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); font-weight: bold; color: white; font-size: 12px; transform: rotate(${-rotation}deg)">
                 ${childCount}
               </div>`,
               iconSize: [40, 40],
@@ -533,12 +564,11 @@ export const MapView: React.FC<MapViewProps> = ({
           const marker = L.marker([creature.lat, creature.lon], {
             icon: L.divIcon({
               className: 'creature-marker',
-              html: `<div class="drop-shadow-lg hover:scale-125 transition-transform cursor-pointer">${iconHtml}</div>`,
+              html: `<div class="drop-shadow-lg hover:scale-125 transition-transform cursor-pointer" style="transform: rotate(${-rotation}deg)">${iconHtml}</div>`,
               iconSize: [32, 32],
               iconAnchor: [16, 16],
               popupAnchor: [0, -16]
-            })
-          })
+            })          })
             .on('click', () => {
               setSelectedCreature(creature);
             });
@@ -559,6 +589,39 @@ export const MapView: React.FC<MapViewProps> = ({
       mapRef.current = null;
     };
   }, [isRealWorld]);
+
+  // Handle rotation of mouse events
+  useEffect(() => {
+    if (!mapRef.current || !isReady) return;
+    const map = mapRef.current;
+    
+    const originalMouseEventToContainerPoint = map.mouseEventToContainerPoint.bind(map);
+    map.mouseEventToContainerPoint = function(e: any) {
+      const point = originalMouseEventToContainerPoint(e);
+      if (rotation === 0) return point;
+      
+      const container = map.getContainer();
+      const w = container.offsetWidth;
+      const h = container.offsetHeight;
+      const center = L.point(w / 2, h / 2);
+      
+      const rad = -rotation * (Math.PI / 180);
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      
+      const dx = point.x - center.x;
+      const dy = point.y - center.y;
+      
+      const nx = dx * cos - dy * sin + center.x;
+      const ny = dx * sin + dy * cos + center.y;
+      
+      return L.point(nx, ny);
+    };
+    
+    return () => {
+      map.mouseEventToContainerPoint = originalMouseEventToContainerPoint;
+    };
+  }, [rotation, isReady]);
 
     useEffect(() => {
     const map = mapRef.current;
@@ -928,10 +991,34 @@ export const MapView: React.FC<MapViewProps> = ({
     const map = mapRef.current;
     if (!isReady || !map || !containerRef.current) return;
     const locationId = e.dataTransfer.getData('locationId');
-    if (!locationId || !onLocationPlaceRef.current) return;
+    const characterId = e.dataTransfer.getData('characterId');
+    
+    if ((!locationId && !characterId) || (!onLocationPlaceRef.current && !onCharacterPlaceRef.current)) return;
+    
     const rect = containerRef.current.getBoundingClientRect();
-    const latlng = map.containerPointToLatLng(L.point(e.clientX - rect.left, e.clientY - rect.top));
-    onLocationPlaceRef.current(locationId, latlng.lng, latlng.lat);
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+
+    // Rotate point back to map-space if map is rotated
+    if (rotation !== 0) {
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const rad = -rotation * (Math.PI / 180);
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const dx = x - cx;
+      const dy = y - cy;
+      x = dx * cos - dy * sin + cx;
+      y = dx * sin + dy * cos + cy;
+    }
+
+    const latlng = map.containerPointToLatLng(L.point(x, y));
+    
+    if (locationId) {
+      onLocationPlaceRef.current?.(locationId, latlng.lng, latlng.lat);
+    } else if (characterId) {
+      onCharacterPlaceRef.current?.(characterId, latlng.lng, latlng.lat);
+    }
   };
 
   const [debugCoords, setDebugCoords] = useState<{ lat: number, lng: number, zoom: number } | null>(null);
@@ -1182,7 +1269,7 @@ export const MapView: React.FC<MapViewProps> = ({
               className: 'custom-marker',
               iconSize: [32, 40],
               iconAnchor: [16, 40],
-              html: `<div class="group/marker relative flex flex-col items-center">
+              html: `<div class="group/marker relative flex flex-col items-center" style="transform: rotate(${-rotation}deg)">
                 <div class="relative transition-transform duration-300 group-hover/marker:scale-110 ${loc.type === 'Region' ? 'opacity-40' : ''}">
                   ${style.isImage ? `
                     <div class="w-10 h-10 rounded-full border-2 border-white shadow-2xl overflow-hidden bg-white ring-2 ring-black/5">
@@ -1256,11 +1343,10 @@ export const MapView: React.FC<MapViewProps> = ({
                 className: 'custom-marker character-marker',
                 iconSize: [40, 40],
                 iconAnchor: [20, 20],
-                html: `<svg viewBox="0 0 24 24" fill="white" stroke="white" width="30" height="30" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); display: block;">
-                  <circle cx="12" cy="7" r="2.5" fill="white" stroke="white" stroke-width="0.5"></circle>
-                  <rect x="9" y="11" width="6" height="7" rx="0.5" fill="white" stroke="white" stroke-width="0.5"></rect>
-                </svg>`
-              })
+                html: `<div style="transform: rotate(${-rotation}deg)"><svg viewBox="0 0 24 24" fill="white" stroke="white" width="30" height="30" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); display: block;">
+                    <circle cx="12" cy="7" r="2.5" fill="white" stroke="white" stroke-width="0.5"></circle>
+                    <rect x="9" y="11" width="6" height="7" rx="0.5" fill="white" stroke="white" stroke-width="0.5"></rect>
+                  </svg></div>`              })
             }).addTo(map);
 
             marker.bindTooltip(char.name, { permanent: false, direction: 'top', offset: [0, -10] });
@@ -1342,10 +1428,64 @@ export const MapView: React.FC<MapViewProps> = ({
         .custom-map-popup .leaflet-popup-content { margin: 0; }
         .custom-map-popup .leaflet-popup-tip { background: white; }
         .dark .custom-map-popup .leaflet-popup-tip { background: #0f172a; }
+        .leaflet-popup { transform: rotate(${-rotation}deg); transform-origin: center bottom; transition: transform 0.1s; }
+        .leaflet-tooltip { transform: rotate(${-rotation}deg); transition: transform 0.1s; }
       `}</style>
-      <div ref={containerRef} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} className="w-full h-full rounded-3xl overflow-hidden shadow-inner bg-slate-100 dark:bg-slate-900 z-0 relative" />
+      <div 
+        ref={containerRef} 
+        onDragOver={(e) => e.preventDefault()} 
+        onDrop={handleDrop} 
+        className="w-full h-full rounded-3xl overflow-hidden shadow-inner bg-slate-100 dark:bg-slate-900 z-0 relative transition-transform duration-75" 
+        style={{ transform: `rotate(${rotation}deg)`, transformOrigin: 'center' }}
+      />
       {isReady && renderScaleBar()}
       {isReady && renderMeasurementResults()}
+
+      {/* Compass UI */}
+      <div className="absolute top-24 right-6 z-40 flex flex-col items-center gap-2 pointer-events-auto">
+        <div 
+          ref={compassRef}
+          className="relative w-16 h-16 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-full border border-white/20 shadow-2xl flex items-center justify-center cursor-pointer group hover:scale-105 transition-transform"
+          onMouseDown={handleCompassMouseDown}
+          title="Drag to rotate map"
+        >
+          {/* Compass Rose / Background */}
+          <div className="absolute inset-2 border border-slate-200 dark:border-slate-800 rounded-full opacity-50" />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-[8px] font-black text-slate-400 absolute top-1">N</span>
+            <span className="text-[8px] font-black text-slate-400 absolute right-1">E</span>
+            <span className="text-[8px] font-black text-slate-400 absolute bottom-1">S</span>
+            <span className="text-[8px] font-black text-slate-400 absolute left-1">W</span>
+          </div>
+
+          {/* Rotating Arrow */}
+          <div 
+            className="w-1 h-12 relative pointer-events-none"
+            style={{ transform: `rotate(${rotation}deg)` }}
+          >
+            {/* North Indicator (Red) */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-6 bg-rose-500 rounded-t-full" />
+            {/* South Indicator (White) */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-6 bg-slate-300 dark:bg-slate-600 rounded-b-full" />
+            
+            {/* Needle Point */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 w-2.5 h-2.5 bg-rose-600 rounded-full shadow-lg ring-2 ring-white" />
+          </div>
+          
+          {/* Center Pin */}
+          <div className="w-1.5 h-1.5 bg-slate-800 dark:bg-white rounded-full z-10 shadow-sm" />
+        </div>
+        
+        {rotation !== 0 && (
+          <button 
+            onClick={() => setRotation(0)}
+            className="p-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl border border-white/20 shadow-lg text-slate-500 hover:text-indigo-600 transition-all flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2"
+          >
+            <RotateCcw size={12} /> Reset
+          </button>
+        )}
+      </div>
+
       <div className="absolute top-48 right-6 z-40 flex flex-col gap-2 pointer-events-auto">
         <button onClick={(e) => { e.stopPropagation(); handleToggleMeasuring(); }} className={`p-3 rounded-2xl shadow-2xl border backdrop-blur-md transition-all ${isMeasuring ? 'bg-amber-500 text-white border-amber-400 ring-4 ring-amber-500/20' : 'bg-white/95 dark:bg-slate-900/95 text-slate-600 dark:text-slate-300 border-white/20 hover:bg-white'}`} title="Measurement Tool"><Ruler size={20} /></button>
       </div>

@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
-import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight, FileText, Search } from 'lucide-react';
+import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight, FileText, Search, Download } from 'lucide-react';
 import { calculateUEI, getDateFromUEI, parseDateToUEI } from '../../utils/calendarUtils';
+import { FantasyCalendarEngine } from '../../utils/FantasyCalendarEngine';
 import { CardActions } from '../ui/CardActions';
 
 interface PlotSystemViewProps {
@@ -29,28 +30,87 @@ enum PlotTab {
 }
 
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
-  data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, onScanContinuity, isAnalyzing, onLinkClick
+  data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, onScanContinuity, isAnalyzing, onLinkClick, onUpdateCalendar
 }) => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const activeTab = (searchParams.get('tab') as PlotTab) || PlotTab.TIMELINE;
-  const setActiveTab = (tab: PlotTab) => setSearchParams({ tab });
+  const setActiveTab = (tab: PlotTab) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', tab);
+    router.push(`?${params.toString()}`);
+  };
 
   const [manuscriptSearch, setManuscriptSearch] = useState('');
 
   // Calendar State
-  const activeCalendar = data.calendars?.find(c => c.id === data.activeCalendarId) || data.calendars?.[0] || {
-    id: 'default',
-    name: 'Standard Calendar',
-    weekDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    daysPerWeek: 7,
-    hoursPerDay: 24,
-    months: [{ id: '1', name: 'January', days: 30 }],
-    eras: [{ id: '1', name: 'First Age', abbreviation: 'FA', startYear: 0 }],
-    currentEpochDay: 0
-  };
+  const rawActiveCalendar = data.calendars?.find(c => c.id === data.activeCalendarId) || data.calendars?.[0];
+  
+  const activeCalendar = useMemo(() => {
+    if (rawActiveCalendar?.type === 'fantasy-calendar' && rawActiveCalendar.fantasyData) {
+      const fd = rawActiveCalendar.fantasyData;
+      return {
+        ...rawActiveCalendar,
+        months: fd.static_data.months.map(m => ({ id: String(m.id), name: m.name, days: m.length })),
+        weekDays: (fd.static_data.weekdays as any[]).map(w => typeof w === 'string' ? w : w.name),
+        daysPerWeek: fd.static_data.weekdays.length,
+        hoursPerDay: fd.static_data.clock.hours,
+        currentEpochDay: fd.dynamic_data.epoch
+      };
+    }
+    return rawActiveCalendar || {
+      id: 'default',
+      name: 'Standard Calendar',
+      weekDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      daysPerWeek: 7,
+      hoursPerDay: 24,
+      months: [{ id: '1', name: 'January', days: 30 }],
+      eras: [{ id: '1', name: 'First Age', abbreviation: 'FA', startYear: 0 }],
+      currentEpochDay: 0
+    };
+  }, [rawActiveCalendar]);
 
   const [currentYear, setCurrentYear] = useState<number>(1);
   const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(0);
+
+  // Sync internal state with active calendar if it's fantasy
+  useEffect(() => {
+    if (rawActiveCalendar?.type === 'fantasy-calendar' && rawActiveCalendar.fantasyData) {
+      const fd = rawActiveCalendar.fantasyData;
+      setCurrentYear(fd.dynamic_data.year);
+      const mIdx = fd.static_data.months.findIndex(m => Number(m.id) === fd.dynamic_data.month_id);
+      setCurrentMonthIndex(mIdx >= 0 ? mIdx : 0);
+    }
+  }, [rawActiveCalendar]);
+
+  const handleImportFantasyCalendar = () => {
+    const json = prompt('Paste your Fantasy Calendar JSON export:');
+    if (!json) return;
+    try {
+      const parsed = JSON.parse(json);
+      if (!parsed.static_data || !parsed.dynamic_data) {
+        alert('Invalid Fantasy Calendar JSON format.');
+        return;
+      }
+
+      const newCalendar: CalendarSystem = {
+        id: Math.random().toString(36).substring(7),
+        name: parsed.name || 'Imported Fantasy Calendar',
+        type: 'fantasy-calendar',
+        fantasyData: parsed,
+        months: [], // Will be derived
+        eras: parsed.static_data.eras || []
+      };
+
+      onUpdateProject({ 
+        calendars: [...(data.calendars || []), newCalendar],
+        activeCalendarId: newCalendar.id
+      });
+      alert('Fantasy Calendar imported successfully!');
+    } catch (e) {
+      alert('Failed to parse JSON: ' + (e as Error).message);
+    }
+  };
 
   const handleSelectEvent = (event: TimelineEvent) => {
     // Always find the latest version of this event from data.timeline to ensure sync
@@ -92,7 +152,17 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
 
   const currentMonth = activeCalendar.months[currentMonthIndex] || { name: 'Unknown', days: 30 };
   const daysPerWeek = activeCalendar.daysPerWeek || 7;
-  const gridCells = Array.from({ length: currentMonth.days }, (_, i) => i + 1);
+
+  // Use engine for true month length if fantasy
+  const trueMonthLength = useMemo(() => {
+    if (rawActiveCalendar?.type === 'fantasy-calendar' && rawActiveCalendar.fantasyData) {
+      const monthId = Number(rawActiveCalendar.fantasyData.static_data.months[currentMonthIndex]?.id);
+      return FantasyCalendarEngine.getMonthLength(rawActiveCalendar.fantasyData, monthId, currentYear);
+    }
+    return currentMonth.days;
+  }, [rawActiveCalendar, currentMonthIndex, currentYear]);
+
+  const gridCells = Array.from({ length: trueMonthLength }, (_, i) => i + 1);
 
   const handlePrevMonth = () => {
     if (currentMonthIndex > 0) {
@@ -122,13 +192,22 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                 <Calendar size={32} className="text-indigo-600" /> Plot & Timeline
               </h1>
             </div>
-            <div className="relative ml-auto">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="ph-input pl-12 w-64"
-              />
+            <div className="flex items-center gap-4 ml-auto">
+              <button 
+                onClick={handleImportFantasyCalendar}
+                className="ph-button-secondary text-[10px] py-2"
+                title="Import from fantasy-calendar.com"
+              >
+                <Download size={14} /> Import Fantasy
+              </button>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="ph-input pl-12 w-48 lg:w-64"
+                />
+              </div>
             </div>
           </div>
           <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
@@ -243,7 +322,24 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                 </div>
                 <div className="grid auto-rows-fr" style={{ gridTemplateColumns: `repeat(${daysPerWeek}, minmax(0, 1fr))` }}>
                   {gridCells.map(day => {
-                    const uei = calculateUEI(activeCalendar, currentYear, currentMonthIndex, day);
+                    let uei = calculateUEI(activeCalendar, currentYear, currentMonthIndex, day);
+                    let weekdayName = activeCalendar.weekDays[((uei % daysPerWeek) + daysPerWeek) % daysPerWeek];
+                    
+                    if (rawActiveCalendar?.type === 'fantasy-calendar' && rawActiveCalendar.fantasyData) {
+                       const monthId = Number(rawActiveCalendar.fantasyData.static_data.months[currentMonthIndex]?.id);
+                       const tempFD = { 
+                         ...rawActiveCalendar.fantasyData, 
+                         dynamic_data: { 
+                           ...rawActiveCalendar.fantasyData.dynamic_data, 
+                           year: currentYear, 
+                           month_id: monthId, 
+                           day 
+                         } 
+                       };
+                       uei = FantasyCalendarEngine.calculateEpoch(tempFD);
+                       weekdayName = FantasyCalendarEngine.getWeekday(rawActiveCalendar.fantasyData, uei);
+                    }
+
                     const isToday = uei === activeCalendar.currentEpochDay;
                     const dayEvents = eventsByUEI.get(uei) || [];
 
@@ -252,8 +348,11 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                         key={day} 
                         className={`min-h-[120px] p-2 border-r border-b border-slate-100 dark:border-slate-800 relative group transition-colors ${isToday ? 'bg-amber-50/50 dark:bg-amber-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                       >
-                        <div className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isToday ? 'bg-amber-500 text-white' : 'text-slate-500'}`}>
-                          {day}
+                        <div className="flex items-center justify-between mb-1">
+                          <div className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-amber-500 text-white' : 'text-slate-500'}`}>
+                            {day}
+                          </div>
+                          <span className="text-[8px] font-black text-slate-300 uppercase truncate px-1">{weekdayName}</span>
                         </div>
                         <div className="space-y-1">
                           {dayEvents.map(ev => (

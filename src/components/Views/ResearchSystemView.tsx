@@ -286,7 +286,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
               <h1 className="ph-section-title text-2xl md:text-3xl flex items-center gap-3">
                 <PenTool size={32} className="text-indigo-600" /> Laboratory
               </h1>
-              <div className="ph-tab-container">
+              <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
                 {Object.values(NotepadView).map(v => (
                   <button
                     key={v}

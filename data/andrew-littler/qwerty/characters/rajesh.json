@@ -1,0 +1,20 @@
+{
+  "id": "fDOaYHqBAQBb",
+  "name": "Rajesh",
+  "role": "supporting",
+  "tier": 2,
+  "aliases": [
+    "Isle Seat"
+  ],
+  "affiliation": "",
+  "traits": [
+    "friendly",
+    "generous",
+    "mysterious",
+    "focused"
+  ],
+  "motivation": "Unknown; Possibly related to the historical mysteries.",
+  "description": "A historical consultant who meets Madeleine at the Birmingham airport.",
+  "source": "ai_generated",
+  "field_notes": []
+}

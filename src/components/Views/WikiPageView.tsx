@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useRouter, usePathname } from 'next/navigation';
 import { BookOpen, User, Map, Clock, Users, Loader2, AlertCircle } from 'lucide-react';
 
 interface WikiData {
@@ -12,14 +12,14 @@ interface WikiData {
 }
 
 export const WikiPageView: React.FC = () => {
-  const location = useLocation();
+  const pathname = usePathname();
   const [wikiData, setWikiData] = useState<WikiData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Extract username and bookName from route: /username/bookname
-    const path = location.pathname;
+    const path = pathname;
     const parts = path.split('/').filter(Boolean);
     
     if (parts.length < 2) return;
@@ -45,7 +45,7 @@ export const WikiPageView: React.FC = () => {
     };
 
     fetchWiki();
-  }, [location.pathname]);
+  }, [pathname]);
 
   if (isLoading) {
     return (

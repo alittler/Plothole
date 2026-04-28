@@ -1,0 +1,12 @@
+{
+  "id": "myqGDRiqOsRN",
+  "name": "Tintagel",
+  "type": "other",
+  "scale": "region",
+  "controlling_faction": "",
+  "inhabitants": [],
+  "is_locked": false,
+  "description": "Rocky promontory in Cornwall, location of the dig site",
+  "source": "ai_generated",
+  "field_notes": []
+}

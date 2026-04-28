@@ -26,6 +26,16 @@ export class PreProcessor {
       splitter: (t: string) => t.split(/\s+/)
     });
 
+    // Fallback if no chunks detected
+    if (chunks.length === 0 && text.trim().length > 0) {
+      return [{
+        text: text,
+        start: 0,
+        end: text.length,
+        entities: this.entitySweep(text)
+      }];
+    }
+
     return chunks.map((c: any) => {
       // getChunk expects (input, start, end)
       const chunkText = getChunk(text, c.start, c.end) as string;

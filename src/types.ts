@@ -1,7 +1,6 @@
 export enum ViewType {
   BOOKSHELF = 'Bookshelf',
   DASHBOARD = 'Dashboard',
-  CHARACTERS = 'Characters',
   TIMELINE = 'Timeline',
   BOARD = 'Board',
   TABLE = 'Table',
@@ -10,6 +9,7 @@ export enum ViewType {
   NOTEPAD = 'Notepad',
   MAP = 'Map',
   LOCATIONS = 'Locations',
+  CHARACTERS = 'Characters',
   ADMIN = 'Admin',
   SETTINGS = 'Settings',
   INVENTORY = 'Inventory',
@@ -29,8 +29,7 @@ export enum ViewType {
   SYSTEM_HUB = 'SystemHub',
   RESEARCH = 'Research',
   BESTIARY = 'Bestiary',
-  CELESTIAL = 'Celestial',
-  DATA_CATALOG = 'DataCatalog'
+  CELESTIAL = 'Celestial'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -67,6 +66,13 @@ export interface HierarchicalEntity {
   images?: { url: string }[];
   firstMentionOffset?: number;
   lastMentionOffset?: number;
+
+  // Physical and biographical details (from AI analysis)
+  physicalFeatures?: string; // Height, weight, build, distinctive marks
+  style?: string; // Clothing, appearance style
+  strengths?: string; // Character strengths
+  weaknesses?: string; // Character weaknesses
+  birthday?: string; // Birth date
 
   // Schema.org/Person Extension Fields
   givenName?: string;
@@ -286,6 +292,9 @@ export interface ProjectData {
   // Entity Catalog fields (JSON imports)
   catalogs?: EntityCatalog[];
 
+  // Entity Sandbox fields
+  sandboxCards?: any[];
+
   // System fields
   wordCount?: number;
   charCount?: number;
@@ -307,6 +316,8 @@ export interface ProjectData {
     edges: any[];
   };
   continuityErrors?: ContinuityError[];
+  latestAnalysisResult?: string;
+  customAnalysisPrompt?: string;
 
   wikiSettings?: {
     includeCharacters?: boolean;
@@ -356,37 +367,45 @@ export interface Chapter {
   wordCount: number;
 }
 
+// Field notes for rich metadata
+export interface FieldNote {
+  label: string;
+  value: string;
+  tag?: string;
+}
+
 export interface Character {
   id: string;
   name: string;
   role: string;
-  job: string;
-  description: string;
+  tier: 1 | 2 | 3;
+  aliases: string[];
+  affiliation: string;
   traits: string[];
+  motivation: string;
+  description: string;
+  physical_description?: string;
+  source: 'manual' | 'ai_generated';
+  first_mention_offset?: number;
+  field_notes: FieldNote[];
+
+  // Legacy fields (for backwards compatibility)
+  job?: string;
   images?: { url: string; caption?: string }[];
   species?: string;
   goals?: string;
-  aliases?: string[];
   associatedLocationId?: string;
-  firstMentionOffset?: number;
   lastMentionOffset?: number;
-  source?: 'manual' | 'ai';
-  motivation?: string;
   conflict?: string;
   primary_trait?: string;
   location_id?: string;
-  tier?: number; // 1 = Core, 2 = Supporting, 3 = Background
-
-  // Physical and biographical details (from AI analysis)
-  physicalFeatures?: string; // Height, weight, build, distinctive marks
-  style?: string; // Clothing, appearance style
-  strengths?: string; // Character strengths
-  weaknesses?: string; // Character weaknesses
-  nickname?: string; // Alternate names/nicknames
-  birthday?: string; // Birth date
-  age?: string; // Age or age range
-
-  // Schema.org/Person Compatibility
+  physicalFeatures?: string;
+  style?: string;
+  strengths?: string;
+  weaknesses?: string;
+  nickname?: string;
+  birthday?: string;
+  age?: string;
   givenName?: string;
   familyName?: string;
   honorificPrefix?: string;
@@ -398,28 +417,47 @@ export interface Character {
   homeLocation?: string;
   gender?: string;
   nationality?: string;
-  affiliation?: string;
   knowsAbout?: string[];
-  fieldNotes?: { label: string; value: string }[];
-
-  // Map placement fields
   x?: number;
   y?: number;
   parentId?: string;
   isLocked?: boolean;
 }
 
+export interface CharacterRelationship {
+  id: string;
+  character_a_id: string;
+  character_b_id: string;
+  relationship_type: 'sibling' | 'parent' | 'ally' | 'rival' | 'mentor' | 'romantic' | 'enemy' | 'acquaintance' | 'unknown';
+  direction: 'mutual' | 'a_to_b' | 'b_to_a';
+  trust_level: number;
+  status: 'active' | 'strained' | 'severed' | 'latent' | 'hostile' | 'resolved';
+  description: string;
+  source: 'manual' | 'ai_generated';
+  first_mention_offset?: number;
+  field_notes: FieldNote[];
+}
+
 export interface Location {
   id: string;
   name: string;
-  description: string;
-  type: string;
-  mapImage?: string;
-  source?: 'manual' | 'ai';
-  address?: string;
-  icon?: string;
+  type: 'building' | 'city' | 'region' | 'wilderness' | 'underground' | 'maritime' | 'ruin' | 'plane' | 'other';
+  scale: 'room' | 'small_building' | 'large_building' | 'district' | 'town' | 'city' | 'region' | 'continent' | 'world';
+  parent_location_id?: string;
+  controlling_faction: string;
+  inhabitants: string[];
   x?: number;
   y?: number;
+  is_locked: boolean;
+  description: string;
+  source: 'manual' | 'ai_generated';
+  first_mention_offset?: number;
+  field_notes: FieldNote[];
+
+  // Legacy fields
+  mapImage?: string;
+  address?: string;
+  icon?: string;
   prevX?: number;
   prevY?: number;
   matchedX?: number;
@@ -431,33 +469,85 @@ export interface Location {
   shortId?: string;
 }
 
+export interface TimelineEvent {
+  id: string;
+  title: string;
+  event_type: 'battle' | 'political' | 'personal' | 'discovery' | 'death' | 'birth' | 'legal' | 'ceremony' | 'catastrophe' | 'travel' | 'revelation' | 'other';
+  significance: 'minor' | 'major' | 'pivotal';
+  real_world_sort_key: number;
+  is_flashback: boolean;
+  location_id?: string;
+  participants: string[];
+  description: string;
+  source: 'manual' | 'ai_generated';
+  first_mention_offset?: number;
+  field_notes: FieldNote[];
+
+  // Legacy fields
+  date?: string;
+  uei?: number;
+  charactersInvolved?: string[];
+  location?: string;
+  isSoftAnchor?: boolean;
+  startDate?: string;
+  endDate?: string;
+  eventStatus?: string;
+  attendees?: string[];
+  duration?: string;
+  typicalAgeRange?: string;
+}
+
 export interface Artifact {
   id: string;
   name: string;
-  type: string;
+  type: 'weapon' | 'armor' | 'tool' | 'document' | 'relic' | 'container' | 'vehicle' | 'consumable' | 'other';
+  significance: 'minor' | 'major' | 'pivotal';
+  current_owner_id?: string;
+  location_id?: string;
   description: string;
+  source: 'manual' | 'ai_generated';
+  first_mention_offset?: number;
+  field_notes: FieldNote[];
+
+  // Legacy fields
   imageUrl?: string;
-  source?: 'manual' | 'ai';
 }
 
-export interface TimelineEvent {
+export interface LoreEntry {
   id: string;
-  date: string; // Legacy field, mapping to startDate if ISO
-  uei?: number;
-  title: string;
+  term: string;
+  type: 'faction' | 'magic_system' | 'cosmology' | 'creature' | 'language' | 'religion' | 'law' | 'technology' | 'cultural_practice' | 'other';
+  tier: 'background' | 'minor' | 'moderate' | 'major' | 'foundational';
+  associated_factions: string[];
+  related_terms: string[];
   description: string;
-  charactersInvolved: string[]; // Maps to attendees
-  location: string;
-  source?: 'manual' | 'ai';
-  isSoftAnchor?: boolean;
+  source: 'manual' | 'ai_generated';
+  first_mention_offset?: number;
+  field_notes: FieldNote[];
 
-  // Schema.org/Event Compatibility
-  startDate?: string; // ISO-8601
-  endDate?: string;   // ISO-8601
-  eventStatus?: string;
-  attendees?: string[];
-  duration?: string; // ISO-8601 duration
-  typicalAgeRange?: string;
+  // Legacy fields
+  definition?: string;
+  category?: string;
+  tags?: string[];
+  prefLabel?: string;
+  altLabel?: string[];
+  hiddenLabel?: string[];
+  broader?: string[];
+  narrower?: string[];
+  related?: string[];
+  scopeNote?: string;
+}
+
+export interface Relationship {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  type: string;
+  description?: string;
+  predicate?: string;
+  weight?: number;
+  directed?: boolean;
+  metadata?: Record<string, any>;
 }
 
 export interface Note {
@@ -491,18 +581,35 @@ export interface ProseDocument {
   lastModified: number;
 }
 
-export interface Relationship {
-  id: string;
-  sourceId: string; // Node A
-  targetId: string; // Node B
-  type: string;     // The edge label / predicate
-  description?: string;
-
-  // Standard Graph Metadata (JGF/RDF)
-  predicate?: string; // Standardized URI or slug for the relationship
-  weight?: number;    // Strength of connection (0.0 to 1.0)
-  directed?: boolean; // Whether the relationship is one-way
-  metadata?: Record<string, any>;
+export interface FantasyCalendarData {
+  static_data: {
+    months: Array<{
+      id: string | number;
+      name: string;
+      length: number;
+      type: string;
+    }>;
+    weekdays: Array<{
+      name: string;
+    }> | string[];
+    moons: any[];
+    leap_days: any[];
+    eras: any[];
+    clock: {
+      enabled: boolean;
+      hours: number;
+      minutes: number;
+      offset: number;
+    };
+  };
+  dynamic_data: {
+    year: number;
+    month_id: number;
+    day: number;
+    epoch: number;
+    hour: number;
+    minute: number;
+  };
 }
 
 export interface CalendarSystem {
@@ -514,6 +621,8 @@ export interface CalendarSystem {
   daysPerWeek?: number;
   hoursPerDay?: number;
   currentEpochDay?: number;
+  type?: 'standard' | 'fantasy-calendar';
+  fantasyData?: FantasyCalendarData;
 }
 
 export interface Commit {
@@ -611,6 +720,15 @@ export interface AppSettings {
   defaultToolboxLinks?: ToolboxLink[];
 }
 
+// Prompt Puzzle Piece for modular AI extraction
+export interface PromptPiece {
+  id: string;
+  category: 'characters' | 'locations' | 'timeline_events' | 'artifacts' | 'lore' | 'relationships';
+  label: string;
+  prompt: string;
+  enabled: boolean;
+}
+
 export interface AppPrompts {
   GENERAL_AND_CHARACTERS: string;
   PLOT_MATRIX_ANALYSIS: string;
@@ -630,7 +748,11 @@ export interface AppPrompts {
   THEME_EXTRACTION: string;
   CONLANG_GEN: string;
   PROJECT_QA: string;
-  [key: string]: string | undefined;
+  
+  // Manuscript analysis puzzle pieces
+  extractionPuzzle?: PromptPiece[];
+  
+  [key: string]: string | PromptPiece[] | undefined;
 }
 
 export interface ToolboxLink {

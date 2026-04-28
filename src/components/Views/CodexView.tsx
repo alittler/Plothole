@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ProjectData, HierarchicalEntity } from '../../types';
 import { Book, Search, FileText, Plus, Scroll, BookMarked, Box, MoreHorizontal, Wand2, MapPin } from 'lucide-react';
 import { WikiText } from '../ui/WikiText';
@@ -22,9 +22,14 @@ enum CodexTab {
 }
 
 export const CodexView: React.FC<CodexViewProps> = ({ projectData, onLinkClick, onUpdateProject }) => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const activeTab = (searchParams.get('tab') as CodexTab) || CodexTab.LORE;
-  const setActiveTab = (tab: CodexTab) => setSearchParams({ tab });
+  const setActiveTab = (tab: CodexTab) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', tab);
+    router.push(`?${params.toString()}`);
+  };
 
   const [searchTerm, setSearchTerm] = useState('');
   

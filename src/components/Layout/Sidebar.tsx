@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType, User } from '../../types';
-import { LayoutGrid, Layout, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, Wrench, BookOpen } from 'lucide-react';
+import { LayoutGrid, Layout, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, Wrench, BookOpen, Lightbulb } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { isCloudStorageActive } from '../../services/storageService';
 
@@ -126,7 +126,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.RESEARCH, label: 'Research', icon: BookOpen, projectOnly: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
-    { id: ViewType.DATA_CATALOG, label: 'Data Catalog', icon: Database, projectOnly: true },
     { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
   ];
 
@@ -142,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
       {
         title: 'System',
-        items: allNavItems.filter(i => [ViewType.TOOLBOX, ViewType.SETTINGS, ViewType.DATA_CATALOG, ViewType.ADMIN].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.TOOLBOX, ViewType.SETTINGS, ViewType.ADMIN].includes(i.id))
       }
     ];
 
