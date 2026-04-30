@@ -4,7 +4,6 @@ import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../type
 import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight, FileText, Search, Download } from 'lucide-react';
 import { calculateUEI, getDateFromUEI, parseDateToUEI } from '../../utils/calendarUtils';
 import { CardActions } from '../ui/CardActions';
-import { CALENDAR_PRESETS } from '../../utils/calendarPresets';
 
 interface PlotSystemViewProps {
   currentView: ViewType;
@@ -72,8 +71,6 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
 
   const [currentYear, setCurrentYear] = useState<number>(1);
   const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(0);
-  const [showCalendarSettings, setShowCalendarSettings] = useState(false);
-  const [editingCalendar, setEditingCalendar] = useState<CalendarSystem | null>(null);
 
   // Sync internal state with active calendar if it's fantasy
   useEffect(() => {
@@ -315,264 +312,15 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                   </div>
                   <button 
                     onClick={() => {
-                      setEditingCalendar(activeCalendar);
-                      setShowCalendarSettings(true);
+                      window.open('/keystatic?collection=calendars', 'keystatic-calendars', 'width=1200,height=800,resizable=yes');
                     }}
-                    className="px-3 py-1 text-xs font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    className="px-3 py-1 text-xs font-bold uppercase bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 rounded-lg transition-colors"
                   >
-                    Settings
+                    Manage in Keystatic
                   </button>
                 </div>
               </div>
 
-              {/* Calendar Settings Modal */}
-              {showCalendarSettings && editingCalendar && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in">
-                  <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
-                    {/* Header */}
-                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex-shrink-0">
-                      <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Calendar Settings</h2>
-                    </div>
-
-                    {/* Unified Content Table - Everything scrolls together */}
-                    <div className="flex-1 overflow-y-auto">
-                      <table className="w-full text-xs">
-                        <tbody>
-                          {/* Name */}
-                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Name</td>
-                            <td className="px-4 py-2">
-                              <input 
-                                type="text"
-                                value={editingCalendar.name}
-                                onChange={(e) => setEditingCalendar({...editingCalendar, name: e.target.value})}
-                                className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                placeholder="Calendar name"
-                              />
-                            </td>
-                          </tr>
-
-                          {/* Preset */}
-                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Preset</td>
-                            <td className="px-4 py-2">
-                              <select 
-                                onChange={(e) => {
-                                  const preset = CALENDAR_PRESETS[e.target.value];
-                                  if (preset) {
-                                    setEditingCalendar({...preset, id: editingCalendar.id, name: editingCalendar.name});
-                                  }
-                                }}
-                                className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              >
-                                <option value="">Select preset</option>
-                                <option value="gregorian">Gregorian</option>
-                                <option value="chinese">Chinese</option>
-                                <option value="islamic">Islamic (Hijri)</option>
-                                <option value="hebrew">Hebrew</option>
-                                <option value="buddhist">Buddhist</option>
-                                <option value="internationalFixed">International Fixed</option>
-                                <option value="custom">Custom</option>
-                              </select>
-                            </td>
-                          </tr>
-
-                          {/* Color */}
-                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Color</td>
-                            <td className="px-4 py-2">
-                              <input 
-                                type="color"
-                                value={editingCalendar.color || '#3B82F6'}
-                                onChange={(e) => setEditingCalendar({...editingCalendar, color: e.target.value})}
-                                className="w-full h-8 rounded cursor-pointer border border-slate-200 dark:border-slate-700"
-                              />
-                            </td>
-                          </tr>
-
-                          {/* Days Per Week */}
-                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Days/Week</td>
-                            <td className="px-4 py-2">
-                              <input 
-                                type="number"
-                                min="5"
-                                max="10"
-                                value={editingCalendar.daysPerWeek}
-                                onChange={(e) => setEditingCalendar({...editingCalendar, daysPerWeek: parseInt(e.target.value) || 7})}
-                                className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              />
-                            </td>
-                          </tr>
-
-                          {/* Month Count */}
-                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Months</td>
-                            <td className="px-4 py-2 text-slate-600 dark:text-slate-400">
-                              {editingCalendar.months.length}
-                            </td>
-                          </tr>
-
-                          {/* Months Header */}
-                          <tr className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
-                            <td colSpan={2} className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest text-xs">📅 Month Details</td>
-                          </tr>
-
-                          {/* Month Rows */}
-                          {editingCalendar.months.map((month, idx) => (
-                            <tr key={idx} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                              <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest text-xs whitespace-nowrap">
-                                M{idx + 1}
-                              </td>
-                              <td className="px-4 py-2 flex gap-2">
-                                <input 
-                                  type="text"
-                                  placeholder="Name"
-                                  value={month.name}
-                                  onChange={(e) => {
-                                    const updated = {...editingCalendar};
-                                    updated.months[idx].name = e.target.value;
-                                    setEditingCalendar(updated);
-                                  }}
-                                  className="flex-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                />
-                                <input 
-                                  type="number"
-                                  min="28"
-                                  max="31"
-                                  value={month.days}
-                                  onChange={(e) => {
-                                    const updated = {...editingCalendar};
-                                    updated.months[idx].days = parseInt(e.target.value) || 30;
-                                    setEditingCalendar(updated);
-                                  }}
-                                  className="w-12 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                />
-                                <button
-                                  onClick={() => {
-                                    const updated = {...editingCalendar};
-                                    updated.months.splice(idx, 1);
-                                    setEditingCalendar(updated);
-                                  }}
-                                  className="px-2 py-1 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                >
-                                  ✕
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-
-                          {/* Add Month Button */}
-                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <td colSpan={2} className="px-4 py-2">
-                              <button
-                                onClick={() => {
-                                  const updated = {...editingCalendar};
-                                  updated.months.push({name: 'New Month', days: 30});
-                                  setEditingCalendar(updated);
-                                }}
-                                className="w-full px-3 py-1 text-xs font-bold uppercase text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors flex items-center justify-center gap-2"
-                              >
-                                + Add Month
-                              </button>
-                            </td>
-                          </tr>
-
-                          {/* Eras Header */}
-                          <tr className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
-                            <td colSpan={2} className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest text-xs">⏛️ Era Details</td>
-                          </tr>
-
-                          {/* Era Rows */}
-                          {editingCalendar.eras.map((era, idx) => (
-                            <tr key={idx} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                              <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest text-xs whitespace-nowrap">
-                                E{idx + 1}
-                              </td>
-                              <td className="px-4 py-2 flex gap-2">
-                                <input 
-                                  type="text"
-                                  placeholder="Era name"
-                                  value={era.name}
-                                  onChange={(e) => {
-                                    const updated = {...editingCalendar};
-                                    updated.eras[idx].name = e.target.value;
-                                    setEditingCalendar(updated);
-                                  }}
-                                  className="flex-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                />
-                                <input 
-                                  type="text"
-                                  placeholder="Abbr"
-                                  maxLength="3"
-                                  value={era.abbreviation || ''}
-                                  onChange={(e) => {
-                                    const updated = {...editingCalendar};
-                                    updated.eras[idx].abbreviation = e.target.value;
-                                    setEditingCalendar(updated);
-                                  }}
-                                  className="w-12 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                />
-                                <button
-                                  onClick={() => {
-                                    const updated = {...editingCalendar};
-                                    updated.eras.splice(idx, 1);
-                                    setEditingCalendar(updated);
-                                  }}
-                                  className="px-2 py-1 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                >
-                                  ✕
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-
-                          {/* Add Era Button */}
-                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <td colSpan={2} className="px-4 py-2">
-                              <button
-                                onClick={() => {
-                                  const updated = {...editingCalendar};
-                                  updated.eras.push({name: 'New Era', abbreviation: ''});
-                                  setEditingCalendar(updated);
-                                }}
-                                className="w-full px-3 py-1 text-xs font-bold uppercase text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors flex items-center justify-center gap-2"
-                              >
-                                + Add Era
-                              </button>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-end gap-2 flex-shrink-0">
-                      <button 
-                        onClick={() => {
-                          setShowCalendarSettings(false);
-                          setEditingCalendar(null);
-                        }}
-                        className="px-3 py-1 text-xs font-bold uppercase text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        onClick={() => {
-                          if (editingCalendar) {
-                            onUpdateCalendar(editingCalendar);
-                            setShowCalendarSettings(false);
-                            setEditingCalendar(null);
-                          }
-                        }}
-                        className="px-3 py-1 text-xs font-bold uppercase bg-indigo-600 text-white hover:bg-indigo-700 rounded transition-colors"
-                      >
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                 <div className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950" style={{ gridTemplateColumns: `repeat(${daysPerWeek}, minmax(0, 1fr))` }}>
