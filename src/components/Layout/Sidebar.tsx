@@ -166,15 +166,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const handleNavItemClick = (item: NavItem) => {
     const isDisabled = item.projectOnly && !hasActiveProject;
     if (!isDisabled) {
-      if (currentView === item.id) {
-        // If clicking the active view, toggle sidebar collapse on desktop
-        if (window.innerWidth >= 1024) {
-          onToggleCollapse();
-        }
-      } else {
-        // Switch to the clicked view
-        onChangeView(item.id);
-      }
+      // Switch to the clicked view
+      onChangeView(item.id);
       setIsMenuOpen(false);
     }
   };
