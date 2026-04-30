@@ -1,29 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPool } from '@/src/db';
-import { getUserId, getAuthPayload } from '@/app/api/auth';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getAuthPayload } from '@/app/api/auth';
+
+const region = process.env.AWS_REGION || 'us-west-2';
+const s3Bucket = process.env.AWS_S3_BUCKET || 'plothole-manuscripts';
+
+const s3Client = new S3Client({
+  region: region,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+});
+
+console.log(`[API/projects] Initialized S3 client for region: ${region}, bucket: ${s3Bucket}`);
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getUserId(request);
-    console.log(`[API/projects] GET userId:`, userId);
+    const authPayload = await getAuthPayload(request);
+    console.log(`[API/projects] GET userId:`, authPayload?.userId);
 
-    if (!userId) {
+    if (!authPayload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const pool = getPool();
-    if (!pool) {
-      console.warn('[API/projects] No database pool available - returning 503');
-      return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
+    const userId = authPayload.userId;
+    const prefix = `projects/${userId}/`;
+
+    // List all project files for this user
+    const listCommand = new ListObjectsV2Command({
+      Bucket: s3Bucket,
+      Prefix: prefix,
+    });
+
+    const listResult = await s3Client.send(listCommand);
+    const projects: any[] = [];
+
+    if (listResult.Contents) {
+      for (const item of listResult.Contents) {
+        if (item.Key && item.Key.endsWith('.json')) {
+          try {
+            const getCommand = new GetObjectCommand({
+              Bucket: s3Bucket,
+              Key: item.Key,
+            });
+
+            const getResult = await s3Client.send(getCommand);
+            const bodyText = await getResult.Body?.transformToString();
+            if (bodyText) {
+              const projectData = JSON.parse(bodyText);
+              projects.push(projectData);
+            }
+          } catch (e) {
+            console.warn(`[API/projects] Failed to read project file ${item.Key}:`, e);
+          }
+        }
+      }
     }
 
-    const result = await pool.query(
-      'SELECT data FROM projects WHERE user_id = $1 ORDER BY last_modified DESC',
-      [userId]
-    );
-
-    console.log(`[API/projects] Found ${result.rows.length} projects for user: ${userId}`);
-    return NextResponse.json(result.rows.map(row => row.data));
+    console.log(`[API/projects] Found ${projects.length} projects for user: ${userId}`);
+    return NextResponse.json(projects);
   } catch (error) {
     console.error('[API/projects] ERROR fetching projects:', error);
     return NextResponse.json(
@@ -43,27 +79,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const pool = getPool();
-    if (!pool) {
-      console.warn('[API/projects] No database pool available - returning 503');
-      return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
-    }
-
     const project = await request.json();
     console.log(`[API/projects] Saving project: ${project.id} (${project.title})`);
     console.log(`[API/projects] Project has ${project.catalogs?.length || 0} catalogs`);
-
-    // Ensure user exists with actual email from token
-    try {
-      await pool.query(
-        'INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET email = $2',
-        [authPayload.userId, authPayload.email]
-      );
-      console.log('[API/projects] User exists or was created');
-    } catch (userErr) {
-      console.error('[API/projects] Error ensuring user exists:', userErr);
-      throw userErr;
-    }
 
     // Validate project data is JSON serializable
     try {
@@ -76,13 +94,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[API/projects] Attempting to insert/update project in database`);
-    const result = await pool.query(
-      'INSERT INTO projects (id, user_id, title, data, last_modified) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET data = $4, title = $3, last_modified = $5',
-      [project.id, authPayload.userId, project.title, project, Date.now()]
-    );
+    // Save to S3: projects/{userId}/{projectId}.json
+    const key = `projects/${authPayload.userId}/${project.id}.json`;
+    console.log(`[API/projects] Saving to S3 key: ${key}`);
 
-    console.log(`[API/projects] Project ${project.id} saved successfully`);
+    const putCommand = new PutObjectCommand({
+      Bucket: s3Bucket,
+      Key: key,
+      Body: JSON.stringify(project),
+      ContentType: 'application/json',
+    });
+
+    await s3Client.send(putCommand);
+    console.log(`[API/projects] Project ${project.id} saved to S3 successfully`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[API/projects] ERROR saving project:', error);

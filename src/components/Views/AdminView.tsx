@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 import { generateId } from '../../services/storageService';
+import { safeResponseJson } from '../../utils/jsonUtils';
 import { CharacterCard } from '../ui/CharacterCard';
 import { PromptPuzzleBuilder } from '../ui/PromptPuzzleBuilder';
 import { HierarchicalEntity } from '../../types';
@@ -85,16 +86,21 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   React.useEffect(() => {
     fetch('/api/network-info')
-      .then(res => res.json())
-      .then(data => setNetworkInfo(data))
+      .then(res => safeResponseJson(res))
+      .then(data => {
+        if (data) {
+          setNetworkInfo(data);
+        }
+      })
       .catch(err => console.error("Failed to fetch network info", err));
   }, []);
 
   React.useEffect(() => {
     if (data?.id) {
       fetch(`/api/projects/${data.id}/wiki-settings`)
-        .then(res => res.json())
+        .then(res => safeResponseJson(res))
         .then(wikiData => {
+          if (!wikiData) return;
           setIsWikiEnabled(wikiData.enable_wiki !== false);
           if (wikiData.username) {
             const baseUrl = window.location.origin;

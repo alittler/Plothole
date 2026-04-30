@@ -68,6 +68,7 @@ export interface HierarchicalEntity {
   lastMentionOffset?: number;
 
   // Physical and biographical details (from AI analysis)
+  physical_description?: string;
   physicalFeatures?: string; // Height, weight, build, distinctive marks
   style?: string; // Clothing, appearance style
   strengths?: string; // Character strengths
@@ -581,37 +582,6 @@ export interface ProseDocument {
   lastModified: number;
 }
 
-export interface FantasyCalendarData {
-  static_data: {
-    months: Array<{
-      id: string | number;
-      name: string;
-      length: number;
-      type: string;
-    }>;
-    weekdays: Array<{
-      name: string;
-    }> | string[];
-    moons: any[];
-    leap_days: any[];
-    eras: any[];
-    clock: {
-      enabled: boolean;
-      hours: number;
-      minutes: number;
-      offset: number;
-    };
-  };
-  dynamic_data: {
-    year: number;
-    month_id: number;
-    day: number;
-    epoch: number;
-    hour: number;
-    minute: number;
-  };
-}
-
 export interface CalendarSystem {
   id: string;
   name: string;
@@ -622,7 +592,45 @@ export interface CalendarSystem {
   hoursPerDay?: number;
   currentEpochDay?: number;
   type?: 'standard' | 'fantasy-calendar';
-  fantasyData?: FantasyCalendarData;
+  fantasyData?: any;
+  // Fantasy-Calendar features
+  moons?: Moon[];
+  seasons?: Season[];
+  intercalaries?: Intercalary[];
+  leapYearRule?: LeapYearRule;
+  color?: string;
+}
+
+export interface Moon {
+  id: string;
+  name: string;
+  cycleLength: number;
+  offset?: number;
+  color?: string;
+}
+
+export interface Season {
+  id: string;
+  name: string;
+  startMonth: number;
+  startDay: number;
+  endMonth: number;
+  endDay: number;
+  color?: string;
+}
+
+export interface Intercalary {
+  id: string;
+  name: string;
+  month: number;
+  day: number;
+  length?: number;
+}
+
+export interface LeapYearRule {
+  type: 'none' | 'gregorian' | 'every' | 'custom';
+  interval?: number;
+  exceptions?: number[];
 }
 
 export interface Commit {

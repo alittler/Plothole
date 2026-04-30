@@ -3,7 +3,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
 import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight, FileText, Search, Download } from 'lucide-react';
 import { calculateUEI, getDateFromUEI, parseDateToUEI } from '../../utils/calendarUtils';
-import { FantasyCalendarEngine } from '../../utils/FantasyCalendarEngine';
 import { CardActions } from '../ui/CardActions';
 
 interface PlotSystemViewProps {
@@ -72,6 +71,8 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
 
   const [currentYear, setCurrentYear] = useState<number>(1);
   const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(0);
+  const [showCalendarSettings, setShowCalendarSettings] = useState(false);
+  const [editingCalendar, setEditingCalendar] = useState<CalendarSystem | null>(null);
 
   // Sync internal state with active calendar if it's fantasy
   useEffect(() => {
@@ -307,10 +308,184 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                     <ChevronRight size={20} />
                   </button>
                 </div>
-                <div className="text-xs text-slate-500">
-                  Universal Epoch: <span className="font-mono font-bold text-slate-900 dark:text-white">{activeCalendar.currentEpochDay || 0}</span>
+                <div className="flex items-center gap-4">
+                  <div className="text-xs text-slate-500">
+                    Universal Epoch: <span className="font-mono font-bold text-slate-900 dark:text-white">{activeCalendar.currentEpochDay || 0}</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setEditingCalendar(activeCalendar);
+                      setShowCalendarSettings(true);
+                    }}
+                    className="px-3 py-1 text-xs font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                  >
+                    Settings
+                  </button>
                 </div>
               </div>
+
+              {/* Calendar Settings Modal */}
+              {showCalendarSettings && editingCalendar && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in">
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+                    {/* Header */}
+                    <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                      <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Calendar Settings</h2>
+                      <p className="text-xs text-slate-500 mt-1">Customize {editingCalendar.name}</p>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                      {/* Calendar Name */}
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Calendar Name</label>
+                        <input 
+                          type="text"
+                          value={editingCalendar.name}
+                          onChange={(e) => setEditingCalendar({...editingCalendar, name: e.target.value})}
+                          className="w-full mt-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="Calendar name"
+                        />
+                      </div>
+
+                      {/* Calendar Type */}
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Type</label>
+                        <select 
+                          value={editingCalendar.type}
+                          onChange={(e) => setEditingCalendar({...editingCalendar, type: e.target.value as any})}
+                          className="w-full mt-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="real-world">Real World</option>
+                          <option value="fantasy-calendar">Fantasy Calendar</option>
+                        </select>
+                      </div>
+
+                      {/* Days Per Week */}
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Days Per Week</label>
+                        <input 
+                          type="number"
+                          min="5"
+                          max="10"
+                          value={editingCalendar.daysPerWeek}
+                          onChange={(e) => setEditingCalendar({...editingCalendar, daysPerWeek: parseInt(e.target.value) || 7})}
+                          className="w-full mt-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+
+                      {/* Months */}
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest block mb-2">📅 Months</label>
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                          {editingCalendar.months.map((month, idx) => (
+                            <div key={idx} className="flex gap-2">
+                              <input 
+                                type="text"
+                                placeholder="Month name"
+                                value={month.name}
+                                onChange={(e) => {
+                                  const updated = {...editingCalendar};
+                                  updated.months[idx].name = e.target.value;
+                                  setEditingCalendar(updated);
+                                }}
+                                className="flex-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              />
+                              <input 
+                                type="number"
+                                min="28"
+                                max="31"
+                                placeholder="Days"
+                                value={month.days}
+                                onChange={(e) => {
+                                  const updated = {...editingCalendar};
+                                  updated.months[idx].days = parseInt(e.target.value) || 30;
+                                  setEditingCalendar(updated);
+                                }}
+                                className="w-16 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Eras */}
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest block mb-2">⏛️ Eras</label>
+                        <div className="space-y-2">
+                          {editingCalendar.eras.map((era, idx) => (
+                            <div key={idx} className="flex gap-2">
+                              <input 
+                                type="text"
+                                placeholder="Era name"
+                                value={era.name}
+                                onChange={(e) => {
+                                  const updated = {...editingCalendar};
+                                  updated.eras[idx].name = e.target.value;
+                                  setEditingCalendar(updated);
+                                }}
+                                className="flex-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              />
+                              <input 
+                                type="text"
+                                placeholder="Abbr"
+                                value={era.abbreviation || ''}
+                                onChange={(e) => {
+                                  const updated = {...editingCalendar};
+                                  updated.eras[idx].abbreviation = e.target.value;
+                                  setEditingCalendar(updated);
+                                }}
+                                className="w-12 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Fantasy Calendar Features */}
+                      {editingCalendar.type === 'fantasy-calendar' && (
+                        <>
+                          {/* Color Picker */}
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Calendar Color</label>
+                            <input 
+                              type="color"
+                              value={editingCalendar.color || '#A855F7'}
+                              onChange={(e) => setEditingCalendar({...editingCalendar, color: e.target.value})}
+                              className="w-full mt-2 h-10 rounded-lg cursor-pointer"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-end gap-3">
+                      <button 
+                        onClick={() => {
+                          setShowCalendarSettings(false);
+                          setEditingCalendar(null);
+                        }}
+                        className="px-4 py-2 text-xs font-bold uppercase text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if (editingCalendar) {
+                            onUpdateCalendar(editingCalendar);
+                            setShowCalendarSettings(false);
+                            setEditingCalendar(null);
+                          }
+                        }}
+                        className="px-4 py-2 text-xs font-bold uppercase bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                 <div className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950" style={{ gridTemplateColumns: `repeat(${daysPerWeek}, minmax(0, 1fr))` }}>

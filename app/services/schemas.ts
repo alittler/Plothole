@@ -5,6 +5,8 @@ export const CharacterSchema = z.object({
   traits: z.preprocess((val) => val || [], z.array(z.string())).default([]),
   motivation: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
+  physical_description: z.string().optional().nullable(),
+  affiliation: z.string().optional().nullable(),
   aliases: z.preprocess((val) => val || [], z.array(z.string())).default([]),
   tier: z.preprocess((val) => Number(val) || 2, z.number().min(1).max(3)).default(2),
   type: z.preprocess((val) => val || 'Character', z.string()).default('Character'),

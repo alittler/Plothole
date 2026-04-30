@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, ChevronRight, Folder, RotateCw, LayoutGrid, Trees } from 'lucide-react';
+import { safeResponseJson } from '@/utils/jsonUtils';
 import { DataEditor } from './DataEditor';
 import { FileExplorer } from './FileExplorer';
 
@@ -37,8 +38,11 @@ export const DataBrowser: React.FC<DataBrowserProps> = ({ onClose }) => {
         method: 'POST',
         body: JSON.stringify({ category })
       });
-      const result = await res.json();
-      if (result.error) {
+      const result = await safeResponseJson(res);
+      if (!result) {
+        setError('Failed to load files');
+        setFiles([]);
+      } else if (result.error) {
         setError(result.error);
         setFiles([]);
       } else {

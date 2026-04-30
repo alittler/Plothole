@@ -3,6 +3,7 @@ import { ViewType, User } from '../../types';
 import { LayoutGrid, Layout, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, Wrench, BookOpen, Lightbulb } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { isCloudStorageActive } from '../../services/storageService';
+import { safeResponseJson } from '../../utils/jsonUtils';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -71,9 +72,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const fetchVersion = async () => {
       try {
         const response = await fetch(`/api/version?t=${Date.now()}`);
-        const data = await response.json();
-        setCommitHash(data.commit);
-        setSourceHash(data.sourceHash);
+        const data = await safeResponseJson(response);
+        if (data) {
+          setCommitHash(data.commit);
+          setSourceHash(data.sourceHash);
+        }
       } catch (err) {
         console.error('Failed to fetch version info:', err);
       }
@@ -206,7 +209,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div className="p-6 border-b border-slate-800/50 flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white uppercase">{appName.replace(' — Your Story, Decoded', '')}</span>}
+            <div className="flex items-center gap-3">
+              {!isCollapsed && <img src="/logos/plothole_256x256.png" alt="Plothole" className="w-8 h-8 rounded-lg" />}
+              {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white uppercase">{appName.replace(' — Your Story, Decoded', '')}</span>}
+            </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={onToggleCollapse}

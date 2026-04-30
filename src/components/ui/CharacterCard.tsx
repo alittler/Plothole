@@ -118,11 +118,12 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                       <DetailItem label="Species" value={character.species} />
                       <DetailItem label="Role" value={character.role || character.jobTitle} />
                       <DetailItem label="Age" value={character.age} />
-                      <DetailItem label="Nationality" value={character.nationality} />
                       <DetailItem label="Gender" value={character.gender} />
+                      <DetailItem label="Nationality" value={character.nationality} />
                       <DetailItem label="Birthplace" value={character.birthPlace} />
                       <DetailItem label="Residence" value={character.homeLocation} />
                       <DetailItem label="Affiliation" value={character.affiliation} />
+                      <DetailItem label="Style" value={character.style} />
                     </div>
                   </div>
 
@@ -130,15 +131,47 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
                     <h3 className="flex items-center gap-3 text-xs font-black text-amber-500 uppercase tracking-[0.2em] border-b border-amber-500/10 pb-3">
                       <Target size={16} /> Narrative Traits
                     </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {character.traits && character.traits.length > 0 ? (
-                        character.traits.map(trait => (
-                          <span key={trait} className="px-4 py-2 bg-amber-500/5 text-amber-600 dark:text-amber-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-amber-500/10">
-                            {trait}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">No traits defined.</span>
+                    <div className="space-y-3">
+                      {character.primary_trait && (
+                        <div>
+                          <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Primary Trait</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">{character.primary_trait}</p>
+                        </div>
+                      )}
+                      {character.traits && character.traits.length > 0 && (
+                        <div>
+                          <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Traits</span>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {character.traits.map(trait => (
+                              <span key={trait} className="px-4 py-2 bg-amber-500/5 text-amber-600 dark:text-amber-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-amber-500/10">
+                                {trait}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="flex items-center gap-3 text-xs font-black text-violet-500 uppercase tracking-[0.2em] border-b border-violet-500/10 pb-3">
+                      <Sparkles size={16} /> Strengths & Weaknesses
+                    </h3>
+                    <div className="space-y-3">
+                      {character.strengths && (
+                        <div>
+                          <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Strengths</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{character.strengths}</p>
+                        </div>
+                      )}
+                      {character.weaknesses && (
+                        <div>
+                          <span className="text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">Weaknesses</span>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{character.weaknesses}</p>
+                        </div>
+                      )}
+                      {!character.strengths && !character.weaknesses && (
+                        <span className="text-xs text-slate-400 italic">No strengths or weaknesses defined.</span>
                       )}
                     </div>
                   </div>

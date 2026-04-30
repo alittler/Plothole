@@ -1,5 +1,6 @@
 import { ProjectData, Commit, Note, Chapter } from '../types';
 import { generateSHA256, generateId } from './storageService';
+import { safeResponseJson } from '../utils/jsonUtils';
 
 /**
  * Initializes a Git repository for the project on the server.
@@ -10,7 +11,7 @@ export const initGitForProject = async (projectId: string) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ projectId })
   });
-  return await resp.json();
+  return await safeResponseJson(resp);
 };
 
 /**
@@ -27,7 +28,7 @@ export const commitToGit = async (
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ projectId, message, files })
   });
-  return await resp.json();
+  return await safeResponseJson(resp);
 };
 
 /**
@@ -35,7 +36,7 @@ export const commitToGit = async (
  */
 export const getGitLog = async (projectId: string) => {
   const resp = await fetch(`/api/git/log/${projectId}`);
-  return await resp.json();
+  return await safeResponseJson(resp);
 };
 
 /**
@@ -43,7 +44,7 @@ export const getGitLog = async (projectId: string) => {
  */
 export const getGitDiff = async (projectId: string, commitHash: string) => {
   const resp = await fetch(`/api/git/diff/${projectId}/${commitHash}`);
-  return await resp.json();
+  return await safeResponseJson(resp);
 };
 
 /**

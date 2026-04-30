@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal } from './Modal';
-import { Loader2, Sparkles, Download, Clock, Info, X } from 'lucide-react';
+import { Loader2, Sparkles, Download, Clock, Info } from 'lucide-react';
 
 interface UploadProminentModalProps {
   isOpen: boolean;
@@ -17,12 +17,6 @@ export const UploadProminentModal: React.FC<UploadProminentModalProps> = ({ isOp
       title="Architecting Story World"
       maxWidth="max-w-xl"
     >
-      <button 
-        onClick={onClose}
-        className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-      >
-        <X size={20} />
-      </button>
       <div className="py-8 flex flex-col items-center text-center space-y-6">
         <div className="relative">
           <div className="w-20 h-20 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />

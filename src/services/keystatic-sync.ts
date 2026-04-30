@@ -158,17 +158,76 @@ function getEntityType(collection: string, data: KeystaticEntity): string {
   return typeMap[collection] || data.type || 'Lore';
 }
 
+
 /**
  * Initialize Keystatic directories if they don't exist
  */
 export function initializeKestaticDirs(): void {
-  const collections = ['characters', 'locations', 'items', 'events', 'lore', 'relationships'];
+  const collections = ['characters', 'locations', 'items', 'events', 'lore', 'relationships', 'calendars'];
   
   for (const collection of collections) {
     const dir = path.join(process.cwd(), KEYSTATIC_DIR, collection);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
+  }
+}
+
+/**
+ * Read calendars from Keystatic storage
+ */
+export async function readKestaticCalendars(): Promise<any[]> {
+  try {
+    const collectionPath = path.join(process.cwd(), KEYSTATIC_DIR, 'calendars');
+    
+    if (!fs.existsSync(collectionPath)) {
+      return [];
+    }
+    
+    const files = fs.readdirSync(collectionPath).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+    const calendars: any[] = [];
+    
+    for (const file of files) {
+      try {
+        const filePath = path.join(collectionPath, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const data = YAML.load(content);
+        calendars.push(data);
+      } catch (err) {
+        console.error(`Error reading Keystatic calendar file ${file}:`, err);
+      }
+    }
+    
+    return calendars;
+  } catch (err) {
+    console.error('Error reading Keystatic calendars:', err);
+    return [];
+  }
+}
+
+/**
+ * Write calendars to Keystatic storage
+ */
+export async function writeKestaticCalendars(calendars: any[]): Promise<void> {
+  try {
+    const collectionPath = path.join(process.cwd(), KEYSTATIC_DIR, 'calendars');
+    
+    if (!fs.existsSync(collectionPath)) {
+      fs.mkdirSync(collectionPath, { recursive: true });
+    }
+    
+    for (const calendar of calendars) {
+      try {
+        const filename = `${calendar.id}.yaml`;
+        const filePath = path.join(collectionPath, filename);
+        const yaml = YAML.dump(calendar, { indent: 2 });
+        fs.writeFileSync(filePath, yaml, 'utf-8');
+      } catch (err) {
+        console.error(`Error writing calendar ${calendar.id}:`, err);
+      }
+    }
+  } catch (err) {
+    console.error('Error writing Keystatic calendars:', err);
   }
 }
 

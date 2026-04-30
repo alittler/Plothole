@@ -2,19 +2,21 @@ import { CalendarSystem, CalendarMonth } from '../types';
 export { AdvancedCalendarEngine, type CalendarDate } from './advancedCalendarEngine';
 
 export const calculateDaysInYear = (months: CalendarMonth[]): number => {
+  if (!months || months.length === 0) return 365; // Default fallback
   return months.reduce((acc, m) => acc + m.days, 0);
 };
 
 export const calculateUEI = (calendar: CalendarSystem, year: number, monthIndex: number, day: number): number => {
-  const daysInYear = calculateDaysInYear(calendar.months);
+  const months = (calendar.months && calendar.months.length > 0) ? calendar.months : [{ name: 'Month', days: 30 }];
+  const daysInYear = calculateDaysInYear(months as any);
   
   // Assuming year starts at 1, so we calculate full years passed
   const yearsPassed = Math.max(0, year - 1);
   const daysFromYears = yearsPassed * daysInYear;
   
   let daysFromMonths = 0;
-  for (let i = 0; i < monthIndex && i < calendar.months.length; i++) {
-    daysFromMonths += calendar.months[i].days;
+  for (let i = 0; i < monthIndex && i < months.length; i++) {
+    daysFromMonths += months[i].days;
   }
   
   // Assuming day starts at 1
@@ -22,19 +24,20 @@ export const calculateUEI = (calendar: CalendarSystem, year: number, monthIndex:
 };
 
 export const getDateFromUEI = (calendar: CalendarSystem, uei: number) => {
-  const daysInYear = calculateDaysInYear(calendar.months);
+  const months = (calendar.months && calendar.months.length > 0) ? calendar.months : [{ name: 'Month', days: 30 }];
+  const daysInYear = calculateDaysInYear(months as any);
   if (daysInYear === 0) return { year: 1, monthIndex: 0, day: 1 };
 
   const year = Math.floor(uei / daysInYear) + 1;
   let remainingDays = uei % daysInYear;
 
   let monthIndex = 0;
-  for (let i = 0; i < calendar.months.length; i++) {
-    if (remainingDays < calendar.months[i].days) {
+  for (let i = 0; i < months.length; i++) {
+    if (remainingDays < months[i].days) {
       monthIndex = i;
       break;
     }
-    remainingDays -= calendar.months[i].days;
+    remainingDays -= months[i].days;
   }
 
   const day = remainingDays + 1;

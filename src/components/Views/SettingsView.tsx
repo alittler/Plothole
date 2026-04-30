@@ -8,6 +8,7 @@ import {
   MapPin, Book, Clock, Upload, AlertCircle, Mail
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { safeResponseJson } from '../../utils/jsonUtils';
 
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
@@ -124,8 +125,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         onUpdateUser({ ...currentUser, username: lowercaseUsername });
         setTimeout(() => setUsernameSaved(false), 2000);
       } else {
-        const err = await resp.json();
-        alert(err.error || 'Failed to save username');
+        const errData = await safeResponseJson(resp);
+        alert(errData?.error || 'Failed to save username');
       }
     } catch (err) {
       console.error('Error saving username:', err);
@@ -140,8 +141,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIsLoadingArchive(true);
     try {
       const resp = await fetch(`/api/source-files/${projectData.id}`);
-      const data = await resp.json();
-      setArchiveFiles(data.files || []);
+      const data = await safeResponseJson(resp);
+      if (data) {
+        setArchiveFiles(data.files || []);
+      } else {
+        setArchiveFiles([]);
+      }
     } catch (err) {
       console.error("Failed to fetch archive files", err);
     } finally {
@@ -162,10 +167,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         })
       });
       
-      const data = await resp.json();
+      const data = await safeResponseJson(resp);
       setTestEmailResult({
-        success: resp.ok,
-        message: data.message || (resp.ok ? 'Test email sent successfully!' : 'Failed to send test email')
+        success: resp.ok && !!data,
+        message: data?.message || (resp.ok ? 'Test email sent successfully!' : 'Failed to send test email')
       });
       setTimeout(() => setTestEmailResult(null), 5000);
     } catch (err) {
@@ -190,10 +195,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         })
       });
       
-      const data = await resp.json();
+      const data = await safeResponseJson(resp);
       setTestBackupResult({
-        success: resp.ok,
-        message: data.message || (resp.ok ? 'Test backup created successfully!' : 'Failed to create test backup')
+        success: resp.ok && !!data,
+        message: data?.message || (resp.ok ? 'Test backup created successfully!' : 'Failed to create test backup')
       });
       setTimeout(() => setTestBackupResult(null), 5000);
     } catch (err) {

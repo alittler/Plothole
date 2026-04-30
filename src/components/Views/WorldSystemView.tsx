@@ -343,36 +343,45 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 
                 {(!data.rootMapImage && !data.isRealWorldMap && !currentMapParentId) ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
-                    <div className="space-y-2">
-                      <div className="w-20 h-20 bg-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-indigo-600/20 mb-6">
-                        <MapIcon size={40} />
-                      </div>
-                      <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Initialize Atlas</h2>
-                      <p className="text-slate-500 max-w-md mx-auto font-serif italic text-lg">Define the cartographic foundation of your universe.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
-                      <button 
+                    <div className="w-full h-full flex gap-0 overflow-hidden">
+                      {/* Real World Map Option */}
+                      <button
                         onClick={() => onUpdateProject({ isRealWorldMap: true })}
-                        className="group p-8 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-xl hover:border-blue-500 transition-all flex flex-col items-center gap-4 text-center"
+                        className="flex-1 flex flex-col items-center justify-center relative overflow-hidden group bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 hover:from-blue-500 hover:via-blue-600 hover:to-blue-700 transition-all cursor-pointer border-r border-white/20"
                       >
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-600 rounded-3xl group-hover:scale-110 transition-transform">
-                          <Globe size={32} />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase">Real World</h3>
-                          <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-widest">Earth Settings (OpenStreetMap)</p>
+                        {/* Globe icon as background */}
+                        <Globe size={200} className="absolute opacity-10 group-hover:opacity-20 transition-opacity" />
+                        
+                        {/* Content container */}
+                        <div className="relative z-10 flex flex-col items-center gap-4 text-white">
+                          <div className="text-6xl">🌍</div>
+                          <div className="space-y-2">
+                            <h3 className="text-4xl font-black uppercase tracking-tight">Real World</h3>
+                            <p className="text-blue-100 font-serif italic text-lg">
+                              Earth-based settings with<br />
+                              OpenStreetMap integration
+                            </p>
+                          </div>
                         </div>
                       </button>
 
-                      <label className="group p-8 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-xl hover:border-emerald-500 transition-all flex flex-col items-center gap-4 text-center cursor-pointer">
-                        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 rounded-3xl group-hover:scale-110 transition-transform">
-                          <MapIcon size={32} />
+                      {/* Fantasy Map Option */}
+                      <label className="flex-1 flex flex-col items-center justify-center relative overflow-hidden group bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:via-emerald-600 hover:to-emerald-700 transition-all cursor-pointer">
+                        {/* MapIcon as background */}
+                        <MapIcon size={200} className="absolute opacity-10 group-hover:opacity-20 transition-opacity" />
+                        
+                        {/* Content container */}
+                        <div className="relative z-10 flex flex-col items-center gap-4 text-white">
+                          <div className="text-6xl">🗺️</div>
+                          <div className="space-y-2">
+                            <h3 className="text-4xl font-black uppercase tracking-tight">Fantasy Map</h3>
+                            <p className="text-emerald-100 font-serif italic text-lg">
+                              Custom fictional worlds with<br />
+                              custom image uploads
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase">Fantasy Map</h3>
-                          <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-widest">Custom Image Upload</p>
-                        </div>
+                        
                         <input type="file" className="hidden" accept="image/*" onChange={handleMapUpload} />
                       </label>
                     </div>

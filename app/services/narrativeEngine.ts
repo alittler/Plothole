@@ -2,6 +2,7 @@ import { Deduplicator } from './deduplicator';
 import { HierarchicalEntity } from '../types';
 import { NarrativeExtractionSchema } from './schemas';
 import { generateId } from './storageService';
+import { safeJsonParse } from '../../src/utils/jsonUtils';
 
 export interface ExtractionSchema {
   characters: any;
@@ -132,15 +133,13 @@ export class NarrativeEngine {
 
       let content = data.choices[0].message.content;
       console.log('[NarrativeEngine] Raw response content:', content.substring(0, 500));
-      
-      // Robust JSON extraction (strip markdown if present)
-      if (content.includes('```')) {
-        content = content.replace(/```json\n?/, '').replace(/```\n?/, '').trim();
-      }
 
-      const parsed = JSON.parse(content);
-      console.log('[NarrativeEngine] Parsed JSON keys:', Object.keys(parsed).join(', '));
-      
+      const parsed = safeJsonParse(content);
+      if (!parsed) {
+        console.error('[NarrativeEngine] Failed to parse content as JSON:', content);
+        throw new Error('Failed to parse AI response as JSON.');
+      }
+      console.log('[NarrativeEngine] Parsed JSON keys:', Object.keys(parsed).join(', '));      
       // Helper to ensure array
       const ensureArray = (val: any): any[] => Array.isArray(val) ? val : [];
       
@@ -149,15 +148,23 @@ export class NarrativeEngine {
       const normalized: any = {
         characters: characterized.map((c: any) => ({
           name: c.name || c.Name || c.character_name || 'Unknown',
+          aliases: ensureArray(c.aliases || c.Aliases),
+          role: c.role || c.Role || null,
+          job: c.job || c.Job || null,
+          tier: c.tier || c.Tier || 2,
           traits: ensureArray(c.traits || c.Traits),
+          primary_trait: c.primary_trait || c.PrimaryTrait || c.primaryTrait || null,
+          strengths: c.strengths || c.Strengths || null,
+          weaknesses: c.weaknesses || c.Weaknesses || null,
           motivation: c.motivation || c.Motivation || c.motive || null,
+          conflict: c.conflict || c.Conflict || c.internal_conflict || null,
           description: c.description || c.Description || null,
           physical_description: c.physical_description || c.physicalDescription || c.PhysicalDescription || null,
-          aliases: ensureArray(c.aliases || c.Aliases),
-          tier: c.tier || c.Tier || 2,
-          role: c.role || c.Role || null,
+          species: c.species || c.Species || null,
+          gender: c.gender || c.Gender || null,
+          age: c.age || c.Age || null,
           affiliation: c.affiliation || c.Affiliation || null,
-          job: c.job || c.Job || null,
+          style: c.style || c.Style || null,
           type: 'Character'
         })),
         locations: ensureArray(parsed.locations || parsed.Locations || parsed.places || parsed.Places || parsed.settings).map((l: any) => ({
@@ -198,6 +205,75 @@ export class NarrativeEngine {
       }
       console.error('[NarrativeEngine] Full Error Object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       return { characters: [], locations: [], events: [], plotPoints: [] };
+    }
+  }
+
+  async detectWorldType(manuscript: string): Promise<'real' | 'fictional' | 'mixed'> {
+    try {
+      console.log('[NarrativeEngine] Detecting world type from manuscript...');
+      
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'HTTP-Referer': 'https://plothole.click',
+          'X-Title': 'Plothole Narrative Processor',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.0-flash-001',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a story analyst. Determine if this story is set in the real world, a fictional world, or a mix of both.
+
+Return ONLY a JSON object with one field:
+{
+  "worldType": "real" | "fictional" | "mixed",
+  "reasoning": "brief explanation"
+}
+
+Guidelines:
+- "real": Story is set in the real world (historical, contemporary, etc.) using actual places and events
+- "fictional": Story is set in an invented/fantasy world with fictional locations
+- "mixed": Story blends real world locations/events with fictional elements or multiple worlds`
+            },
+            {
+              role: 'user',
+              content: `Analyze this story (first 2000 chars): ${manuscript.substring(0, 2000)}`
+            }
+          ],
+          response_format: { type: 'json_object' }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[NarrativeEngine] WorldType Detection Error:', errorText);
+        return 'fictional'; // Default to fictional on error
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      
+      if (!content) {
+        console.warn('[NarrativeEngine] No content in worldType response');
+        return 'fictional';
+      }
+
+      const parsed = JSON.parse(content);
+      const worldType = parsed.worldType?.toLowerCase() || 'fictional';
+      
+      if (!['real', 'fictional', 'mixed'].includes(worldType)) {
+        console.warn('[NarrativeEngine] Invalid worldType:', worldType);
+        return 'fictional';
+      }
+
+      console.log('[NarrativeEngine] Detected world type:', worldType, 'Reasoning:', parsed.reasoning);
+      return worldType as 'real' | 'fictional' | 'mixed';
+    } catch (error: any) {
+      console.error('[NarrativeEngine] Error detecting world type:', error.message);
+      return 'fictional'; // Safe default
     }
   }
 }

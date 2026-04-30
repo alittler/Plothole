@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
 import {
   ProjectData, ProjectMetadata, User, ViewType, Note,
-  AppPrompts, AppSettings, ToolboxLink, Artifact, LoreEntry, TimelineEvent, Idea, ChangeLogEntry, Relationship, SemanticDocument, ProseDocument, Chapter, Character, Location
+  AppPrompts, AppSettings, ToolboxLink, Artifact, LoreEntry, TimelineEvent, Idea, ChangeLogEntry, Relationship, SemanticDocument, ProseDocument, Chapter, Character, Location, CalendarSystem
 } from './types';
 import {
   getAllProjectsMetadata, loadProjectById, saveProjectData,
@@ -26,6 +26,7 @@ import {
   setServerHealth
 } from './services/storageService';
 import { Commit, BackupStatus } from './types';
+import { safeJsonParse, safeResponseJson } from './utils/jsonUtils';
 
 // Components
 import { Sidebar } from './components/Layout/Sidebar';
@@ -197,6 +198,98 @@ function populateDataCatalog(data: ProjectData): ProjectData {
     catalogs: catalogs.length > 0 ? catalogs : data.catalogs
   };
 }
+
+const createDefaultCalendars = (): CalendarSystem[] => {
+  const gregorian: CalendarSystem = {
+    id: 'gregorian-default',
+    name: 'Gregorian Calendar',
+    type: 'standard',
+    color: '#3B82F6',
+    weekDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    daysPerWeek: 7,
+    hoursPerDay: 24,
+    months: [
+      { id: '1', name: 'January', days: 31 },
+      { id: '2', name: 'February', days: 28 },
+      { id: '3', name: 'March', days: 31 },
+      { id: '4', name: 'April', days: 30 },
+      { id: '5', name: 'May', days: 31 },
+      { id: '6', name: 'June', days: 30 },
+      { id: '7', name: 'July', days: 31 },
+      { id: '8', name: 'August', days: 31 },
+      { id: '9', name: 'September', days: 30 },
+      { id: '10', name: 'October', days: 31 },
+      { id: '11', name: 'November', days: 30 },
+      { id: '12', name: 'December', days: 31 }
+    ],
+    eras: [{ id: '1', name: 'Common Era', abbreviation: 'CE', startYear: 0 }],
+    currentEpochDay: 0,
+    leapYearRule: { type: 'gregorian' },
+    seasons: [
+      { id: 's1', name: 'Winter', startMonth: 0, startDay: 21, endMonth: 2, endDay: 20, color: '#60A5FA' },
+      { id: 's2', name: 'Spring', startMonth: 2, startDay: 21, endMonth: 5, endDay: 20, color: '#34D399' },
+      { id: 's3', name: 'Summer', startMonth: 5, startDay: 21, endMonth: 8, endDay: 22, color: '#FBBF24' },
+      { id: 's4', name: 'Autumn', startMonth: 8, startDay: 23, endMonth: 11, endDay: 20, color: '#F97316' }
+    ]
+  };
+
+  const fantasy: CalendarSystem = {
+    id: 'fantasy-default',
+    name: 'Custom Fantasy Calendar',
+    type: 'fantasy-calendar',
+    color: '#A855F7',
+    weekDays: ['Firstday', 'Secondday', 'Thirdday', 'Fourthday', 'Fifthday', 'Sixthday', 'Seventhday'],
+    daysPerWeek: 7,
+    hoursPerDay: 24,
+    months: [
+      { id: '1', name: 'Wintermoon', days: 30 },
+      { id: '2', name: 'Coldbloom', days: 30 },
+      { id: '3', name: 'Thawwind', days: 30 },
+      { id: '4', name: 'Springmist', days: 30 },
+      { id: '5', name: 'Greensun', days: 30 },
+      { id: '6', name: 'Heatwave', days: 30 },
+      { id: '7', name: 'Starfall', days: 30 },
+      { id: '8', name: 'Harvestmoon', days: 30 },
+      { id: '9', name: 'Duskwind', days: 30 },
+      { id: '10', name: 'Shadowtide', days: 30 },
+      { id: '11', name: 'Frostbite', days: 30 },
+      { id: '12', name: 'Evernight', days: 30 }
+    ],
+    eras: [{ id: '1', name: 'First Age', abbreviation: 'FA', startYear: 0 }],
+    currentEpochDay: 0,
+    moons: [
+      { id: 'm1', name: 'Primary Moon', cycleLength: 28, offset: 0, color: '#F3E8FF' },
+      { id: 'm2', name: 'Secondary Moon', cycleLength: 35, offset: 7, color: '#E0E7FF' }
+    ],
+    seasons: [
+      { id: 's1', name: 'Deepwinter', startMonth: 0, startDay: 1, endMonth: 2, endDay: 29, color: '#7DD3FC' },
+      { id: 's2', name: 'Spring', startMonth: 3, startDay: 1, endMonth: 5, endDay: 29, color: '#86EFAC' },
+      { id: 's3', name: 'Midsummer', startMonth: 6, startDay: 1, endMonth: 8, endDay: 29, color: '#FDE047' },
+      { id: 's4', name: 'Autumn', startMonth: 9, startDay: 1, endMonth: 11, endDay: 30, color: '#FDBA74' }
+    ],
+    leapYearRule: { type: 'every', interval: 4, exceptions: [400] }
+  };
+
+  return [gregorian, fantasy];
+};
+
+const ensureProjectHasCalendar = (data: ProjectData): ProjectData => {
+  if (!data.calendars || data.calendars.length === 0) {
+    const defaultCalendars = createDefaultCalendars();
+    return {
+      ...data,
+      calendars: defaultCalendars,
+      activeCalendarId: 'gregorian-default'
+    };
+  }
+  if (!data.activeCalendarId && data.calendars.length > 0) {
+    return {
+      ...data,
+      activeCalendarId: data.calendars[0].id
+    };
+  }
+  return data;
+};
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -390,15 +483,7 @@ const App: React.FC = () => {
         description: 'Generate realistic demographic data for fantasy settlements'
       },
       {
-        id: 'fantasy-calendar-ext',
-        label: 'Fantasy Calendar',
-        url: 'https://fantasy-calendar.com',
-        category: 'Time & Cosmology',
-        description: 'The premier tool for creating custom fantasy calendars and tracking time.'
-      },
-      {
-        id: 'demo-magic-gen',
-        label: 'Magic Generator',
+        id: 'demo-magic-gen',        label: 'Magic Generator',
         url: 'https://www.litrpgadventures.com/ai-tools/magic-generator/',
         category: 'World Building',
         description: 'Create unique magic systems and spells'
@@ -654,6 +739,37 @@ const App: React.FC = () => {
       setCurrentView(ViewType.DASHBOARD);
     }
   }, []);
+
+  const handleUpdateCalendar = useCallback(async (calendar: CalendarSystem) => {
+    if (!projectData) return;
+    
+    try {
+      // Update project data with the new calendar
+      await updateProjectData({ 
+        calendars: projectData.calendars.map(cal => cal.id === calendar.id ? calendar : cal) 
+      });
+      
+      // Sync to Keystatic
+      try {
+        const response = await fetch('/api/calendars', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            calendars: projectData.calendars.map(cal => cal.id === calendar.id ? calendar : cal) 
+          })
+        });
+        
+        if (!response.ok) {
+          console.warn('[App] Failed to sync calendar to Keystatic:', response.statusText);
+        }
+      } catch (err) {
+        console.warn('[App] Keystatic sync error (non-blocking):', err);
+      }
+    } catch (err) {
+      console.error('[App] Failed to update calendar:', err);
+    }
+  }, [projectData, updateProjectData]);
+
   const [isLoaded, setIsLoaded] = useState(false);
 
   const [lastBackupMilestone, setLastBackupMilestone] = useState<{ words: number, commits: number }>({ words: 0, commits: 0 });
@@ -842,7 +958,7 @@ const App: React.FC = () => {
           const sortedMeta = [...meta].sort((a, b) => b.lastModified - a.lastModified);
           const lastProject = await loadProjectById(sortedMeta[0].id);
           if (lastProject) {
-            setProjectData(populateDataCatalog(lastProject));
+            setProjectData(populateDataCatalog(ensureProjectHasCalendar(lastProject)));
             if (currentView === ViewType.BOOKSHELF || !location.pathname || location.pathname === '/') {
               setCurrentView(ViewType.DASHBOARD);
             }
@@ -905,28 +1021,31 @@ const App: React.FC = () => {
           backupData: projectData
         })
       })
-        .then(res => res.json())
+        .then(res => safeResponseJson(res))
         .then(data => {
-          if (data.success) {
-            // Poll for verification
-            setTimeout(() => {
-              doFetch(`/api/verify-backup/${data.resendId}`)
-                .then(res => res.json())
-                .then(verifyData => {
-                  if (verifyData.status === 'delivered') {
-                    setProjectData(prev => {
-                      if (!prev) return null;
-                      const updated: ProjectData = {
-                        ...prev,
-                        backups: prev.backups?.map(b => b.id === backupId ? { ...b, status: 'delivered' as const, resendId: data.resendId } : b)
-                      };
-                      saveProjectData(updated);
-                      return updated;
-                    });
-                  }
-                });
-            }, 5000);
+          if (!data || !data.success) {
+            console.warn('Backup email failed or returned invalid response');
+            return;
           }
+          // Poll for verification
+          setTimeout(() => {
+            doFetch(`/api/verify-backup/${data.resendId}`)
+              .then(res => safeResponseJson(res))
+              .then(verifyData => {
+                if (verifyData && verifyData.status === 'delivered') {
+                  setProjectData(prev => {
+                    if (!prev) return null;
+                    const updated: ProjectData = {
+                      ...prev,
+                      backups: prev.backups?.map(b => b.id === backupId ? { ...b, status: 'delivered' as const, resendId: data.resendId } : b)
+                    };
+                    saveProjectData(updated);
+                    return updated;
+                  });
+                }
+              })
+              .catch(err => console.error('Verify backup failed:', err));
+          }, 5000);
         })
         .catch(err => console.error("Backup failed", err));
     }
@@ -1047,14 +1166,16 @@ const App: React.FC = () => {
     }
 
     let newProject: ProjectData = {
-      id, title: finalTitle, shortName: finalShortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], calendars: [], artifacts: [], lore: [], chapters: [], sources: [],
+      id, title: finalTitle, shortName: finalShortName, author, summary: '', lastModified: Date.now(), characters: [], locations: [], timeline: [], notes: [], relationships: [], themes: [], artifacts: [], lore: [], chapters: [], sources: [],
       lastProcessedManuscriptSha: '', lastProcessedPromptSha: '',
       wordCount: 0,
       charCount: 0,
       entities: [],
       manuscript: '',
       history_diff: '',
-      assets: []
+      assets: [],
+      calendars: createDefaultCalendars(),
+      activeCalendarId: 'gregorian-default'
     };
     if (useSample) {
       const ch1Content = `<!-- #CHAPTER_1 -->\n# Chapter 1: The Weight of Ink\n\nThe Great Archive was always cold. Arthur Penhaligon pulled his cloak tighter as he navigated the towering shelves of the Forbidden Wing.`;
@@ -1066,11 +1187,11 @@ const App: React.FC = () => {
       const wordCountValue = fullManuscript.trim().split(/\s+/).length;
 
       const characters = [
-        { id: 'CH-ARTHUR', name: 'Arthur Penhaligon', role: 'Protagonist', job: 'Junior Archivist', description: 'A curious and determined young man with an uncanny ability to read ancient scripts.', traits: ['Curious', 'Determined'], physicalFeatures: 'Lean build, dark hair with premature silver streaks, pale from years in archives. Average height around 5\'10", sharp observant eyes that miss nothing.', style: 'Simple archival robes, ink-stained fingers, practical leather boots worn from navigating endless shelves.', strengths: 'Exceptional memory, pattern recognition, ability to decipher ancient texts, quick thinking under pressure.', weaknesses: 'Physically frail, inexperienced in combat, trusts too easily, struggles with social interaction outside academic circles.', age: 'Early 20s', source: 'manual' as const },
-        { id: 'CH-VAELEN', name: 'Admin Vaelen', role: 'Antagonist', job: 'High Architect', description: 'The cold, calculating ruler of the Citadel.', traits: ['Cold', 'Calculating', 'Ruthless'], physicalFeatures: 'Tall and imposing, silver-haired with aristocratic features. Sharp jawline, piercing gray eyes that seem to look through people. Well-maintained despite advanced age, suggesting access to memory enhancements.', style: 'Immaculate obsidian robes trimmed with gold, rare artifacts adorning his wrists. Every appearance is choreographed for maximum psychological impact.', strengths: 'Masterful political strategist, charismatic orator, centuries of experience (through stolen memories), ability to control information.', weaknesses: 'Disconnected from ordinary people\'s suffering, overconfident in his power, fears the truth more than weapons, becoming paranoid with age.', age: 'Appeared 60+, actual age unknown', source: 'manual' as const },
-        { id: 'CH-ELARA', name: 'Elara Vane', role: 'Ally', job: 'Information Broker', description: 'A resourceful survivor from the Lower Wards.', traits: ['Resourceful', 'Cynical', 'Brave'], physicalFeatures: 'Athletic build from years of navigating the Wards. Dark skin, shaved head revealing intricate memory tattoos along her scalp. Scars from street fights. Sharp-featured with intense dark eyes, stands about 5\'8".', style: 'Practical streetwear—patched cargo pants, layered tunics, heavy boots. Wears stolen jewelry from black market deals. Favors dark colors for moving undetected in shadows.', strengths: 'Street-smart, excellent at gathering intelligence, skilled negotiator, physically capable fighter, understands Lower Wards politics.', weaknesses: 'Limited formal education, struggles with trust despite outward confidence, carries guilt from past moral compromises.', age: 'Mid-30s', source: 'manual' as const },
-        { id: 'CH-SILAS', name: 'Master Silas', role: 'Mentor', job: 'Senior Archivist', description: 'A wise and secretive mentor who knows the truth.', traits: ['Wise', 'Secretive', 'Patient'], physicalFeatures: 'Elderly and stooped from decades hunched over manuscripts. White hair and beard, weathered face lined with worry. Soft brown eyes that carry the weight of hidden knowledge. Moves slowly but with purpose, around 5\'6" in current state.', style: 'Well-worn archival robes with hidden pockets for smuggled documents. Spectacles on a chain around his neck. Carries a wooden cane carved with ancient symbols.', strengths: 'Encyclopedic knowledge of archives, master code-breaker, strategic thinker, commands respect from the archival community.', weaknesses: 'Age and declining health, confined to the Archive (Vaelen\'s spy network), unable to act directly without suspicion, haunted by past regrets.', age: '70+', source: 'manual' as const },
-        { id: 'CH-KESS', name: 'Kessandra Mohr', role: 'Ally', job: 'Memory Thief', description: 'A skilled operative who steals valuable memories for the black market. Torn between survival and morality.', traits: ['Cunning', 'Pragmatic', 'Conflicted'], physicalFeatures: 'Lithe and graceful with an ethereal quality that makes people forget her presence. Pale skin with striking violet eyes—an unusual genetic anomaly. Shoulder-length white-blonde hair often concealed under hoods. Moves like smoke, around 5\'5".', style: 'Dark, form-fitting clothing designed for stealth. Multiple hidden compartments for memory vials. Wears silver rings—each one tied to a past "job" she\'s completed. A silver mask worn during operations.', strengths: 'Master thief, exceptional memory palace technique, can navigate locked vaults, understanding of black market networks, enhanced sensory perception.', weaknesses: 'Increasingly haunted by ethical concerns, difficulty forming stable relationships, dependent on stimulants to maintain focus, slowly becoming emotionally numb from repeated memory theft work.', age: 'Late 20s', source: 'manual' as const }
+        { id: 'CH-ARTHUR', name: 'Arthur Penhaligon', role: 'Protagonist', job: 'Junior Archivist', description: 'A curious and determined young man with an uncanny ability to read ancient scripts.', traits: ['Curious', 'Determined'], physical_description: 'Lean build, dark hair with premature silver streaks, pale from years in archives. Average height around 5\'10", sharp observant eyes that miss nothing.', style: 'Simple archival robes, ink-stained fingers, practical leather boots worn from navigating endless shelves.', strengths: 'Exceptional memory, pattern recognition, ability to decipher ancient texts, quick thinking under pressure.', weaknesses: 'Physically frail, inexperienced in combat, trusts too easily, struggles with social interaction outside academic circles.', age: 'Early 20s', source: 'manual' as const },
+        { id: 'CH-VAELEN', name: 'Admin Vaelen', role: 'Antagonist', job: 'High Architect', description: 'The cold, calculating ruler of the Citadel.', traits: ['Cold', 'Calculating', 'Ruthless'], physical_description: 'Tall and imposing, silver-haired with aristocratic features. Sharp jawline, piercing gray eyes that seem to look through people. Well-maintained despite advanced age, suggesting access to memory enhancements.', style: 'Immaculate obsidian robes trimmed with gold, rare artifacts adorning his wrists. Every appearance is choreographed for maximum psychological impact.', strengths: 'Masterful political strategist, charismatic orator, centuries of experience (through stolen memories), ability to control information.', weaknesses: 'Disconnected from ordinary people\'s suffering, overconfident in his power, fears the truth more than weapons, becoming paranoid with age.', age: 'Appeared 60+, actual age unknown', source: 'manual' as const },
+        { id: 'CH-ELARA', name: 'Elara Vane', role: 'Ally', job: 'Information Broker', description: 'A resourceful survivor from the Lower Wards.', traits: ['Resourceful', 'Cynical', 'Brave'], physical_description: 'Athletic build from years of navigating the Wards. Dark skin, shaved head revealing intricate memory tattoos along her scalp. Scars from street fights. Sharp-featured with intense dark eyes, stands about 5\'8".', style: 'Practical streetwear—patched cargo pants, layered tunics, heavy boots. Wears stolen jewelry from black market deals. Favors dark colors for moving undetected in shadows.', strengths: 'Street-smart, excellent at gathering intelligence, skilled negotiator, physically capable fighter, understands Lower Wards politics.', weaknesses: 'Limited formal education, struggles with trust despite outward confidence, carries guilt from past moral compromises.', age: 'Mid-30s', source: 'manual' as const },
+        { id: 'CH-SILAS', name: 'Master Silas', role: 'Mentor', job: 'Senior Archivist', description: 'A wise and secretive mentor who knows the truth.', traits: ['Wise', 'Secretive', 'Patient'], physical_description: 'Elderly and stooped from decades hunched over manuscripts. White hair and beard, weathered face lined with worry. Soft brown eyes that carry the weight of hidden knowledge. Moves slowly but with purpose, around 5\'6" in current state.', style: 'Well-worn archival robes with hidden pockets for smuggled documents. Spectacles on a chain around his neck. Carries a wooden cane carved with ancient symbols.', strengths: 'Encyclopedic knowledge of archives, master code-breaker, strategic thinker, commands respect from the archival community.', weaknesses: 'Age and declining health, confined to the Archive (Vaelen\'s spy network), unable to act directly without suspicion, haunted by past regrets.', age: '70+', source: 'manual' as const },
+        { id: 'CH-KESS', name: 'Kessandra Mohr', role: 'Ally', job: 'Memory Thief', description: 'A skilled operative who steals valuable memories for the black market. Torn between survival and morality.', traits: ['Cunning', 'Pragmatic', 'Conflicted'], physical_description: 'Lithe and graceful with an ethereal quality that makes people forget her presence. Pale skin with striking violet eyes—an unusual genetic anomaly. Shoulder-length white-blonde hair often concealed under hoods. Moves like smoke, around 5\'5".', style: 'Dark, form-fitting clothing designed for stealth. Multiple hidden compartments for memory vials. Wears silver rings—each one tied to a past "job" she\'s completed. A silver mask worn during operations.', strengths: 'Master thief, exceptional memory palace technique, can navigate locked vaults, understanding of black market networks, enhanced sensory perception.', weaknesses: 'Increasingly haunted by ethical concerns, difficulty forming stable relationships, dependent on stimulants to maintain focus, slowly becoming emotionally numb from repeated memory theft work.', age: 'Late 20s', source: 'manual' as const }
       ];
 
       const locations = [
@@ -1178,7 +1299,7 @@ const App: React.FC = () => {
         body: JSON.stringify(newProject)
       }).catch(err => console.error("Cloud project creation failed", err));
     }
-    const projectWithCatalog = populateDataCatalog(newProject);
+    const projectWithCatalog = populateDataCatalog(ensureProjectHasCalendar(newProject));
     setProjectData(projectWithCatalog);
     await refreshMetadata();
     setCurrentView(ViewType.DASHBOARD);
@@ -1429,8 +1550,10 @@ Include only the arrays for enabled sections above.`;
 
       const data = await response.json();
       const worldState = data.worldState || [];
+      const worldType = data.worldType || 'fictional';
       
       console.log(`[Analyze] Received ${worldState.length} entities from AI`);
+      console.log(`[Analyze] World type: ${worldType}`);
       console.log('[Analyze] WorldState:', JSON.stringify(worldState, null, 2));
 
       // Transform HierarchicalEntity[] into Character[], Location[], TimelineEvent[]
@@ -1451,6 +1574,7 @@ Include only the arrays for enabled sections above.`;
             traits: entity.traits || [],
             motivation: entity.motivation || '',
             description: entity.description || '',
+            physical_description: entity.physical_description || '',
             source: 'ai_generated',
             first_mention_offset: entity.firstMentionOffset,
             field_notes: []
@@ -1491,12 +1615,12 @@ Include only the arrays for enabled sections above.`;
       }
 
       console.log(`[Analyze] Transformed: ${characters.length} characters, ${locations.length} locations, ${events.length} events`);
-      return { characters, locations, events };
+      return { characters, locations, events, worldType };
 
     } catch (error) {
       console.error('[Analyze] Analysis failed:', error);
       setProcessingStatus(`Analysis error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return { characters: [], locations: [], events: [] };
+      return { characters: [], locations: [], events: [], worldType: 'fictional' };
     }
   };
 
@@ -1506,6 +1630,23 @@ Include only the arrays for enabled sections above.`;
     setProcessingStatus(null);
     removeTask('uploading-project');
     console.log('[Upload] Upload cancelled by user');
+  };
+
+  // Helper function to generate unique project title by appending numbers
+  const getUniqueProjectTitle = (baseTitle: string, existingMetadata: ProjectMetadata[]): string => {
+    const existingTitles = new Set(existingMetadata.map(p => p.title));
+    
+    if (!existingTitles.has(baseTitle)) {
+      return baseTitle;
+    }
+
+    let counter = 1;
+    let newTitle = `${baseTitle} (${counter})`;
+    while (existingTitles.has(newTitle)) {
+      counter++;
+      newTitle = `${baseTitle} (${counter})`;
+    }
+    return newTitle;
   };
 
   const handleUploadProject = async (file: File) => {
@@ -1552,7 +1693,8 @@ Include only the arrays for enabled sections above.`;
         const projectData = await unpackProject(file);
         if (projectData) {
           projectData.author = currentUser.name;
-          const dataWithCatalog = populateDataCatalog(projectData);
+          projectData.title = getUniqueProjectTitle(projectData.title, projectsMetadata);
+          const dataWithCatalog = populateDataCatalog(ensureProjectHasCalendar(projectData));
           await saveProjectData(dataWithCatalog);
           setProjectData(dataWithCatalog);
           await refreshMetadata();
@@ -1568,8 +1710,15 @@ Include only the arrays for enabled sections above.`;
 
       if (file.name.endsWith('.json')) {
         console.log('[Upload] Processing JSON file');
-        data = JSON.parse(text);
+        data = safeJsonParse(text);
+        if (!data) {
+          setError("Failed to parse JSON file. It might be malformed or empty.");
+          return;
+        }
         data.author = currentUser.name;
+        if (data.title) {
+          data.title = getUniqueProjectTitle(data.title, projectsMetadata);
+        }
       } else {
         // It's a manuscript text file
         console.log('[Upload] Processing manuscript text file');
@@ -1632,7 +1781,7 @@ Include only the arrays for enabled sections above.`;
 
         data = {
           id: generateId(),
-          title: file.name.replace(/\.[^/.]+$/, ""),
+          title: getUniqueProjectTitle(file.name.replace(/\.[^/.]+$/, ""), projectsMetadata),
           author: currentUser.name,
           summary: '',
           lastModified: Date.now(),
@@ -1653,7 +1802,7 @@ Include only the arrays for enabled sections above.`;
 
         // Analyze manuscript to extract entities
         console.log('[Upload] Calling AI analysis...');
-        const { characters, locations, events } = await analyzeManuscript(text);
+        const { characters, locations, events, worldType } = await analyzeManuscript(text);
         
         // Merge extracted data into the project
         data.characters = characters;
@@ -1661,11 +1810,14 @@ Include only the arrays for enabled sections above.`;
         data.timeline = events;
         
         console.log(`[Upload] Merged AI results: ${characters.length} chars, ${locations.length} locs, ${events.length} events`);
+        console.log(`[Upload] World type detected: ${worldType}`);
 
-        const dataWithCatalog = populateDataCatalog(data);
+        const dataWithCatalog = populateDataCatalog(ensureProjectHasCalendar(data));
         
+        // Ensure project is set to fictional world by default
+        dataWithCatalog.isRealWorldMap = false;
+
         console.log('[Upload] Saving project data...');
-        // Save the project first
         await saveProjectData(dataWithCatalog);
         setProjectData(dataWithCatalog);
         console.log('[Upload] Project saved, setting view');
@@ -1720,7 +1872,7 @@ Include only the arrays for enabled sections above.`;
           onSelectProject={async (id) => {
             const d = await loadProjectById(id);
             if (d) {
-              setProjectData(populateDataCatalog(d));
+              setProjectData(populateDataCatalog(ensureProjectHasCalendar(d)));
               setIsDashboardModalOpen(true);
             }
           }}
@@ -1745,8 +1897,13 @@ Include only the arrays for enabled sections above.`;
           activeTasks={activeTasks}
           fetchWithAuth={fetchWithAuth}
           onAddNote={async n => {
-
             let noteToSave = { ...n };
+            
+            // Always save to global notes (Notebook)
+            setGlobalNotes(prev => [noteToSave, ...prev]);
+            await saveGlobalNote(noteToSave);
+
+            // If a project is active, also save to project notes
             if (projectData) {
               const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
               const projectTags = [projectData.shortName, projectData.title].filter(Boolean).map(s => normalize(s!));
@@ -1758,9 +1915,6 @@ Include only the arrays for enabled sections above.`;
                 noteToSave.isCanon = true;
               }
               await updateProjectData({ notes: [noteToSave, ...(projectData.notes || [])] });
-            } else {
-              setGlobalNotes(prev => [noteToSave, ...prev]);
-              await saveGlobalNote(noteToSave);
             }
           }}
           onAddIdeaToProject={handleAddIdeaToProject}
@@ -1781,7 +1935,7 @@ Include only the arrays for enabled sections above.`;
           onSelectProject={async (id) => {
             const d = await loadProjectById(id);
             if (d) {
-              setProjectData(populateDataCatalog(d));
+              setProjectData(populateDataCatalog(ensureProjectHasCalendar(d)));
               setIsDashboardModalOpen(true);
             }
           }}
@@ -1800,7 +1954,7 @@ Include only the arrays for enabled sections above.`;
       case ViewType.MATRIX:
       case ViewType.PLOT_ANALYSIS:
       case ViewType.CALENDAR:
-        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={(c) => updateProjectData({ calendars: projectData.calendars.map(cal => cal.id === c.id ? c : cal) })} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => { }} onExtractSoftAnchors={handleExtractSoftAnchors} onScanContinuity={handleScanContinuity} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
+        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={handleUpdateCalendar} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => { }} onExtractSoftAnchors={handleExtractSoftAnchors} onScanContinuity={handleScanContinuity} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
 
       case ViewType.MAP:
         if (!projectData) return null;

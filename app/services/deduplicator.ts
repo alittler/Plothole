@@ -78,6 +78,8 @@ export class Deduplicator {
       aliases: Array.from(new Set([...(existing.aliases || []), ...(fresh.aliases || [])])),
       traits: Array.from(new Set([...(existing.traits || []), ...(fresh.traits || [])])),
       description: existing.description || fresh.description,
+      physical_description: existing.physical_description || fresh.physical_description,
+      affiliation: existing.affiliation || fresh.affiliation,
       metadata: { ...(existing.metadata || {}), ...(fresh.metadata || {}) }
     };
   }

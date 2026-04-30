@@ -37,13 +37,23 @@ export async function POST(request: NextRequest) {
       characters: [
         {
           name: "string",
-          traits: ["string"],
-          motivation: "string",
-          description: "string",
           aliases: ["string"],
           role: "string",
           job: "string",
           tier: 1,
+          traits: ["string"],
+          primary_trait: "string",
+          strengths: "string",
+          weaknesses: "string",
+          motivation: "string",
+          conflict: "string",
+          description: "string",
+          physical_description: "string",
+          species: "string",
+          gender: "string",
+          age: "string",
+          affiliation: "string",
+          style: "string",
           type: "Character"
         }
       ],
@@ -72,11 +82,15 @@ export async function POST(request: NextRequest) {
       existingEntities || []
     );
 
-    console.log(`[Narrative API] Extraction complete. Found ${worldState.length} total entities.`);
+    // Detect world type
+    const worldType = await engine.detectWorldType(manuscriptText);
+
+    console.log(`[Narrative API] Extraction complete. Found ${worldState.length} total entities. World type: ${worldType}`);
 
     return NextResponse.json({ 
       worldState,
-      chunksCount: processedChunks.length
+      chunksCount: processedChunks.length,
+      worldType
     });
 
   } catch (error: any) {

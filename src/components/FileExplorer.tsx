@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Folder, File, Loader2 } from 'lucide-react';
+import { safeResponseJson } from '@/utils/jsonUtils';
 
 interface FileNode {
   name: string;
@@ -27,9 +28,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSelectFile }) => {
       const res = await fetch('/api/data/tree', {
         method: 'GET'
       });
-      const result = await res.json();
+      const result = await safeResponseJson(res);
       
-      if (result.error) {
+      if (!result) {
+        console.error('Error loading file tree: Failed to parse response');
+      } else if (result.error) {
         console.error('Error loading file tree:', result.error);
       } else {
         setTree(result.tree || []);

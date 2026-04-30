@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, X, Loader2, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { safeResponseJson } from '@/utils/jsonUtils';
 
 interface EditingData {
   [key: string]: any;
@@ -30,8 +31,11 @@ export const DataEditor: React.FC<DataEditorProps> = ({ category, filename, onCl
         method: 'POST',
         body: JSON.stringify({ category, filename })
       });
-      const result = await res.json();
-      if (result.error) {
+      const result = await safeResponseJson(res);
+      if (!result) {
+        setMessage('Error: Failed to load file');
+        setMessageType('error');
+      } else if (result.error) {
         setMessage(`Error: ${result.error}`);
         setMessageType('error');
       } else {
@@ -57,9 +61,12 @@ export const DataEditor: React.FC<DataEditorProps> = ({ category, filename, onCl
         method: 'POST',
         body: JSON.stringify({ category, filename, data })
       });
-      const result = await res.json();
+      const result = await safeResponseJson(res);
 
-      if (result.error) {
+      if (!result) {
+        setMessage('Error: Failed to save file');
+        setMessageType('error');
+      } else if (result.error) {
         setMessage(`Error: ${result.error}`);
         setMessageType('error');
       } else {

@@ -718,7 +718,7 @@ export const saveGlobalNote = async (note: Note): Promise<void> => {
   const db = await getDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_GLOBALS, 'readwrite');
-    tx.objectStore(STORE_GLOBALS).put({ id: 'global_notes', data: [...notes, note] });
+    tx.objectStore(STORE_GLOBALS).put({ id: 'global_notes', data: [note, ...notes] });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
