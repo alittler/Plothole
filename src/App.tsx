@@ -27,6 +27,8 @@ import {
 } from './services/storageService';
 import { Commit, BackupStatus } from './types';
 import { safeJsonParse, safeResponseJson } from './utils/jsonUtils';
+import { EditModalProvider, useEditModal } from './contexts/EditModalContext';
+import { DynamicEditModal } from './components/ui/DynamicEditModal';
 
 // Components
 import { Sidebar } from './components/Layout/Sidebar';
@@ -2512,6 +2514,40 @@ Include only the arrays for enabled sections above.`;
   const [isGuest, setIsGuest] = useState(false);
 
   return (
+    <EditModalProvider>
+      <AppWithEditor
+        isPublicWikiRoute={isPublicWikiRoute}
+        isAuthenticated={isAuthenticated}
+        isAuthLoading={isAuthLoading}
+        isGuest={isGuest}
+        setIsGuest={setIsGuest}
+        renderAppContent={renderAppContent}
+      />
+    </EditModalProvider>
+  );
+};
+
+interface AppWithEditorProps {
+  isPublicWikiRoute: () => boolean;
+  isAuthenticated: boolean;
+  isAuthLoading: boolean;
+  isGuest: boolean;
+  setIsGuest: (value: boolean) => void;
+  renderAppContent: () => React.ReactNode;
+}
+
+const AppWithEditor: React.FC<AppWithEditorProps> = ({
+  isPublicWikiRoute,
+  isAuthenticated,
+  isAuthLoading,
+  isGuest,
+  setIsGuest,
+  renderAppContent,
+}) => {
+  const { modalState, closeEditor } = useEditModal();
+  const location = useLocation();
+
+  return (
     <>
       {isPublicWikiRoute() ? (
         // Render public wiki pages without authentication
@@ -2525,6 +2561,16 @@ Include only the arrays for enabled sections above.`;
       ) : (
         renderAppContent()
       )}
+      
+      {/* Global Edit Modal */}
+      <DynamicEditModal
+        isOpen={modalState.isOpen}
+        data={modalState.data}
+        entityType={modalState.entityType}
+        entityId={modalState.entityId}
+        title={modalState.title}
+        onClose={closeEditor}
+      />
     </>
   );
 };
