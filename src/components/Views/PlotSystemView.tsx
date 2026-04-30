@@ -448,9 +448,35 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                                   }}
                                   className="w-12 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                 />
+                                <button
+                                  onClick={() => {
+                                    const updated = {...editingCalendar};
+                                    updated.months.splice(idx, 1);
+                                    setEditingCalendar(updated);
+                                  }}
+                                  className="px-2 py-1 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                >
+                                  ✕
+                                </button>
                               </td>
                             </tr>
                           ))}
+
+                          {/* Add Month Button */}
+                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td colSpan={2} className="px-4 py-2">
+                              <button
+                                onClick={() => {
+                                  const updated = {...editingCalendar};
+                                  updated.months.push({name: 'New Month', days: 30});
+                                  setEditingCalendar(updated);
+                                }}
+                                className="w-full px-3 py-1 text-xs font-bold uppercase text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors flex items-center justify-center gap-2"
+                              >
+                                + Add Month
+                              </button>
+                            </td>
+                          </tr>
 
                           {/* Eras Header */}
                           <tr className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
@@ -487,9 +513,35 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                                   }}
                                   className="w-12 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                 />
+                                <button
+                                  onClick={() => {
+                                    const updated = {...editingCalendar};
+                                    updated.eras.splice(idx, 1);
+                                    setEditingCalendar(updated);
+                                  }}
+                                  className="px-2 py-1 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                >
+                                  ✕
+                                </button>
                               </td>
                             </tr>
                           ))}
+
+                          {/* Add Era Button */}
+                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td colSpan={2} className="px-4 py-2">
+                              <button
+                                onClick={() => {
+                                  const updated = {...editingCalendar};
+                                  updated.eras.push({name: 'New Era', abbreviation: ''});
+                                  setEditingCalendar(updated);
+                                }}
+                                className="w-full px-3 py-1 text-xs font-bold uppercase text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors flex items-center justify-center gap-2"
+                              >
+                                + Add Era
+                              </button>
+                            </td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
