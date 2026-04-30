@@ -4,6 +4,7 @@ import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../type
 import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight, FileText, Search, Download } from 'lucide-react';
 import { calculateUEI, getDateFromUEI, parseDateToUEI } from '../../utils/calendarUtils';
 import { CardActions } from '../ui/CardActions';
+import { CALENDAR_PRESETS } from '../../utils/calendarPresets';
 
 interface PlotSystemViewProps {
   currentView: ViewType;
@@ -327,146 +328,160 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
               {/* Calendar Settings Modal */}
               {showCalendarSettings && editingCalendar && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in">
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+                  <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
                     {/* Header */}
-                    <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-                      <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Calendar Settings</h2>
-                      <p className="text-xs text-slate-500 mt-1">Customize {editingCalendar.name}</p>
+                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                      <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Calendar Settings</h2>
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
                       {/* Calendar Name */}
                       <div>
-                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Calendar Name</label>
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Name</label>
                         <input 
                           type="text"
                           value={editingCalendar.name}
                           onChange={(e) => setEditingCalendar({...editingCalendar, name: e.target.value})}
-                          className="w-full mt-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full mt-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           placeholder="Calendar name"
                         />
                       </div>
 
-                      {/* Calendar Type */}
+                      {/* Preset Selector */}
                       <div>
-                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Type</label>
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Preset</label>
                         <select 
-                          value={editingCalendar.type}
-                          onChange={(e) => setEditingCalendar({...editingCalendar, type: e.target.value as any})}
-                          className="w-full mt-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          onChange={(e) => {
+                            const preset = CALENDAR_PRESETS[e.target.value];
+                            if (preset) {
+                              setEditingCalendar({...preset, id: editingCalendar.id, name: editingCalendar.name});
+                            }
+                          }}
+                          className="w-full mt-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         >
-                          <option value="real-world">Real World</option>
-                          <option value="fantasy-calendar">Fantasy Calendar</option>
+                          <option value="">-- Select preset --</option>
+                          <option value="gregorian">Gregorian</option>
+                          <option value="chinese">Chinese</option>
+                          <option value="islamic">Islamic (Hijri)</option>
+                          <option value="hebrew">Hebrew</option>
+                          <option value="buddhist">Buddhist</option>
+                          <option value="internationalFixed">International Fixed</option>
+                          <option value="custom">Custom</option>
                         </select>
                       </div>
 
-                      {/* Days Per Week */}
+                      {/* Color */}
                       <div>
-                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Days Per Week</label>
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Color</label>
                         <input 
-                          type="number"
-                          min="5"
-                          max="10"
-                          value={editingCalendar.daysPerWeek}
-                          onChange={(e) => setEditingCalendar({...editingCalendar, daysPerWeek: parseInt(e.target.value) || 7})}
-                          className="w-full mt-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          type="color"
+                          value={editingCalendar.color || '#3B82F6'}
+                          onChange={(e) => setEditingCalendar({...editingCalendar, color: e.target.value})}
+                          className="w-full mt-1 h-8 rounded cursor-pointer border border-slate-200 dark:border-slate-700"
                         />
                       </div>
 
-                      {/* Months */}
+                      {/* Days Per Week */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Days/Week</label>
+                          <input 
+                            type="number"
+                            min="5"
+                            max="10"
+                            value={editingCalendar.daysPerWeek}
+                            onChange={(e) => setEditingCalendar({...editingCalendar, daysPerWeek: parseInt(e.target.value) || 7})}
+                            className="w-full mt-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Months</label>
+                          <div className="mt-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white">
+                            {editingCalendar.months.length}
+                          </div>
+                        </div>
+                      </div>
+
+                      <hr className="border-slate-200 dark:border-slate-700 my-2" />
+
+                      {/* Months (Compact) */}
                       <div>
-                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest block mb-2">📅 Months</label>
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest block mb-1">📅 Months</label>
+                        <div className="space-y-1 max-h-32 overflow-y-auto text-xs">
                           {editingCalendar.months.map((month, idx) => (
-                            <div key={idx} className="flex gap-2">
+                            <div key={idx} className="flex gap-1">
                               <input 
                                 type="text"
-                                placeholder="Month name"
+                                placeholder="Name"
                                 value={month.name}
                                 onChange={(e) => {
                                   const updated = {...editingCalendar};
                                   updated.months[idx].name = e.target.value;
                                   setEditingCalendar(updated);
                                 }}
-                                className="flex-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                className="flex-1 px-1 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
                               <input 
                                 type="number"
                                 min="28"
                                 max="31"
-                                placeholder="Days"
                                 value={month.days}
                                 onChange={(e) => {
                                   const updated = {...editingCalendar};
                                   updated.months[idx].days = parseInt(e.target.value) || 30;
                                   setEditingCalendar(updated);
                                 }}
-                                className="w-16 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                className="w-12 px-1 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
                             </div>
                           ))}
                         </div>
                       </div>
 
-                      {/* Eras */}
+                      {/* Eras (Compact) */}
                       <div>
-                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest block mb-2">⏛️ Eras</label>
-                        <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest block mb-1">⏛️ Eras</label>
+                        <div className="space-y-1 max-h-24 overflow-y-auto text-xs">
                           {editingCalendar.eras.map((era, idx) => (
-                            <div key={idx} className="flex gap-2">
+                            <div key={idx} className="flex gap-1">
                               <input 
                                 type="text"
-                                placeholder="Era name"
+                                placeholder="Era"
                                 value={era.name}
                                 onChange={(e) => {
                                   const updated = {...editingCalendar};
                                   updated.eras[idx].name = e.target.value;
                                   setEditingCalendar(updated);
                                 }}
-                                className="flex-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                className="flex-1 px-1 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
                               <input 
                                 type="text"
                                 placeholder="Abbr"
+                                maxLength="3"
                                 value={era.abbreviation || ''}
                                 onChange={(e) => {
                                   const updated = {...editingCalendar};
                                   updated.eras[idx].abbreviation = e.target.value;
                                   setEditingCalendar(updated);
                                 }}
-                                className="w-12 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                className="w-12 px-1 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
                             </div>
                           ))}
                         </div>
                       </div>
-
-                      {/* Fantasy Calendar Features */}
-                      {editingCalendar.type === 'fantasy-calendar' && (
-                        <>
-                          {/* Color Picker */}
-                          <div>
-                            <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Calendar Color</label>
-                            <input 
-                              type="color"
-                              value={editingCalendar.color || '#A855F7'}
-                              onChange={(e) => setEditingCalendar({...editingCalendar, color: e.target.value})}
-                              className="w-full mt-2 h-10 rounded-lg cursor-pointer"
-                            />
-                          </div>
-                        </>
-                      )}
                     </div>
 
                     {/* Footer */}
-                    <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-end gap-3">
+                    <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-end gap-2">
                       <button 
                         onClick={() => {
                           setShowCalendarSettings(false);
                           setEditingCalendar(null);
                         }}
-                        className="px-4 py-2 text-xs font-bold uppercase text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        className="px-3 py-1 text-xs font-bold uppercase text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                       >
                         Cancel
                       </button>
@@ -478,9 +493,9 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                             setEditingCalendar(null);
                           }
                         }}
-                        className="px-4 py-2 text-xs font-bold uppercase bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors"
+                        className="px-3 py-1 text-xs font-bold uppercase bg-indigo-600 text-white hover:bg-indigo-700 rounded transition-colors"
                       >
-                        Save Changes
+                        Save
                       </button>
                     </div>
                   </div>
