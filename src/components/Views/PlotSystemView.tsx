@@ -330,152 +330,172 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in">
                   <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
                     {/* Header */}
-                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex-shrink-0">
                       <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Calendar Settings</h2>
                     </div>
 
-                    {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                      {/* Calendar Name */}
-                      <div>
-                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Name</label>
-                        <input 
-                          type="text"
-                          value={editingCalendar.name}
-                          onChange={(e) => setEditingCalendar({...editingCalendar, name: e.target.value})}
-                          className="w-full mt-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          placeholder="Calendar name"
-                        />
-                      </div>
-
-                      {/* Preset Selector */}
-                      <div>
-                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Preset</label>
-                        <select 
-                          onChange={(e) => {
-                            const preset = CALENDAR_PRESETS[e.target.value];
-                            if (preset) {
-                              setEditingCalendar({...preset, id: editingCalendar.id, name: editingCalendar.name});
-                            }
-                          }}
-                          className="w-full mt-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        >
-                          <option value="">-- Select preset --</option>
-                          <option value="gregorian">Gregorian</option>
-                          <option value="chinese">Chinese</option>
-                          <option value="islamic">Islamic (Hijri)</option>
-                          <option value="hebrew">Hebrew</option>
-                          <option value="buddhist">Buddhist</option>
-                          <option value="internationalFixed">International Fixed</option>
-                          <option value="custom">Custom</option>
-                        </select>
-                      </div>
-
-                      {/* Color */}
-                      <div>
-                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Color</label>
-                        <input 
-                          type="color"
-                          value={editingCalendar.color || '#3B82F6'}
-                          onChange={(e) => setEditingCalendar({...editingCalendar, color: e.target.value})}
-                          className="w-full mt-1 h-8 rounded cursor-pointer border border-slate-200 dark:border-slate-700"
-                        />
-                      </div>
-
-                      {/* Days Per Week */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Days/Week</label>
-                          <input 
-                            type="number"
-                            min="5"
-                            max="10"
-                            value={editingCalendar.daysPerWeek}
-                            onChange={(e) => setEditingCalendar({...editingCalendar, daysPerWeek: parseInt(e.target.value) || 7})}
-                            className="w-full mt-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Months</label>
-                          <div className="mt-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white">
-                            {editingCalendar.months.length}
-                          </div>
-                        </div>
-                      </div>
-
-                      <hr className="border-slate-200 dark:border-slate-700 my-2" />
-
-                      {/* Months (Compact) */}
-                      <div>
-                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest block mb-1">📅 Months</label>
-                        <div className="space-y-1 max-h-32 overflow-y-auto text-xs">
-                          {editingCalendar.months.map((month, idx) => (
-                            <div key={idx} className="flex gap-1">
+                    {/* Unified Content Table - Everything scrolls together */}
+                    <div className="flex-1 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <tbody>
+                          {/* Name */}
+                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Name</td>
+                            <td className="px-4 py-2">
                               <input 
                                 type="text"
-                                placeholder="Name"
-                                value={month.name}
-                                onChange={(e) => {
-                                  const updated = {...editingCalendar};
-                                  updated.months[idx].name = e.target.value;
-                                  setEditingCalendar(updated);
-                                }}
-                                className="flex-1 px-1 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                value={editingCalendar.name}
+                                onChange={(e) => setEditingCalendar({...editingCalendar, name: e.target.value})}
+                                className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder="Calendar name"
                               />
+                            </td>
+                          </tr>
+
+                          {/* Preset */}
+                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Preset</td>
+                            <td className="px-4 py-2">
+                              <select 
+                                onChange={(e) => {
+                                  const preset = CALENDAR_PRESETS[e.target.value];
+                                  if (preset) {
+                                    setEditingCalendar({...preset, id: editingCalendar.id, name: editingCalendar.name});
+                                  }
+                                }}
+                                className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              >
+                                <option value="">Select preset</option>
+                                <option value="gregorian">Gregorian</option>
+                                <option value="chinese">Chinese</option>
+                                <option value="islamic">Islamic (Hijri)</option>
+                                <option value="hebrew">Hebrew</option>
+                                <option value="buddhist">Buddhist</option>
+                                <option value="internationalFixed">International Fixed</option>
+                                <option value="custom">Custom</option>
+                              </select>
+                            </td>
+                          </tr>
+
+                          {/* Color */}
+                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Color</td>
+                            <td className="px-4 py-2">
+                              <input 
+                                type="color"
+                                value={editingCalendar.color || '#3B82F6'}
+                                onChange={(e) => setEditingCalendar({...editingCalendar, color: e.target.value})}
+                                className="w-full h-8 rounded cursor-pointer border border-slate-200 dark:border-slate-700"
+                              />
+                            </td>
+                          </tr>
+
+                          {/* Days Per Week */}
+                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Days/Week</td>
+                            <td className="px-4 py-2">
                               <input 
                                 type="number"
-                                min="28"
-                                max="31"
-                                value={month.days}
-                                onChange={(e) => {
-                                  const updated = {...editingCalendar};
-                                  updated.months[idx].days = parseInt(e.target.value) || 30;
-                                  setEditingCalendar(updated);
-                                }}
-                                className="w-12 px-1 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                min="5"
+                                max="10"
+                                value={editingCalendar.daysPerWeek}
+                                onChange={(e) => setEditingCalendar({...editingCalendar, daysPerWeek: parseInt(e.target.value) || 7})}
+                                className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                            </td>
+                          </tr>
 
-                      {/* Eras (Compact) */}
-                      <div>
-                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest block mb-1">⏛️ Eras</label>
-                        <div className="space-y-1 max-h-24 overflow-y-auto text-xs">
-                          {editingCalendar.eras.map((era, idx) => (
-                            <div key={idx} className="flex gap-1">
-                              <input 
-                                type="text"
-                                placeholder="Era"
-                                value={era.name}
-                                onChange={(e) => {
-                                  const updated = {...editingCalendar};
-                                  updated.eras[idx].name = e.target.value;
-                                  setEditingCalendar(updated);
-                                }}
-                                className="flex-1 px-1 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              />
-                              <input 
-                                type="text"
-                                placeholder="Abbr"
-                                maxLength="3"
-                                value={era.abbreviation || ''}
-                                onChange={(e) => {
-                                  const updated = {...editingCalendar};
-                                  updated.eras[idx].abbreviation = e.target.value;
-                                  setEditingCalendar(updated);
-                                }}
-                                className="w-12 px-1 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              />
-                            </div>
+                          {/* Month Count */}
+                          <tr className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Months</td>
+                            <td className="px-4 py-2 text-slate-600 dark:text-slate-400">
+                              {editingCalendar.months.length}
+                            </td>
+                          </tr>
+
+                          {/* Months Header */}
+                          <tr className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
+                            <td colSpan={2} className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest text-xs">📅 Month Details</td>
+                          </tr>
+
+                          {/* Month Rows */}
+                          {editingCalendar.months.map((month, idx) => (
+                            <tr key={idx} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest text-xs whitespace-nowrap">
+                                M{idx + 1}
+                              </td>
+                              <td className="px-4 py-2 flex gap-2">
+                                <input 
+                                  type="text"
+                                  placeholder="Name"
+                                  value={month.name}
+                                  onChange={(e) => {
+                                    const updated = {...editingCalendar};
+                                    updated.months[idx].name = e.target.value;
+                                    setEditingCalendar(updated);
+                                  }}
+                                  className="flex-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                />
+                                <input 
+                                  type="number"
+                                  min="28"
+                                  max="31"
+                                  value={month.days}
+                                  onChange={(e) => {
+                                    const updated = {...editingCalendar};
+                                    updated.months[idx].days = parseInt(e.target.value) || 30;
+                                    setEditingCalendar(updated);
+                                  }}
+                                  className="w-12 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </td>
+                            </tr>
                           ))}
-                        </div>
-                      </div>
+
+                          {/* Eras Header */}
+                          <tr className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
+                            <td colSpan={2} className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest text-xs">⏛️ Era Details</td>
+                          </tr>
+
+                          {/* Era Rows */}
+                          {editingCalendar.eras.map((era, idx) => (
+                            <tr key={idx} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <td className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest text-xs whitespace-nowrap">
+                                E{idx + 1}
+                              </td>
+                              <td className="px-4 py-2 flex gap-2">
+                                <input 
+                                  type="text"
+                                  placeholder="Era name"
+                                  value={era.name}
+                                  onChange={(e) => {
+                                    const updated = {...editingCalendar};
+                                    updated.eras[idx].name = e.target.value;
+                                    setEditingCalendar(updated);
+                                  }}
+                                  className="flex-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                />
+                                <input 
+                                  type="text"
+                                  placeholder="Abbr"
+                                  maxLength="3"
+                                  value={era.abbreviation || ''}
+                                  onChange={(e) => {
+                                    const updated = {...editingCalendar};
+                                    updated.eras[idx].abbreviation = e.target.value;
+                                    setEditingCalendar(updated);
+                                  }}
+                                  className="w-12 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
 
                     {/* Footer */}
-                    <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-end gap-2">
+                    <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-end gap-2 flex-shrink-0">
                       <button 
                         onClick={() => {
                           setShowCalendarSettings(false);
