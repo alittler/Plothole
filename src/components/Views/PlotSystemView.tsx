@@ -1,16 +1,18 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ViewType, ProjectData, CalendarSystem, TimelineEvent } from '../../types';
-import { Calendar, Clock, Plus, Sparkles, Edit2, Trash2, List, ChevronLeft, ChevronRight, FileText, Search, Download } from 'lucide-react';
-import { calculateUEI, getDateFromUEI, parseDateToUEI } from '../../utils/calendarUtils';
+import { ViewType, ProjectData, TimelineEvent, defaultCalendarConfig, CalendarConfig } from '../../types';
+import { parseYear } from '../../services/anchorsService';
+import { Clock, Plus, Sparkles, Edit2, List, FileText, Search, Download, Calendar as CalendarIcon } from 'lucide-react';
 import { CardActions } from '../ui/CardActions';
+import { useEditModal } from '../../contexts/EditModalContext';
+import { CalendarTab } from './CalendarTab';
+import { AnchorSyncModal } from './AnchorSyncModal';
+import { TimelineEventEditModal } from './TimelineEventEditModal';
 
 interface PlotSystemViewProps {
   currentView: ViewType;
   onChangeView: (view: ViewType) => void;
   data: ProjectData;
-  onUpdateCalendar: (c: CalendarSystem) => void;
-  onSetActiveCalendar: (id: string) => void;
   onLinkClick: (type: string, id: string) => void;
   onAddTimelineEvent: (e: TimelineEvent) => void;
   onUpdateTimelineEvent: (e: TimelineEvent) => void;
@@ -29,10 +31,11 @@ enum PlotTab {
 }
 
 export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
-  data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, onScanContinuity, isAnalyzing, onLinkClick, onUpdateCalendar
+  data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, onScanContinuity, isAnalyzing, onLinkClick
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { openEditor } = useEditModal();
   const activeTab = (searchParams.get('tab') as PlotTab) || PlotTab.TIMELINE;
   const setActiveTab = (tab: PlotTab) => {
     const params = new URLSearchParams(searchParams);
@@ -41,145 +44,110 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
   };
 
   const [manuscriptSearch, setManuscriptSearch] = useState('');
+  const [showAnchorSync, setShowAnchorSync] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
+  const [showEventEditor, setShowEventEditor] = useState(false);
 
-  // Calendar State
-  const rawActiveCalendar = data.calendars?.find(c => c.id === data.activeCalendarId) || data.calendars?.[0];
-  
-  const activeCalendar = useMemo(() => {
-    if (rawActiveCalendar?.type === 'fantasy-calendar' && rawActiveCalendar.fantasyData) {
-      const fd = rawActiveCalendar.fantasyData;
-      return {
-        ...rawActiveCalendar,
-        months: fd.static_data.months.map(m => ({ id: String(m.id), name: m.name, days: m.length })),
-        weekDays: (fd.static_data.weekdays as any[]).map(w => typeof w === 'string' ? w : w.name),
-        daysPerWeek: fd.static_data.weekdays.length,
-        hoursPerDay: fd.static_data.clock.hours,
-        currentEpochDay: fd.dynamic_data.epoch
-      };
-    }
-    return rawActiveCalendar || {
-      id: 'default',
-      name: 'Standard Calendar',
-      weekDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      daysPerWeek: 7,
-      hoursPerDay: 24,
-      months: [{ id: '1', name: 'January', days: 30 }],
-      eras: [{ id: '1', name: 'First Age', abbreviation: 'FA', startYear: 0 }],
-      currentEpochDay: 0
-    };
-  }, [rawActiveCalendar]);
-
-  const [currentYear, setCurrentYear] = useState<number>(1);
-  const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(0);
-
-  // Sync internal state with active calendar if it's fantasy
-  useEffect(() => {
-    if (rawActiveCalendar?.type === 'fantasy-calendar' && rawActiveCalendar.fantasyData) {
-      const fd = rawActiveCalendar.fantasyData;
-      setCurrentYear(fd.dynamic_data.year);
-      const mIdx = fd.static_data.months.findIndex(m => Number(m.id) === fd.dynamic_data.month_id);
-      setCurrentMonthIndex(mIdx >= 0 ? mIdx : 0);
-    }
-  }, [rawActiveCalendar]);
-
-  const handleImportFantasyCalendar = () => {
-    const json = prompt('Paste your Fantasy Calendar JSON export:');
-    if (!json) return;
-    try {
-      const parsed = JSON.parse(json);
-      if (!parsed.static_data || !parsed.dynamic_data) {
-        alert('Invalid Fantasy Calendar JSON format.');
-        return;
+  // Helper to sync timeline events to calendar config
+  const syncTimelineToCalendarConfig = (timeline: TimelineEvent[], calendarConfig: CalendarConfig): CalendarConfig => {
+    const updatedEvents = { ...calendarConfig.events };
+    
+    // Add all timeline events that have month/day to calendar
+    timeline.forEach(event => {
+      if (event.month !== undefined && event.day !== undefined) {
+        const dateKey = `${event.month}-${event.day}`;
+        if (!updatedEvents[dateKey]) {
+          updatedEvents[dateKey] = [];
+        }
+        if (!updatedEvents[dateKey].includes(event.title)) {
+          updatedEvents[dateKey] = [...updatedEvents[dateKey], event.title];
+        }
       }
-
-      const newCalendar: CalendarSystem = {
-        id: Math.random().toString(36).substring(7),
-        name: parsed.name || 'Imported Fantasy Calendar',
-        type: 'fantasy-calendar',
-        fantasyData: parsed,
-        months: [], // Will be derived
-        eras: parsed.static_data.eras || []
-      };
-
-      onUpdateProject({ 
-        calendars: [...(data.calendars || []), newCalendar],
-        activeCalendarId: newCalendar.id
-      });
-      alert('Fantasy Calendar imported successfully!');
-    } catch (e) {
-      alert('Failed to parse JSON: ' + (e as Error).message);
-    }
+    });
+    
+    return { ...calendarConfig, events: updatedEvents };
   };
 
-  const handleSelectEvent = (event: TimelineEvent) => {
-    // Always find the latest version of this event from data.timeline to ensure sync
-    const latestEvent = data.timeline.find(e => e.id === event.id) || event;
-    
-    if (latestEvent.uei !== undefined) {
-      const { year, monthIndex } = getDateFromUEI(activeCalendar, latestEvent.uei);
-      setCurrentYear(year);
-      setCurrentMonthIndex(monthIndex);
-      setActiveTab(PlotTab.CALENDAR);
+  // Helper to remove deleted timeline events from calendar config
+  const removeDeletedEventFromCalendarConfig = (deletedEvent: TimelineEvent, calendarConfig: CalendarConfig): CalendarConfig => {
+    if (deletedEvent.month === undefined || deletedEvent.day === undefined) {
+      return calendarConfig;
     }
+    
+    const dateKey = `${deletedEvent.month}-${deletedEvent.day}`;
+    const updatedEvents = { ...calendarConfig.events };
+    
+    if (updatedEvents[dateKey]) {
+      updatedEvents[dateKey] = updatedEvents[dateKey].filter(title => title !== deletedEvent.title);
+      if (updatedEvents[dateKey].length === 0) {
+        delete updatedEvents[dateKey];
+      }
+    }
+    
+    return { ...calendarConfig, events: updatedEvents };
   };
 
   const handleDelete = (id: string) => {
-    onUpdateProject({ timeline: data.timeline.filter(e => e.id !== id) });
+    const deletedEvent = data.timeline.find(e => e.id === id);
+    const updatedTimeline = data.timeline.filter(e => e.id !== id);
+    
+    let updatedCalendarConfig = data.calendarConfig || defaultCalendarConfig;
+    if (deletedEvent) {
+      updatedCalendarConfig = removeDeletedEventFromCalendarConfig(deletedEvent, updatedCalendarConfig);
+    }
+    
+    onUpdateProject({ 
+      timeline: updatedTimeline,
+      calendarConfig: updatedCalendarConfig
+    });
   };
 
-  // Pre-calculate and sort timeline
+  const handleAnchorSync = (updatedEvents: TimelineEvent[]) => {
+    console.log('[PlotSystemView] Anchor sync received updated events:', updatedEvents);
+    console.log('[PlotSystemView] Calling onUpdateProject with timeline:', updatedEvents.map(e => ({ id: e.id, title: e.title, date: e.startDate || e.date })));
+    
+    const updatedCalendarConfig = syncTimelineToCalendarConfig(
+      updatedEvents, 
+      data.calendarConfig || defaultCalendarConfig
+    );
+    
+    onUpdateProject({ 
+      timeline: updatedEvents,
+      calendarConfig: updatedCalendarConfig
+    });
+  };
+
+  const handleSaveEventEdit = (updatedEvent: TimelineEvent) => {
+    const updatedTimeline = data.timeline.map(e => e.id === updatedEvent.id ? updatedEvent : e);
+    const updatedCalendarConfig = syncTimelineToCalendarConfig(
+      updatedTimeline,
+      data.calendarConfig || defaultCalendarConfig
+    );
+    
+    onUpdateProject({ 
+      timeline: updatedTimeline,
+      calendarConfig: updatedCalendarConfig
+    });
+    setShowEventEditor(false);
+    setEditingEvent(null);
+  };
+
+  // Pre-calculate and sort timeline chronologically
   const sortedTimeline = useMemo(() => {
-    return [...(data.timeline || [])].sort((a, b) => {
-      const ueiA = a.uei !== undefined ? a.uei : (parseDateToUEI(activeCalendar, a.startDate || a.date) ?? -1);
-      const ueiB = b.uei !== undefined ? b.uei : (parseDateToUEI(activeCalendar, b.startDate || b.date) ?? -1);
-      return ueiA - ueiB;
+    const timeline = [...(data.timeline || [])];
+    return timeline.sort((a, b) => {
+      const yearA = parseYear(a.startDate || a.date || '');
+      const yearB = parseYear(b.startDate || b.date || '');
+      
+      if (yearA !== null && yearB !== null) {
+        return yearA - yearB;
+      }
+      
+      // If one has no date, keep original relative order or put at the end
+      if (yearA === null && yearB === null) return 0;
+      return yearA === null ? 1 : -1;
     });
-  }, [data.timeline, activeCalendar]);
-
-  // Pre-calculate UEI for calendar map
-  const eventsByUEI = useMemo(() => {
-    const map = new Map<number, TimelineEvent[]>();
-    sortedTimeline.forEach(event => {
-       if (event.uei !== undefined) {
-         const list = map.get(event.uei) || [];
-         list.push(event);
-         map.set(event.uei, list);
-       }
-    });
-    return map;
-  }, [sortedTimeline]);
-
-  const currentMonth = activeCalendar.months[currentMonthIndex] || { name: 'Unknown', days: 30 };
-  const daysPerWeek = activeCalendar.daysPerWeek || 7;
-
-  // Use engine for true month length if fantasy
-  const trueMonthLength = useMemo(() => {
-    if (rawActiveCalendar?.type === 'fantasy-calendar' && rawActiveCalendar.fantasyData) {
-      const monthId = Number(rawActiveCalendar.fantasyData.static_data.months[currentMonthIndex]?.id);
-      return FantasyCalendarEngine.getMonthLength(rawActiveCalendar.fantasyData, monthId, currentYear);
-    }
-    return currentMonth.days;
-  }, [rawActiveCalendar, currentMonthIndex, currentYear]);
-
-  const gridCells = Array.from({ length: trueMonthLength }, (_, i) => i + 1);
-
-  const handlePrevMonth = () => {
-    if (currentMonthIndex > 0) {
-      setCurrentMonthIndex(currentMonthIndex - 1);
-    } else if (currentYear > 1) {
-      setCurrentYear(currentYear - 1);
-      setCurrentMonthIndex(activeCalendar.months.length - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (currentMonthIndex < activeCalendar.months.length - 1) {
-      setCurrentMonthIndex(currentMonthIndex + 1);
-    } else {
-      setCurrentYear(currentYear + 1);
-      setCurrentMonthIndex(0);
-    }
-  };
+  }, [data.timeline]);
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
@@ -188,22 +156,17 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
           <div className="flex items-center justify-between mb-4">
             <div className="space-y-0 hidden sm:block">
               <h1 className="ph-section-title text-2xl md:text-3xl flex items-center gap-3">
-                <Calendar size={32} className="text-indigo-600" /> Plot & Timeline
+                <Clock size={32} className="text-indigo-600" /> Plot & Timeline
               </h1>
             </div>
             <div className="flex items-center gap-4 ml-auto">
-              <button 
-                onClick={handleImportFantasyCalendar}
-                className="ph-button-secondary text-[10px] py-2"
-                title="Import from fantasy-calendar.com"
-              >
-                <Download size={14} /> Import Fantasy
-              </button>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   type="text"
                   placeholder="Search..."
+                  value={manuscriptSearch}
+                  onChange={(e) => setManuscriptSearch(e.target.value)}
                   className="ph-input pl-12 w-48 lg:w-64"
                 />
               </div>
@@ -211,7 +174,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
           </div>
           <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
             <div className="sm:hidden flex items-center gap-2 shrink-0">
-              <Calendar size={24} className="text-indigo-600" />
+              <Clock size={24} className="text-indigo-600" />
             </div>
             {Object.values(PlotTab).map(tab => (
               <button
@@ -221,7 +184,7 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
                 title={tab}
               >
                 {tab === PlotTab.TIMELINE && <List size={14} />}
-                {tab === PlotTab.CALENDAR && <Clock size={14} />}
+                {tab === PlotTab.CALENDAR && <CalendarIcon size={14} />}
                 {tab === PlotTab.REVISIONS && <FileText size={14} />}
                 {tab === PlotTab.AUDIT && <Sparkles size={14} />}
                 <span className="hidden sm:inline">{tab}</span>
@@ -237,37 +200,59 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
             <>
               <div className="flex flex-col sm:flex-row justify-end gap-3 md:gap-4 mb-8">
                 <button 
-                  onClick={onExtractSoftAnchors} 
-                  disabled={isAnalyzing}
+                  onClick={() => setShowAnchorSync(true)}
+                  disabled={isAnalyzing || data.timeline.length === 0}
                   className="ph-button-secondary w-full sm:w-auto"
                 >
                   <Sparkles size={16} /> Sync Anchors
                 </button>
-                <button onClick={() => onAddTimelineEvent({ id: Math.random().toString(), date: 'Year 1', title: 'New Event', description: '', charactersInvolved: [], location: '', source: 'manual' })} className="ph-button-primary w-full sm:w-auto">
+                <button onClick={() => {
+                  const newEvent: TimelineEvent = { 
+                    id: Math.random().toString(), 
+                    date: 'Year 1', 
+                    title: 'New Event', 
+                    description: '', 
+                    charactersInvolved: [], 
+                    location: '', 
+                    source: 'manual',
+                    event_type: 'other',
+                    significance: 'minor',
+                    real_world_sort_key: 0,
+                    is_flashback: false,
+                    participants: [],
+                    field_notes: []
+                  };
+                  onAddTimelineEvent(newEvent);
+                  
+                  // Sync new event to calendar config
+                  const updatedCalendarConfig = syncTimelineToCalendarConfig(
+                    [...data.timeline, newEvent],
+                    data.calendarConfig || defaultCalendarConfig
+                  );
+                  onUpdateProject({ calendarConfig: updatedCalendarConfig });
+                }} className="ph-button-primary w-full sm:w-auto">
                   <Plus size={16} /> Add Event
                 </button>
               </div>
               <div className="relative border-l-2 border-slate-200 dark:border-slate-800 pl-4 md:pl-8 space-y-8 md:space-y-12">
-                {sortedTimeline.map((event, idx) => (
+                {sortedTimeline.map((event) => (
                   <div key={event.id} className="relative group">
                     <div className={`absolute -left-[17px] md:-left-[41px] top-0 w-3 md:h-4 md:w-4 h-3 rounded-full border-2 md:border-4 border-white dark:border-slate-950 shadow-sm ${event.isSoftAnchor ? 'bg-indigo-400 border-dashed' : 'bg-amber-500'}`} />
                     <div 
-                      onClick={() => handleSelectEvent(event)}
                       className={`p-4 md:p-6 rounded-2xl shadow-sm border hover:shadow-md transition-all cursor-pointer ${event.isSoftAnchor ? 'bg-indigo-50/30 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <span className={`text-xs font-black uppercase tracking-widest ${event.isSoftAnchor ? 'text-indigo-500' : 'text-amber-600'}`}>{event.date}</span>
+                          <span className={`text-xs font-black uppercase tracking-widest ${event.isSoftAnchor ? 'text-indigo-500' : 'text-amber-600'}`}>{event.date || event.startDate || 'No date'}</span>
                           {event.isSoftAnchor && <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded uppercase tracking-widest font-black flex items-center gap-1"><Clock size={10} /> Soft Anchor</span>}
-                          <span className="text-[8px] font-mono opacity-30">UEI: {event.uei !== undefined ? event.uei : parseDateToUEI(activeCalendar, event.startDate || event.date)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           {event.source === 'ai' && <Sparkles size={14} className={event.isSoftAnchor ? 'text-indigo-400' : 'text-amber-400'} />}
                           <CardActions
                             itemName={event.title}
                             onEdit={() => {
-                              handleSelectEvent(event);
-                              onLinkClick('admin', event.id);
+                              setEditingEvent(event);
+                              setShowEventEditor(true);
                             }}
                             onDelete={() => handleDelete(event.id)}
                           />
@@ -290,103 +275,14 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
           )}
 
           {activeTab === PlotTab.CALENDAR && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-4">
-                  <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                    <ChevronLeft size={20} />
-                  </button>
-                  <div className="text-center w-48">
-                    <div className="font-black text-lg text-slate-900 dark:text-white uppercase tracking-tight">{currentMonth.name}</div>
-                    <div className="text-xs font-bold text-amber-500 uppercase tracking-widest">
-                       Year {currentYear} {activeCalendar.eras.length > 0 ? activeCalendar.eras[0].abbreviation : ''}
-                    </div>
-                  </div>
-                  <button onClick={handleNextMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-xs text-slate-500">
-                    Universal Epoch: <span className="font-mono font-bold text-slate-900 dark:text-white">{activeCalendar.currentEpochDay || 0}</span>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      window.open('/keystatic?collection=calendars', 'keystatic-calendars', 'width=1200,height=800,resizable=yes');
-                    }}
-                    className="px-3 py-1 text-xs font-bold uppercase bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 rounded-lg transition-colors"
-                  >
-                    Manage in Keystatic
-                  </button>
-                </div>
-              </div>
-
-
-              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                <div className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950" style={{ gridTemplateColumns: `repeat(${daysPerWeek}, minmax(0, 1fr))` }}>
-                  {Array.from({ length: daysPerWeek }).map((_, i) => (
-                    <div key={i} className="p-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest border-r last:border-r-0 border-slate-200 dark:border-slate-800">
-                      {activeCalendar.weekDays[i % activeCalendar.weekDays.length] || `Day ${i + 1}`}
-                    </div>
-                  ))}
-                </div>
-                <div className="grid auto-rows-fr" style={{ gridTemplateColumns: `repeat(${daysPerWeek}, minmax(0, 1fr))` }}>
-                  {gridCells.map(day => {
-                    let uei = calculateUEI(activeCalendar, currentYear, currentMonthIndex, day);
-                    let weekdayName = activeCalendar.weekDays[((uei % daysPerWeek) + daysPerWeek) % daysPerWeek];
-                    
-                    if (rawActiveCalendar?.type === 'fantasy-calendar' && rawActiveCalendar.fantasyData) {
-                       const monthId = Number(rawActiveCalendar.fantasyData.static_data.months[currentMonthIndex]?.id);
-                       const tempFD = { 
-                         ...rawActiveCalendar.fantasyData, 
-                         dynamic_data: { 
-                           ...rawActiveCalendar.fantasyData.dynamic_data, 
-                           year: currentYear, 
-                           month_id: monthId, 
-                           day 
-                         } 
-                       };
-                       uei = FantasyCalendarEngine.calculateEpoch(tempFD);
-                       weekdayName = FantasyCalendarEngine.getWeekday(rawActiveCalendar.fantasyData, uei);
-                    }
-
-                    const isToday = uei === activeCalendar.currentEpochDay;
-                    const dayEvents = eventsByUEI.get(uei) || [];
-
-                    return (
-                      <div 
-                        key={day} 
-                        className={`min-h-[120px] p-2 border-r border-b border-slate-100 dark:border-slate-800 relative group transition-colors ${isToday ? 'bg-amber-50/50 dark:bg-amber-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-amber-500 text-white' : 'text-slate-500'}`}>
-                            {day}
-                          </div>
-                          <span className="text-[8px] font-black text-slate-300 uppercase truncate px-1">{weekdayName}</span>
-                        </div>
-                        <div className="space-y-1">
-                          {dayEvents.map(ev => (
-                            <div 
-                              key={ev.id} 
-                              className="text-[10px] p-1.5 rounded bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 truncate cursor-pointer hover:border-amber-500 transition-colors shadow-sm" 
-                              onClick={() => {}}
-                            >
-                              <span className="font-bold text-amber-600 dark:text-amber-400 mr-1">•</span>
-                              {ev.title}
-                            </div>
-                          ))}
-                        </div>
-                        <button 
-                           onClick={() => onAddTimelineEvent({ id: Math.random().toString(), date: `${day} of ${currentMonth.name}`, uei, title: 'New Event', description: '', charactersInvolved: [], location: '', source: 'manual' })}
-                           className="absolute bottom-2 right-2 p-1 bg-amber-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Plus size={12} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+            <div className="animate-in fade-in duration-500">
+              <CalendarTab 
+                config={data.calendarConfig || defaultCalendarConfig}
+                onConfigChange={(newConfig) => {
+                  onUpdateProject({ calendarConfig: newConfig });
+                }}
+                timelineEvents={data.timeline}
+              />
             </div>
           )}
 
@@ -453,6 +349,27 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* Anchor Sync Modal */}
+      <AnchorSyncModal
+        events={sortedTimeline}
+        isOpen={showAnchorSync}
+        onClose={() => setShowAnchorSync(false)}
+        onSync={handleAnchorSync}
+      />
+
+      {/* Timeline Event Edit Modal */}
+      {editingEvent && (
+        <TimelineEventEditModal
+          event={editingEvent}
+          isOpen={showEventEditor}
+          onClose={() => {
+            setShowEventEditor(false);
+            setEditingEvent(null);
+          }}
+          onSave={handleSaveEventEdit}
+        />
+      )}
     </div>
   );
 };
