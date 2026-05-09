@@ -175,7 +175,12 @@ export const Calendar2View: React.FC<Calendar2ViewProps> = ({
     if (newEvent.trim()) {
       const { month, day } = globalDayToMonthDay(selectedDay);
       
-      // Add to calendar config
+      // Check if event already exists in timeline
+      const existingEvent = data.timeline.find(e => 
+        e.title === newEvent && e.month === month && e.day === day
+      );
+      
+      // Add to calendar config - this will also sync to timeline via setConfig
       setConfig(prev => ({
         ...prev,
         events: {
@@ -184,11 +189,7 @@ export const Calendar2View: React.FC<Calendar2ViewProps> = ({
         }
       }));
       
-      // Also add to timeline if not already there
-      const existingEvent = data.timeline.find(e => 
-        e.title === newEvent && e.month === month && e.day === day
-      );
-      
+      // Only add to timeline if it doesn't already exist
       if (!existingEvent) {
         const newTimelineEvent = {
           id: `evt-${Date.now()}`,
@@ -219,22 +220,24 @@ export const Calendar2View: React.FC<Calendar2ViewProps> = ({
       const oldEventTitle = (config.events[selectedDay.toString()] || [])[idx];
       const { month, day } = globalDayToMonthDay(selectedDay);
       
-      // Update calendar config
+      // Update calendar config and timeline in one call
       const updatedEvents = [...(config.events[selectedDay.toString()] || [])];
       updatedEvents[idx] = editedEventValue;
-      setConfig(prev => ({
-        ...prev,
-        events: { ...prev.events, [selectedDay.toString()]: updatedEvents }
-      }));
       
-      // Also update timeline
       const updatedTimeline = data.timeline.map(e => {
         if (e.title === oldEventTitle && e.month === month && e.day === day) {
           return { ...e, title: editedEventValue };
         }
         return e;
       });
-      onUpdateProject({ timeline: updatedTimeline });
+      
+      onUpdateProject({ 
+        calendarConfig: {
+          ...config,
+          events: { ...config.events, [selectedDay.toString()]: updatedEvents }
+        },
+        timeline: updatedTimeline
+      });
       
       setEditingEventIdx(null);
       setEditedEventValue('');
@@ -242,21 +245,24 @@ export const Calendar2View: React.FC<Calendar2ViewProps> = ({
 
   const deleteEvent = (idx: number) => {
     const eventTitle = (config.events[selectedDay.toString()] || [])[idx];
-    const { month, day } = globalDayToMonthDay(selectedDay);
     
     // Remove from calendar config
     const updatedEvents = [...(config.events[selectedDay.toString()] || [])];
     updatedEvents.splice(idx, 1);
-    setConfig(prev => ({
-        ...prev,
-        events: { ...prev.events, [selectedDay.toString()]: updatedEvents }
-    }));
     
-    // Also remove from timeline
+    // Update config and timeline in one call to avoid duplication
+    const { month, day } = globalDayToMonthDay(selectedDay);
     const updatedTimeline = data.timeline.filter(e => 
       !(e.title === eventTitle && e.month === month && e.day === day)
     );
-    onUpdateProject({ timeline: updatedTimeline });
+    
+    onUpdateProject({ 
+      calendarConfig: {
+        ...config,
+        events: { ...config.events, [selectedDay.toString()]: updatedEvents }
+      },
+      timeline: updatedTimeline
+    });
   };
 
   return (
