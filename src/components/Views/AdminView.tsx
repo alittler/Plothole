@@ -5,7 +5,7 @@ import {
   Shield, Sparkles, Save, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, GripVertical, Eye, EyeOff, Users, Calendar, Menu, QrCode, BookOpen
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, GripVertical, Eye, EyeOff, Users, Menu, QrCode, BookOpen, GitMerge
 } from 'lucide-react';
 
 import { generateId } from '../../services/storageService';
@@ -223,13 +223,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   const getViewLabel = (view: ViewType): string => {
-    const labels: Record<ViewType, string> = {
+    const labels: Partial<Record<ViewType, string>> = {
       [ViewType.DASHBOARD]: 'Dashboard',
       [ViewType.NOTEPAD]: 'Notepad',
       [ViewType.BOOKSHELF]: 'Library',
       [ViewType.CHARACTERS]: 'Characters',
       [ViewType.MAP]: 'Atlas',
       [ViewType.TIMELINE]: 'History',
+      [ViewType.NARRATIVE_ARCHITECT]: 'Architect',
       [ViewType.CODEX]: 'Codex',
       [ViewType.RESEARCH]: 'Research',
       [ViewType.TOOLBOX]: 'Toolbox',
@@ -240,13 +241,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   const getViewIcon = (view: ViewType) => {
-    const iconMap: Record<ViewType, any> = {
+    const iconMap: Partial<Record<ViewType, any>> = {
       [ViewType.DASHBOARD]: Grid3x3,
       [ViewType.NOTEPAD]: FileText,
       [ViewType.BOOKSHELF]: Book,
       [ViewType.CHARACTERS]: Users,
       [ViewType.MAP]: Globe,
-      [ViewType.TIMELINE]: Calendar,
+      [ViewType.TIMELINE]: Clock,
+      [ViewType.NARRATIVE_ARCHITECT]: GitMerge,
       [ViewType.CODEX]: Book,
       [ViewType.RESEARCH]: Target,
       [ViewType.TOOLBOX]: Wrench,
@@ -984,6 +986,49 @@ books:
                         <li>Timeline, locations, artifacts, and lore are updated</li>
                         <li>Project summary and themes are refreshed</li>
                       </ol>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <h3 className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <Layout size={16} className="text-indigo-500" />
+                        UI Schema Mapping
+                      </h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        A reference guide for where extracted JSON properties are rendered across the Plothole interface:
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                          <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2 font-mono">motivation</p>
+                          <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
+                            <li><strong>Characters View:</strong> Rendered as clickable WikiText in the expanded details pane.</li>
+                            <li><strong>Character Cards:</strong> Displayed on the front of the quick-glance cards.</li>
+                            <li><strong>Entity Edit Modal:</strong> Populates the "Motivation" text area.</li>
+                          </ul>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                          <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2 font-mono">role</p>
+                          <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
+                            <li><strong>Character Cards:</strong> Appears as the subtitle beneath the character's name.</li>
+                            <li><strong>Wiki Page:</strong> Subtitle header under the entity name.</li>
+                            <li><strong>Story Architect:</strong> Shown in uppercase above the character's node.</li>
+                            <li><strong>Entity Edit Modal:</strong> Bound to the "Role / Job Title" field.</li>
+                          </ul>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                          <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2 font-mono">physicalFeatures / style</p>
+                          <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
+                            <li><strong>Characters View:</strong> Listed in the attributes pane.</li>
+                            <li><strong>Entity Edit Modal:</strong> Editable in the "Physical Features" inputs.</li>
+                          </ul>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                          <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2 font-mono">tier</p>
+                          <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
+                            <li><strong>Characters View:</strong> Determines filtering and grouping categories (Core vs Supporting).</li>
+                            <li><strong>System Logic:</strong> Triggers auto-generation of missing descriptions for Tier 1.</li>
+                          </ul>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

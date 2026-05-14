@@ -4,7 +4,6 @@ export enum ViewType {
   TIMELINE = 'Timeline',
   BOARD = 'Board',
   TABLE = 'Table',
-  CALENDAR = 'Calendar',
   GALLERY = 'Gallery',
   NOTEPAD = 'Notepad',
   MAP = 'Map',
@@ -29,14 +28,12 @@ export enum ViewType {
   SYSTEM_HUB = 'SystemHub',
   RESEARCH = 'Research',
   BESTIARY = 'Bestiary',
-  CELESTIAL = 'Celestial'
+  CELESTIAL = 'Celestial',
+  CALENDAR2 = 'Calendar2',
+  NARRATIVE_ARCHITECT = 'NarrativeArchitect'
 }
 
 export const APP_DATA_VERSION = 12;
-
-// ==========================================
-// MODULAR TIERED ARCHITECTURE TYPES
-// ==========================================
 
 export type EntityTier = 1 | 2 | 3;
 
@@ -46,36 +43,28 @@ export interface HierarchicalEntity {
   tier: EntityTier;
   species: string;
   type: 'Character' | 'Location' | 'Item' | 'Event' | 'Lore' | string;
-
-  // Tier 1 (Core)
   motivation?: string;
   conflict?: string;
   aliases?: string[];
-
-  // Tier 2 (Supporting)
   primary_trait?: string;
   location_id?: string;
   role?: string;
-  job?: string; // Maps to jobTitle
-  nickname?: string; // Maps to additionalName
+  job?: string;
+  nickname?: string;
   age?: string;
-  birthplace?: string; // Maps to birthPlace
-  residence?: string; // Maps to homeLocation
+  birthplace?: string;
+  residence?: string;
   traits?: string[];
-  source?: 'manual' | 'ai';
+  source?: 'manual' | 'ai' | 'ai_generated';
   images?: { url: string }[];
   firstMentionOffset?: number;
   lastMentionOffset?: number;
-
-  // Physical and biographical details (from AI analysis)
   physical_description?: string;
-  physicalFeatures?: string; // Height, weight, build, distinctive marks
-  style?: string; // Clothing, appearance style
-  strengths?: string; // Character strengths
-  weaknesses?: string; // Character weaknesses
-  birthday?: string; // Birth date
-
-  // Schema.org/Person Extension Fields
+  physicalFeatures?: string;
+  style?: string;
+  strengths?: string;
+  weaknesses?: string;
+  birthday?: string;
   givenName?: string;
   familyName?: string;
   honorificPrefix?: string;
@@ -87,17 +76,13 @@ export interface HierarchicalEntity {
   nationality?: string;
   affiliation?: string;
   knowsAbout?: string[];
-  birthPlace?: string; // Legacy mapping
-  homeLocation?: string; // Legacy mapping
-
-  // Event / Timeline data
+  birthPlace?: string;
+  homeLocation?: string;
   startDate?: string;
   endDate?: string;
   eventStatus?: string;
   attendees?: any[];
   duration?: string;
-
-  // Dublin Core / Bibliographic data
   dc_creator?: string;
   dc_publisher?: string;
   dc_title?: string;
@@ -107,38 +92,30 @@ export interface HierarchicalEntity {
   bibtex_volume?: string;
   bibtex_number?: string;
   bibtex_pages?: string;
-
-  // SKOS Compatibility
   prefLabel?: string;
   altLabel?: string[];
   broader?: string[];
   narrower?: string[];
   related?: string[];
   scopeNote?: string;
-
-  // Generic / Tier 3
   description?: string;
   fieldNotes?: { label: string; value: string }[];
   metadata?: Record<string, any>;
 }
 
-// ==========================================
-// ENTITY CATALOG TYPES (for JSON imports)
-// ==========================================
-
 export interface CatalogEntity {
   id: string;
-  type: string; // 'Character', 'Location', 'Item', 'Event', etc.
+  type: string;
   name: string;
   description?: string;
   tier?: EntityTier;
-  [key: string]: any; // Allow flexible custom fields
+  [key: string]: any;
 }
 
 export interface EntityCatalog {
-  id: string; // Catalog ID
-  projectId: string; // Associated project
-  name: string; // Catalog name (e.g., "My Worldbuilding")
+  id: string;
+  projectId: string;
+  name: string;
   createdAt: number;
   updatedAt: number;
   entities: CatalogEntity[];
@@ -178,38 +155,18 @@ export interface ProjectManifest {
   }>;
 }
 
-export interface LoreEntry {
-  id: string;
-  term: string; // Maps to prefLabel
-  definition: string; // Maps to definition/note
-  category: string;
-  tags?: string[];
-  source?: 'manual' | 'ai';
-
-  // SKOS (Simple Knowledge Organization System) Compatibility
-  prefLabel?: string;
-  altLabel?: string[]; // Synonyms/Aliases
-  hiddenLabel?: string[];
-  broader?: string[]; // Parent concepts (IDs)
-  narrower?: string[]; // Child concepts (IDs)
-  related?: string[]; // Related concepts (IDs)
-  scopeNote?: string;
-}
-
 export interface Source {
   id: string;
-  name: string; // Maps to dc:title
+  name: string;
   content: string;
-  type: string; // Maps to dc:type
-  timestamp: number; // Maps to dc:date
+  type: string;
+  timestamp: number;
   isAnalyzing?: boolean;
   guide?: any;
-  url?: string; // Maps to dc:identifier
-  author?: string; // Maps to dc:creator / bibtex:author
+  url?: string;
+  author?: string;
   citation?: string;
   filename?: string;
-
-  // Dublin Core (DCMI) Compatibility
   dc_title?: string;
   dc_creator?: string;
   dc_subject?: string;
@@ -225,10 +182,8 @@ export interface Source {
   dc_relation?: string;
   dc_coverage?: string;
   dc_rights?: string;
-
-  // BibTeX Compatibility
   bibtex_key?: string;
-  bibtex_type?: 'article' | 'book' | 'booklet' | 'conference' | 'inbook' | 'incollection' | 'inproceedings' | 'manual' | 'mastersthesis' | 'misc' | 'phdthesis' | 'proceedings' | 'techreport' | 'unpublished';
+  bibtex_type?: string;
   bibtex_journal?: string;
   bibtex_year?: string;
   bibtex_volume?: string;
@@ -239,8 +194,6 @@ export interface Source {
   bibtex_isbn?: string;
   bibtex_issn?: string;
   bibtex_doi?: string;
-
-  // Academic Citation Fields (Legacy Sync)
   publisher?: string;
   publicationYear?: string;
   volume?: string;
@@ -259,8 +212,6 @@ export interface ProjectData {
   summary: string;
   lastModified: number;
   coverImage?: string;
-
-  // Legacy fields (kept for migration/UI compatibility)
   characters: Character[];
   locations: Location[];
   artifacts?: Artifact[];
@@ -275,32 +226,20 @@ export interface ProjectData {
   inspirations?: Inspiration[];
   themes: string[];
   proseDocuments?: ProseDocument[];
-  corkboardNotes?: ProseDocument[]; // Separate collection for corkboard snippets
+  corkboardNotes?: ProseDocument[];
   semanticDocuments?: SemanticDocument[];
   userToolboxLinks?: ToolboxLink[];
-
-  // Research Hub fields
   researchSources?: { id: string; name: string; type: string; uploadDate: number; size: number; extractionStatus: string; notes?: string }[];
   researchNotes?: { id: string; title: string; content: string; sourceIds: string[]; scriptureCitations: string[]; tags: string[]; createdAt: number; updatedAt: number }[];
-
-  // Modular Tiered Architecture fields
   entities: HierarchicalEntity[];
-  manuscript: string; // The baseline text
-  history_diff: string; // The diff ledger
+  manuscript: string;
+  history_diff: string;
   assets: AssetMetadata[];
   manifest?: ProjectManifest;
-
-  // Entity Catalog fields (JSON imports)
   catalogs?: EntityCatalog[];
-
-  // Entity Sandbox fields
   sandboxCards?: any[];
-
-  // System fields
   wordCount?: number;
   charCount?: number;
-  activeCalendarId?: string;
-  calendars: CalendarSystem[];
   commits?: Commit[];
   backups?: BackupStatus[];
   backupSettings?: BackupSettings;
@@ -312,14 +251,10 @@ export interface ProjectData {
   aiContextLimit?: number;
   aiDeadThreads?: any[];
   changeLog?: any[];
-  notepadCanvas?: {
-    nodes: any[];
-    edges: any[];
-  };
+  notepadCanvas?: { nodes: any[]; edges: any[]; };
   continuityErrors?: ContinuityError[];
   latestAnalysisResult?: string;
   customAnalysisPrompt?: string;
-
   wikiSettings?: {
     includeCharacters?: boolean;
     includeLocations?: boolean;
@@ -328,14 +263,13 @@ export interface ProjectData {
     includeArtifacts?: boolean;
     includeManuscript?: boolean;
   };
-
-  // Map settings
   rootMapImage?: string;
   isRealWorldMap?: boolean;
   mapScale?: number;
   mapUnit?: string;
   mapDefaultView?: any;
   paths?: MapPath[];
+  calendarConfig?: CalendarConfig;
 }
 
 export interface MapPath {
@@ -348,13 +282,11 @@ export interface MapPath {
   color?: string;
 }
 
-// Keep existing helper interfaces for now
 export interface Scene {
   id: string;
   title: string;
   content: string;
   wordCount: number;
-  uei?: number;
 }
 
 export interface Chapter {
@@ -368,7 +300,6 @@ export interface Chapter {
   wordCount: number;
 }
 
-// Field notes for rich metadata
 export interface FieldNote {
   label: string;
   value: string;
@@ -379,18 +310,16 @@ export interface Character {
   id: string;
   name: string;
   role: string;
-  tier: 1 | 2 | 3;
-  aliases: string[];
-  affiliation: string;
-  traits: string[];
-  motivation: string;
-  description: string;
+  tier?: 1 | 2 | 3;
+  aliases?: string[];
+  affiliation?: string;
+  traits?: string[];
+  motivation?: string;
+  description?: string;
   physical_description?: string;
-  source: 'manual' | 'ai_generated';
+  source?: 'manual' | 'ai' | 'ai_generated';
   first_mention_offset?: number;
-  field_notes: FieldNote[];
-
-  // Legacy fields (for backwards compatibility)
+  field_notes?: FieldNote[];
   job?: string;
   images?: { url: string; caption?: string }[];
   species?: string;
@@ -418,6 +347,7 @@ export interface Character {
   homeLocation?: string;
   gender?: string;
   nationality?: string;
+  affiliation_legacy?: string;
   knowsAbout?: string[];
   x?: number;
   y?: number;
@@ -429,33 +359,31 @@ export interface CharacterRelationship {
   id: string;
   character_a_id: string;
   character_b_id: string;
-  relationship_type: 'sibling' | 'parent' | 'ally' | 'rival' | 'mentor' | 'romantic' | 'enemy' | 'acquaintance' | 'unknown';
-  direction: 'mutual' | 'a_to_b' | 'b_to_a';
-  trust_level: number;
-  status: 'active' | 'strained' | 'severed' | 'latent' | 'hostile' | 'resolved';
-  description: string;
-  source: 'manual' | 'ai_generated';
+  relationship_type?: string;
+  direction?: 'mutual' | 'a_to_b' | 'b_to_a';
+  trust_level?: number;
+  status?: string;
+  description?: string;
+  source?: 'manual' | 'ai' | 'ai_generated';
   first_mention_offset?: number;
-  field_notes: FieldNote[];
+  field_notes?: FieldNote[];
 }
 
 export interface Location {
   id: string;
   name: string;
-  type: 'building' | 'city' | 'region' | 'wilderness' | 'underground' | 'maritime' | 'ruin' | 'plane' | 'other';
-  scale: 'room' | 'small_building' | 'large_building' | 'district' | 'town' | 'city' | 'region' | 'continent' | 'world';
+  type?: string;
+  scale?: string;
   parent_location_id?: string;
-  controlling_faction: string;
-  inhabitants: string[];
+  controlling_faction?: string;
+  inhabitants?: string[];
   x?: number;
   y?: number;
-  is_locked: boolean;
-  description: string;
-  source: 'manual' | 'ai_generated';
+  is_locked?: boolean;
+  description?: string;
+  source?: 'manual' | 'ai' | 'ai_generated';
   first_mention_offset?: number;
-  field_notes: FieldNote[];
-
-  // Legacy fields
+  field_notes?: FieldNote[];
   mapImage?: string;
   address?: string;
   icon?: string;
@@ -473,20 +401,20 @@ export interface Location {
 export interface TimelineEvent {
   id: string;
   title: string;
-  event_type: 'battle' | 'political' | 'personal' | 'discovery' | 'death' | 'birth' | 'legal' | 'ceremony' | 'catastrophe' | 'travel' | 'revelation' | 'other';
-  significance: 'minor' | 'major' | 'pivotal';
-  real_world_sort_key: number;
-  is_flashback: boolean;
+  event_type?: string;
+  significance?: string;
+  real_world_sort_key?: number;
+  is_flashback?: boolean;
   location_id?: string;
-  participants: string[];
-  description: string;
-  source: 'manual' | 'ai_generated';
+  participants?: string[];
+  description?: string;
+  source?: 'manual' | 'ai' | 'ai_generated';
   first_mention_offset?: number;
-  field_notes: FieldNote[];
-
-  // Legacy fields
+  field_notes?: FieldNote[];
   date?: string;
-  uei?: number;
+  month?: number; // 1-indexed
+  day?: number;   // 1-indexed
+  year?: number;  // Numeric year override
   charactersInvolved?: string[];
   location?: string;
   isSoftAnchor?: boolean;
@@ -501,32 +429,28 @@ export interface TimelineEvent {
 export interface Artifact {
   id: string;
   name: string;
-  type: 'weapon' | 'armor' | 'tool' | 'document' | 'relic' | 'container' | 'vehicle' | 'consumable' | 'other';
-  significance: 'minor' | 'major' | 'pivotal';
+  type?: string;
+  significance?: string;
   current_owner_id?: string;
   location_id?: string;
-  description: string;
-  source: 'manual' | 'ai_generated';
+  description?: string;
+  source?: 'manual' | 'ai' | 'ai_generated';
   first_mention_offset?: number;
-  field_notes: FieldNote[];
-
-  // Legacy fields
+  field_notes?: FieldNote[];
   imageUrl?: string;
 }
 
 export interface LoreEntry {
   id: string;
   term: string;
-  type: 'faction' | 'magic_system' | 'cosmology' | 'creature' | 'language' | 'religion' | 'law' | 'technology' | 'cultural_practice' | 'other';
-  tier: 'background' | 'minor' | 'moderate' | 'major' | 'foundational';
-  associated_factions: string[];
-  related_terms: string[];
-  description: string;
-  source: 'manual' | 'ai_generated';
+  type?: string;
+  tier?: string;
+  associated_factions?: string[];
+  related_terms?: string[];
+  description?: string;
+  source?: 'manual' | 'ai' | 'ai_generated';
   first_mention_offset?: number;
-  field_notes: FieldNote[];
-
-  // Legacy fields
+  field_notes?: FieldNote[];
   definition?: string;
   category?: string;
   tags?: string[];
@@ -555,7 +479,7 @@ export interface Note {
   id: string;
   content: string;
   tags: string[];
-  timestamp: number;
+  timestamp?: number;
   isCanon?: boolean;
   expandedContent?: string;
   metaSummary?: string;
@@ -582,57 +506,6 @@ export interface ProseDocument {
   lastModified: number;
 }
 
-export interface CalendarSystem {
-  id: string;
-  name: string;
-  months: any[];
-  eras: any[];
-  weekDays?: string[];
-  daysPerWeek?: number;
-  hoursPerDay?: number;
-  currentEpochDay?: number;
-  type?: 'standard' | 'fantasy-calendar';
-  fantasyData?: any;
-  // Fantasy-Calendar features
-  moons?: Moon[];
-  seasons?: Season[];
-  intercalaries?: Intercalary[];
-  leapYearRule?: LeapYearRule;
-  color?: string;
-}
-
-export interface Moon {
-  id: string;
-  name: string;
-  cycleLength: number;
-  offset?: number;
-  color?: string;
-}
-
-export interface Season {
-  id: string;
-  name: string;
-  startMonth: number;
-  startDay: number;
-  endMonth: number;
-  endDay: number;
-  color?: string;
-}
-
-export interface Intercalary {
-  id: string;
-  name: string;
-  month: number;
-  day: number;
-  length?: number;
-}
-
-export interface LeapYearRule {
-  type: 'none' | 'gregorian' | 'every' | 'custom';
-  interval?: number;
-  exceptions?: number[];
-}
-
 export interface Commit {
   id: string;
   timestamp: number;
@@ -655,12 +528,6 @@ export interface MatrixCell {
   content: string;
   eventId?: string;
   plotlineId?: string;
-}
-
-export interface CalendarMonth {
-  id: string;
-  name: string;
-  days: number;
 }
 
 export interface BackupStatus {
@@ -728,7 +595,6 @@ export interface AppSettings {
   defaultToolboxLinks?: ToolboxLink[];
 }
 
-// Prompt Puzzle Piece for modular AI extraction
 export interface PromptPiece {
   id: string;
   category: 'characters' | 'locations' | 'timeline_events' | 'artifacts' | 'lore' | 'relationships';
@@ -756,10 +622,7 @@ export interface AppPrompts {
   THEME_EXTRACTION: string;
   CONLANG_GEN: string;
   PROJECT_QA: string;
-  
-  // Manuscript analysis puzzle pieces
   extractionPuzzle?: PromptPiece[];
-  
   [key: string]: string | PromptPiece[] | undefined;
 }
 
@@ -823,8 +686,8 @@ export interface ContinuityError {
   type: 'character' | 'location' | 'timeline' | 'artifact' | 'lore' | 'general';
   severity: 'low' | 'medium' | 'high';
   message: string;
-  context: string; // The text that triggered the error
-  entityIds?: string[]; // Related entity IDs
+  context: string;
+  entityIds?: string[];
 }
 
 export interface EntitySpan {
@@ -835,3 +698,40 @@ export interface EntitySpan {
   end: number;
   snippet: string;
 }
+
+export interface CalendarConfig {
+  year_len: number;
+  events: Record<string, string[]>;
+  n_months: number;
+  months: string[];
+  month_len: Record<string, number>;
+  week_len: number;
+  weekdays: string[];
+  n_moons: number;
+  moons: string[];
+  lunar_cyc: Record<string, number>;
+  lunar_shf: Record<string, number>;
+  year: number;
+  first_day: number;
+  notes: Record<string, string>;
+}
+
+export const defaultCalendarConfig: CalendarConfig = {
+  year_len: 365,
+  events: { "1-1": ["New Year"] },
+  n_months: 12,
+  months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  month_len: {
+    "January": 31, "February": 28, "March": 31, "April": 30, "May": 31, "June": 30,
+    "July": 31, "August": 31, "September": 30, "October": 31, "November": 30, "December": 31
+  },
+  week_len: 7,
+  weekdays: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+  n_moons: 1,
+  moons: ["Luna"],
+  lunar_cyc: { "Luna": 29.53 },
+  lunar_shf: { "Luna": 20 },
+  year: 1,
+  first_day: 0,
+  notes: { "1-1": "A new beginning" }
+};

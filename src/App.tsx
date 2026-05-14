@@ -3,11 +3,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import JSZip from 'jszip';
 import {
   ProjectData, ProjectMetadata, User, ViewType, Note,
-  AppPrompts, AppSettings, ToolboxLink, Artifact, LoreEntry, TimelineEvent, Idea, ChangeLogEntry, Relationship, SemanticDocument, ProseDocument, Chapter, Character, Location, CalendarSystem
+  AppPrompts, AppSettings, ToolboxLink, Artifact, LoreEntry, TimelineEvent, Idea, ChangeLogEntry, Relationship, SemanticDocument, ProseDocument, Chapter, Character, Location
 } from './types';
 import {
   getAllProjectsMetadata, loadProjectById, saveProjectData,
-  deleteProject, getAllGlobalNotes, saveGlobalNote,
+  deleteProject, getAllGlobalNotes, saveGlobalNote, saveAllGlobalNotes,
   deleteGlobalNote, clearDatabase, clearAllGlobalNotes,
   getAllGlobalResources, saveGlobalResource, deleteGlobalResource,
   exportFullArchive,
@@ -25,6 +25,7 @@ import {
   isCloudStorageActive,
   setServerHealth
 } from './services/storageService';
+import { initGitForProject } from './services/versioningService';
 import { Commit, BackupStatus } from './types';
 import { safeJsonParse, safeResponseJson } from './utils/jsonUtils';
 import { EditModalProvider, useEditModal } from './contexts/EditModalContext';
@@ -47,6 +48,15 @@ import { AdminView } from './components/Views/AdminView';
 import { ToolboxView } from './components/Views/ToolboxView';
 import { SemanticEditorView } from './components/Views/SemanticEditorView';
 import { CodexView } from './components/Views/CodexView';
+import { Calendar2View } from './components/Views/Calendar2View';
+import { EncyclopediaView } from './components/Views/EncyclopediaView';
+import { InventoryView } from './components/Views/InventoryView';
+import { DictionaryView } from './components/Views/DictionaryView';
+import { GalleryView } from './components/Views/GalleryView';
+import { LocationsListView } from './components/Views/LocationsListView';
+import { CelestialView } from './components/Views/CelestialView';
+import { BestiaryView } from './components/Views/BestiaryView';
+import { NarrativeArchitectView } from './components/Views/NarrativeArchitectView';
 
 import { WikiPageView } from './components/Views/WikiPageView';
 import { PublicProfileView } from './components/Views/PublicProfileView';
@@ -66,7 +76,15 @@ const DEMO_USER: User = {
   role: 'admin',
   lastActive: Date.now(),
   themeColor: '59 130 246',
-  preferences: { themeMode: 'light', fontSize: 'md', fontFamily: 'sans', landingPage: ViewType.BOOKSHELF, colorfulIcons: true, semanticSearchEnabled: false }
+  preferences: { 
+    themeMode: 'light', 
+    fontSize: 'md', 
+    fontFamily: 'sans', 
+    landingPage: ViewType.BOOKSHELF, 
+    colorfulIcons: true, 
+    semanticSearchEnabled: false,
+    aiVerbosity: 'balanced'
+  }
 };
 
 // Auto-populate Data Catalog from project entities
@@ -185,12 +203,11 @@ function populateDataCatalog(data: ProjectData): ProjectData {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       entities: data.themes.map(t => ({
-        id: t.id || generateId(8),
+        id: Math.random().toString(36).substring(7),
         type: 'Theme',
-        name: t.name || 'Unknown',
-        description: t.description || '',
-        tier: 2,
-        ...t
+        name: t,
+        description: '',
+        tier: 2
       }))
     });
   }
@@ -200,98 +217,6 @@ function populateDataCatalog(data: ProjectData): ProjectData {
     catalogs: catalogs.length > 0 ? catalogs : data.catalogs
   };
 }
-
-const createDefaultCalendars = (): CalendarSystem[] => {
-  const gregorian: CalendarSystem = {
-    id: 'gregorian-default',
-    name: 'Gregorian Calendar',
-    type: 'standard',
-    color: '#3B82F6',
-    weekDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-    daysPerWeek: 7,
-    hoursPerDay: 24,
-    months: [
-      { id: '1', name: 'January', days: 31 },
-      { id: '2', name: 'February', days: 28 },
-      { id: '3', name: 'March', days: 31 },
-      { id: '4', name: 'April', days: 30 },
-      { id: '5', name: 'May', days: 31 },
-      { id: '6', name: 'June', days: 30 },
-      { id: '7', name: 'July', days: 31 },
-      { id: '8', name: 'August', days: 31 },
-      { id: '9', name: 'September', days: 30 },
-      { id: '10', name: 'October', days: 31 },
-      { id: '11', name: 'November', days: 30 },
-      { id: '12', name: 'December', days: 31 }
-    ],
-    eras: [{ id: '1', name: 'Common Era', abbreviation: 'CE', startYear: 0 }],
-    currentEpochDay: 0,
-    leapYearRule: { type: 'gregorian' },
-    seasons: [
-      { id: 's1', name: 'Winter', startMonth: 0, startDay: 21, endMonth: 2, endDay: 20, color: '#60A5FA' },
-      { id: 's2', name: 'Spring', startMonth: 2, startDay: 21, endMonth: 5, endDay: 20, color: '#34D399' },
-      { id: 's3', name: 'Summer', startMonth: 5, startDay: 21, endMonth: 8, endDay: 22, color: '#FBBF24' },
-      { id: 's4', name: 'Autumn', startMonth: 8, startDay: 23, endMonth: 11, endDay: 20, color: '#F97316' }
-    ]
-  };
-
-  const fantasy: CalendarSystem = {
-    id: 'fantasy-default',
-    name: 'Custom Fantasy Calendar',
-    type: 'fantasy-calendar',
-    color: '#A855F7',
-    weekDays: ['Firstday', 'Secondday', 'Thirdday', 'Fourthday', 'Fifthday', 'Sixthday', 'Seventhday'],
-    daysPerWeek: 7,
-    hoursPerDay: 24,
-    months: [
-      { id: '1', name: 'Wintermoon', days: 30 },
-      { id: '2', name: 'Coldbloom', days: 30 },
-      { id: '3', name: 'Thawwind', days: 30 },
-      { id: '4', name: 'Springmist', days: 30 },
-      { id: '5', name: 'Greensun', days: 30 },
-      { id: '6', name: 'Heatwave', days: 30 },
-      { id: '7', name: 'Starfall', days: 30 },
-      { id: '8', name: 'Harvestmoon', days: 30 },
-      { id: '9', name: 'Duskwind', days: 30 },
-      { id: '10', name: 'Shadowtide', days: 30 },
-      { id: '11', name: 'Frostbite', days: 30 },
-      { id: '12', name: 'Evernight', days: 30 }
-    ],
-    eras: [{ id: '1', name: 'First Age', abbreviation: 'FA', startYear: 0 }],
-    currentEpochDay: 0,
-    moons: [
-      { id: 'm1', name: 'Primary Moon', cycleLength: 28, offset: 0, color: '#F3E8FF' },
-      { id: 'm2', name: 'Secondary Moon', cycleLength: 35, offset: 7, color: '#E0E7FF' }
-    ],
-    seasons: [
-      { id: 's1', name: 'Deepwinter', startMonth: 0, startDay: 1, endMonth: 2, endDay: 29, color: '#7DD3FC' },
-      { id: 's2', name: 'Spring', startMonth: 3, startDay: 1, endMonth: 5, endDay: 29, color: '#86EFAC' },
-      { id: 's3', name: 'Midsummer', startMonth: 6, startDay: 1, endMonth: 8, endDay: 29, color: '#FDE047' },
-      { id: 's4', name: 'Autumn', startMonth: 9, startDay: 1, endMonth: 11, endDay: 30, color: '#FDBA74' }
-    ],
-    leapYearRule: { type: 'every', interval: 4, exceptions: [400] }
-  };
-
-  return [gregorian, fantasy];
-};
-
-const ensureProjectHasCalendar = (data: ProjectData): ProjectData => {
-  if (!data.calendars || data.calendars.length === 0) {
-    const defaultCalendars = createDefaultCalendars();
-    return {
-      ...data,
-      calendars: defaultCalendars,
-      activeCalendarId: 'gregorian-default'
-    };
-  }
-  if (!data.activeCalendarId && data.calendars.length > 0) {
-    return {
-      ...data,
-      activeCalendarId: data.calendars[0].id
-    };
-  }
-  return data;
-};
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -344,11 +269,24 @@ const App: React.FC = () => {
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [globalResources, setGlobalResources] = useState<ToolboxLink[]>([]);
   const [appPrompts, setAppPromptsState] = useState<AppPrompts>({ 
-    systemPrompt: '', 
-    charAnalysisPrompt: '', 
-    locationPrompt: '', 
-    timelinePrompt: '', 
-    themePrompt: '',
+    GENERAL_AND_CHARACTERS: '',
+    PLOT_MATRIX_ANALYSIS: '',
+    AI_MODEL: 'gemini-2.0-flash-exp',
+    NOTE_ENHANCEMENT: '',
+    PROCESS_RAW_NOTES: '',
+    TIMELINE: '',
+    LOCATIONS: '',
+    ARTIFACTS: '',
+    LORE: '',
+    STRUCTURAL_ANALYSIS: '',
+    THEMES: '',
+    RELATIONSHIPS: '',
+    SOFT_ANCHORS: '',
+    SENTIMENT: '',
+    PLOT_AUDIT: '',
+    THEME_EXTRACTION: '',
+    CONLANG_GEN: '',
+    PROJECT_QA: '',
     extractionPuzzle: [
       {
         id: 'characters',
@@ -576,6 +514,16 @@ const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAdminNoteOpen, setIsAdminNoteOpen] = useState(false);
+  const [adminNoteDraft, setAdminNoteDraft] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('plothole_admin_note_draft') || '';
+    }
+    return '';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('plothole_admin_note_draft', adminNoteDraft);
+  }, [adminNoteDraft]);
 
   useEffect(() => {
     if (!isAdminNoteOpen) return;
@@ -742,37 +690,9 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleUpdateCalendar = useCallback(async (calendar: CalendarSystem) => {
-    if (!projectData) return;
-    
-    try {
-      // Update project data with the new calendar
-      await updateProjectData({ 
-        calendars: projectData.calendars.map(cal => cal.id === calendar.id ? calendar : cal) 
-      });
-      
-      // Sync to Keystatic
-      try {
-        const response = await fetch('/api/calendars', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            calendars: projectData.calendars.map(cal => cal.id === calendar.id ? calendar : cal) 
-          })
-        });
-        
-        if (!response.ok) {
-          console.warn('[App] Failed to sync calendar to Keystatic:', response.statusText);
-        }
-      } catch (err) {
-        console.warn('[App] Keystatic sync error (non-blocking):', err);
-      }
-    } catch (err) {
-      console.error('[App] Failed to update calendar:', err);
-    }
-  }, [projectData, updateProjectData]);
-
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStage, setLoadingStage] = useState('Spooling Engines');
 
   const [lastBackupMilestone, setLastBackupMilestone] = useState<{ words: number, commits: number }>({ words: 0, commits: 0 });
 
@@ -925,12 +845,18 @@ const App: React.FC = () => {
     if (isAuthLoading) return;
 
     const init = async () => {
+      setIsLoaded(false);
+      setLoadingProgress(5);
+      setLoadingStage('Authorizing Storage Bridge');
       try {
         console.log(`[Init] Auth0 loaded: ${!isAuthLoading}, Authenticated: ${isAuthenticated}, UserId: ${auth0User?.sub}`);
 
         // Configure storage first
         console.log(`[Init] Configuring storage. Cloud enabled: ${isAuthenticated === true}`);
         setCloudStorageEnabled(isAuthenticated === true, fetchWithAuth);
+        
+        setLoadingProgress(20);
+        setLoadingStage('Synchronizing Metadata');
 
         console.log(`[Init] Fetching metadata...`);
         const [meta, notes, resources, settings, prompts] = await Promise.all([
@@ -940,6 +866,9 @@ const App: React.FC = () => {
           getAppSettings(),
           getAppPrompts()
         ]);
+
+        setLoadingProgress(60);
+        setLoadingStage('Reconciling Project States');
 
         console.log(`[Init] Received ${meta?.length || 0} projects`);
         setProjectsMetadata(meta || []);
@@ -957,17 +886,21 @@ const App: React.FC = () => {
 
         // Auto-load last edited project
         if (meta && meta.length > 0 && !projectData) {
+          setLoadingProgress(85);
+          setLoadingStage('Spooling Last Manuscript');
           const sortedMeta = [...meta].sort((a, b) => b.lastModified - a.lastModified);
           const lastProject = await loadProjectById(sortedMeta[0].id);
           if (lastProject) {
-            setProjectData(populateDataCatalog(ensureProjectHasCalendar(lastProject)));
+            setProjectData(populateDataCatalog(lastProject));
             if (currentView === ViewType.BOOKSHELF || !location.pathname || location.pathname === '/') {
               setCurrentView(ViewType.DASHBOARD);
             }
           }
         }
 
-        setIsLoaded(true);
+        setLoadingProgress(100);
+        setLoadingStage('Ready');
+        setTimeout(() => setIsLoaded(true), 200);
       } catch (err) {
         console.error("Initialization failed", err);
         setIsLoaded(true);
@@ -1175,9 +1108,7 @@ const App: React.FC = () => {
       entities: [],
       manuscript: '',
       history_diff: '',
-      assets: [],
-      calendars: createDefaultCalendars(),
-      activeCalendarId: 'gregorian-default'
+      assets: []
     };
     if (useSample) {
       const ch1Content = `<!-- #CHAPTER_1 -->\n# Chapter 1: The Weight of Ink\n\nThe Great Archive was always cold. Arthur Penhaligon pulled his cloak tighter as he navigated the towering shelves of the Forbidden Wing.`;
@@ -1221,11 +1152,11 @@ const App: React.FC = () => {
       ];
 
       const timeline: TimelineEvent[] = [
-        { id: 'TL-FIRST-AGE', date: '0', title: 'The First Age', description: 'Civilization at its height. Memory system operates perfectly. The Weaver constructs the foundational memory architecture.', charactersInvolved: ['The Weaver'], location: 'The World' },
-        { id: 'TL-THE-PLAGUE', date: '0-300YBP', title: 'The Mnemonic Plague', description: 'A catastrophic event wipes the collective memory. Official history begins here. Survivors rebuild, creating the Citadel under the rule of the First High Architects.', charactersInvolved: ['The First Architects'], location: 'Global' },
-        { id: 'TL-CITADEL-FOUNDED', date: '300YBP', title: 'Founding of the Citadel', description: 'The Great Archive is constructed. Memory becomes the foundation of society. The tiered class system emerges based on memory strength.', charactersInvolved: ['First High Architects'], location: 'Citadel' },
-        { id: 'TL-GREAT-FIRE', date: '10YBP', title: 'The West Wing Burning', description: 'Vaelen orders the destruction of the West Wing of the Archive to eliminate knowledge of dissent and rebellion. Thousands of memories are lost forever.', charactersInvolved: ['Admin Vaelen'], location: 'The Great Archive' },
-        { id: 'TL-PRESENT-DAY', date: 'Now', title: 'The Echo Awakens', description: 'Arthur discovers the Chronos Key. The Echo manifests. The truth of the Founding begins to unravel. The Citadel\'s carefully constructed reality faces its greatest threat.', charactersInvolved: ['Arthur Penhaligon', 'The Echo'], location: 'The Citadel' }
+        { id: 'TL-FIRST-AGE', date: 'July 11, 2016', month: 7, day: 11, title: 'The First Age', description: 'Civilization at its height. Memory system operates perfectly. The Weaver constructs the foundational memory architecture.', charactersInvolved: ['The Weaver'], location: 'The World' },
+        { id: 'TL-THE-PLAGUE', date: 'August 15, 2150', month: 8, day: 15, title: 'The Mnemonic Plague', description: 'A catastrophic event wipes the collective memory. Official history begins here. Survivors rebuild, creating the Citadel under the rule of the First High Architects.', charactersInvolved: ['The First Architects'], location: 'Global' },
+        { id: 'TL-CITADEL-FOUNDED', date: 'September 20, 2155', month: 9, day: 20, title: 'Founding of the Citadel', description: 'The Great Archive is constructed. Memory becomes the foundation of society. The tiered class system emerges based on memory strength.', charactersInvolved: ['First High Architects'], location: 'Citadel' },
+        { id: 'TL-GREAT-FIRE', date: 'October 5, 2440', month: 10, day: 5, title: 'The West Wing Burning', description: 'Vaelen orders the destruction of the West Wing of the Archive to eliminate knowledge of dissent and rebellion. Thousands of memories are lost forever.', charactersInvolved: ['Admin Vaelen'], location: 'The Great Archive' },
+        { id: 'TL-PRESENT-DAY', date: 'December 25, 2450', month: 12, day: 25, title: 'The Echo Awakens', description: 'Arthur discovers the Chronos Key. The Echo manifests. The truth of the Founding begins to unravel. The Citadel\'s carefully constructed reality faces its greatest threat.', charactersInvolved: ['Arthur Penhaligon', 'The Echo'], location: 'The Citadel' }
       ];
 
       const proseDocuments = [
@@ -1301,7 +1232,7 @@ const App: React.FC = () => {
         body: JSON.stringify(newProject)
       }).catch(err => console.error("Cloud project creation failed", err));
     }
-    const projectWithCatalog = populateDataCatalog(ensureProjectHasCalendar(newProject));
+    const projectWithCatalog = populateDataCatalog(newProject);
     setProjectData(projectWithCatalog);
     await refreshMetadata();
     setCurrentView(ViewType.DASHBOARD);
@@ -1499,6 +1430,7 @@ const App: React.FC = () => {
     characters: Character[];
     locations: Location[];
     events: TimelineEvent[];
+    worldType: string;
   }> => {
     try {
       setProcessingStatus("Analyzing manuscript with AI...");
@@ -1696,7 +1628,7 @@ Include only the arrays for enabled sections above.`;
         if (projectData) {
           projectData.author = currentUser.name;
           projectData.title = getUniqueProjectTitle(projectData.title, projectsMetadata);
-          const dataWithCatalog = populateDataCatalog(ensureProjectHasCalendar(projectData));
+          const dataWithCatalog = populateDataCatalog(projectData);
           await saveProjectData(dataWithCatalog);
           setProjectData(dataWithCatalog);
           await refreshMetadata();
@@ -1814,7 +1746,7 @@ Include only the arrays for enabled sections above.`;
         console.log(`[Upload] Merged AI results: ${characters.length} chars, ${locations.length} locs, ${events.length} events`);
         console.log(`[Upload] World type detected: ${worldType}`);
 
-        const dataWithCatalog = populateDataCatalog(ensureProjectHasCalendar(data));
+        const dataWithCatalog = populateDataCatalog(data);
         
         // Ensure project is set to fictional world by default
         dataWithCatalog.isRealWorldMap = false;
@@ -1842,7 +1774,46 @@ Include only the arrays for enabled sections above.`;
   };
 
   const viewContent = useMemo(() => {
-    if (!isLoaded || isAuthLoading) return <div className="h-full flex items-center justify-center text-primary animate-pulse font-bold uppercase tracking-widest">Initialising Core Engines...</div>;
+    if (!isLoaded) return (
+      <div className="h-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-12 transition-all duration-700">
+        <div className="w-full max-w-xs space-y-8">
+          {/* Logo / Icon Area */}
+          <div className="flex justify-center">
+            <div className="relative">
+              <div className="absolute inset-0 bg-indigo-500/20 blur-3xl animate-pulse" />
+              <div className="relative p-6 bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800">
+                <Database size={40} className="text-indigo-600 dark:text-indigo-400 animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Progress Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+              <span>{loadingStage}</span>
+              <span className="tabular-nums text-indigo-500">{loadingProgress}%</span>
+            </div>
+            
+            <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-[1px]">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_12px_rgba(79,70,229,0.4)]"
+                style={{ width: `${loadingProgress}%` }}
+              />
+            </div>
+
+            <div className="flex justify-between px-1">
+              {[0, 25, 50, 75, 100].map(p => (
+                <div key={p} className={`w-1 h-1 rounded-full transition-colors duration-500 ${loadingProgress >= p ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
+              ))}
+            </div>
+          </div>
+
+          <div className="text-center">
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-50">Initialising Core Engines</p>
+          </div>
+        </div>
+      </div>
+    );
 
     // Admin view restriction
     if (currentView === ViewType.ADMIN && currentUser.role !== 'admin') {
@@ -1874,7 +1845,7 @@ Include only the arrays for enabled sections above.`;
           onSelectProject={async (id) => {
             const d = await loadProjectById(id);
             if (d) {
-              setProjectData(populateDataCatalog(ensureProjectHasCalendar(d)));
+              setProjectData(populateDataCatalog(d));
               setIsDashboardModalOpen(true);
             }
           }}
@@ -1919,6 +1890,15 @@ Include only the arrays for enabled sections above.`;
               await updateProjectData({ notes: [noteToSave, ...(projectData.notes || [])] });
             }
           }}
+          onImportNotes={async (newNotes) => {
+            const combined = [...newNotes, ...globalNotes];
+            setGlobalNotes(combined);
+            await saveAllGlobalNotes(combined);
+            
+            if (projectData) {
+              await updateProjectData({ notes: [...newNotes, ...(projectData.notes || [])] });
+            }
+          }}
           onAddIdeaToProject={handleAddIdeaToProject}
           onToggleCanon={handleToggleCanon}
           onDeleteNote={handleDeleteNote}
@@ -1937,7 +1917,7 @@ Include only the arrays for enabled sections above.`;
           onSelectProject={async (id) => {
             const d = await loadProjectById(id);
             if (d) {
-              setProjectData(populateDataCatalog(ensureProjectHasCalendar(d)));
+              setProjectData(populateDataCatalog(d));
               setIsDashboardModalOpen(true);
             }
           }}
@@ -1955,8 +1935,7 @@ Include only the arrays for enabled sections above.`;
       case ViewType.BOARD:
       case ViewType.MATRIX:
       case ViewType.PLOT_ANALYSIS:
-      case ViewType.CALENDAR:
-        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onUpdateCalendar={handleUpdateCalendar} onSetActiveCalendar={(id) => updateProjectData({ activeCalendarId: id })} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => { }} onExtractSoftAnchors={handleExtractSoftAnchors} onScanContinuity={handleScanContinuity} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
+        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => { }} onExtractSoftAnchors={handleExtractSoftAnchors} onScanContinuity={handleScanContinuity} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
 
       case ViewType.MAP:
         if (!projectData) return null;
@@ -1994,12 +1973,29 @@ Include only the arrays for enabled sections above.`;
           }}
         />;
 
-      case ViewType.LOCATIONS:
-      case ViewType.ENCYCLOPEDIA:
-      case ViewType.INVENTORY:
-      case ViewType.DICTIONARY:
       case ViewType.GALLERY:
-        return null;
+        return projectData ? <GalleryView projectData={projectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view gallery.</div>;
+
+      case ViewType.ENCYCLOPEDIA:
+        return projectData ? <EncyclopediaView projectData={projectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view encyclopedia.</div>;
+
+      case ViewType.INVENTORY:
+        return projectData ? <InventoryView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view inventory.</div>;
+
+      case ViewType.DICTIONARY:
+        return projectData ? <DictionaryView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view dictionary.</div>;
+
+      case ViewType.LOCATIONS:
+        return projectData ? <LocationsListView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view locations.</div>;
+
+      case ViewType.CELESTIAL:
+        return projectData ? <CelestialView projectData={projectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view celestial data.</div>;
+
+      case ViewType.BESTIARY:
+        return projectData ? <BestiaryView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view bestiary.</div>;
+
+      case ViewType.NARRATIVE_ARCHITECT:
+        return projectData ? <NarrativeArchitectView projectData={projectData} globalNotes={globalNotes} onUpdateProject={updateProjectData} /> : null;
 
       case ViewType.TOOLBOX:
         return projectData ? (
@@ -2058,17 +2054,20 @@ Include only the arrays for enabled sections above.`;
       case ViewType.RESEARCH:
         return projectData ? <ResearchHubView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research Hub.</div>;
 
+      case ViewType.CALENDAR2:
+        return projectData ? <Calendar2View data={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Chronos Explorer.</div>;
+
       case ViewType.SEMANTIC_EDITOR:
         return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
 
       case ViewType.CHARACTERS:
-        return projectData ? <CharactersView
-          data={projectData}
-          onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
-          onDeleteCharacter={(id) => updateProjectData({ characters: projectData.characters.filter(char => char.id !== id) })}
-          onLinkClick={handleLinkClick}
-        /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view characters.</div>;
-
+       return projectData ? <CharactersView
+         data={projectData}
+         onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
+         onAddCharacter={(c) => updateProjectData({ characters: [...projectData.characters, c] })}
+         onDeleteCharacter={(id) => updateProjectData({ characters: projectData.characters.filter(char => char.id !== id) })}
+         onLinkClick={handleLinkClick}
+       /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view characters.</div>;
       /* case ViewType.STORY_ARCHITECT:
         return <StoryArchitectView projectsMetadata={projectsMetadata} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); await refreshMetadata(); setCurrentView(ViewType.DASHBOARD); } }} onUpdateProject={updateProjectData} currentUser={currentUser} />; */
 
@@ -2076,14 +2075,7 @@ Include only the arrays for enabled sections above.`;
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
   }, [isLoaded, isAuthLoading, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, isExtractingThemes, isExtractingRelationships, currentUser, appPrompts, globalResources, activeTasks, updateProjectData, currentMapParentId, refreshMetadata, handleDeleteProject, handleUploadProject, handleCreateProject, handleDoubleProcessNote, handleError, handleQuickUpdate]);
-  // Auto-collapse sidebar when entering/exiting Admin or Settings view
-  useEffect(() => {
-    if (currentView === ViewType.ADMIN || currentView === ViewType.SETTINGS) {
-      setIsSidebarCollapsed(true);
-    } else {
-      setIsSidebarCollapsed(false);
-    }
-  }, [currentView]);
+
 
   // Listen for custom events from Sidebar
   React.useEffect(() => {
@@ -2249,6 +2241,8 @@ Include only the arrays for enabled sections above.`;
                 <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-lg border border-white/20">
                   <textarea
                     autoFocus
+                    value={adminNoteDraft}
+                    onChange={(e) => setAdminNoteDraft(e.target.value)}
                     placeholder="Quick draft an administrative note... (Enter to save)"
                     className="w-full h-24 bg-transparent border-none focus:ring-0 text-sm font-serif resize-none"
                     onKeyDown={async (e) => {
@@ -2256,8 +2250,7 @@ Include only the arrays for enabled sections above.`;
                         setIsAdminNoteOpen(false);
                       } else if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        const target = e.currentTarget;
-                        const text = target.value.trim();
+                        const text = adminNoteDraft.trim();
                         if (!text) return;
                         const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
                         if (projectData) {
@@ -2266,7 +2259,8 @@ Include only the arrays for enabled sections above.`;
                           setGlobalNotes(prev => [n, ...prev]);
                           await saveGlobalNote(n);
                         }
-                        target.value = '';
+                        setAdminNoteDraft('');
+                        localStorage.removeItem('plothole_admin_note_draft');
                       }
                     }}
                   />
@@ -2274,19 +2268,17 @@ Include only the arrays for enabled sections above.`;
                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Enter to Save &bull; Shift+Enter for Newline</span>
                     <button
                       onClick={async () => {
-                        const textarea = document.querySelector('textarea[placeholder*="Quick draft"]');
-                        if (textarea instanceof HTMLTextAreaElement) {
-                          const text = textarea.value.trim();
-                          if (!text) return;
-                          const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
-                          if (projectData) {
-                            await updateProjectData({ notes: [n, ...(projectData.notes || [])] });
-                          } else {
-                            setGlobalNotes(prev => [n, ...prev]);
-                            await saveGlobalNote(n);
-                          }
-                          textarea.value = '';
+                        const text = adminNoteDraft.trim();
+                        if (!text) return;
+                        const n: Note = { id: generateId(), content: text, tags: ['admin_note'], timestamp: Date.now() };
+                        if (projectData) {
+                          await updateProjectData({ notes: [n, ...(projectData.notes || [])] });
+                        } else {
+                          setGlobalNotes(prev => [n, ...prev]);
+                          await saveGlobalNote(n);
                         }
+                        setAdminNoteDraft('');
+                        localStorage.removeItem('plothole_admin_note_draft');
                       }}
                       className="lg:hidden px-4 py-1.5 bg-amber-600 text-white rounded-lg font-black text-[8px] uppercase tracking-widest shadow-lg shadow-amber-600/20 active:scale-95 transition-all"
                     >

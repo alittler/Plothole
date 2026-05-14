@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType, User } from '../../types';
-import { LayoutGrid, Layout, Book, Users, Map, Calendar, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, Wrench, BookOpen, Lightbulb } from 'lucide-react';
+import { LayoutGrid, Layout, Book, Users, Map, Clock, Settings, Shield, PenTool, Search, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Zap, X, Database, LogOut, FileText, Hash, Wrench, BookOpen, Lightbulb, Stars, Wand2, Box, BookMarked, GitMerge } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { isCloudStorageActive } from '../../services/storageService';
 import { safeResponseJson } from '../../utils/jsonUtils';
@@ -13,8 +13,8 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   onClose: () => void;
   hasActiveProject: boolean;
-  onToggleAi: () => void;
-  isAiOpen: boolean;
+  onToggleAi?: () => void;
+  isAiOpen?: boolean;
   currentUser: User;
   isProcessing?: boolean;
   processingStatus?: string | null;
@@ -124,8 +124,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
     { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
     { id: ViewType.MAP, label: 'Atlas', icon: Map, projectOnly: true },
-    { id: ViewType.TIMELINE, label: 'History', icon: Calendar, projectOnly: true },
-    { id: ViewType.CODEX, label: 'Codex', icon: Book, projectOnly: true },
+    { id: ViewType.LOCATIONS, label: 'Locations', icon: Map, projectOnly: true },
+    { id: ViewType.TIMELINE, label: 'History', icon: Clock, projectOnly: true },
+    { id: ViewType.NARRATIVE_ARCHITECT, label: 'Architect', icon: GitMerge, projectOnly: true },
+    { id: ViewType.CALENDAR2, label: 'Chronos', icon: Zap, projectOnly: true },
+    { id: ViewType.CELESTIAL, label: 'Celestial', icon: Stars, projectOnly: true },
+    { id: ViewType.CODEX, label: 'Codex', icon: BookOpen, projectOnly: true },
+    { id: ViewType.ENCYCLOPEDIA, label: 'Encyclopedia', icon: Book, projectOnly: true },
+    { id: ViewType.BESTIARY, label: 'Bestiary', icon: Wand2, projectOnly: true },
+    { id: ViewType.INVENTORY, label: 'Inventory', icon: Box, projectOnly: true },
+    { id: ViewType.DICTIONARY, label: 'Dictionary', icon: BookMarked, projectOnly: true },
+    { id: ViewType.GALLERY, label: 'Gallery', icon: LayoutGrid, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: BookOpen, projectOnly: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
@@ -136,11 +145,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const baseSections: SidebarSection[] = [
       {
         title: 'Workspace',
-        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.BOOKSHELF].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.RESEARCH, ViewType.BOOKSHELF, ViewType.GALLERY].includes(i.id))
       },
       {
         title: 'Story',
-        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX, ViewType.RESEARCH].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.LOCATIONS, ViewType.TIMELINE, ViewType.NARRATIVE_ARCHITECT, ViewType.CALENDAR2, ViewType.CELESTIAL].includes(i.id))
+      },
+      {
+        title: 'World Lore',
+        items: allNavItems.filter(i => [ViewType.CODEX, ViewType.ENCYCLOPEDIA, ViewType.BESTIARY, ViewType.INVENTORY, ViewType.DICTIONARY].includes(i.id))
       },
       {
         title: 'System',
@@ -226,7 +239,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {isMenuOpen && (
                     <div data-section="page-menu" className="absolute left-full top-0 ml-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 flex flex-col gap-1 p-2 custom-scrollbar">
                       {sections.map((section) => (
-                        <div key={section.label} className="flex flex-col gap-1">
+                        <div key={section.title} className="flex flex-col gap-1">
                           {section.items.map(item => {
                             const isActive = currentView === item.id;
                             const isDisabled = item.projectOnly && !hasActiveProject;
@@ -362,16 +375,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <PenTool size={18} />
                 </button>
               )}
-              <button
-                onClick={() => {
-                  onToggleAi();
-                  if (window.innerWidth < 1024) onClose();
-                }}
-                className={`lg:hidden p-2 rounded-lg transition-colors ${isAiOpen ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
-                title="Summon The Oracle"
-              >
-                <Sparkles size={18} className={isAiOpen ? 'animate-spin' : ''} />
-              </button>
+              {onToggleAi && (
+                <button
+                  onClick={() => {
+                    onToggleAi();
+                    if (window.innerWidth < 1024) onClose();
+                  }}
+                  className={`lg:hidden p-2 rounded-lg transition-colors ${isAiOpen ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
+                  title="Summon The Oracle"
+                >
+                  <Sparkles size={18} className={isAiOpen ? 'animate-spin' : ''} />
+                </button>
+              )}
             </div>
           </div>
           {commitHash && !isCollapsed && (
