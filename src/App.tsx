@@ -1225,13 +1225,6 @@ const App: React.FC = () => {
     }
 
     await saveProjectData(newProject);
-    if (isAuthenticated) {
-      await fetchWithAuth('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProject)
-      }).catch(err => console.error("Cloud project creation failed", err));
-    }
     const projectWithCatalog = populateDataCatalog(newProject);
     setProjectData(projectWithCatalog);
     await refreshMetadata();
