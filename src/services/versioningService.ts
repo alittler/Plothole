@@ -1,50 +1,57 @@
-import { ProjectData, Commit, Note, Chapter } from '../types';
+import { ProjectData } from '../types';
 import { generateSHA256, generateId } from './storageService';
-import { safeResponseJson } from '../utils/jsonUtils';
+
+const SERVERLESS_DISABLED_MESSAGE =
+  'Git-based manuscript versioning is temporarily disabled in the Vercel serverless build. Use project saves and Blob-backed snapshots instead.';
+
+const disabledResponse = async () => ({
+  success: false,
+  disabled: true,
+  message: SERVERLESS_DISABLED_MESSAGE,
+});
 
 /**
- * Initializes a Git repository for the project on the server.
+ * Git-backed project versioning is disabled in the serverless deployment.
  */
-export const initGitForProject = async (projectId: string) => {
-  const resp = await fetch('/api/git/init', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectId })
-  });
-  return await safeResponseJson(resp);
+export const initGitForProject = async (_projectId: string) => {
+  console.warn('[Versioning] initGitForProject disabled:', SERVERLESS_DISABLED_MESSAGE);
+  return disabledResponse();
 };
 
 /**
- * Performs a Git commit on the server.
- * Can optionally include files to be written to the working tree before committing.
+ * Git-backed commits are disabled in the serverless deployment.
  */
 export const commitToGit = async (
-  projectId: string, 
-  message: string, 
-  files?: { path: string, content: string }[]
+  _projectId: string,
+  _message: string,
+  _files?: { path: string; content: string }[]
 ) => {
-  const resp = await fetch('/api/git/commit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectId, message, files })
-  });
-  return await safeResponseJson(resp);
+  console.warn('[Versioning] commitToGit disabled:', SERVERLESS_DISABLED_MESSAGE);
+  return {
+    ...(await disabledResponse()),
+    hash: `disabled-${generateId(8)}`,
+  };
 };
 
 /**
- * Retrieves the Git log for a project.
+ * Git history is disabled in the serverless deployment.
  */
-export const getGitLog = async (projectId: string) => {
-  const resp = await fetch(`/api/git/log/${projectId}`);
-  return await safeResponseJson(resp);
+export const getGitLog = async (_projectId: string) => {
+  console.warn('[Versioning] getGitLog disabled:', SERVERLESS_DISABLED_MESSAGE);
+  return [];
 };
 
 /**
- * Retrieves a diff/patch for a specific commit.
+ * Git diff is disabled in the serverless deployment.
  */
-export const getGitDiff = async (projectId: string, commitHash: string) => {
-  const resp = await fetch(`/api/git/diff/${projectId}/${commitHash}`);
-  return await safeResponseJson(resp);
+export const getGitDiff = async (_projectId: string, _commitHash: string) => {
+  console.warn('[Versioning] getGitDiff disabled:', SERVERLESS_DISABLED_MESSAGE);
+  return {
+    success: false,
+    disabled: true,
+    diff: '',
+    message: SERVERLESS_DISABLED_MESSAGE,
+  };
 };
 
 /**
