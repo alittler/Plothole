@@ -1,12 +1,9 @@
 import type { NextConfig } from 'next';
-import { execSync } from 'child_process';
 
-let gitCommitHash = 'unknown';
-try {
-  gitCommitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
-} catch (e) {
-  // Git not available or not a git repo
-}
+const gitCommitHash =
+  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
+  process.env.NEXT_PUBLIC_GIT_COMMIT_HASH ||
+  'unknown';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -18,7 +15,11 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
     NEXT_PUBLIC_GIT_COMMIT_HASH: gitCommitHash,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
-    NEXT_PUBLIC_GEMINI_API_KEY: process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API || process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY,
+    NEXT_PUBLIC_GEMINI_API_KEY:
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      process.env.NEXT_PUBLIC_GEMINI_API ||
+      process.env.VITE_GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY,
   },
   async rewrites() {
     return {
@@ -29,7 +30,7 @@ const nextConfig: NextConfig = {
           has: [{ type: 'host', value: 'creatures\\.plothole\\.click' }],
         },
       ],
-    }
+    };
   },
 };
 
