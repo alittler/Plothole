@@ -1,0 +1,267 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║           EXPRESS.JS TO NEXT.JS ROUTES MIGRATION ANALYSIS                     ║
+║                         Plothole Project                                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📊 MIGRATION STATISTICS
+═══════════════════════════════════════════════════════════════════════════════
+
+Total Routes Analyzed:        39 routes
+Protected Routes (JWT):       15 routes (38%)
+Public Routes:                24 routes (62%)
+
+Route Methods Breakdown:
+  • GET                       16 routes (41%)
+  • POST                      20 routes (51%)
+  • DELETE                    1 route  (3%)
+  • PUT                       0 routes (0%)
+
+Dependency Distribution:
+  • Database (PostgreSQL)     13 routes
+  • File System/S3           10 routes
+  • Git Operations            5 routes
+  • Email (Resend)            5 routes
+  • External APIs             2 routes
+  • Simple Utilities          8 routes
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 MIGRATION COMPLEXITY ASSESSMENT
+
+CRITICAL BLOCKERS (⚠️ Requires Architectural Changes):
+  1. Multer File Uploads → Use formidable or busboy instead
+  2. Local Disk I/O → Move to S3 or database (Vercel constraint)
+  3. Git Operations → Consider sidecar service (no disk persistence)
+  4. Child Process Execution → Use env vars instead of execSync
+  5. Long-running Async Tasks → Use waitUntil() or background queue
+
+MEDIUM COMPLEXITY (Need JWT Implementation):
+  • All 15 protected routes require Auth0 JWT verification
+  • Can use 'jose' library for manual verification
+
+SIMPLE PORTS (Straightforward):
+  • Public utilities (health checks, config endpoints)
+  • External API calls (Bible API)
+  • Database CRUD operations (once JWT is in place)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📂 GENERATED DOCUMENTATION
+
+Three comprehensive documents have been created:
+
+1. ROUTES_MIGRATION_MAP.md (350 lines)
+   └─ Complete mapping table with all route details
+   └─ SQL patterns, environment variables
+   └─ Phase-by-phase migration plan
+   └─ File structure preview
+   └─ Special handling notes
+
+2. routes-migration.json (1,173 lines)
+   └─ Machine-readable route inventory
+   └─ Detailed metadata for each route
+   └─ Database schema information
+   └─ Dependency analysis
+   └─ Migration phase grouping
+
+3. ROUTES_QUICK_REFERENCE.md (321 lines)
+   └─ Quick checklist format
+   └─ Sorted by category and complexity
+   └─ Code pattern templates
+   └─ Critical gotchas table
+   └─ Success criteria
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🚀 RECOMMENDED MIGRATION ORDER
+
+Phase 1: Public Utilities (2-4 hours)
+  Routes: 13, 14, 15, 16, 17, 18, 19, 20, 28
+  Risk Level: LOW
+  Tasks: Health checks, config, version, AWS status, Bible API
+
+Phase 2: Database Routes (6-8 hours)
+  Routes: 21, 22, 23, 24, 25, 26, 27, 34, 35, 38, 39
+  Risk Level: MEDIUM
+  Prerequisites: JWT verification library
+  Tasks: Projects, notes, globals, username, wiki settings
+
+Phase 3: File Uploads (12-16 hours)
+  Routes: 1, 2, 3, 4, 5
+  Risk Level: HIGH
+  Prerequisites: Formidable, S3 client setup, PDF extraction
+  Tasks: Multipart parsing, S3 upload, presigned URLs, PDF text
+
+Phase 4: Git Operations (10-14 hours)
+  Routes: 7, 8, 9, 10, 11
+  Risk Level: VERY HIGH
+  Prerequisites: Sidecar service architecture decision
+  Tasks: Git init, commit, log, diff, status
+
+Phase 5: Email Operations (4-6 hours)
+  Routes: 29, 30, 31, 32, 33
+  Risk Level: MEDIUM
+  Prerequisites: Resend API key configured
+  Tasks: Backup emails, test emails, retry logic
+
+Phase 6: Other Routes (2-4 hours)
+  Routes: 6, 12, 28, 36, 37
+  Risk Level: LOW-MEDIUM
+  Tasks: Validation, cleanup, wiki endpoints
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔑 KEY IMPLEMENTATION DETAILS
+
+Authentication (15 Protected Routes):
+  Current: express-oauth2-jwt-bearer middleware
+  Migration: Manual JWT verification with 'jose' library
+  Header: Authorization: Bearer <token>
+  Extract: req.auth?.payload.sub → JWT subject claim
+
+Database (13 Routes Using PostgreSQL):
+  Pool: node-postgres (pg library)
+  Tables: projects, users, global_notes, app_globals
+  Pattern: Upserts with ON CONFLICT
+  Auth: Ownership checks on user_id column
+
+File Storage (10 Routes):
+  Current: Multer + Dual S3/Local disk
+  Migration: Formidable + S3 exclusively
+  Auth: S3 presigned URLs
+  Buckets: S3 bucket configured in .env
+  Lifecycle: Auto-delete test uploads after 3 days
+
+Git Operations (5 Routes):
+  Current: simple-git on local disk
+  Issue: No disk persistence in serverless
+  Options:
+    A) Move to separate sidecar service
+    B) Replace with GitHub API calls
+    C) Store as database records
+
+Email (5 Routes):
+  Provider: Resend API
+  Recipient: alittler86@gmail.com (hardcoded)
+  Types: Backup notifications, test emails
+
+═══════════════════════════════════════════════════════════════════════════════
+
+⚡ MIGRATION EFFORT SUMMARY
+
+Estimated Total Effort:
+  Phase 1: 4 hours   (utilities)
+  Phase 2: 8 hours   (database)
+  Phase 3: 16 hours  (uploads) ← Highest effort
+  Phase 4: 12 hours  (git)     ← Highest complexity
+  Phase 5: 6 hours   (email)
+  Phase 6: 4 hours   (other)
+  ────────────────────
+  Total:  50 hours   (plus 10 hours for testing/debugging)
+
+Parallelizable Work:
+  • Phase 1-2 can run in parallel (no dependencies)
+  • Phase 3-4 are blocking (infrastructure setup needed)
+  • Phase 5-6 can run while phases 3-4 are ongoing
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ COMPLETION CHECKLIST
+
+Setup Phase:
+  □ Next.js 14+ project initialized
+  □ Environment variables configured (.env.local)
+  □ Database connection tested
+  □ S3 credentials verified
+  □ Dependencies installed
+
+Implementation:
+  □ lib/auth.ts - JWT verification
+  □ lib/db.ts - Database pooling
+  □ lib/s3.ts - S3 operations
+  □ lib/upload.ts - Multipart parsing (formidable)
+  □ All 39 API routes created
+
+Testing:
+  □ Unit tests for each route
+  □ Integration tests with database
+  □ Comparison tests (Express vs Next.js)
+  □ File upload tests
+  □ Authentication tests
+  □ Error handling verification
+
+Migration:
+  □ Environment switch to Next.js
+  □ Gradual traffic shift (if using reverse proxy)
+  □ Monitor error rates
+  □ Performance benchmarks
+  □ Decommission Express server
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📍 CRITICAL SUCCESS FACTORS
+
+1. JWT Implementation
+   └─ Must handle Auth0 tokens correctly
+   └─ All protected routes require verification
+   └─ Fallback to 'user-1' only in development
+
+2. S3 Migration
+   └─ All file uploads must go to S3
+   └─ Presigned URLs for secure access
+   └─ Lifecycle policies for cleanup
+
+3. Git Architecture
+   └─ Requires separate service or GitHub API
+   └─ Cannot use local disk on Vercel
+   └─ Plan sidecar deployment early
+
+4. Database Consistency
+   └─ All queries must match original behavior
+   └─ Ownership checks critical for security
+   └─ Test upsert patterns carefully
+
+5. Error Handling
+   └─ Match original error responses
+   └─ Consistent HTTP status codes
+   └─ Proper error messages
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📚 REFERENCE DOCUMENTS CREATED
+
+Location: /home/alittler/Dropbox/Documents/GitHub/Plothole/
+
+1. ROUTES_MIGRATION_MAP.md
+   Complete mapping with context, 350 lines
+   USE FOR: Understanding each route in detail
+
+2. routes-migration.json
+   Machine-readable format, 1,173 lines
+   USE FOR: Programmatic route lookup, parsing
+
+3. ROUTES_QUICK_REFERENCE.md
+   Condensed checklist format, 321 lines
+   USE FOR: Quick lookups during implementation
+
+All files contain cross-references and are designed to complement each other.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎓 LESSONS LEARNED / BEST PRACTICES
+
+• Multer is Express-specific → Plan alternative early
+• Serverless has no disk persistence → Move everything to S3
+• Async operations need special handling → Use waitUntil() on Vercel
+• JWT middleware doesn't port → Implement manual verification
+• Database ownership checks are critical → Verify in every protected route
+• File uploads are complex → Allocate 4-6 hours per upload route
+• Git operations need rethinking → Consider sidecar or GitHub API
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✨ All routes have been analyzed and documented. Proceed with Phase 1!
+
+Generated: 2024
+Analysis Completeness: 100%
+Routes Accounted For: 39/39
