@@ -5,8 +5,6 @@ export enum ViewType {
   TIMELINE = 'Timeline',
   BOARD = 'Board',
   TABLE = 'Table',
-  CALENDAR = 'Calendar',
-  GALLERY = 'Gallery',
   NOTEPAD = 'Notepad',
   MAP = 'Map',
   LOCATIONS = 'Locations',
@@ -28,7 +26,9 @@ export enum ViewType {
   WORKSPACE_HUB = 'WorkspaceHub',
   SYSTEM_HUB = 'SystemHub',
   RESEARCH = 'Research',
-  BESTIARY = 'Bestiary'
+  BESTIARY = 'Bestiary',
+  CELESTIAL = 'Celestial',
+  CALENDAR2 = 'Calendar2'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -61,10 +61,18 @@ export interface HierarchicalEntity {
   birthplace?: string; // Maps to birthPlace
   residence?: string; // Maps to homeLocation
   traits?: string[];
-  source?: 'manual' | 'ai';
+  source?: 'manual' | 'ai' | 'ai_generated';
   images?: { url: string }[];
   firstMentionOffset?: number;
   lastMentionOffset?: number;
+
+  // Physical and biographical details (from AI analysis)
+  physical_description?: string;
+  physicalFeatures?: string; // Height, weight, build, distinctive marks
+  style?: string; // Clothing, appearance style
+  strengths?: string; // Character strengths
+  weaknesses?: string; // Character weaknesses
+  birthday?: string; // Birth date
 
   // Schema.org/Person Extension Fields
   givenName?: string;
@@ -145,24 +153,6 @@ export interface ProjectManifest {
     tags: string[];
     anchor_target: string | null;
   }>;
-}
-
-export interface LoreEntry {
-  id: string;
-  term: string; // Maps to prefLabel
-  definition: string; // Maps to definition/note
-  category: string;
-  tags?: string[];
-  source?: 'manual' | 'ai';
-
-  // SKOS (Simple Knowledge Organization System) Compatibility
-  prefLabel?: string;
-  altLabel?: string[]; // Synonyms/Aliases
-  hiddenLabel?: string[];
-  broader?: string[]; // Parent concepts (IDs)
-  narrower?: string[]; // Child concepts (IDs)
-  related?: string[]; // Related concepts (IDs)
-  scopeNote?: string;
 }
 
 export interface Source {
@@ -262,8 +252,6 @@ export interface ProjectData {
   // System fields
   wordCount?: number;
   charCount?: number;
-  activeCalendarId?: string;
-  calendars: CalendarSystem[];
   commits?: Commit[];
   backups?: BackupStatus[];
   backupSettings?: BackupSettings;
@@ -280,16 +268,6 @@ export interface ProjectData {
     edges: any[];
   };
 
-  wikiSettings?: {
-    includeCharacters?: boolean;
-    includeLocations?: boolean;
-    includeTimeline?: boolean;
-    includeLore?: boolean;
-    includeArtifacts?: boolean;
-    includeManuscript?: boolean;
-  };
-
-  // Map settings
   rootMapImage?: string;
   isRealWorldMap?: boolean;
   mapScale?: number;
@@ -314,7 +292,6 @@ export interface Scene {
   title: string;
   content: string;
   wordCount: number;
-  uei?: number;
 }
 
 export interface Chapter {
@@ -332,22 +309,27 @@ export interface Character {
   id: string;
   name: string;
   role: string;
-  job: string;
+  tier?: 1 | 2 | 3;
+  aliases?: string[];
+  affiliation?: string;
+  traits?: string[];
+  motivation?: string;
   description: string;
-  traits: string[];
+  physical_description?: string;
+  source: 'manual' | 'ai' | 'ai_generated';
+  field_notes?: FieldNote[];
+
+  // Legacy fields (for backwards compatibility)
+  job?: string;
   images?: { url: string; caption?: string }[];
   species?: string;
   goals?: string;
-  aliases?: string[];
   associatedLocationId?: string;
-  firstMentionOffset?: number;
   lastMentionOffset?: number;
-  source?: 'manual' | 'ai';
-  motivation?: string;
+  firstMentionOffset?: number;
   conflict?: string;
   primary_trait?: string;
   location_id?: string;
-  tier?: number; // 1 = Core, 2 = Supporting, 3 = Background
 
   // Physical and biographical details (from AI analysis)
   physicalFeatures?: string; // Height, weight, build, distinctive marks
@@ -370,18 +352,28 @@ export interface Character {
   homeLocation?: string;
   gender?: string;
   nationality?: string;
-  affiliation?: string;
+  affiliation_legacy?: string;
   knowsAbout?: string[];
-  fieldNotes?: { label: string; value: string }[];
+  x?: number;
+  y?: number;
+  parentId?: string;
+  isLocked?: boolean;
+}
+
+// Field notes for rich metadata
+export interface FieldNote {
+  label: string;
+  value: string;
+  tag?: string;
 }
 
 export interface Location {
   id: string;
   name: string;
   description: string;
-  type: string;
+  type?: string;
   mapImage?: string;
-  source?: 'manual' | 'ai';
+  source?: 'manual' | 'ai' | 'ai_generated';
   address?: string;
   icon?: string;
   x?: number;
@@ -395,27 +387,35 @@ export interface Location {
   isLocked?: boolean;
   isRealWorld?: boolean;
   shortId?: string;
+  first_mention_offset?: number;
+  field_notes?: FieldNote[];
 }
 
 export interface Artifact {
   id: string;
   name: string;
-  type: string;
+  type?: string;
   description: string;
   imageUrl?: string;
-  source?: 'manual' | 'ai';
+  source?: 'manual' | 'ai' | 'ai_generated';
+  first_mention_offset?: number;
+  field_notes?: FieldNote[];
 }
 
 export interface TimelineEvent {
   id: string;
-  date: string; // Legacy field, mapping to startDate if ISO
-  uei?: number;
+  date?: string; // Legacy field, mapping to startDate if ISO
+  month?: number; // 1-indexed
+  day?: number;   // 1-indexed
+  year?: number;  // Numeric year override
   title: string;
   description: string;
-  charactersInvolved: string[]; // Maps to attendees
-  location: string;
-  source?: 'manual' | 'ai';
+  charactersInvolved?: string[]; // Maps to attendees
+  location?: string;
+  source?: 'manual' | 'ai' | 'ai_generated';
   isSoftAnchor?: boolean;
+  first_mention_offset?: number;
+  field_notes?: FieldNote[];
 
   // Schema.org/Event Compatibility
   startDate?: string; // ISO-8601
@@ -426,11 +426,50 @@ export interface TimelineEvent {
   typicalAgeRange?: string;
 }
 
+export interface LoreEntry {
+  id: string;
+  term: string;
+  type?: 'faction' | 'magic_system' | 'cosmology' | 'creature' | 'language' | 'religion' | 'law' | 'technology' | 'cultural_practice' | 'other' | string;
+  tier?: 'background' | 'minor' | 'moderate' | 'major' | 'foundational' | string;
+  associated_factions?: string[];
+  related_terms?: string[];
+  description: string;
+  source?: 'manual' | 'ai' | 'ai_generated';
+  first_mention_offset?: number;
+  field_notes?: FieldNote[];
+
+  // Legacy fields
+  definition?: string;
+  category?: string;
+  tags?: string[];
+  prefLabel?: string;
+  altLabel?: string[];
+  hiddenLabel?: string[];
+  broader?: string[];
+  narrower?: string[];
+  related?: string[];
+  scopeNote?: string;
+}
+
+export interface Relationship {
+  id: string;
+  sourceId: string; // Node A
+  targetId: string; // Node B
+  type: string;     // The edge label / predicate
+  description?: string;
+  
+  // Standard Graph Metadata (JGF/RDF)
+  predicate?: string; // Standardized URI or slug for the relationship
+  weight?: number;    // Strength of connection (0.0 to 1.0)
+  directed?: boolean; // Whether the relationship is one-way
+  metadata?: Record<string, any>;
+}
+
 export interface Note {
   id: string;
   content: string;
   tags: string[];
-  timestamp: number;
+  timestamp?: number;
   isCanon?: boolean;
   expandedContent?: string;
   metaSummary?: string;
@@ -457,31 +496,6 @@ export interface ProseDocument {
   lastModified: number;
 }
 
-export interface Relationship {
-  id: string;
-  sourceId: string; // Node A
-  targetId: string; // Node B
-  type: string;     // The edge label / predicate
-  description?: string;
-  
-  // Standard Graph Metadata (JGF/RDF)
-  predicate?: string; // Standardized URI or slug for the relationship
-  weight?: number;    // Strength of connection (0.0 to 1.0)
-  directed?: boolean; // Whether the relationship is one-way
-  metadata?: Record<string, any>;
-}
-
-export interface CalendarSystem {
-  id: string;
-  name: string;
-  months: any[];
-  eras: any[];
-  weekDays?: string[];
-  daysPerWeek?: number;
-  hoursPerDay?: number;
-  currentEpochDay?: number;
-}
-
 export interface Commit {
   id: string;
   timestamp: number;
@@ -504,12 +518,6 @@ export interface MatrixCell {
   content: string;
   eventId?: string;
   plotlineId?: string;
-}
-
-export interface CalendarMonth {
-  id: string;
-  name: string;
-  days: number;
 }
 
 export interface BackupStatus {

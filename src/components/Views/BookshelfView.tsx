@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { ProjectMetadata, User } from '../../types';
-import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database, Globe, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database, Edit2, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { CardActions } from '../ui/CardActions';
-import { ProjectWikiSettings } from './ProjectWikiSettings';
 
 interface BookshelfViewProps {
   projects: ProjectMetadata[];
@@ -34,8 +33,6 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
   const [editTitle, setEditTitle] = useState('');
   const [editShortName, setEditShortName] = useState('');
   const [editAuthor, setEditAuthor] = useState('');
-  const [wikiSettingsProjectId, setWikiSettingsProjectId] = useState<string | null>(null);
-  const [wikiSettingsProjectTitle, setWikiSettingsProjectTitle] = useState('');
 
   const handleRefresh = async () => {
     if (!onRefreshMetadata || isRefreshing) return;
@@ -157,22 +154,6 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                       >
                         <Edit2 size={18} />
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (wikiSettingsProjectId === project.id) {
-                            setWikiSettingsProjectId(null);
-                            setWikiSettingsProjectTitle('');
-                          } else {
-                            setWikiSettingsProjectId(project.id);
-                            setWikiSettingsProjectTitle(project.title);
-                          }
-                        }}
-                        className={`p-2 transition-colors ${wikiSettingsProjectId === project.id ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg' : 'text-slate-400 hover:text-emerald-500'}`}
-                        title="Wiki Settings"
-                      >
-                        <Globe size={18} />
-                      </button>
                       <CardActions
                         itemName={project.title}
                         onEdit={() => {
@@ -292,29 +273,8 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
         </p>
       </Modal>
 
-      <Modal 
-        isOpen={wikiSettingsProjectId !== null} 
-        onClose={() => {
-          setWikiSettingsProjectId(null);
-          setWikiSettingsProjectTitle('');
-        }} 
-        title={`Wiki Settings: ${wikiSettingsProjectTitle}`}
-        maxWidth="max-w-2xl"
-      >
-        {wikiSettingsProjectId && (
-          <ProjectWikiSettings 
-            projectId={wikiSettingsProjectId}
-            projectTitle={wikiSettingsProjectTitle}
-            onClose={() => {
-              setWikiSettingsProjectId(null);
-              setWikiSettingsProjectTitle('');
-            }}
-            fetchWithAuth={fetchWithAuth}
-          />
-        )}
-      </Modal>
-
-      <Modal 
+      <Modal
+ 
         isOpen={projectToEdit !== null} 
         onClose={() => setProjectToEdit(null)} 
         onConfirm={async () => {

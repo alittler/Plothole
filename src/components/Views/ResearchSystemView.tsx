@@ -1,6 +1,8 @@
 import React from 'react';
-import { ViewType, Note, ProjectData, ProjectMetadata, User } from '../../types';
-import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe, PenTool, LayoutGrid, Lightbulb, Image as ImageIcon, Trash } from 'lucide-react';
+import { ViewType, Note, ProjectData, ProjectMetadata, User, APP_DATA_VERSION } from '../../types';
+import { Plus, Search, Trash2, Sparkles, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe, PenTool, LayoutGrid, Lightbulb, Image as ImageIcon, Trash, Download, Upload } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { StackedPaper } from '../ui/StackedPaper';
 import { WikiText } from '../ui/WikiText';
 import { RichEditor } from '../ui/RichEditor';
@@ -12,7 +14,8 @@ import { sanitizeHtml } from '../../utils/htmlSanitizer';
 enum NotepadView {
   STREAM = 'Notebook',
   CORKBOARD = 'Corkboard',
-  INSPIRATION = 'Moodboard'
+  INSPIRATION = 'Moodboard',
+  CHAT = 'Chat'
 }
 import { generateId } from '../../services/storageService';
 
@@ -23,6 +26,7 @@ interface ResearchSystemViewProps {
   projectsMetadata?: ProjectMetadata[];
   currentUser?: User;
   onAddNote: (note: Note) => void;
+  onImportNotes?: (notes: Note[]) => Promise<void>;
   onAddIdeaToProject?: (projectId: string, content: string, tags: string[]) => void;
   onToggleCanon?: (noteId: string, isCanon: boolean) => void;
   onDeleteNote: (id: string) => void;
@@ -44,17 +48,103 @@ interface ResearchSystemViewProps {
 }
 
 export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
-  currentView, onChangeView, data, projectsMetadata, currentUser, onAddNote, onAddIdeaToProject, onToggleCanon, onDeleteNote, onDeleteAllNotes, onLinkClick, onAddDoubleProcessedNote, activeTasks, onUpdateProject, semanticSearchEnabled, isEmbedded,
+  currentView, onChangeView, data, projectsMetadata, currentUser, onAddNote, onImportNotes, onAddIdeaToProject, onToggleCanon, onDeleteNote, onDeleteAllNotes, onLinkClick, onAddDoubleProcessedNote, activeTasks, onUpdateProject, semanticSearchEnabled, isEmbedded,
   onCreateProject, onUploadProject, onDeleteProject, onSelectProject, onOpenDashboard, isAnalyzing: isAnalyzingProp, fetchWithAuth
 }) => {
   const [viewMode, setNotepadView] = React.useState<NotepadView>(NotepadView.STREAM);
-  const [newNote, setNewNote] = React.useState('');
+  const [selectedTag, setSelectedTag] = React.useState<string | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const [newNote, setNewNote] = React.useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('plothole_notepad_draft') || '';
+    }
+    return '';
+  });
+
+  // Auto-save draft to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('plothole_notepad_draft', newNote);
+  }, [newNote]);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [semanticResults, setSemanticResults] = React.useState<string[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [showTagSuggestion, setShowTagSuggestion] = React.useState(false);
   const [noteToDelete, setNoteToDelete] = React.useState<string | null>(null);
   const [selectedProseId, setSelectedProseId] = React.useState<string | null>(null);
+  const [chatMessages, setChatMessages] = React.useState<{ role: 'user' | 'assistant', content: string }[]>([
+    { role: 'assistant', content: "Hello! I'm your Laboratory Assistant. I can help you find connections between your notes, brainstorm new ideas, or analyze your current story world. What's on your mind?" }
+  ]);
+  const [chatInput, setChatInput] = React.useState('');
+  const [isChatLoading, setIsChatLoading] = React.useState(false);
+  const [synthesis, setSynthesis] = React.useState<{ [key: string]: string }>({});
+  const [isGeneratingSynthesis, setIsGeneratingSynthesis] = React.useState(false);
+
+  // Auto-generate synthesis when switching to Chat tab or changing tags
+  React.useEffect(() => {
+    if (viewMode === NotepadView.CHAT) {
+      const tagKey = selectedTag || 'all_notes';
+      if (!synthesis[tagKey]) {
+        generateSynthesis(tagKey);
+      }
+    }
+  }, [viewMode, selectedTag]);
+
+  const generateSynthesis = async (tagKey: string) => {
+    setIsGeneratingSynthesis(true);
+    try {
+      const contextNotes = selectedTag 
+        ? allNotes.filter(n => n.tags.includes(selectedTag))
+        : allNotes;
+      
+      if (contextNotes.length < 2) {
+        setSynthesis(prev => ({ ...prev, [tagKey]: "Add more notes to this collection to see story connections." }));
+        return;
+      }
+
+      const notesText = contextNotes.map(n => n.content).join('\n---\n');
+      const manuscriptText = data.manuscript || '';
+      const entitiesContext = (data.entities || []).map(e => `${e.name} (${e.type}): ${e.description || e.primary_trait || ''}`).join('\n');
+      const loreContext = (data.lore || []).map(l => `${l.title}: ${l.content}`).join('\n');
+      
+      const response = await fetch('/api/narrative/brainstorm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `You are a Story Architect. Your goal is to find narrative connections between the user's RESEARCH NOTES and their ESTABLISHED STORY (Manuscript & Lore).
+
+TASK:
+Analyze how these new notes connect to, expand upon, or contradict the established manuscript. 
+Do NOT just summarize. 
+Look for:
+1. Narrative Hooks: How can a specific note be woven into a specific scene in the manuscript?
+2. Lore Validation: Does a note confirm or challenge an established fact in the world lore?
+3. Character Growth: Does a note suggest a new motivation for an existing character?
+4. Inconsistencies: Point out where a note might break the logic of the established world.
+
+FORMAT:
+Use clean Markdown headers and bold text for emphasis. Be specific and creative.`,
+          context: `USER'S RESEARCH NOTES:
+${notesText}
+
+ESTABLISHED LORE & ENTITIES:
+${entitiesContext.substring(0, 2000)}
+${loreContext.substring(0, 2000)}
+
+ESTABLISHED MANUSCRIPT:
+${manuscriptText.substring(0, 15000)}`
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to reach AI Brain');
+      const result = await response.json();
+      
+      setSynthesis(prev => ({ ...prev, [tagKey]: result.result || "I've analyzed your notes against the manuscript. No specific connections found yet." }));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingSynthesis(false);
+    }
+  };
 
   const corkboardNotes = React.useMemo(() => data.corkboardNotes || [], [data.corkboardNotes]);
   const activeProse = React.useMemo(() => corkboardNotes.find(d => d.id === selectedProseId), [corkboardNotes, selectedProseId]);
@@ -89,6 +179,108 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
   const [showInspirationForm, setShowInspirationForm] = React.useState(false);
   const [inspirationImageError, setInspirationImageError] = React.useState('');
   const [editingInspirationId, setEditingInspirationId] = React.useState<string | null>(null);
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userMsg = chatInput.trim();
+    setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setChatInput('');
+    setIsChatLoading(true);
+
+    try {
+      // Build context from current notes or collection
+      const contextNotes = selectedTag 
+        ? allNotes.filter(n => n.tags.includes(selectedTag))
+        : allNotes;
+      
+      const contextText = contextNotes.map(n => n.content).join('\n---\n');
+      
+      const response = await fetch('/api/narrative/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          manuscriptText: contextText || "No notes available in this collection.",
+          customPrompt: `You are a creative writing assistant. The user is asking about their story notes. 
+          
+Context (User's Notes):
+${contextText.substring(0, 10000)}
+
+User's Question:
+${userMsg}
+
+Please provide a helpful, creative, and insightful response based on their notes.`,
+          existingEntities: data.entities || []
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to reach AI Brain');
+      
+      const result = await response.json();
+      // The API returns worldState by default, but we can repurpose it or add a specific chat endpoint later.
+      // For now, let's assume the API can handle a string response if customPrompt is provided.
+      // Actually the current API returns worldState (extracted entities).
+      
+      setChatMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: result.worldType || "I've analyzed your notes. How else can I help?" 
+      }]);
+    } catch (err) {
+      console.error(err);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: "I'm sorry, I'm having trouble connecting to my creative centers right now. Please try again in a moment." }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+  const handleExportNotes = () => {
+    const exportData = {
+      version: APP_DATA_VERSION,
+      timestamp: Date.now(),
+      project: data.title,
+      notes: allNotes,
+      tags: projectTags
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `plothole-notes-${data.shortName || 'export'}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportNotes = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const imported = JSON.parse(event.target?.result as string);
+        if (imported.notes && Array.isArray(imported.notes)) {
+          // Merge logic - avoid duplicates by ID
+          const existingIds = new Set(allNotes.map(n => n.id));
+          const newNotes = imported.notes.filter((n: Note) => !existingIds.has(n.id));
+          
+          if (onImportNotes) {
+            await onImportNotes(newNotes);
+          } else {
+            for (const note of newNotes) {
+              onAddNote(note);
+            }
+          }
+          alert(`Imported ${newNotes.length} new notes.`);
+        }
+      } catch (err) {
+        alert("Failed to import notes. Please ensure the file is a valid Plothole export.");
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
+  };
 
   const handleAddInspiration = () => {
     if (!newInspirationTitle.trim()) {
@@ -178,24 +370,47 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
     console.log('Inspirations in data:', data.inspirations);
   }, [data.inspirations]);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newNote.trim()) return;
-    const tags = newNote.match(/#\w+/g)?.map(t => t.slice(1)) || [];
     
-    if (onAddIdeaToProject) {
-      const currentProjectTag = (data.shortName || data.title || '').replace(/[^\w\s]/g, '').replace(/\s+/g, '_').toLowerCase();
-      if (tags.some(t => t.toLowerCase() === currentProjectTag) && data.id) {
-        onAddIdeaToProject(data.id, newNote, tags);
+    // Split by --- delimiter if present
+    const segments = newNote.includes('---') 
+      ? newNote.split('---').map(s => s.trim()).filter(Boolean)
+      : [newNote.trim()];
+
+    const currentProjectTag = (data.shortName || data.title || '').replace(/[^\w\s]/g, '').replace(/\s+/g, '_').toLowerCase();
+    
+    // Process each segment as a separate note
+    const notesToBatch = [];
+    
+    for (const content of segments) {
+      const tags = content.match(/#\w+/g)?.map(t => t.slice(1)) || [];
+      
+      if (onAddIdeaToProject && data.id) {
+        if (tags.some(t => t.toLowerCase() === currentProjectTag)) {
+          onAddIdeaToProject(data.id, content, tags);
+        }
       }
+
+      const note: Note = {
+        id: generateId(),
+        content,
+        tags,
+        timestamp: Date.now()
+      };
+      
+      notesToBatch.push(note);
+      onAddNote(note);
     }
 
-    onAddNote({
-      id: generateId(),
-      content: newNote,
-      tags,
-      timestamp: Date.now()
-    });
+    // If there was an import-like batch, ensure we signal it if possible
+    if (segments.length > 1 && onImportNotes) {
+       // onAddNote already called individually, but for safety in cloud/local sync:
+       await onImportNotes(notesToBatch);
+    }
+
     setNewNote('');
+    localStorage.removeItem('plothole_notepad_draft');
     setShowTagSuggestion(false);
   };
 
@@ -225,6 +440,8 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
       const updatedNote = newNote.substring(0, lastHashIndex + 1) + projectTag + ' ';
       setNewNote(updatedNote);
       setShowTagSuggestion(false);
+      // Focus back to textarea
+      setTimeout(() => textareaRef.current?.focus(), 10);
     }
   };
 
@@ -260,22 +477,36 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
       .sort((a, b) => b.timestamp - a.timestamp);
   }, [data.notes, data.ideas]);
 
+  const projectTags = React.useMemo(() => {
+    const tags = new Set<string>();
+    allNotes.forEach(note => {
+      note.tags.forEach(tag => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  }, [allNotes]);
+
   const filteredNotes = React.useMemo(() => {
+    let notes = allNotes;
+    
+    if (selectedTag) {
+      notes = notes.filter(n => n.tags.includes(selectedTag));
+    }
+    
     if (semanticSearchEnabled && searchQuery.trim() && semanticResults.length > 0) {
       return semanticResults
-        .map(id => allNotes.find(n => n.id === id))
+        .map(id => notes.find(n => n.id === id))
         .filter((n): n is Note => !!n);
     }
     
-    if (!searchQuery.trim()) return allNotes;
+    if (!searchQuery.trim()) return notes;
     
     const query = searchQuery.toLowerCase();
-    return allNotes.filter(n => 
+    return notes.filter(n => 
       n.content.toLowerCase().includes(query) || 
       n.tags.some(t => t.toLowerCase().includes(query)) ||
       n.expandedContent?.toLowerCase().includes(query)
     );
-  }, [allNotes, searchQuery, semanticSearchEnabled, semanticResults]);
+  }, [allNotes, searchQuery, semanticSearchEnabled, semanticResults, selectedTag]);
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
@@ -290,17 +521,51 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                 {Object.values(NotepadView).map(v => (
                   <button
                     key={v}
-                    onClick={() => setNotepadView(v)}
-                    className={`ph-tab ${viewMode === v ? 'ph-tab-active' : 'ph-tab-inactive'}`}
+                    onClick={() => {
+                      setNotepadView(v);
+                      setSelectedTag(null);
+                    }}
+                    className={`ph-tab ${viewMode === v && !selectedTag ? 'ph-tab-active' : 'ph-tab-inactive'}`}
                   >
                   {v === NotepadView.STREAM && <Zap size={14} />}
                     {v === NotepadView.INSPIRATION && <Lightbulb size={14} />}
+                    {v === NotepadView.CHAT && <Sparkles size={14} />}
                     {v}
                   </button>
                 ))}
+
+                {/* Project Collection Tabs */}
+                {viewMode === NotepadView.STREAM && projectTags.length > 0 && (
+                  <>
+                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-2" />
+                    {projectTags.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => setSelectedTag(tag)}
+                        className={`ph-tab whitespace-nowrap ${selectedTag === tag ? 'ph-tab-active border-indigo-500 text-indigo-600' : 'ph-tab-inactive'}`}
+                      >
+                        <span className="text-indigo-400 mr-1 opacity-50">#</span>
+                        {tag}
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 mr-2 border-r border-slate-200 dark:border-slate-800 pr-4">
+                <button
+                  onClick={handleExportNotes}
+                  className="ph-button-ghost p-2 text-slate-400 hover:text-indigo-600"
+                  title="Export Notes"
+                >
+                  <Download size={18} />
+                </button>
+                <label className="ph-button-ghost p-2 text-slate-400 hover:text-indigo-600 cursor-pointer" title="Import Notes">
+                  <Upload size={18} />
+                  <input type="file" className="hidden" accept=".json" onChange={handleImportNotes} />
+                </label>
+              </div>
               {onDeleteAllNotes && (
                 <button
                   onClick={() => setNoteToDelete('ALL')}
@@ -335,6 +600,84 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
         </header>
       )}
 
+      {/* Mobile/Small Screen Navigation (Visible when main header is hidden) */}
+      <div className="lg:hidden flex flex-col gap-2 p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-20 shadow-sm">
+        <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
+          {Object.values(NotepadView).map(v => (
+            <button
+              key={v}
+              onClick={() => {
+                setNotepadView(v);
+                setSelectedTag(null);
+              }}
+              className={`ph-tab whitespace-nowrap ${viewMode === v && !selectedTag ? 'ph-tab-active' : 'ph-tab-inactive'}`}
+            >
+              <div className="flex items-center gap-1">
+                {v === NotepadView.STREAM && <Zap size={12} />}
+                {v === NotepadView.INSPIRATION && <Lightbulb size={12} />}
+                {v === NotepadView.CHAT && <Sparkles size={12} />}
+                {v}
+              </div>
+            </button>
+          ))}
+          
+          {/* Project Collection Tabs on Mobile */}
+          {viewMode === NotepadView.STREAM && projectTags.length > 0 && (
+            <>
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-2" />
+              {projectTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(tag)}
+                  className={`ph-tab whitespace-nowrap ${selectedTag === tag ? 'ph-tab-active border-indigo-500 text-indigo-600' : 'ph-tab-inactive'}`}
+                >
+                  <span className="text-indigo-400 mr-0.5 opacity-50">#</span>
+                  {tag}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
+      {isEmbedded && (
+        <div className="hidden lg:flex flex-col gap-2 p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
+            {Object.values(NotepadView).map(v => (
+              <button
+                key={v}
+                onClick={() => {
+                  setNotepadView(v);
+                  setSelectedTag(null);
+                }}
+                className={`ph-tab whitespace-nowrap ${viewMode === v && !selectedTag ? 'ph-tab-active' : 'ph-tab-inactive'}`}
+              >
+                <div className="flex items-center gap-1">
+                  {v === NotepadView.STREAM && <Zap size={12} />}
+                  {v === NotepadView.INSPIRATION && <Lightbulb size={12} />}
+                  {v === NotepadView.CHAT && <Sparkles size={12} />}
+                  {v}
+                </div>
+              </button>
+            ))}
+            {viewMode === NotepadView.STREAM && projectTags.length > 0 && (
+              <>
+                <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-2" />
+                {projectTags.map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => setSelectedTag(tag)}
+                    className={`ph-tab whitespace-nowrap ${selectedTag === tag ? 'ph-tab-active border-indigo-500 text-indigo-600' : 'ph-tab-inactive'}`}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto relative p-0 md:p-8">
         <div className={`max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-none md:rounded-3xl overflow-hidden flex flex-col ${viewMode === NotepadView.STREAM ? 'paper-texture' : ''}`}>
           {viewMode === NotepadView.STREAM ? (
@@ -364,6 +707,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                     <div className="p-4 md:p-6 relative z-20 bg-white/40 dark:bg-white/5 rounded-2xl backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 mb-4 shadow-sm">
                       <div className="relative">
                         <textarea
+                          ref={textareaRef}
                           value={newNote}
                           onChange={handleTextChange}
                           onKeyDown={handleKeyDown}
@@ -474,6 +818,101 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                 </div>
               </div>
             </>
+          ) : viewMode === NotepadView.CHAT ? (
+            <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
+              {/* Chat Backdrop */}
+              <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
+              
+              <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 relative custom-scrollbar">
+                <div className="max-w-3xl mx-auto space-y-6 pb-20">
+                  {/* Preliminary Connections Panel */}
+                  <div className="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
+                    <div className="p-4 bg-indigo-600/5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={16} className="text-indigo-600" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">Brainstorm</h3>
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{selectedTag ? `#${selectedTag}` : 'All Notebook'}</span>
+                    </div>
+                    <div className="p-6 md:p-8">
+                      {isGeneratingSynthesis ? (
+                        <div className="flex flex-col items-center justify-center py-12 gap-4">
+                          <Loader2 size={32} className="animate-spin text-indigo-500/50" />
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Mapping Story Graph...</p>
+                        </div>
+                      ) : (
+                        <div className="prose prose-slate dark:prose-invert prose-sm max-w-none font-serif text-slate-700 dark:text-slate-300 leading-relaxed">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {synthesis[selectedTag || 'all_notes']}
+                          </ReactMarkdown>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="perforation-line opacity-50" />
+
+                  {chatMessages.map((msg, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}
+                    >
+                      <div className={`max-w-[85%] p-4 md:p-6 rounded-[2rem] shadow-sm border font-serif text-sm md:text-base leading-relaxed
+                        ${msg.role === 'user' 
+                          ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none' 
+                          : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 rounded-tl-none'}`}
+                      >
+                        <div className={msg.role === 'user' ? '' : 'prose prose-slate dark:prose-invert prose-sm max-w-none'}>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {isChatLoading && (
+                    <div className="flex justify-start animate-pulse">
+                      <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-slate-200 dark:border-slate-700">
+                        <Loader2 size={16} className="animate-spin text-indigo-500" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Chat Input Area */}
+              <div className="p-4 md:p-8 border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shrink-0">
+                <div className="max-w-3xl mx-auto relative group">
+                  <textarea
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder={selectedTag ? `Ask about #${selectedTag}...` : "Ask about your notes..."}
+                    className="w-full bg-slate-100 dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500 rounded-2xl md:rounded-3xl py-4 pl-6 pr-14 text-sm md:text-base font-serif resize-none shadow-inner transition-all"
+                    rows={1}
+                    style={{ minHeight: '56px', maxHeight: '150px' }}
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 text-white rounded-xl md:rounded-2xl shadow-lg shadow-indigo-600/20 disabled:opacity-50 hover:scale-105 active:scale-95 transition-all"
+                  >
+                    {isChatLoading ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} className="rotate-45" />}
+                  </button>
+                </div>
+                <div className="max-w-3xl mx-auto mt-2 px-2 flex justify-between items-center">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    {selectedTag ? `Context: #${selectedTag} notes` : "Context: All notebook notes"}
+                  </span>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Shift+Enter for newline</span>
+                </div>
+              </div>
+            </div>
           ) : viewMode === NotepadView.INSPIRATION ? (
             <div className="flex-1 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-900 dark:to-slate-800 overflow-y-auto p-8 lg:p-12">
               <div className="max-w-6xl mx-auto">
@@ -736,7 +1175,7 @@ export const ResearchSystemView: React.FC<ResearchSystemViewProps> = ({
                                   content: val,
                                   lastModified: Date.now()
                                 };
-                                onUpdateProject?.({ proseDocuments: [newDoc, ...proseDocs] });
+                                onUpdateProject?.({ corkboardNotes: [newDoc, ...corkboardNotes] });
                                 e.currentTarget.value = '';
                               }
                             }}

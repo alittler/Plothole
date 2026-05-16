@@ -134,7 +134,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.BESTIARY, label: 'Bestiary', icon: Wand2, projectOnly: true },
     { id: ViewType.INVENTORY, label: 'Inventory', icon: Box, projectOnly: true },
     { id: ViewType.DICTIONARY, label: 'Dictionary', icon: BookMarked, projectOnly: true },
-    { id: ViewType.GALLERY, label: 'Gallery', icon: LayoutGrid, projectOnly: true },
     { id: ViewType.RESEARCH, label: 'Research', icon: BookOpen, projectOnly: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
@@ -145,7 +144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const baseSections: SidebarSection[] = [
       {
         title: 'Workspace',
-        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.RESEARCH, ViewType.BOOKSHELF, ViewType.GALLERY].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.RESEARCH, ViewType.BOOKSHELF].includes(i.id))
       },
       {
         title: 'Story',

@@ -276,4 +276,44 @@ Guidelines:
       return 'fictional'; // Safe default
     }
   }
+
+  async brainstorm(prompt: string, context: string): Promise<string> {
+    try {
+      console.log('[NarrativeEngine] Starting brainstorm...');
+      
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'HTTP-Referer': 'https://plothole.click',
+          'X-Title': 'Plothole Brainstorm',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.0-flash-001',
+          messages: [
+            {
+              role: 'system',
+              content: prompt
+            },
+            {
+              role: 'user',
+              content: context
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Brainstorm API Error: ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || "I couldn't generate any connections at this time.";
+    } catch (error: any) {
+      console.error('[NarrativeEngine] Brainstorm failed:', error.message);
+      return "I'm sorry, my creative centers are offline. Please try again later.";
+    }
+  }
 }

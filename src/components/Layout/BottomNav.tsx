@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType } from '../../types';
-import { Book, Search, Zap, LayoutGrid, Menu, FileText, Users, Map, Calendar, X, HelpCircle, Settings, Shield, Wrench, Wand2 } from 'lucide-react';
+import { Book, Search, Zap, LayoutGrid, Menu, FileText, Users, Map, Clock, X, HelpCircle, Settings, Shield, Wrench, Wand2 } from 'lucide-react';
 
 interface BottomNavProps {
   currentView: ViewType;
@@ -70,7 +70,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       case ViewType.RESEARCH: return <Zap size={size} />;
       case ViewType.CHARACTERS: return <Users size={size} />;
       case ViewType.MAP: return <Map size={size} />;
-      case ViewType.TIMELINE: return <Calendar size={size} />;
+      case ViewType.TIMELINE: return <Clock size={size} />;
       case ViewType.TOOLBOX: return <Wrench size={size} />;
       case ViewType.SETTINGS: return <Settings size={size} />;
       case ViewType.ADMIN: return <Shield size={size} />;

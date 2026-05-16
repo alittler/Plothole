@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ProjectData, Note, Commit, BackupStatus, User } from '../../types';
 import { 
-  Sparkles, FileText, Users, Map, Calendar, Clock, Edit3, 
+  Sparkles, FileText, Users, Map, Clock, Edit3, 
   Activity, Ghost, PinOff, Edit2,
   BarChart3, TrendingUp, AlertOctagon, History, ShieldCheck, 
   CloudUpload, Mail, CheckCircle, XCircle, ShieldAlert,
@@ -10,12 +10,10 @@ import {
   CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
-import { detectTemporalParadoxes } from '../../utils/calendarUtils';
 import { validateIntegrity } from '../../services/versioningService';
 
 enum DashboardTab {
   HEALTH = 'Health',
-  GALLERY = 'Gallery',
   EDITS = 'Audit Trail',
   BACKUPS = 'Redundancy'
 }
@@ -43,11 +41,12 @@ interface DashboardViewProps {
   onUpdateProject: (updates: Partial<ProjectData>) => Promise<void>;
   onSave?: () => Promise<void>;
   currentUser: User;
-  }
+  fetchWithAuth?: (url: string, options?: any) => Promise<Response>;
+}
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   projectData, globalNotes, onGenerateCover, isGeneratingCover, onAuditThreads, isAnalyzing, onRestoreCommit, onExportProject, onExportVault, isExporting,
-  onUpdateProcessedFiles, isUpdatingProcessed = false, onLinkClick, onUpdateProject, onSave, currentUser
+  onUpdateProcessedFiles, isUpdatingProcessed = false, onLinkClick, onUpdateProject, onSave, currentUser, fetchWithAuth
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,34 +63,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     validateIntegrity(projectData).then(valid => setIsIntegrityValid(valid));
   }, [projectData]);
 
-  const projectImages = useMemo(() => {
-    const images: { id: string; url: string; label: string; type: string; entityType: string }[] = [];
-    if (projectData.coverImage) images.push({ id: 'cover', url: projectData.coverImage, label: 'Project Cover', type: 'Cover', entityType: 'project' });
-    if (projectData.rootMapImage) images.push({ id: 'rootMap', url: projectData.rootMapImage, label: 'World Map', type: 'Map', entityType: 'project' });
-    
-    projectData.characters.forEach(c => {
-      if (c.images && c.images.length > 0) images.push({ id: c.id, url: c.images[0].url, label: c.name, type: 'Character', entityType: 'character' });
-    });
-    
-    projectData.locations.forEach(l => {
-      if (l.mapImage) images.push({ id: l.id, url: l.mapImage, label: l.name, type: 'Map', entityType: 'location' });
-    });
-
-    projectData.sources?.forEach(s => {
-      if (s.type === 'image' && s.content.startsWith('data:image')) {
-        images.push({ id: s.id, url: s.content, label: s.name, type: 'Source', entityType: 'source' });
-      }
-    });
-    return images;
-  }, [projectData]);
-
   const stats = useMemo(() => {
     const totalWords = projectData.wordCount || (projectData.chapters || []).reduce((acc, c) => acc + (c.wordCount || 0), 0);
     
     const unplacedPins = (projectData.locations || []).filter(l => !l.x && !l.y);
-    const paradoxes = detectTemporalParadoxes(projectData);
     
-    return { totalWords, unplacedPins, paradoxes };
+    return { totalWords, unplacedPins };
   }, [projectData]);
 
   return (
@@ -234,7 +211,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <HealthCheck status={stats.unplacedPins.length === 0 ? 'good' : 'warning'} message={`${stats.unplacedPins.length} unplaced location${stats.unplacedPins.length !== 1 ? 's' : ''}`} />
-                  <HealthCheck status={stats.paradoxes.length === 0 ? 'good' : 'critical'} message={`${stats.paradoxes.length} timeline paradox${stats.paradoxes.length !== 1 ? 'es' : ''}`} />
                 </div>
               </section>
 
@@ -261,26 +237,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </section>
             </div>
-          )}
-
-          {activeTab === DashboardTab.GALLERY && (
-            <section className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <ImageIcon size={18} className="text-indigo-600" /> Media Gallery ({projectImages.length})
-              </h2>
-              {projectImages.length === 0 ? (
-                <div className="py-12 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
-                  <ImageIcon size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                  <p className="text-sm text-slate-400">No images yet</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {projectImages.map((img, idx) => (
-                    <BlueprintCard key={idx} img={img} onEdit={() => onLinkClick('admin', img.id)} />
-                  ))}
-                </div>
-              )}
-            </section>
           )}
 
           {activeTab === DashboardTab.EDITS && (
@@ -379,59 +335,5 @@ const HealthCheck = ({ status, message }: { status: 'good' | 'warning' | 'critic
       <Icon className={`w-5 h-5 flex-shrink-0 ${config.color}`} />
       <span className="text-sm text-slate-700 dark:text-slate-300">{message}</span>
     </div>
-  );
-};
-
-const BlueprintCard = ({ img, onEdit }: { img: { id: string; url: string; label: string; type: string; entityType: string }, onEdit: () => void }) => (
-  <div className="relative group p-4 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-3xl border border-indigo-200/50 dark:border-indigo-800/30 overflow-hidden">
-    {/* Architectural Grid Overlay */}
-    <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.07] pointer-events-none" 
-         style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
-    
-    {/* Technical Markers */}
-    <div className="absolute top-2 left-2 w-3 h-3 border-l border-t border-indigo-500/50" />
-    <div className="absolute top-2 right-2 w-3 h-3 border-r border-t border-indigo-500/50" />
-    <div className="absolute bottom-2 left-2 w-3 h-3 border-l border-b border-indigo-500/50" />
-    <div className="absolute bottom-2 right-2 w-3 h-3 border-r border-b border-indigo-500/50" />
-
-    {/* Edit Button Overlay */}
-    <button 
-      onClick={(e) => { e.stopPropagation(); onEdit(); }}
-      className="absolute top-4 right-4 z-20 p-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl shadow-lg border border-indigo-500/20 text-indigo-600 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-95"
-      title="Edit Source Entity"
-    >
-      <Edit2 size={14} />
-    </button>
-
-    <div className="aspect-square rounded-2xl overflow-hidden bg-white dark:bg-slate-800 relative shadow-inner mb-4 transition-transform group-hover:scale-[1.02]">
-      <img 
-        src={img.url} 
-        alt={img.label} 
-        className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" 
-        referrerPolicy="no-referrer" 
-      />
-      
-      {/* Blueprint Scanline */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-500/5 to-transparent h-1/2 w-full animate-pulse pointer-events-none" />
-    </div>
-
-    <div className="space-y-1.5 px-1">
-      <div className="flex items-center justify-between">
-        <span className="text-[8px] font-mono font-black text-indigo-500 uppercase tracking-tighter">Asset_Type::{img.type.toUpperCase()}</span>
-        <span className="text-[8px] font-mono text-slate-400">v3.0.4</span>
-      </div>
-      <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">{img.label}</h4>
-      <div className="flex items-center gap-4 pt-2 border-t border-indigo-200/30 dark:border-indigo-800/20">
-        <div className="flex flex-col">
-          <span className="text-[9px] font-black text-slate-400 uppercase">Res</span>
-          <span className="text-[9px] font-mono text-slate-600 dark:text-slate-400">1024x1024</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[9px] font-black text-slate-400 uppercase">Enc</span>
-          <span className="text-[9px] font-mono text-slate-600 dark:text-slate-400">UTF-8</span>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
+    );
+    };

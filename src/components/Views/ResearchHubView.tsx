@@ -3,8 +3,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { ProjectData, Note } from '../../types';
 import { 
   BookOpen, FileText, Plus, Search, Trash2, Download, Upload, Eye, EyeOff, 
-  ChevronDown, Loader2, MapPin, Tag, Calendar, Settings, X, Copy, Check,
-  AlertCircle, Filter
+  ChevronDown, Loader2, MapPin, Tag, Settings, X, Copy, Check,
+  AlertCircle, Filter, Clock
 } from 'lucide-react';
 import { generateId } from '../../services/storageService';
 
@@ -229,7 +229,7 @@ export const ResearchHubView: React.FC<ResearchHubViewProps> = ({ projectData, o
                     </div>
                     <div className="flex flex-wrap gap-4 text-xs text-slate-500">
                       <div className="flex items-center gap-1">
-                        <Calendar size={14} />
+                        <Clock size={14} />
                         {new Date(source.uploadDate).toLocaleDateString()}
                       </div>
                       <div className="flex items-center gap-1">

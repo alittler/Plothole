@@ -1,5 +1,4 @@
-import _pdfParse from 'pdf-parse';
-const pdfParse: any = _pdfParse;
+import { PDFParse } from 'pdf-parse';
 import Tesseract from 'tesseract.js';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -17,7 +16,8 @@ export interface ExtractionResult {
 const extractFromPdf = async (filePath: string): Promise<ExtractionResult> => {
   try {
     const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdfParse(dataBuffer);
+    const parser = new PDFParse({ data: dataBuffer });
+    const data = await parser.getText();
 
     // Combine text from all pages
     let extractedText = '';
@@ -31,7 +31,7 @@ const extractFromPdf = async (filePath: string): Promise<ExtractionResult> => {
     if (textCharCount > 100) {
       // Add page markers for clarity
       let markedText = '';
-      for (let i = 0; i < (data.numpages || 1); i++) {
+      for (let i = 0; i < (data.pages?.length || 1); i++) {
         markedText += `\n=== Page ${i + 1} ===\n`;
       }
       markedText += extractedText;

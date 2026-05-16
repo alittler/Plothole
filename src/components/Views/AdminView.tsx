@@ -5,7 +5,7 @@ import {
   Shield, Sparkles, Save, Trash2, Check, Copy, Edit2, 
   Settings, User, Plus, Search, Archive, Clock, AlertCircle,
   FileText, Activity, Terminal, Code, Cpu, Download, Layout,
-  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, GripVertical, Eye, EyeOff, Users, Menu, QrCode, BookOpen, GitMerge
+  UserPlus, Mail, Link as LinkIcon, ChevronRight, Maximize2, PenTool, X, Map, MapPin, Globe, Loader2, RotateCcw, Target, Wrench, Upload, Book, GripVertical, Eye, EyeOff, Users, Menu, BookOpen, GitMerge
 } from 'lucide-react';
 
 import { generateId } from '../../services/storageService';
@@ -32,7 +32,6 @@ interface AdminViewProps {
 enum AdminTab {
   SYSTEM = 'System',
   NAVIGATION = 'Navigation',
-  CONNECT = 'Connect',
   USERS = 'Users',
   TOOLBOX = 'Toolbox',
   PLOTHOLE_FORMAT = 'File Format',
@@ -1353,7 +1352,6 @@ books:
               <div className={activeTab === tab ? 'text-white' : 'text-indigo-500'}>
                 {tab === AdminTab.SYSTEM && <Settings size={18} />}
                 {tab === AdminTab.NAVIGATION && <Layout size={18} />}
-                {tab === AdminTab.CONNECT && <QrCode size={18} />}
                 {tab === AdminTab.USERS && <User size={18} />}
                 {tab === AdminTab.TOOLBOX && <Wrench size={18} />}
                 {tab === AdminTab.PLOTHOLE_FORMAT && <Archive size={18} />}

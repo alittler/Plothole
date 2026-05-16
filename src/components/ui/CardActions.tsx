@@ -4,6 +4,7 @@ import { MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
 
 interface CardActionsProps {
   onEdit?: () => void;
+  onEditJSON?: () => void;
   onDelete?: () => void;
   itemName?: string;
   className?: string;
@@ -11,6 +12,7 @@ interface CardActionsProps {
 
 export const CardActions: React.FC<CardActionsProps> = ({ 
   onEdit, 
+  onEditJSON,
   onDelete, 
   itemName = 'this item',
   className = ''
@@ -51,6 +53,11 @@ export const CardActions: React.FC<CardActionsProps> = ({
     onEdit?.();
   };
 
+  const handleEditJSON = () => {
+    setIsOpen(false);
+    onEditJSON?.();
+  };
+
   const handleDeleteClick = () => {
     setIsOpen(false);
     setShowDeleteConfirm(true);
@@ -88,6 +95,15 @@ export const CardActions: React.FC<CardActionsProps> = ({
               >
                 <Edit2 size={14} />
                 Edit
+              </button>
+            )}
+            {onEditJSON && (
+              <button
+                onClick={handleEditJSON}
+                className="w-full px-4 py-2 text-left text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 flex items-center gap-2 transition-colors"
+              >
+                <Edit2 size={14} />
+                Edit JSON
               </button>
             )}
             {onDelete && (

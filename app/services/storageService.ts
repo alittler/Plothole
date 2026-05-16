@@ -842,7 +842,6 @@ export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
     timeline: [],
     relationships: [],
     notes: restoredNotes,
-    themes: [],
-    calendars: []
+    themes: []
   };
 };

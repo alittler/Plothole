@@ -4,7 +4,6 @@ export enum ViewType {
   TIMELINE = 'Timeline',
   BOARD = 'Board',
   TABLE = 'Table',
-  GALLERY = 'Gallery',
   NOTEPAD = 'Notepad',
   MAP = 'Map',
   LOCATIONS = 'Locations',
@@ -255,14 +254,6 @@ export interface ProjectData {
   continuityErrors?: ContinuityError[];
   latestAnalysisResult?: string;
   customAnalysisPrompt?: string;
-  wikiSettings?: {
-    includeCharacters?: boolean;
-    includeLocations?: boolean;
-    includeTimeline?: boolean;
-    includeLore?: boolean;
-    includeArtifacts?: boolean;
-    includeManuscript?: boolean;
-  };
   rootMapImage?: string;
   isRealWorldMap?: boolean;
   mapScale?: number;

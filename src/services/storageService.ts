@@ -670,8 +670,8 @@ export const saveAppPrompts = async (prompts: AppPrompts): Promise<void> => {
   });
 };
 
-export const getAllGlobalNotes = async (): Promise<Note[]> => {
-  if (useCloudStorage && authFetch) {
+export const getAllGlobalNotes = async (forceLocal: boolean = false): Promise<Note[]> => {
+  if (!forceLocal && useCloudStorage && authFetch) {
     try {
       const res = await authFetch('/api/notes');
       if (res.ok) {
@@ -695,7 +695,45 @@ export const getAllGlobalNotes = async (): Promise<Note[]> => {
   });
 };
 
+export const saveAllGlobalNotes = async (notes: Note[]): Promise<void> => {
+  // 1. Mirror to local
+  const db = await getDB();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_GLOBALS, 'readwrite');
+    tx.objectStore(STORE_GLOBALS).put({ id: 'global_notes', data: notes });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+
+  // 2. Cloud sync
+  if (useCloudStorage && authFetch) {
+    try {
+      await Promise.all(notes.map(note => 
+        authFetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(note)
+        })
+      ));
+    } catch (e) {
+      console.warn("[Storage] Batch cloud sync failed:", e);
+    }
+  }
+};
+
 export const saveGlobalNote = async (note: Note): Promise<void> => {
+  // 1. Always update local storage first for snappy UI and backup
+  const db = await getDB();
+  const notes = await getAllGlobalNotes(true); // Force local read to avoid mixing
+  
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_GLOBALS, 'readwrite');
+    tx.objectStore(STORE_GLOBALS).put({ id: 'global_notes', data: [note, ...notes.filter(n => n.id !== note.id)] });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+
+  // 2. Then try to sync to cloud if active
   if (useCloudStorage && authFetch) {
     try {
       const res = await authFetch('/api/notes', {
@@ -703,25 +741,16 @@ export const saveGlobalNote = async (note: Note): Promise<void> => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(note)
       });
-      if (res.ok) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } else {
-        setServerHealth(false);
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          setServerHealth(false);
+        }
       }
-      return;
     } catch (e) { 
-      setServerHealth(false);
+      // Don't throw, we already saved locally
+      console.warn("[Storage] Cloud sync failed for note:", e);
     }
   }
-
-  const notes = await getAllGlobalNotes();
-  const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_GLOBALS, 'readwrite');
-    tx.objectStore(STORE_GLOBALS).put({ id: 'global_notes', data: [note, ...notes] });
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
 };
 
 export const deleteGlobalNote = async (id: string): Promise<void> => {
@@ -902,7 +931,6 @@ export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
     timeline: [],
     relationships: [],
     notes: restoredNotes,
-    themes: [],
-    calendars: []
+    themes: []
   };
 };

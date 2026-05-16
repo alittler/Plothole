@@ -52,14 +52,11 @@ import { Calendar2View } from './components/Views/Calendar2View';
 import { EncyclopediaView } from './components/Views/EncyclopediaView';
 import { InventoryView } from './components/Views/InventoryView';
 import { DictionaryView } from './components/Views/DictionaryView';
-import { GalleryView } from './components/Views/GalleryView';
 import { LocationsListView } from './components/Views/LocationsListView';
 import { CelestialView } from './components/Views/CelestialView';
 import { BestiaryView } from './components/Views/BestiaryView';
 import { NarrativeArchitectView } from './components/Views/NarrativeArchitectView';
 
-import { WikiPageView } from './components/Views/WikiPageView';
-import { PublicProfileView } from './components/Views/PublicProfileView';
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { UploadProminentModal } from './components/ui/UploadProminentModal';
@@ -1966,9 +1963,6 @@ Include only the arrays for enabled sections above.`;
           }}
         />;
 
-      case ViewType.GALLERY:
-        return projectData ? <GalleryView projectData={projectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view gallery.</div>;
-
       case ViewType.ENCYCLOPEDIA:
         return projectData ? <EncyclopediaView projectData={projectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view encyclopedia.</div>;
 
@@ -2479,29 +2473,11 @@ Include only the arrays for enabled sections above.`;
     </div>
   );
 
-  // Detect public wiki routes (/{username} or /{username}/{bookname})
-  const isPublicWikiRoute = () => {
-    // BrowserRouter puts the path in the pathname
-    const path = location.pathname;
-    const parts = path.split('/').filter(Boolean); // Split by / and remove empty strings
-
-    // Exclude app view routes (these are ViewType names)
-    const viewTypeValues = Object.values(ViewType);
-    if (parts.length === 0 || viewTypeValues.includes(parts[0] as ViewType)) {
-      return false;
-    }
-
-    // Public wiki routes: /{username} or /{username}/{bookname}
-    // We expect the first part to be the username
-    return parts.length === 1 || parts.length === 2;
-  };
-
   const [isGuest, setIsGuest] = useState(false);
 
   return (
     <EditModalProvider>
       <AppWithEditor
-        isPublicWikiRoute={isPublicWikiRoute}
         isAuthenticated={isAuthenticated}
         isAuthLoading={isAuthLoading}
         isGuest={isGuest}
@@ -2513,7 +2489,6 @@ Include only the arrays for enabled sections above.`;
 };
 
 interface AppWithEditorProps {
-  isPublicWikiRoute: () => boolean;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   isGuest: boolean;
@@ -2522,7 +2497,6 @@ interface AppWithEditorProps {
 }
 
 const AppWithEditor: React.FC<AppWithEditorProps> = ({
-  isPublicWikiRoute,
   isAuthenticated,
   isAuthLoading,
   isGuest,
@@ -2530,18 +2504,10 @@ const AppWithEditor: React.FC<AppWithEditorProps> = ({
   renderAppContent,
 }) => {
   const { modalState, closeEditor } = useEditModal();
-  const location = useLocation();
 
   return (
     <>
-      {isPublicWikiRoute() ? (
-        // Render public wiki pages without authentication
-        location.pathname.split('/').filter(Boolean).length === 2 ? (
-          <WikiPageView />
-        ) : (
-          <PublicProfileView />
-        )
-      ) : (!isAuthenticated && !isGuest && !isAuthLoading) ? (
+      {(!isAuthenticated && !isGuest && !isAuthLoading) ? (
         <SignInPage onGuestAccess={() => setIsGuest(true)} />
       ) : (
         renderAppContent()

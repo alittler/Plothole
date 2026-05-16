@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ProjectData, Character } from '../../types';
+import { ProjectData, Character, HierarchicalEntity } from '../../types';
 import { Users, Code, Plus } from 'lucide-react';
 import { CardActions } from '../ui/CardActions';
 import { WikiText } from '../ui/WikiText';
+import { EntityEditModal } from '../ui/EntityEditModal';
+import { generateId } from '../../services/storageService';
 
 interface CharactersViewProps {
   data: ProjectData;
@@ -35,6 +37,7 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
   };
 
   const [expandedCharId, setExpandedCharId] = useState<string | null>(null);
+  const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
 
   const characters = data.characters || [];
 
@@ -42,6 +45,19 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
     if (onDeleteCharacter) {
       onDeleteCharacter(id);
     }
+  };
+
+  const handleSaveCharacter = (updatedEntity: HierarchicalEntity) => {
+    if (onUpdateCharacter && editingCharacter) {
+      const updatedCharacter: Character = {
+        ...editingCharacter,
+        ...updatedEntity,
+        field_notes: updatedEntity.fieldNotes || editingCharacter.field_notes || '',
+      } as Character;
+      
+      onUpdateCharacter(updatedCharacter);
+    }
+    setEditingCharacter(null);
   };
 
   return (
@@ -54,9 +70,29 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
                 <Users size={32} className="text-indigo-600" /> Characters
               </h1>
             </div>
-            <div className="ml-auto text-xs text-slate-500 dark:text-slate-400 font-semibold">
-              {characters.length} {characters.length === 1 ? 'character' : 'characters'}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => onAddCharacter?.({
+                  id: generateId(),
+                  name: 'New Character',
+                  role: 'Supporting Character',
+                  tier: 3,
+                  description: '',
+                  motivation: '',
+                  traits: [],
+                  field_notes: '',
+                  physical_description: '',
+                  aliases: []
+                } as Character)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs uppercase tracking-widest transition shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+              >
+                <Plus size={16} /> Add Character
+              </button>
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                {characters.length} {characters.length === 1 ? 'character' : 'characters'}
+              </div>
             </div>
+
           </div>
           <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
             <div className="sm:hidden flex items-center gap-2 shrink-0">
@@ -208,7 +244,7 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
                         {(onLinkClick || onDeleteCharacter) && (
                           <CardActions
                             itemName={char.name}
-                            onEdit={() => onLinkClick?.('character', char.id)}
+                            onEdit={() => setEditingCharacter(char)}
                             onDelete={() => handleDeleteCharacter(char.id)}
                           />
                         )}
@@ -270,6 +306,22 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
           )}
         </div>
       </div>
+
+      {editingCharacter && (
+        <EntityEditModal
+          entity={{
+            ...editingCharacter,
+            fieldNotes: editingCharacter.field_notes
+          } as HierarchicalEntity}
+          isOpen={!!editingCharacter}
+          onClose={() => setEditingCharacter(null)}
+          onSave={handleSaveCharacter}
+          onDelete={() => {
+            handleDeleteCharacter(editingCharacter.id);
+            setEditingCharacter(null);
+          }}
+        />
+      )}
     </div>
   );
 };
