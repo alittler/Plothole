@@ -65,15 +65,6 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
-// Validate ../../app/api/calendars/route.ts
-{
-  type __IsExpected<Specific extends RouteHandlerConfig<"/api/calendars">> = Specific
-  const handler = {} as typeof import("../../app/api/calendars/route.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
-
 // Validate ../../app/api/config/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/config">> = Specific
@@ -155,6 +146,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../app/api/narrative/brainstorm/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/narrative/brainstorm">> = Specific
+  const handler = {} as typeof import("../../app/api/narrative/brainstorm/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../app/api/network-info/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/network-info">> = Specific
@@ -204,6 +204,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/resend-backup/[backupId]">> = Specific
   const handler = {} as typeof import("../../app/api/resend-backup/[backupId]/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/save-json/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/save-json">> = Specific
+  const handler = {} as typeof import("../../app/api/save-json/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
