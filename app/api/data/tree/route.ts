@@ -9,12 +9,19 @@ interface FileNode {
   children?: FileNode[];
 }
 
+const DATA_ROOT = path.join(/* turbopackIgnore: true */ process.cwd(), 'data');
+const ALLOWED_FILE_EXTENSIONS = new Set(['.json', '.yaml', '.yml']);
+
 async function buildTree(dirPath: string, relativePath: string = ''): Promise<FileNode[]> {
   try {
     const entries = await readdir(dirPath, { withFileTypes: true });
     const nodes: FileNode[] = [];
 
     for (const entry of entries) {
+      if (entry.name.startsWith('.')) {
+        continue;
+      }
+
       const nodePath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
       const fullPath = path.join(dirPath, entry.name);
 
@@ -26,7 +33,7 @@ async function buildTree(dirPath: string, relativePath: string = ''): Promise<Fi
           isDir: true,
           children
         });
-      } else if (entry.name.endsWith('.json') || entry.name.endsWith('.yaml') || entry.name.endsWith('.yml')) {
+      } else if (ALLOWED_FILE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
         nodes.push({
           name: entry.name,
           path: nodePath,
@@ -48,8 +55,7 @@ async function buildTree(dirPath: string, relativePath: string = ''): Promise<Fi
 
 export async function GET(req: NextRequest) {
   try {
-    const dataDir = path.join(process.cwd(), 'data');
-    const tree = await buildTree(dataDir, 'data');
+    const tree = await buildTree(DATA_ROOT, 'data');
 
     return NextResponse.json({ tree });
   } catch (error) {
