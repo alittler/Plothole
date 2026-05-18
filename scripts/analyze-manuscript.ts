@@ -35,7 +35,12 @@ async function callOpenRouter(prompt: string, apiKey: string) {
 
 async function analyzeManuscript() {
   const geminiApiKey = process.env.GEMINI_API_KEY;
-  const openRouterApiKey = process.env.OPENROUTER_API_KEY || "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";
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+
+  if (!geminiApiKey && !openRouterApiKey) {
+    console.error("Missing API credentials. Set GEMINI_API_KEY or OPENROUTER_API_KEY.");
+    process.exit(1);
+  }
 
   if (!fs.existsSync(MANUSCRIPT_PATH)) {
     console.error(`Manuscript file not found at ${MANUSCRIPT_PATH}`);
