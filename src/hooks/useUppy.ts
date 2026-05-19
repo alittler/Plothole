@@ -31,7 +31,6 @@ export const useUppy = (options: UseUppyOptions = {}) => {
     const uppy = new Uppy({
       id: `uppy-${Math.random()}`,
       autoProceed,
-      allowMultiple: false,
       restrictions: {
         maxNumberOfFiles: 1,
         maxFileSize,
@@ -77,7 +76,7 @@ export const useUppy = (options: UseUppyOptions = {}) => {
 
   const cleanup = useCallback(() => {
     if (uppyRef.current) {
-      uppyRef.current.close({ reason: 'cleanup' });
+      uppyRef.current.destroy();
       uppyRef.current = null;
     }
   }, []);

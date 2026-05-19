@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, list, getBlobClient } from '@vercel/blob';
+import { put, list } from '@vercel/blob';
 import { getAuthPayload } from '@/app/api/auth';
 
 export async function GET(request: NextRequest) {

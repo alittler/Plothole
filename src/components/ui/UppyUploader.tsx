@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import Uppy from '@uppy/core';
-import { Dashboard } from '@uppy/react';
+import Dashboard from '@uppy/react/dashboard';
 import XHRUpload from '@uppy/xhr-upload';
 import Dropbox from '@uppy/dropbox';
 import GoogleDrive from '@uppy/google-drive';
@@ -50,7 +50,6 @@ export const UppyUploader: React.FC<UppyUploaderProps> = ({
     const uppy = new Uppy({
       id: 'uppy-uploader',
       autoProceed,
-      allowMultiple,
       restrictions: {
         maxNumberOfFiles: maxFiles,
         maxFileSize: maxFileSize,
@@ -105,7 +104,7 @@ export const UppyUploader: React.FC<UppyUploaderProps> = ({
     uppyRef.current = uppy;
 
     return () => {
-      uppy.close({ reason: 'unmount' });
+      uppy.destroy();
     };
   }, [endpoint, autoProceed, allowMultiple, maxFiles, maxFileSize, restrictions, onSuccess, onError, onComplete]);
 

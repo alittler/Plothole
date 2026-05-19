@@ -2,11 +2,11 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Uppy from '@uppy/core';
-import { Modal } from '@uppy/react';
+import DashboardModal from '@uppy/react/dashboard-modal';
 import XHRUpload from '@uppy/xhr-upload';
 import { X } from 'lucide-react';
 import '@uppy/core/dist/style.css';
-import '@uppy/modal/dist/style.css';
+import '@uppy/dashboard/dist/style.css';
 
 interface UppyModalUploaderProps {
   isOpen: boolean;
@@ -38,7 +38,6 @@ export const UppyModalUploader: React.FC<UppyModalUploaderProps> = ({
     const uppy = new Uppy({
       id: 'uppy-modal-uploader',
       autoProceed: false,
-      allowMultiple: false,
       restrictions: {
         maxNumberOfFiles: 1,
         maxFileSize: maxFileSize,
@@ -67,7 +66,7 @@ export const UppyModalUploader: React.FC<UppyModalUploaderProps> = ({
     setInstanceCreated(true);
 
     return () => {
-      uppy.close({ reason: 'unmount' });
+      uppy.destroy();
       setInstanceCreated(false);
     };
   }, [isOpen, endpoint, onSuccess, onError, maxFileSize, allowedFileTypes, instanceCreated, onClose]);
@@ -75,7 +74,7 @@ export const UppyModalUploader: React.FC<UppyModalUploaderProps> = ({
   return (
     <>
       {isOpen && uppyRef.current && (
-        <Modal
+        <DashboardModal
           uppy={uppyRef.current}
           open={isOpen}
           onRequestClose={onClose}
