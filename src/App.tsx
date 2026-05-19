@@ -1221,6 +1221,8 @@ const App: React.FC = () => {
       };
     }
 
+    // Ensure cloud storage is enabled before saving
+    setCloudStorageEnabled(isAuthenticated === true, fetchWithAuth);
     await saveProjectData(newProject);
     const projectWithCatalog = populateDataCatalog(newProject);
     setProjectData(projectWithCatalog);
