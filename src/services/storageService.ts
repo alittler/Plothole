@@ -397,6 +397,7 @@ export const isCloudStorageActive = () => useCloudStorage && serverHealthy;
 export const saveProjectData = async (data: ProjectData): Promise<void> => {
   if (useCloudStorage && serverHealthy && authFetch) {
     try {
+      console.log(`[Storage] Saving project to cloud: ${data.id}`);
       const res = await authFetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -429,6 +430,8 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
         setServerHealth(false);
       }
     }
+  } else {
+    console.log(`[Storage] Cloud save skipped. useCloudStorage=${useCloudStorage}, serverHealthy=${serverHealthy}, authFetch=${!!authFetch}`);
   }
 
   const db = await getDB();

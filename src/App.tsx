@@ -39,7 +39,7 @@ import { BookshelfView } from './components/Views/BookshelfView';
 import { DashboardView } from './components/Views/DashboardView';
 import { ResearchSystemView } from './components/Views/ResearchSystemView';
 import { ResearchHubView } from './components/Views/ResearchHubView';
-import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { WorldSystemView } from './components/Views/WorldSystemView';
 import { PlotSystemView } from './components/Views/PlotSystemView';
 import { CharactersView } from './components/Views/CharactersView';
@@ -216,8 +216,7 @@ function populateDataCatalog(data: ProjectData): ProjectData {
 }
 
 const App: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
   const { user: auth0User, isAuthenticated, isLoading: isAuthLoading, getAccessTokenSilently } = useAuth0();
 
   const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
@@ -499,13 +498,13 @@ const App: React.FC = () => {
     }
   }, [isAuthLoading, auth0User, appSettings.adminEmails, getAccessTokenSilently]);
 
-  const currentView = (decodeURIComponent(location.pathname.slice(1)) as ViewType) || ViewType.BOOKSHELF;
+  const currentView = (decodeURIComponent(router.pathname?.slice(1) || '') as ViewType) || ViewType.BOOKSHELF;
   const [selectedCreatureId, setSelectedCreatureId] = useState<number | null>(null);
   const setCurrentView = (view: ViewType, params?: { creatureId?: number }) => {
     if (params?.creatureId !== undefined) {
       setSelectedCreatureId(params.creatureId);
     }
-    navigate(`/${view}`);
+    router.push(`/${view}`);
   };
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -889,7 +888,7 @@ const App: React.FC = () => {
           const lastProject = await loadProjectById(sortedMeta[0].id);
           if (lastProject) {
             setProjectData(populateDataCatalog(lastProject));
-            if (currentView === ViewType.BOOKSHELF || !location.pathname || location.pathname === '/') {
+            if (currentView === ViewType.BOOKSHELF || !router.pathname || router.pathname === '/') {
               setCurrentView(ViewType.DASHBOARD);
             }
           }
