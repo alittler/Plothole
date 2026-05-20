@@ -1,0 +1,3 @@
+[submodule "external/manuscript"]
+	path = external/manuscript
+	url = https://github.com/alittler/manuscript.git
