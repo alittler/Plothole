@@ -8,8 +8,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "tsc --noEmit",
-    "sync:doppler": "tsx scripts/sync-repo-ai.ts"
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@alittler/creatures": "github:alittler/euro-bestiary",
