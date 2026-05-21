@@ -1,5 +1,5 @@
 // FORCE REFRESH - PLOTHOLE V2
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import JSZip from 'jszip';
 import {
   ProjectData, ProjectMetadata, User, ViewType, Note,
@@ -219,6 +219,7 @@ const App: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { user: auth0User, isAuthenticated, isLoading: isAuthLoading, getAccessTokenSilently } = useAuth0();
+  const hasAutoLoaded = useRef(false);
 
 
   const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
@@ -883,17 +884,20 @@ const App: React.FC = () => {
         }
 
         // Auto-load last edited project
-        if (meta && meta.length > 0 && !projectData) {
+        if (meta && meta.length > 0 && !projectData && !hasAutoLoaded.current) {
           setLoadingProgress(85);
           setLoadingStage('Spooling Last Manuscript');
           const sortedMeta = [...meta].sort((a, b) => b.lastModified - a.lastModified);
           const lastProject = await loadProjectById(sortedMeta[0].id);
           if (lastProject) {
             setProjectData(populateDataCatalog(lastProject));
-            if (currentView === ViewType.BOOKSHELF || !pathname || pathname === '/') {
+            // Only auto-switch to dashboard if we're on the landing page/initial load
+            // and NOT if the user explicitly navigated to the Bookshelf
+            if (!pathname || pathname === '/') {
               setCurrentView(ViewType.DASHBOARD);
             }
           }
+          hasAutoLoaded.current = true;
         }
 
         setLoadingProgress(100);
