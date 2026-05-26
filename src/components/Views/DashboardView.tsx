@@ -7,7 +7,7 @@ import {
   BarChart3, TrendingUp, AlertOctagon, History, ShieldCheck, 
   CloudUpload, Mail, CheckCircle, XCircle, ShieldAlert,
   Download, Image as ImageIcon, Save, Cpu, Loader2, Database, Archive,
-  CheckCircle2, AlertCircle
+  CheckCircle2, AlertCircle, Cloud, CloudOff
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { validateIntegrity } from '../../services/versioningService';
@@ -72,8 +72,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [projectData]);
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950 custom-scrollbar">
-      <div className="p-4 md:p-8">
+    <div 
+      onClick={() => onLinkClick('bookshelf', '')}
+      className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950 custom-scrollbar"
+    >
+      <div onClick={(e) => e.stopPropagation()} className="p-4 md:p-8">
         {/* Header Section */}
         <header className="mb-8 max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row gap-8 items-start">
@@ -115,11 +118,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 
                 {isIntegrityValid !== null && (
                   <div className="flex gap-2 mt-3">
-                    {isIntegrityValid === true ? (
-                      <div className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-bold">
-                        <ShieldCheck size={14} /> <span className="hidden sm:inline">Verified</span>
+                    {projectData.origin === 'cloud' ? (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-bold">
+                        <Cloud size={14} /> <span>Cloud Sync Active</span>
                       </div>
                     ) : (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-xs font-bold">
+                        <CloudOff size={14} /> <span>Local Mode</span>
+                      </div>
+                    )}
+                    {isIntegrityValid === false && (
                       <div className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full text-xs font-bold animate-pulse">
                         <ShieldAlert size={14} /> <span className="hidden sm:inline">Corruption Detected</span>
                       </div>

@@ -120,21 +120,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [isMenuOpen]);
 
   const allNavItems: NavItem[] = [
-    { id: ViewType.NOTEPAD, label: 'Notepad', icon: FileText, always: true },
     { id: ViewType.BOOKSHELF, label: 'Bookshelf', icon: Book, always: true },
-    { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
-    { id: ViewType.MAP, label: 'Atlas', icon: Map, projectOnly: true },
-    { id: ViewType.LOCATIONS, label: 'Locations', icon: Map, projectOnly: true },
-    { id: ViewType.TIMELINE, label: 'History', icon: Clock, projectOnly: true },
+    { id: ViewType.DASHBOARD, label: 'Dashboard', icon: LayoutGrid, projectOnly: true },
+    { id: ViewType.RESEARCH, label: 'Laboratory', icon: Zap, projectOnly: true },
+    { id: ViewType.CODEX_HUB, label: 'Codex Hub', icon: BookOpen, projectOnly: true },
+    { id: ViewType.PLOT_HUB, label: 'Plot Hub', icon: Clock, projectOnly: true },
+    { id: ViewType.WORLD_HUB, label: 'World Hub', icon: Map, projectOnly: true },
     { id: ViewType.NARRATIVE_ARCHITECT, label: 'Architect', icon: GitMerge, projectOnly: true },
-    { id: ViewType.CALENDAR2, label: 'Chronos', icon: Zap, projectOnly: true },
-    { id: ViewType.CELESTIAL, label: 'Celestial', icon: Stars, projectOnly: true },
-    { id: ViewType.CODEX, label: 'Codex', icon: BookOpen, projectOnly: true },
-    { id: ViewType.ENCYCLOPEDIA, label: 'Encyclopedia', icon: Book, projectOnly: true },
-    { id: ViewType.BESTIARY, label: 'Bestiary', icon: Wand2, projectOnly: true },
-    { id: ViewType.INVENTORY, label: 'Inventory', icon: Box, projectOnly: true },
-    { id: ViewType.DICTIONARY, label: 'Dictionary', icon: BookMarked, projectOnly: true },
-    { id: ViewType.RESEARCH, label: 'Research', icon: BookOpen, projectOnly: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
     { id: ViewType.ADMIN, label: 'Admin', icon: Shield, adminOnly: true },
@@ -144,15 +136,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const baseSections: SidebarSection[] = [
       {
         title: 'Workspace',
-        items: allNavItems.filter(i => [ViewType.NOTEPAD, ViewType.RESEARCH, ViewType.BOOKSHELF].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.DASHBOARD, ViewType.BOOKSHELF].includes(i.id))
       },
       {
-        title: 'Story',
-        items: allNavItems.filter(i => [ViewType.CHARACTERS, ViewType.MAP, ViewType.LOCATIONS, ViewType.TIMELINE, ViewType.NARRATIVE_ARCHITECT, ViewType.CALENDAR2, ViewType.CELESTIAL].includes(i.id))
+        title: 'Creative',
+        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.NARRATIVE_ARCHITECT].includes(i.id))
       },
       {
-        title: 'World Lore',
-        items: allNavItems.filter(i => [ViewType.CODEX, ViewType.ENCYCLOPEDIA, ViewType.BESTIARY, ViewType.INVENTORY, ViewType.DICTIONARY].includes(i.id))
+        title: 'Reference',
+        items: allNavItems.filter(i => [ViewType.CODEX_HUB, ViewType.PLOT_HUB, ViewType.WORLD_HUB].includes(i.id))
       },
       {
         title: 'System',
@@ -212,7 +204,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Mobile Safe Area Forehead */}
         <div className={`lg:hidden h-[env(safe-area-inset-top)] ${isGuest ? 'bg-slate-800' : 'bg-slate-950'} w-full shrink-0`} />
 
-        <div className="p-6 border-b border-slate-800/50 flex flex-col gap-1">
+        <div className="p-6 border-b border-slate-800/50 flex flex-col gap-0.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {!isCollapsed && <img src="/logos/plothole_256x256.png" alt="Plothole" className="w-8 h-8 rounded-lg" />}

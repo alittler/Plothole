@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ProjectMetadata, User } from '../../types';
-import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database, Edit2, X, Layout } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { CardActions } from '../ui/CardActions';
 
@@ -21,7 +21,7 @@ interface BookshelfViewProps {
 }
 
 export const BookshelfView: React.FC<BookshelfViewProps> = ({
-  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onEditProject, onDeselectProject, onRefreshMetadata, isAnalyzing, currentUser, fetchWithAuth
+  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onEditProject, onDeselectProject, onRefreshMetadata, onOpenDashboard, isAnalyzing, currentUser, fetchWithAuth
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -138,6 +138,18 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                       {isActive ? 'Active World' : 'Open World'}
                     </div>
                     <div className="flex items-center gap-2">
+                      {isActive && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenDashboard();
+                          }}
+                          className="p-2 text-indigo-500 hover:text-indigo-600 transition-colors"
+                          title="Open Dashboard"
+                        >
+                          <Layout size={18} />
+                        </button>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

@@ -30,32 +30,30 @@ import { Commit, BackupStatus } from './types';
 import { safeJsonParse, safeResponseJson } from './utils/jsonUtils';
 import { EditModalProvider, useEditModal } from './contexts/EditModalContext';
 import { DynamicEditModal } from './components/ui/DynamicEditModal';
+import { DEFAULT_APP_PROMPTS, DEFAULT_APP_SETTINGS } from './constants/defaults';
+import { getSampleProjectData } from './constants/sampleProject';
+import { LicenseModal } from './components/Modals/LicenseModal';
+
+import dynamic from 'next/dynamic';
 
 // Components
 import { Sidebar } from './components/Layout/Sidebar';
 import { BottomNav } from './components/Layout/BottomNav';
-import { BookshelfView } from './components/Views/BookshelfView';
 
-import { DashboardView } from './components/Views/DashboardView';
-import { ResearchSystemView } from './components/Views/ResearchSystemView';
-import { ResearchHubView } from './components/Views/ResearchHubView';
+const BookshelfView = dynamic(() => import('./components/Views/BookshelfView').then(mod => mod.BookshelfView), { ssr: false });
+const DashboardView = dynamic(() => import('./components/Views/DashboardView').then(mod => mod.DashboardView), { ssr: false });
+const ResearchHubView = dynamic(() => import('./components/Views/ResearchHubView').then(mod => mod.ResearchHubView), { ssr: false });
+const WorldSystemView = dynamic(() => import('./components/Views/WorldSystemView').then(mod => mod.WorldSystemView), { ssr: false });
+const PlotHubView = dynamic(() => import('./components/Views/PlotHubView').then(mod => mod.PlotHubView), { ssr: false });
+const CharactersView = dynamic(() => import('./components/Views/CharactersView').then(mod => mod.CharactersView), { ssr: false });
+const SettingsView = dynamic(() => import('./components/Views/SettingsView').then(mod => mod.SettingsView), { ssr: false });
+const AdminView = dynamic(() => import('./components/Views/AdminView').then(mod => mod.AdminView), { ssr: false });
+const ToolboxView = dynamic(() => import('./components/Views/ToolboxView').then(mod => mod.ToolboxView), { ssr: false });
+const CodexHubView = dynamic(() => import('./components/Views/CodexHubView').then(mod => mod.CodexHubView), { ssr: false });
+const NarrativeArchitectView = dynamic(() => import('./components/Views/NarrativeArchitectView').then(mod => mod.NarrativeArchitectView), { ssr: false });
+const OracleFloatingButton = dynamic(() => import('./components/ui/OracleFloatingButton').then(mod => mod.OracleFloatingButton), { ssr: false });
+
 import { useRouter, usePathname } from 'next/navigation';
-import { WorldSystemView } from './components/Views/WorldSystemView';
-import { PlotSystemView } from './components/Views/PlotSystemView';
-import { CharactersView } from './components/Views/CharactersView';
-import { SettingsView } from './components/Views/SettingsView';
-import { AdminView } from './components/Views/AdminView';
-import { ToolboxView } from './components/Views/ToolboxView';
-import { SemanticEditorView } from './components/Views/SemanticEditorView';
-import { CodexView } from './components/Views/CodexView';
-import { Calendar2View } from './components/Views/Calendar2View';
-import { EncyclopediaView } from './components/Views/EncyclopediaView';
-import { InventoryView } from './components/Views/InventoryView';
-import { DictionaryView } from './components/Views/DictionaryView';
-import { LocationsListView } from './components/Views/LocationsListView';
-import { CelestialView } from './components/Views/CelestialView';
-import { BestiaryView } from './components/Views/BestiaryView';
-import { NarrativeArchitectView } from './components/Views/NarrativeArchitectView';
 
 // import { StoryArchitectView } from './components/Views/StoryArchitectView';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
@@ -87,6 +85,14 @@ const DEMO_USER: User = {
 // Auto-populate Data Catalog from project entities
 function populateDataCatalog(data: ProjectData): ProjectData {
   if (!data.id) return data;
+
+  // Ensure arrays are initialized to prevent "undefined" errors
+  data.characters = data.characters || [];
+  data.locations = data.locations || [];
+  data.timeline = data.timeline || [];
+  data.artifacts = data.artifacts || [];
+  data.notes = data.notes || [];
+  data.themes = data.themes || [];
 
   // If catalogs already exist, don't overwrite
   if (data.catalogs && data.catalogs.length > 0) {
@@ -267,196 +273,8 @@ const App: React.FC = () => {
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [globalResources, setGlobalResources] = useState<ToolboxLink[]>([]);
-  const [appPrompts, setAppPromptsState] = useState<AppPrompts>({ 
-    GENERAL_AND_CHARACTERS: '',
-    PLOT_MATRIX_ANALYSIS: '',
-    AI_MODEL: 'gemini-2.0-flash-exp',
-    NOTE_ENHANCEMENT: '',
-    PROCESS_RAW_NOTES: '',
-    TIMELINE: '',
-    LOCATIONS: '',
-    ARTIFACTS: '',
-    LORE: '',
-    STRUCTURAL_ANALYSIS: '',
-    THEMES: '',
-    RELATIONSHIPS: '',
-    SOFT_ANCHORS: '',
-    SENTIMENT: '',
-    PLOT_AUDIT: '',
-    THEME_EXTRACTION: '',
-    CONLANG_GEN: '',
-    PROJECT_QA: '',
-    extractionPuzzle: [
-      {
-        id: 'characters',
-        category: 'characters',
-        label: 'Characters',
-        enabled: true,
-        prompt: `Extract all CHARACTERS from the manuscript. Return as JSON with this exact structure:
-{
-  "characters": [
-    {
-      "name": "Character Name",
-      "role": "protagonist/antagonist/supporting/minor",
-      "tier": 1 or 2 or 3,
-      "physical_description": "Physical appearance only: height, build, distinctive features, clothing style",
-      "description": "Personality, background, and story role",
-      "traits": ["trait1", "trait2", "trait3"],
-      "motivation": "Character's primary motivation",
-      "aliases": ["alternate name", "nickname"],
-      "affiliation": "Faction or group they belong to"
-    }
-  ]
-}`
-      },
-      {
-        id: 'locations',
-        category: 'locations',
-        label: 'Locations',
-        enabled: true,
-        prompt: `Extract all LOCATIONS from the manuscript. Return as JSON with this exact structure:
-{
-  "locations": [
-    {
-      "name": "Location Name",
-      "type": "city/building/region/wilderness/other",
-      "description": "Description of the location",
-      "inhabitants": ["person1", "group1"],
-      "controlling_faction": "Who controls this location"
-    }
-  ]
-}`
-      },
-      {
-        id: 'timeline_events',
-        category: 'timeline_events',
-        label: 'Timeline Events',
-        enabled: true,
-        prompt: `Extract all EVENTS and PLOT POINTS from the manuscript. Return as JSON with this exact structure:
-{
-  "timeline_events": [
-    {
-      "title": "Event Name",
-      "event_type": "battle/political/personal/discovery/death/birth/ceremony/travel/revelation/other",
-      "significance": "minor/major/pivotal",
-      "description": "What happened",
-      "date": "Timeline indicator if available",
-      "participants": ["character1", "character2"],
-      "location": "Location name if relevant",
-      "is_flashback": false
-    }
-  ]
-}`
-      },
-      {
-        id: 'artifacts',
-        category: 'artifacts',
-        label: 'Artifacts',
-        enabled: true,
-        prompt: `Extract all ARTIFACTS, ITEMS, and OBJECTS of significance from the manuscript. Return as JSON with this exact structure:
-{
-  "artifacts": [
-    {
-      "name": "Artifact Name",
-      "type": "weapon/armor/tool/document/relic/container/vehicle/consumable/other",
-      "significance": "minor/major/pivotal",
-      "description": "Appearance and properties",
-      "current_owner": "Owner name if known",
-      "location": "Current location if known"
-    }
-  ]
-}`
-      },
-      {
-        id: 'lore',
-        category: 'lore',
-        label: 'Lore & Worldbuilding',
-        enabled: true,
-        prompt: `Extract all LORE, WORLDBUILDING CONCEPTS, and SYSTEMS from the manuscript. Return as JSON with this exact structure:
-{
-  "lore": [
-    {
-      "term": "Concept Name",
-      "type": "faction/magic_system/cosmology/creature_species/language/religion/law/technology/cultural_practice/other",
-      "tier": "background/minor/moderate/major/foundational",
-      "description": "What this concept is and how it works",
-      "associated_factions": ["faction1", "faction2"],
-      "related_terms": ["related_concept1", "related_concept2"]
-    }
-  ]
-}`
-      },
-      {
-        id: 'relationships',
-        category: 'relationships',
-        label: 'Relationships',
-        enabled: true,
-        prompt: `Extract all CHARACTER RELATIONSHIPS from the manuscript. Return as JSON with this exact structure:
-{
-  "relationships": [
-    {
-      "character_a": "Character Name 1",
-      "character_b": "Character Name 2",
-      "relationship_type": "sibling/parent/ally/rival/mentor/romantic/enemy/acquaintance/unknown",
-      "direction": "mutual/a_to_b/b_to_a",
-      "trust_level": 7,
-      "status": "active/strained/severed/latent/hostile/resolved",
-      "description": "How they interact and their dynamic"
-    }
-  ]
-}`
-      }
-    ]
-  });
-  const [appSettings, setAppSettings] = useState<AppSettings>({
-    appName: 'Plothole — Your Story, Decoded',
-    adminEmails: ['alittler86@gmail.com'],
-    narrativeChunkSize: 2000,
-    enableBackupPreview: false,
-    defaultToolboxLinks: [
-      {
-        id: 'demo-demographics',
-        label: 'Fantasy Demographics Generator',
-        url: 'https://donjon.bin.sh/fantasy/demographics/',
-        category: 'World Building',
-        description: 'Generate realistic demographic data for fantasy settlements'
-      },
-      {
-        id: 'demo-magic-gen',        label: 'Magic Generator',
-        url: 'https://www.litrpgadventures.com/ai-tools/magic-generator/',
-        category: 'World Building',
-        description: 'Create unique magic systems and spells'
-      },
-      {
-        id: 'demo-onelook',
-        label: 'OneLook Dictionary',
-        url: 'https://www.onelook.com/',
-        category: 'Language',
-        description: 'Search across multiple dictionaries simultaneously'
-      },
-      {
-        id: 'demo-ogham',
-        label: 'Ogham',
-        url: 'https://ogham.co/',
-        category: 'Language',
-        description: 'Ancient Irish alphabet and writing system'
-      },
-      {
-        id: 'demo-ipa',
-        label: 'IPA Reader',
-        url: 'https://ipa-reader.com/',
-        category: 'Language',
-        description: 'Pronunciation helper using International Phonetic Alphabet'
-      },
-      {
-        id: 'demo-vulgarlang',
-        label: 'Vulgar',
-        url: 'https://www.vulgarlang.com/',
-        category: 'Language',
-        description: 'Create constructed and fictional languages'
-      }
-    ]
-  });
+  const [appPrompts, setAppPromptsState] = useState<AppPrompts>(DEFAULT_APP_PROMPTS);
+  const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
 
   const [currentUser, setCurrentUser] = useState<User>(DEMO_USER);
   const [isServerConnected, setIsServerConnected] = useState(true);
@@ -586,6 +404,13 @@ const App: React.FC = () => {
         const updated = { ...projectData, title, author, shortName };
         setProjectData(updated);
         await saveProjectData(updated);
+      } else {
+        // For inactive projects, we need to load, update, and save
+        const targetProject = await loadProjectById(id);
+        if (targetProject) {
+          const updated = { ...targetProject, title, author, shortName };
+          await saveProjectData(updated);
+        }
       }
       // Always refresh metadata to sync changes
       await refreshMetadata();
@@ -683,11 +508,11 @@ const App: React.FC = () => {
       setCurrentMapParentId(id);
       setCurrentView(ViewType.MAP);
     } else if (type === 'bestiary') {
-      setCurrentView(ViewType.CODEX);
+      router.push(`/${ViewType.CODEX_HUB}?tab=Bestiary`);
     } else if (type === 'dashboard') {
       setCurrentView(ViewType.DASHBOARD);
     }
-  }, []);
+  }, [router]);
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -858,30 +683,31 @@ const App: React.FC = () => {
         setLoadingStage('Synchronizing Metadata');
 
         console.log(`[Init] Fetching metadata...`);
-        const [meta, notes, resources, settings, prompts] = await Promise.all([
-          getAllProjectsMetadata(),
-          getAllGlobalNotes(),
-          getAllGlobalResources(),
-          getAppSettings(),
-          getAppPrompts()
-        ]);
+        // Only await the absolute essentials to clear the splash screen
+        const meta = await getAllProjectsMetadata();
 
         setLoadingProgress(60);
         setLoadingStage('Reconciling Project States');
 
         console.log(`[Init] Received ${meta?.length || 0} projects`);
         setProjectsMetadata(meta || []);
-        setGlobalNotes(notes);
-        setGlobalResources(resources);
-        if (prompts) setAppPromptsState(prev => ({ ...prev, ...prompts }));
-        if (settings) {
-          const finalSettings = { ...settings };
-          if (!finalSettings.appName || finalSettings.appName.includes('Steno') || finalSettings.appName === 'Plothole AI') {
-            finalSettings.appName = 'Plothole — Your Story, Decoded';
-            await saveAppSettings(finalSettings as AppSettings);
+
+        // Load non-critical data in the background
+        getAllGlobalNotes().then(notes => setGlobalNotes(notes));
+        getAllGlobalResources().then(resources => setGlobalResources(resources));
+        getAppPrompts().then(prompts => {
+          if (prompts) setAppPromptsState(prev => ({ ...prev, ...prompts }));
+        });
+        getAppSettings().then(async settings => {
+          if (settings) {
+            const finalSettings = { ...settings };
+            if (!finalSettings.appName || finalSettings.appName.includes('Steno') || finalSettings.appName === 'Plothole AI') {
+              finalSettings.appName = 'Plothole — Your Story, Decoded';
+              await saveAppSettings(finalSettings as AppSettings);
+            }
+            setAppSettings(prev => ({ ...prev, ...finalSettings }));
           }
-          setAppSettings(prev => ({ ...prev, ...finalSettings }));
-        }
+        });
 
         // Auto-load last edited project
         if (meta && meta.length > 0 && !projectData && !hasAutoLoaded.current) {
@@ -1112,118 +938,9 @@ const App: React.FC = () => {
       history_diff: '',
       assets: []
     };
+
     if (useSample) {
-      const ch1Content = `<!-- #CHAPTER_1 -->\n# Chapter 1: The Weight of Ink\n\nThe Great Archive was always cold. Arthur Penhaligon pulled his cloak tighter as he navigated the towering shelves of the Forbidden Wing.`;
-      const ch2Content = `<!-- #CHAPTER_2 -->\n# Chapter 2: Shadows of the Spire\n\nThe Obsidian Spire pierced the gray clouds like a needle of dark glass.`;
-      const ch3Content = `<!-- #CHAPTER_3 -->\n# Chapter 3: The Echo in the Wards\n\nElara Vane found Arthur Penhaligon exactly where she expected.`;
-
-      const filler = "\n\nMemories are the threads of reality. In the Citadel, those threads were pulled and twisted until the pattern was lost.";
-      const fullManuscript = `${ch1Content}\n\n${ch2Content}\n\n${ch3Content}${filler}`;
-      const wordCountValue = fullManuscript.trim().split(/\s+/).length;
-
-      const characters = [
-        { id: 'CH-ARTHUR', name: 'Arthur Penhaligon', role: 'Protagonist', job: 'Junior Archivist', description: 'A curious and determined young man with an uncanny ability to read ancient scripts.', traits: ['Curious', 'Determined'], physical_description: 'Lean build, dark hair with premature silver streaks, pale from years in archives. Average height around 5\'10", sharp observant eyes that miss nothing.', style: 'Simple archival robes, ink-stained fingers, practical leather boots worn from navigating endless shelves.', strengths: 'Exceptional memory, pattern recognition, ability to decipher ancient texts, quick thinking under pressure.', weaknesses: 'Physically frail, inexperienced in combat, trusts too easily, struggles with social interaction outside academic circles.', age: 'Early 20s', source: 'manual' as const },
-        { id: 'CH-VAELEN', name: 'Admin Vaelen', role: 'Antagonist', job: 'High Architect', description: 'The cold, calculating ruler of the Citadel.', traits: ['Cold', 'Calculating', 'Ruthless'], physical_description: 'Tall and imposing, silver-haired with aristocratic features. Sharp jawline, piercing gray eyes that seem to look through people. Well-maintained despite advanced age, suggesting access to memory enhancements.', style: 'Immaculate obsidian robes trimmed with gold, rare artifacts adorning his wrists. Every appearance is choreographed for maximum psychological impact.', strengths: 'Masterful political strategist, charismatic orator, centuries of experience (through stolen memories), ability to control information.', weaknesses: 'Disconnected from ordinary people\'s suffering, overconfident in his power, fears the truth more than weapons, becoming paranoid with age.', age: 'Appeared 60+, actual age unknown', source: 'manual' as const },
-        { id: 'CH-ELARA', name: 'Elara Vane', role: 'Ally', job: 'Information Broker', description: 'A resourceful survivor from the Lower Wards.', traits: ['Resourceful', 'Cynical', 'Brave'], physical_description: 'Athletic build from years of navigating the Wards. Dark skin, shaved head revealing intricate memory tattoos along her scalp. Scars from street fights. Sharp-featured with intense dark eyes, stands about 5\'8".', style: 'Practical streetwear—patched cargo pants, layered tunics, heavy boots. Wears stolen jewelry from black market deals. Favors dark colors for moving undetected in shadows.', strengths: 'Street-smart, excellent at gathering intelligence, skilled negotiator, physically capable fighter, understands Lower Wards politics.', weaknesses: 'Limited formal education, struggles with trust despite outward confidence, carries guilt from past moral compromises.', age: 'Mid-30s', source: 'manual' as const },
-        { id: 'CH-SILAS', name: 'Master Silas', role: 'Mentor', job: 'Senior Archivist', description: 'A wise and secretive mentor who knows the truth.', traits: ['Wise', 'Secretive', 'Patient'], physical_description: 'Elderly and stooped from decades hunched over manuscripts. White hair and beard, weathered face lined with worry. Soft brown eyes that carry the weight of hidden knowledge. Moves slowly but with purpose, around 5\'6" in current state.', style: 'Well-worn archival robes with hidden pockets for smuggled documents. Spectacles on a chain around his neck. Carries a wooden cane carved with ancient symbols.', strengths: 'Encyclopedic knowledge of archives, master code-breaker, strategic thinker, commands respect from the archival community.', weaknesses: 'Age and declining health, confined to the Archive (Vaelen\'s spy network), unable to act directly without suspicion, haunted by past regrets.', age: '70+', source: 'manual' as const },
-        { id: 'CH-KESS', name: 'Kessandra Mohr', role: 'Ally', job: 'Memory Thief', description: 'A skilled operative who steals valuable memories for the black market. Torn between survival and morality.', traits: ['Cunning', 'Pragmatic', 'Conflicted'], physical_description: 'Lithe and graceful with an ethereal quality that makes people forget her presence. Pale skin with striking violet eyes—an unusual genetic anomaly. Shoulder-length white-blonde hair often concealed under hoods. Moves like smoke, around 5\'5".', style: 'Dark, form-fitting clothing designed for stealth. Multiple hidden compartments for memory vials. Wears silver rings—each one tied to a past "job" she\'s completed. A silver mask worn during operations.', strengths: 'Master thief, exceptional memory palace technique, can navigate locked vaults, understanding of black market networks, enhanced sensory perception.', weaknesses: 'Increasingly haunted by ethical concerns, difficulty forming stable relationships, dependent on stimulants to maintain focus, slowly becoming emotionally numb from repeated memory theft work.', age: 'Late 20s', source: 'manual' as const }
-      ];
-
-      const locations = [
-        { id: 'LOC-GREAT-ARCHIVE', name: 'The Great Archive', description: 'The heart of the Obsidian Citadel, containing all recorded memories.', type: 'Library', source: 'manual' as const },
-        { id: 'LOC-LOWER-WARDS', name: 'The Lower Wards', description: 'The smog-filled streets where the memory-less are cast aside.', type: 'District', source: 'manual' as const },
-        { id: 'LOC-OBSIDIAN-SPIRE', name: 'The Obsidian Spire', description: 'Vaelen\'s seat of power, piercing the gray clouds.', type: 'Tower', source: 'manual' as const },
-        { id: 'LOC-DEEP-VAULTS', name: 'The Deep Vaults', description: 'Ancient underground chambers rumored to contain pre-Plague knowledge and artifacts.', type: 'Underground', source: 'manual' as const },
-        { id: 'LOC-MEMORY-MARKETS', name: 'Memory Markets', description: 'Bustling trading hub in the Lower Wards where memories and information exchange hands.', type: 'Marketplace', source: 'manual' as const }
-      ];
-
-      const artifacts = [
-        { id: 'ART-CHRONOS-KEY', name: 'Chronos Key', description: 'A relic that can unlock memory vaults. Hums with a rhythmic pulse. Crafted before the Mnemonic Plague.', type: 'Artifact', significance: 'Crucial', source: 'manual' as const },
-        { id: 'ART-MEMORY-VIAL', name: 'Golden Memory Vial', description: 'Vials containing memories from the First Age before the Plague. Glow with bioluminescent gold light.', type: 'Artifact', significance: 'Rare', source: 'manual' as const },
-        { id: 'ART-LEXICON', name: 'Ancient Lexicon', description: 'A dictionary of the First Language containing codes that stabilize Echo-Walkers.', type: 'Artifact', significance: 'Critical', source: 'manual' as const },
-        { id: 'ART-MEMORY-WEAVE', name: 'Memory Weave Pendant', description: 'Worn by high-ranking archivists, grants limited Echo-Walking ability and memory restoration.', type: 'Artifact', significance: 'Uncommon', source: 'manual' as const },
-        { id: 'ART-TRUTH-SCROLL', name: 'The Founding Scroll', description: 'A hidden scroll revealing the truth about the Mnemonic Plague—that it was not a disaster but a weapon.', type: 'Artifact', significance: 'Legendary', source: 'manual' as const }
-      ];
-
-      const lore: LoreEntry[] = [
-        { id: 'LORE-MNEMONIC-PLAGUE', term: 'The Mnemonic Plague', definition: 'Three centuries ago, a catastrophic event wiped the collective memory of civilization. Official records claim it was a natural disaster. In reality, it was engineered by the First High Architects as a tool to reshape society and eliminate dissent.', tags: ['History', 'Mystery'], category: 'Event', source: 'manual' as const },
-        { id: 'LORE-ECHO-WALKERS', term: 'Echo-Walkers and the Void', definition: 'Echo-Walkers are individuals capable of entering others\' minds and experiencing their memories. Those untrained risk the Void—a state of complete memory loss that erases all sense of identity. The Chronos Key and ancient stabilization techniques can prevent this fate.', tags: ['Magic System', 'Danger'], category: 'Abilities', source: 'manual' as const },
-        { id: 'LORE-THE-WEAVER', term: 'The Great Weaver', definition: 'A figure of legend from before the Plague who supposedly spun the first memory strings at the dawn of time. May have been the architect of the original society\'s memory system. Some believe The Weaver still exists in spectral form.', tags: ['Mythology', 'Speculation'], category: 'Mythology', source: 'manual' as const },
-        { id: 'LORE-MNEMOS-CURRENCY', term: 'Mnemos: Memory as Currency', definition: 'In the post-Plague world, memories became the primary currency. Extracted memories of the elite are stored in vials and traded. Those with more memory strength (Mnemos) have greater social status and access to resources.', tags: ['Economy', 'Society'], category: 'Economy', source: 'manual' as const },
-        { id: 'LORE-FIRST-AGE', term: 'The First Age Before Memory', definition: 'Largely lost to the Plague, the First Age was a world where civilization depended on a unified memory system. Records suggest advanced technology, complex social structures, and knowledge now considered impossible. Only fragments remain in the Deep Vaults.', tags: ['Lost Civilization', 'History'], category: 'History', source: 'manual' as const }
-      ];
-
-      const timeline: TimelineEvent[] = [
-        { id: 'TL-FIRST-AGE', date: 'July 11, 2016', month: 7, day: 11, title: 'The First Age', description: 'Civilization at its height. Memory system operates perfectly. The Weaver constructs the foundational memory architecture.', charactersInvolved: ['The Weaver'], location: 'The World' },
-        { id: 'TL-THE-PLAGUE', date: 'August 15, 2150', month: 8, day: 15, title: 'The Mnemonic Plague', description: 'A catastrophic event wipes the collective memory. Official history begins here. Survivors rebuild, creating the Citadel under the rule of the First High Architects.', charactersInvolved: ['The First Architects'], location: 'Global' },
-        { id: 'TL-CITADEL-FOUNDED', date: 'September 20, 2155', month: 9, day: 20, title: 'Founding of the Citadel', description: 'The Great Archive is constructed. Memory becomes the foundation of society. The tiered class system emerges based on memory strength.', charactersInvolved: ['First High Architects'], location: 'Citadel' },
-        { id: 'TL-GREAT-FIRE', date: 'October 5, 2440', month: 10, day: 5, title: 'The West Wing Burning', description: 'Vaelen orders the destruction of the West Wing of the Archive to eliminate knowledge of dissent and rebellion. Thousands of memories are lost forever.', charactersInvolved: ['Admin Vaelen'], location: 'The Great Archive' },
-        { id: 'TL-PRESENT-DAY', date: 'December 25, 2450', month: 12, day: 25, title: 'The Echo Awakens', description: 'Arthur discovers the Chronos Key. The Echo manifests. The truth of the Founding begins to unravel. The Citadel\'s carefully constructed reality faces its greatest threat.', charactersInvolved: ['Arthur Penhaligon', 'The Echo'], location: 'The Citadel' }
-      ];
-
-      const proseDocuments = [
-        { id: generateId(), title: 'Chapter 1: The Weight of Ink', content: ch1Content, lastModified: Date.now() },
-        { id: generateId(), title: 'Chapter 2: Shadows of the Spire', content: ch2Content, lastModified: Date.now() },
-        { id: generateId(), title: 'Chapter 3: The Echo in the Wards', content: ch3Content, lastModified: Date.now() }
-      ];
-
-      const chapters = [
-        {
-          id: generateId(), title: 'Chapter 1: The Weight of Ink', content: ch1Content, order: 1, status: 'Draft' as const, lastModified: Date.now(), wordCount: ch1Content.trim().split(/\s+/).length,
-          scenes: [{ id: generateId(), title: 'Scene 1', content: ch1Content, wordCount: ch1Content.trim().split(/\s+/).length }]
-        },
-        {
-          id: generateId(), title: 'Chapter 2: Shadows of the Spire', content: ch2Content, order: 2, status: 'Draft' as const, lastModified: Date.now(), wordCount: ch2Content.trim().split(/\s+/).length,
-          scenes: [{ id: generateId(), title: 'Scene 1', content: ch2Content, wordCount: ch2Content.trim().split(/\s+/).length }]
-        },
-        {
-          id: generateId(), title: 'Chapter 3: The Echo in the Wards', content: ch3Content, order: 3, status: 'Draft' as const, lastModified: Date.now(), wordCount: ch3Content.trim().split(/\s+/).length,
-          scenes: [{ id: generateId(), title: 'Scene 1', content: ch3Content, wordCount: ch3Content.trim().split(/\s+/).length }]
-        }
-      ];
-
-      const semanticDocuments = [
-        { id: generateId(), title: 'Chapter 1: The Weight of Ink', content: ch1Content + '\n\n^anchor-ch1', lastModified: Date.now() },
-        { id: generateId(), title: 'Chapter 2: Shadows of the Spire', content: ch2Content + '\n\n^anchor-ch2', lastModified: Date.now() },
-        { id: generateId(), title: 'Chapter 3: The Echo in the Wards', content: ch3Content + '\n\n^anchor-ch3', lastModified: Date.now() }
-      ];
-
-      newProject = {
-        ...newProject,
-        title: finalTitle,
-        shortName: finalShortName,
-        summary: 'In a world where memories are currency, a young archivist discovers a forgotten vault that could rewrite history—or erase it entirely.',
-        themes: ['Memory', 'Power', 'Legacy', 'Sacrifice'],
-        entities: [
-          { id: 'CH-ARTHUR', name: 'Arthur Penhaligon', tier: 1, species: 'Human', type: 'Character', description: 'A curious and determined young man with an uncanny ability to read ancient scripts.', motivation: 'Unlock the Forbidden Vault.', conflict: 'Loyalty to Silas vs. the Echo\'s truths.', aliases: ['Little Bird'], location_id: 'LOC-GREAT-ARCHIVE' },
-          { id: 'CH-VAELEN', name: 'Admin Vaelen', tier: 1, species: 'Human', type: 'Character', description: 'The cold, calculating ruler of the Citadel.', motivation: 'Maintain total control of memory.', conflict: 'Fear of a second Mnemonic Plague.', location_id: 'LOC-OBSIDIAN-SPIRE' },
-          { id: 'CH-ELARA', name: 'Elara Vane', tier: 2, species: 'Human', type: 'Character', primary_trait: 'Resourceful survivor and information broker.', location_id: 'LOC-LOWER-WARDS' },
-          { id: 'CH-SILAS', name: 'Master Silas', tier: 2, species: 'Human', type: 'Character', primary_trait: 'Wise and secretive mentor.', location_id: 'LOC-GREAT-ARCHIVE' },
-          { id: 'CH-KESS', name: 'Kessandra Mohr', tier: 2, species: 'Human', type: 'Character', primary_trait: 'Skilled operative caught between survival and morality.', location_id: 'LOC-MEMORY-MARKETS' },
-          { id: 'CH-ECHO', name: 'The Echo', tier: 3, species: 'Spectral Entity', type: 'Character' },
-          { id: 'LOC-GREAT-ARCHIVE', name: 'The Great Archive', tier: 1, species: 'Structure', type: 'Location', description: 'The heart of the Obsidian Citadel.' },
-          { id: 'LOC-LOWER-WARDS', name: 'The Lower Wards', tier: 3, species: 'District', type: 'Location' },
-          { id: 'LOC-OBSIDIAN-SPIRE', name: 'The Obsidian Spire', tier: 1, species: 'Structure', type: 'Location', description: 'Vaelen\'s seat of power.' },
-          { id: 'LOC-DEEP-VAULTS', name: 'The Deep Vaults', tier: 2, species: 'Underground', type: 'Location', description: 'Ancient chambers beneath the Citadel.' },
-          { id: 'LOC-MEMORY-MARKETS', name: 'Memory Markets', tier: 2, species: 'Marketplace', type: 'Location', description: 'Heart of trade in the Lower Wards.' }
-        ],
-        characters,
-        locations,
-        artifacts,
-        lore,
-        timeline,
-        relationships: [],
-        notes: [],
-        manuscript: fullManuscript,
-        history_diff: '',
-        assets: [],
-        latestManuscriptText: fullManuscript,
-        wordCount: wordCountValue,
-        charCount: fullManuscript.length,
-        proseDocuments,
-        semanticDocuments,
-        chapters
-      };
+      newProject = getSampleProjectData(id, finalTitle, author, finalShortName);
     }
 
     // Ensure cloud storage is enabled before saving
@@ -1843,10 +1560,8 @@ Include only the arrays for enabled sections above.`;
             const d = await loadProjectById(id);
             if (d) {
               setProjectData(populateDataCatalog(d));
-              setIsDashboardModalOpen(true);
             }
-          }}
-          onDeselectProject={() => {
+          }}          onDeselectProject={() => {
             setProjectData(null);
           }}
           onCreateProject={handleCreateProject}
@@ -1858,41 +1573,48 @@ Include only the arrays for enabled sections above.`;
         />;
 
       case ViewType.NOTEPAD:
-        return <ResearchSystemView
+      case ViewType.RESEARCH:
+        return projectData ? <ResearchHubView
           currentView={currentView}
           onChangeView={setCurrentView}
-          data={{ ...projectData, notes: globalNotes } as any}
+          data={(currentView === ViewType.NOTEPAD ? { ...projectData, notes: globalNotes } : projectData) as any}
           projectsMetadata={projectsMetadata}
           currentUser={currentUser}
           activeTasks={activeTasks}
           fetchWithAuth={fetchWithAuth}
           onAddNote={async n => {
-            let noteToSave = { ...n };
-            
-            // Always save to global notes (Notebook)
-            setGlobalNotes(prev => [noteToSave, ...prev]);
-            await saveGlobalNote(noteToSave);
+            if (currentView === ViewType.NOTEPAD) {
+              let noteToSave = { ...n };
+              setGlobalNotes(prev => [noteToSave, ...prev]);
+              await saveGlobalNote(noteToSave);
 
-            // If a project is active, also save to project notes
-            if (projectData) {
-              const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-              const projectTags = [projectData.shortName, projectData.title].filter(Boolean).map(s => normalize(s!));
-              const charTags = (projectData.characters || []).map(c => normalize(c.name));
-              const locTags = (projectData.locations || []).map(l => normalize(l.name));
-              const noteTags = n.tags.map(t => normalize(t));
-              const shouldCanonize = noteTags.some(t => projectTags.includes(t) || charTags.includes(t) || locTags.includes(t));
-              if (shouldCanonize) {
-                noteToSave.isCanon = true;
+              if (projectData) {
+                const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const projectTags = [projectData.shortName, projectData.title].filter(Boolean).map(s => normalize(s!));
+                const charTags = (projectData.characters || []).map(c => normalize(c.name));
+                const locTags = (projectData.locations || []).map(l => normalize(l.name));
+                const noteTags = n.tags.map(t => normalize(t));
+                const shouldCanonize = noteTags.some(t => projectTags.includes(t) || charTags.includes(t) || locTags.includes(t));
+                if (shouldCanonize) {
+                  noteToSave.isCanon = true;
+                }
+                await updateProjectData({ notes: [noteToSave, ...(projectData.notes || [])] });
               }
+            } else {
+              const noteToSave = { ...n, isCanon: true };
               await updateProjectData({ notes: [noteToSave, ...(projectData.notes || [])] });
             }
           }}
           onImportNotes={async (newNotes) => {
-            const combined = [...newNotes, ...globalNotes];
-            setGlobalNotes(combined);
-            await saveAllGlobalNotes(combined);
-            
-            if (projectData) {
+            if (currentView === ViewType.NOTEPAD) {
+              const combined = [...newNotes, ...globalNotes];
+              setGlobalNotes(combined);
+              await saveAllGlobalNotes(combined);
+              
+              if (projectData) {
+                await updateProjectData({ notes: [...newNotes, ...(projectData.notes || [])] });
+              }
+            } else if (projectData) {
               await updateProjectData({ notes: [...newNotes, ...(projectData.notes || [])] });
             }
           }}
@@ -1900,9 +1622,13 @@ Include only the arrays for enabled sections above.`;
           onToggleCanon={handleToggleCanon}
           onDeleteNote={handleDeleteNote}
           onDeleteAllNotes={async () => {
-            setGlobalNotes([]);
-            for (const note of globalNotes) await deleteGlobalNote(note.id);
-            if (projectData?.notes) await updateProjectData({ notes: [] });
+            if (currentView === ViewType.NOTEPAD) {
+              setGlobalNotes([]);
+              for (const note of globalNotes) await deleteGlobalNote(note.id);
+              if (projectData?.notes) await updateProjectData({ notes: [] });
+            } else if (projectData) {
+              await updateProjectData({ notes: [] });
+            }
           }}
           onLinkClick={handleLinkClick}
           onAddDoubleProcessedNote={handleDoubleProcessNote}
@@ -1913,14 +1639,11 @@ Include only the arrays for enabled sections above.`;
           onDeleteProject={handleDeleteProject}
           onSelectProject={async (id) => {
             const d = await loadProjectById(id);
-            if (d) {
-              setProjectData(populateDataCatalog(d));
-              setIsDashboardModalOpen(true);
-            }
+            if (d) setProjectData(populateDataCatalog(d));
           }}
           onOpenDashboard={() => setIsDashboardModalOpen(true)}
           isAnalyzing={isAnalyzing}
-        />;
+        /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock drafting tools.</div>;
 
       case ViewType.DASHBOARD:
         return projectData ? <DashboardView projectData={projectData} globalNotes={globalNotes} onFileUpload={() => { }} onLoadSample={() => handleCreateProject(projectData?.title || 'The Obsidian Citadel', projectData?.author || 'Junior Archivist', true, projectData?.shortName || 'Citadel', projectData?.id)} isAnalyzing={isAnalyzing} error={null} onExport={() => exportFullArchive(globalNotes)} onAnalyzeText={() => { }} onRestoreHistory={() => { }} onRestoreCommit={handleRestoreCommit} onGenerateCover={() => { }} onExportVault={handleExportVault} onAuditThreads={handleAuditThreads} onExportProject={(p) => exportProjectPlothole(p)} isGeneratingCover={false} onUpdateProcessedFiles={() => { }} isUpdatingProcessed={false} onLinkClick={handleLinkClick}
@@ -1928,18 +1651,31 @@ Include only the arrays for enabled sections above.`;
           onSave={handleManualSave}
           currentUser={currentUser}
         /> : null;
-      case ViewType.TIMELINE:
-      case ViewType.BOARD:
-      case ViewType.MATRIX:
-      case ViewType.PLOT_ANALYSIS:
-        return projectData ? <PlotSystemView currentView={currentView} onChangeView={setCurrentView} data={projectData} onLinkClick={handleLinkClick} onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} onAnalyzePlot={() => { }} onExtractSoftAnchors={handleExtractSoftAnchors} onScanContinuity={handleScanContinuity} onUpdateProject={updateProjectData} isAnalyzing={isAnalyzing} /> : null;
 
+      case ViewType.PLOT_HUB:
+      case ViewType.TIMELINE:
+        return projectData ? <PlotHubView 
+          currentView={currentView} 
+          onChangeView={setCurrentView} 
+          data={projectData} 
+          onLinkClick={handleLinkClick} 
+          onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} 
+          onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} 
+          onAnalyzePlot={() => { }} 
+          onExtractSoftAnchors={handleExtractSoftAnchors} 
+          onScanContinuity={handleScanContinuity} 
+          onUpdateProject={updateProjectData} 
+          isAnalyzing={isAnalyzing} 
+        /> : null;
+
+      case ViewType.WORLD_HUB:
       case ViewType.MAP:
         if (!projectData) return null;
         return <WorldSystemView
           currentView={currentView}
           onChangeView={setCurrentView}
-          data={projectData} onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
+          data={projectData} 
+          onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
           onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
           onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })}
           onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })}
@@ -1968,25 +1704,13 @@ Include only the arrays for enabled sections above.`;
               updateProjectData({ locations: projectData.locations.map(l => l.id === id ? { ...l, x: loc.matchedX, y: loc.matchedY } : l) });
             }
           }}
+          currentUser={currentUser}
+          projectsMetadata={projectsMetadata}
         />;
 
-      case ViewType.ENCYCLOPEDIA:
-        return projectData ? <EncyclopediaView projectData={projectData} onLinkClick={handleLinkClick} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view encyclopedia.</div>;
-
-      case ViewType.INVENTORY:
-        return projectData ? <InventoryView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view inventory.</div>;
-
-      case ViewType.DICTIONARY:
-        return projectData ? <DictionaryView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view dictionary.</div>;
-
-      case ViewType.LOCATIONS:
-        return projectData ? <LocationsListView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view locations.</div>;
-
-      case ViewType.CELESTIAL:
-        return projectData ? <CelestialView projectData={projectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view celestial data.</div>;
-
-      case ViewType.BESTIARY:
-        return projectData ? <BestiaryView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view bestiary.</div>;
+      case ViewType.CHARACTERS:
+      case ViewType.CODEX_HUB:
+        return projectData ? <CodexHubView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view the Codex Hub.</div>;
 
       case ViewType.NARRATIVE_ARCHITECT:
         return projectData ? <NarrativeArchitectView projectData={projectData} globalNotes={globalNotes} onUpdateProject={updateProjectData} /> : null;
@@ -2022,6 +1746,7 @@ Include only the arrays for enabled sections above.`;
           onChangeView={setCurrentView}
           currentUser={currentUser}
         />;
+
       case ViewType.SETTINGS:
         const handleClearGlobalNotes = async () => {
           await clearAllGlobalNotes();
@@ -2041,29 +1766,6 @@ Include only the arrays for enabled sections above.`;
           fetchWithAuth={fetchWithAuth}
           appSettings={appSettings}
         />;
-
-      case ViewType.CODEX:
-        return projectData ? <CodexView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Codex.</div>;
-
-      case ViewType.RESEARCH:
-        return projectData ? <ResearchHubView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Research Hub.</div>;
-
-      case ViewType.CALENDAR2:
-        return projectData ? <Calendar2View data={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Chronos Explorer.</div>;
-
-      case ViewType.SEMANTIC_EDITOR:
-        return projectData ? <SemanticEditorView projectData={projectData} onUpdateProject={updateProjectData} /> : <div className="h-full flex items-center justify-center text-slate-400 bg-slate-50 dark:bg-slate-950 font-serif italic text-lg text-center p-12">Initialize a story world to unlock Semantic Engine.</div>;
-
-      case ViewType.CHARACTERS:
-       return projectData ? <CharactersView
-         data={projectData}
-         onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
-         onAddCharacter={(c) => updateProjectData({ characters: [...projectData.characters, c] })}
-         onDeleteCharacter={(id) => updateProjectData({ characters: projectData.characters.filter(char => char.id !== id) })}
-         onLinkClick={handleLinkClick}
-       /> : <div className="h-full flex items-center justify-center text-slate-400">Initialize a story world to view characters.</div>;
-      /* case ViewType.STORY_ARCHITECT:
-        return <StoryArchitectView projectsMetadata={projectsMetadata} onSelectProject={async (id) => { const d = await loadProjectById(id); if (d) { setProjectData(d); await refreshMetadata(); setCurrentView(ViewType.DASHBOARD); } }} onUpdateProject={updateProjectData} currentUser={currentUser} />; */
 
       default:
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
@@ -2162,7 +1864,13 @@ Include only the arrays for enabled sections above.`;
 
         <div className="flex-1 flex flex-col h-full overflow-hidden pt-[env(safe-area-inset-top)]">
           <div className="flex-1 overflow-hidden relative">
-            {viewContent}
+            <React.Suspense fallback={
+              <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+                <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+              </div>
+            }>
+              {viewContent}
+            </React.Suspense>
           </div>
         </div>
 
@@ -2195,6 +1903,12 @@ Include only the arrays for enabled sections above.`;
           onClose={handleCancelUpload}
         />
 
+        {projectData && (
+          <OracleFloatingButton 
+            data={{ ...projectData, notes: globalNotes } as any} 
+            currentUser={currentUser} 
+          />
+        )}
       </main>
 
       {/* Admin Note Canvas */}
@@ -2352,131 +2066,10 @@ Include only the arrays for enabled sections above.`;
         </Modal>
       )}
 
-      <Modal
+      <LicenseModal
         isOpen={isLicensesOpen}
         onClose={() => setIsLicensesOpen(false)}
-        title="Open Source Licenses"
-      >
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-4 custom-scrollbar text-slate-900 dark:text-white">
-          <p className="text-xs text-slate-500 italic leading-relaxed">
-            Plothole is built upon the incredible work of the open source community. Below is a documentation of our third-party dependencies as per standard archival practices.
-          </p>
-
-          <div className="space-y-4">
-            {[
-              {
-                name: 'React Flow (@xyflow/react)',
-                maintainer: 'webkid.io / xyflow',
-                usage: 'Powers the Relationship Graph visualization in Character View.',
-                status: 'Actively Maintained',
-                cost: 'Free (MIT License)'
-              },
-              {
-                name: 'Tiptap',
-                maintainer: 'überdosis',
-                usage: 'Core rich-text engine for the Semantic Editor.',
-                status: 'Actively Maintained',
-                cost: 'Free (MIT License)'
-              },
-              {
-                name: 'Fuse.js',
-                maintainer: 'Kiro Risk',
-                usage: 'Advanced fuzzy-search logic for the Entity Explorer.',
-                status: 'Actively Maintained',
-                cost: 'Free (Apache 2.0)'
-              },
-              {
-                name: 'docx',
-                maintainer: 'Volodymyr Baydalka',
-                usage: 'Generates Microsoft Word files for manuscript export.',
-                status: 'Actively Maintained',
-                cost: 'Free (MIT License)'
-              },
-              {
-                name: 'Leaflet',
-                maintainer: 'Volodymyr Agafonkin',
-                usage: 'Geospatial mapping engine for the World Atlas.',
-                status: 'Actively Maintained',
-                cost: 'Free (BSD-2)'
-              },
-              {
-                name: 'Lucide',
-                maintainer: 'Lucide Contributors',
-                usage: 'Provides all iconography across the application interface.',
-                status: 'Actively Maintained',
-                cost: 'Free (ISC License)'
-              },
-              {
-                name: 'Simple Git',
-                maintainer: 'Steve King',
-                usage: 'Enables automatic Git versioning for story worlds.',
-                status: 'Actively Maintained',
-                cost: 'Free (MIT License)'
-              },
-              {
-                name: 'pdf-parse',
-                maintainer: 'Nicklas Teigen',
-                usage: 'Server-side extraction of text from uploaded PDF research.',
-                status: 'Maintained',
-                cost: 'Free (MIT License)'
-              },
-              {
-                name: 'JSZip',
-                maintainer: 'Stuart Knightley',
-                usage: 'Bundles and packages project files for local exports.',
-                status: 'Actively Maintained',
-                cost: 'Free (MIT / GPLv3)'
-              },
-              {
-                name: 'Express',
-                maintainer: 'OpenJS Foundation',
-                usage: 'Standard server framework for Plothole storage APIs.',
-                status: 'Actively Maintained',
-                cost: 'Free (MIT License)'
-              },
-              {
-                name: 'Gemini (Google GenAI)',
-                maintainer: 'Google',
-                usage: 'Previously used for AI-assisted story analysis (now removed).',
-                status: 'Deprecated',
-                cost: 'Commercial (Usage-based API costs apply)'
-              },
-              {
-                name: 'Clerk',
-                maintainer: 'Clerk, Inc.',
-                usage: 'Secure user authentication and session management.',
-                status: 'Actively Maintained',
-                cost: 'Commercial (Free tier + usage-based costs)'
-              }
-            ].map((lib) => (
-              <div key={lib.name} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-black uppercase tracking-tight">{lib.name}</h4>
-                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${lib.status === 'Actively Maintained' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                    {lib.status}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 gap-2 text-[10px]">
-                  <div><span className="font-black text-slate-400 uppercase tracking-widest mr-2">Maintainer:</span> <span className="font-bold">{lib.maintainer}</span></div>
-                  <div><span className="font-black text-slate-400 uppercase tracking-widest mr-2">Usage:</span> <span>{lib.usage}</span></div>
-                  <div><span className="font-black text-slate-400 uppercase tracking-widest mr-2">Cost:</span> <span className={`font-bold ${lib.cost.includes('Free') ? 'text-indigo-500' : 'text-amber-600'}`}>{lib.cost}</span></div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-center">
-            <a
-              href="/licenses.txt"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-xl transition-all"
-            >
-              <FileText size={12} /> View Full Dependency Manifest (.txt)
-            </a>
-          </div>
-        </div>
-      </Modal>
+      />
     </div>
   );
 

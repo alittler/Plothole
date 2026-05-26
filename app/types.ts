@@ -28,7 +28,9 @@ export enum ViewType {
   RESEARCH = 'Research',
   BESTIARY = 'Bestiary',
   CELESTIAL = 'Celestial',
-  CALENDAR2 = 'Calendar2'
+  CALENDAR2 = 'Calendar2',
+  CODEX_HUB = 'CodexHub',
+  PLOT_HUB = 'PlotHub'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -542,6 +544,7 @@ export interface ProjectMetadata {
   id: string;
   title: string;
   author: string;
+  shortName?: string;
   summary: string;
   lastModified: number;
   characterCount: number;

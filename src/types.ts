@@ -1,35 +1,18 @@
 export enum ViewType {
   BOOKSHELF = 'Bookshelf',
   DASHBOARD = 'Dashboard',
-  TIMELINE = 'Timeline',
-  BOARD = 'Board',
-  TABLE = 'Table',
   NOTEPAD = 'Notepad',
-  MAP = 'Map',
-  LOCATIONS = 'Locations',
   CHARACTERS = 'Characters',
-  ADMIN = 'Admin',
-  SETTINGS = 'Settings',
-  INVENTORY = 'Inventory',
-  ENCYCLOPEDIA = 'Encyclopedia',
-  PLOT_ANALYSIS = 'PlotAnalysis',
-  PROCESSOR = 'Processor',
-  TOOLBOX = 'Toolbox',
-  SOURCE_READER = 'SourceReader',
-  MATRIX = 'Matrix',
-  DICTIONARY = 'Dictionary',
-  SEMANTIC_EDITOR = 'SemanticEditor',
-  STORY_ARCHITECT = 'StoryArchitect',
-  CODEX = 'Codex',
-  CARD_CATALOGUE = 'CardCatalogue',
+  MAP = 'Map',
+  TIMELINE = 'Timeline',
+  NARRATIVE_ARCHITECT = 'NarrativeArchitect',
+  CODEX_HUB = 'CodexHub',
+  PLOT_HUB = 'PlotHub',
   WORLD_HUB = 'WorldHub',
-  WORKSPACE_HUB = 'WorkspaceHub',
-  SYSTEM_HUB = 'SystemHub',
   RESEARCH = 'Research',
-  BESTIARY = 'Bestiary',
-  CELESTIAL = 'Celestial',
-  CALENDAR2 = 'Calendar2',
-  NARRATIVE_ARCHITECT = 'NarrativeArchitect'
+  TOOLBOX = 'Toolbox',
+  SETTINGS = 'Settings',
+  ADMIN = 'Admin'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -543,6 +526,7 @@ export interface ProjectMetadata {
   id: string;
   title: string;
   author: string;
+  shortName?: string;
   summary: string;
   lastModified: number;
   characterCount: number;

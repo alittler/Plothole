@@ -1,569 +1,1112 @@
-import React, { useState, useMemo } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { ProjectData, Note } from '../../types';
-import { 
-  BookOpen, FileText, Plus, Search, Trash2, Download, Upload, Eye, EyeOff, 
-  ChevronDown, Loader2, MapPin, Tag, Settings, X, Copy, Check,
-  AlertCircle, Filter, Clock
-} from 'lucide-react';
-import { generateId } from '../../services/storageService';
+import React from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ViewType, Note, ProjectData, ProjectMetadata, User, APP_DATA_VERSION } from '../../types';
+import { Plus, Search, Trash2, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe, PenTool, Lightbulb, Image as ImageIcon, Trash, Download, Upload, Copy, BookOpen } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { StackedPaper } from '../ui/StackedPaper';
+import { WikiText } from '../ui/WikiText';
+import { RichEditor } from '../ui/RichEditor';
+// import { semanticSearchNotes } from '../../services/geminiService';
+import { BookshelfView } from './BookshelfView';
+import { ImageUploadInput } from '../ui/ImageUploadInput';
+import { sanitizeHtml } from '../../utils/htmlSanitizer';
 
 enum ResearchHubTab {
-  SOURCES = 'Sources',
-  NOTES = 'Notes',
-  SCRIPTURE = 'Scripture',
-  CITATIONS = 'Citations'
+  NOTEBOOK = 'Notebook',
+  CORKBOARD = 'Corkboard',
+  MOODBOARD = 'Moodboard'
 }
 
-interface ResearchSource {
-  id: string;
-  name: string;
-  type: 'pdf' | 'image' | 'text' | 'document';
-  uploadDate: number;
-  size: number;
-  extractionStatus: 'pending' | 'completed' | 'failed';
-  extractedTextPath?: string;
-  originalPath?: string;
-  notes?: string;
-}
-
-interface ResearchNote {
-  id: string;
-  title: string;
-  content: string;
-  sourceIds: string[];
-  scriptureCitations: string[];
-  tags: string[];
-  createdAt: number;
-  updatedAt: number;
-}
-
-interface ScriptureReference {
-  id: string;
-  reference: string;
-  translation: string;
-  text: string;
-}
+import { generateId, saveGlobalNote, saveAllGlobalNotes } from '../../services/storageService';
 
 interface ResearchHubViewProps {
-  projectData: ProjectData;
-  onUpdateProject: (updates: Partial<ProjectData>) => void;
+  currentView: ViewType;
+  onChangeView: (view: ViewType) => void;
+  data: ProjectData & { notes: Note[] };
+  projectsMetadata?: ProjectMetadata[];
+  currentUser?: User;
+  onAddNote: (note: Note) => void;
+  onImportNotes?: (notes: Note[]) => Promise<void>;
+  onAddIdeaToProject?: (projectId: string, content: string, tags: string[]) => void;
+  onToggleCanon?: (noteId: string, isCanon: boolean) => void;
+  onDeleteNote: (id: string) => void;
+  onDeleteAllNotes?: () => void;
+  onLinkClick: (type: string, id: string) => void;
+  onAddDoubleProcessedNote: (text: string) => void;
+  onUpdateProject?: (data: Partial<ProjectData>) => void;
+  activeTasks: string[];
+  semanticSearchEnabled?: boolean;
+  isEmbedded?: boolean;
+  // Bookshelf Props
+  onCreateProject?: (title: string, author: string, useSample: boolean, shortName?: string) => Promise<void>;
+  onUploadProject?: (file: File) => Promise<void>;
+  onDeleteProject?: (id: string) => Promise<void>;
+  onSelectProject?: (id: string) => Promise<void>;
+  onOpenDashboard?: () => void;
+  isAnalyzing?: boolean;
+  fetchWithAuth?: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
-export const ResearchHubView: React.FC<ResearchHubViewProps> = ({ projectData, onUpdateProject }) => {
+export const ResearchHubView: React.FC<ResearchHubViewProps> = ({
+  currentView, onChangeView, data, projectsMetadata, currentUser, onAddNote, onImportNotes, onAddIdeaToProject, onToggleCanon, onDeleteNote, onDeleteAllNotes, onLinkClick, onAddDoubleProcessedNote, activeTasks, onUpdateProject, semanticSearchEnabled, isEmbedded,
+  onCreateProject, onUploadProject, onDeleteProject, onSelectProject, onOpenDashboard, isAnalyzing: isAnalyzingProp, fetchWithAuth
+}) => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTab = (searchParams.get('tab') as ResearchHubTab) || ResearchHubTab.SOURCES;
-  const setActiveTab = (tab: ResearchHubTab) => {
+  const [viewMode, setNotepadView] = React.useState<ResearchHubTab>(() => {
+    return (searchParams.get('tab') as ResearchHubTab) || ResearchHubTab.NOTEBOOK;
+  });
+  const [selectedTag, setSelectedTag] = React.useState<string | null>(null);
+
+  const setActiveTab = (v: ResearchHubTab) => {
+    setNotepadView(v);
+    setSelectedTag(null);
     const params = new URLSearchParams(searchParams);
-    params.set('tab', tab);
+    params.set('tab', v);
     router.push(`?${params.toString()}`);
   };
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [newNote, setNewNote] = React.useState('');
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const [semanticResults, setSemanticResults] = React.useState<string[]>([]);
+  const [isSearching, setIsSearching] = React.useState(false);
+  const [showTagSuggestion, setShowTagSuggestion] = React.useState(false);
+  const [noteToDelete, setNoteToDelete] = React.useState<string | null>(null);
+  const [selectedProseId, setSelectedProseId] = React.useState<string | null>(null);
 
-  // State Management
-  const [sources, setSources] = useState<ResearchSource[]>(projectData.researchSources || []);
-  const [notes, setNotes] = useState<ResearchNote[]>(projectData.researchNotes || []);
-  const [scriptureLibrary, setScriptureLibrary] = useState<ScriptureReference[]>(() => {
-    const stored = localStorage.getItem('scripture_entries');
-    return stored ? JSON.parse(stored) : [];
-  });
+  const generateSynthesis = () => {};
 
-  // UI State
-  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterTag, setFilterTag] = useState<string | null>(null);
-  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+  const corkboardNotes = React.useMemo(() => data?.corkboardNotes || [], [data?.corkboardNotes]);
+  const activeProse = React.useMemo(() => corkboardNotes.find(d => d.id === selectedProseId), [corkboardNotes, selectedProseId]);
 
-  // Create New Note
-  const [newNoteTitle, setNewNoteTitle] = useState('');
-  const [newNoteContent, setNewNoteContent] = useState('');
-  const [newNoteTags, setNewNoteTags] = useState<string[]>([]);
-  const [newNoteTagInput, setNewNoteTagInput] = useState('');
+  const handleCreateProse = () => {
+    const newDoc = {
+      id: generateId(),
+      title: 'Untitled Snippet',
+      content: '',
+      lastModified: Date.now()
+    };
+    onUpdateProject?.({ corkboardNotes: [newDoc, ...corkboardNotes] });
+    setSelectedProseId(newDoc.id);
+  };
 
-  // Create New Source
-  const [sourceUploadLoading, setSourceUploadLoading] = useState(false);
+  const handleUpdateProse = (id: string, updates: Partial<{ title: string, content: string }>) => {
+    const updated = corkboardNotes.map(d => d.id === id ? { ...d, ...updates, lastModified: Date.now() } : d);
+    onUpdateProject?.({ corkboardNotes: updated });
+  };
 
-  // Handlers
-  const handleAddSource = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDeleteProse = (id: string) => {
+    if (!confirm('Delete this snippet?')) return;
+    onUpdateProject?.({ corkboardNotes: corkboardNotes.filter(d => d.id !== id) });
+    if (selectedProseId === id) setSelectedProseId(null);
+  };
+
+  // Inspiration board handlers
+  const [newInspirationTitle, setNewInspirationTitle] = React.useState('');
+  const [newInspirationDesc, setNewInspirationDesc] = React.useState('');
+  const [newInspirationUrl, setNewInspirationUrl] = React.useState('');
+  const [newInspirationImage, setNewInspirationImage] = React.useState('');
+  const [showInspirationForm, setShowInspirationForm] = React.useState(false);
+  const [inspirationImageError, setInspirationImageError] = React.useState('');
+  const [editingInspirationId, setEditingInspirationId] = React.useState<string | null>(null);
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userMsg = chatInput.trim();
+    setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setChatInput('');
+    setIsChatLoading(true);
+
+    try {
+      // Build context from current notes or collection
+      const contextNotes = selectedTag 
+        ? allNotes.filter(n => n.tags.includes(selectedTag))
+        : allNotes;
+      
+      const contextText = contextNotes.map(n => n.content).join('\n---\n');
+      
+      const response = await fetch('/api/narrative/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          manuscriptText: contextText || "No notes available in this collection.",
+          customPrompt: `You are a creative writing assistant. The user is asking about their story notes. 
+          
+Context (User's Notes):
+${contextText.substring(0, 10000)}
+
+User's Question:
+${userMsg}
+
+Please provide a helpful, creative, and insightful response based on their notes.`,
+          existingEntities: data?.entities || []
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to reach AI Brain');
+      
+      const result = await response.json();
+      // The API returns worldState by default, but we can repurpose it or add a specific chat endpoint later.
+      // For now, let's assume the API can handle a string response if customPrompt is provided.
+      // Actually the current API returns worldState (extracted entities).
+      
+      setChatMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: result.worldType || "I've analyzed your notes. How else can I help?" 
+      }]);
+    } catch (err) {
+      console.error(err);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: "I'm sorry, I'm having trouble connecting to my creative centers right now. Please try again in a moment." }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+  const handleExportNotes = () => {
+    const exportData = {
+      version: APP_DATA_VERSION,
+      timestamp: Date.now(),
+      project: data?.title,
+      notes: allNotes,
+      tags: projectTags
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `plothole-notes-${data?.shortName || data?.title || 'export'}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportNotes = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setSourceUploadLoading(true);
-    try {
-      const type = file.type.includes('pdf') ? 'pdf' 
-                  : file.type.includes('image') ? 'image'
-                  : file.type.includes('text') ? 'text'
-                  : 'document';
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const imported = JSON.parse(event.target?.result as string);
+        if (imported.notes && Array.isArray(imported.notes)) {
+          // Merge logic - avoid duplicates by ID
+          const existingIds = new Set(allNotes.map(n => n.id));
+          const newNotes = imported.notes.filter((n: Note) => !existingIds.has(n.id));
+          
+          if (onImportNotes) {
+            await onImportNotes(newNotes);
+          } else {
+            for (const note of newNotes) {
+              onAddNote(note);
+            }
+          }
+          alert(`Imported ${newNotes.length} new notes.`);
+        }
+      } catch (err) {
+        alert("Failed to import notes. Please ensure the file is a valid Plothole export.");
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
+  };
 
-      const newSource: ResearchSource = {
-        id: generateId(),
-        name: file.name,
-        type: type as any,
-        uploadDate: Date.now(),
-        size: file.size,
-        extractionStatus: 'pending',
-        notes: ''
-      };
-
-      const updated = [...sources, newSource];
-      setSources(updated);
-      onUpdateProject({ researchSources: updated });
-    } finally {
-      setSourceUploadLoading(false);
+  const handleAddInspiration = () => {
+    if (!newInspirationTitle.trim()) {
+      alert('Please enter a title for this inspiration');
+      return;
     }
-  };
-
-  const handleDeleteSource = (id: string) => {
-    const updated = sources.filter(s => s.id !== id);
-    setSources(updated);
-    onUpdateProject({ researchSources: updated });
-  };
-
-  const handleAddNote = () => {
-    if (!newNoteTitle.trim() || !newNoteContent.trim()) return;
-
-    const newNote: ResearchNote = {
+    if (!newInspirationImage.trim()) {
+      alert('Please upload an image');
+      return;
+    }
+    
+    const extractedTags = newInspirationDesc.match(/#\w+/g)?.map(t => t.slice(1)) || [];
+    
+    const newInspo = {
       id: generateId(),
-      title: newNoteTitle,
-      content: newNoteContent,
-      sourceIds: selectedSourceId ? [selectedSourceId] : [],
-      scriptureCitations: [],
-      tags: newNoteTags,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
+      title: newInspirationTitle.trim(),
+      description: newInspirationDesc,
+      imageUrl: newInspirationImage,
+      url: newInspirationUrl,
+      tags: extractedTags,
+      timestamp: Date.now()
+    };
+    
+    console.log('Adding inspiration:', newInspo);
+    
+    onUpdateProject?.({
+      inspirations: [newInspo, ...(data?.inspirations || [])]
+    });
+    
+    setNewInspirationTitle('');
+    setNewInspirationDesc('');
+    setNewInspirationUrl('');
+    setNewInspirationImage('');
+    setInspirationImageError('');
+    setShowInspirationForm(false);
+  };
+
+  const handleInspirationImageUrl = (url: string) => {
+    console.log('Image uploaded successfully. URL:', url);
+    setNewInspirationImage(url);
+    setInspirationImageError('');
+  };
+
+  const handleInspirationImageError = (error: string) => {
+    console.error('Inspiration image upload error:', error);
+    setInspirationImageError(error);
+  };
+
+  const handleUpdateInspiration = (id: string, updates: Partial<any>) => {
+    const updated = data?.inspirations?.map(inspo => 
+      inspo.id === id ? { ...inspo, ...updates } : inspo
+    ) || [];
+    onUpdateProject?.({ inspirations: updated });
+  };
+
+  const handleDeleteInspiration = (id: string) => {
+    if (!confirm('Delete this inspiration?')) return;
+    onUpdateProject?.({
+      inspirations: data?.inspirations?.filter(i => i.id !== id)
+    });
+    setEditingInspirationId(null);
+  };
+
+  // Keyboard shortcuts for delete modal
+  React.useEffect(() => {
+    if (!noteToDelete) return;
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (noteToDelete === 'ALL' && onDeleteAllNotes) {
+          onDeleteAllNotes();
+        } else if (noteToDelete !== 'ALL') {
+          onDeleteNote(noteToDelete);
+        }
+        setNoteToDelete(null);
+      } else if (e.key === 'Escape') {
+        setNoteToDelete(null);
+      }
     };
 
-    const updated = [newNote, ...notes];
-    setNotes(updated);
-    onUpdateProject({ researchNotes: updated });
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [noteToDelete, onDeleteNote, onDeleteAllNotes]);
 
-    // Reset form
-    setNewNoteTitle('');
-    setNewNoteContent('');
-    setNewNoteTags([]);
-    setNewNoteTagInput('');
+  React.useEffect(() => {
+    console.log('Inspirations in data:', data?.inspirations);
+  }, [data?.inspirations]);
+
+  const handleAdd = async () => {
+    if (!newNote.trim()) return;
+    
+    // Split by --- delimiter if present
+    const segments = newNote.includes('---') 
+      ? newNote.split('---').map(s => s.trim()).filter(Boolean)
+      : [newNote.trim()];
+
+    const currentProjectTag = (data?.shortName || data?.title || '').replace(/[^\w\s]/g, '').replace(/\s+/g, '_').toLowerCase();
+    
+    // Process each segment as a separate note
+    const notesToBatch = [];
+    
+    for (const content of segments) {
+      const tags = content.match(/#\w+/g)?.map(t => t.slice(1)) || [];
+      
+      if (onAddIdeaToProject && data?.id) {
+        if (tags.some(t => t.toLowerCase() === currentProjectTag)) {
+          onAddIdeaToProject(data?.id || '', content, tags);
+        }
+      }
+
+      const note: Note = {
+        id: generateId(),
+        content,
+        tags,
+        timestamp: Date.now()
+      };
+      
+      notesToBatch.push(note);
+      onAddNote(note);
+    }
+
+    // If there was an import-like batch, ensure we signal it if possible
+    if (segments.length > 1 && onImportNotes) {
+       // onAddNote already called individually, but for safety in cloud/local sync:
+       await onImportNotes(notesToBatch);
+    }
+
+    setNewNote('');
+    localStorage.removeItem('plothole_notepad_draft');
+    setShowTagSuggestion(false);
   };
 
-  const handleDeleteNote = (id: string) => {
-    const updated = notes.filter(n => n.id !== id);
-    setNotes(updated);
-    onUpdateProject({ researchNotes: updated });
-  };
-
-  const handleAddTag = () => {
-    if (newNoteTagInput.trim() && !newNoteTags.includes(newNoteTagInput)) {
-      setNewNoteTags([...newNoteTags, newNoteTagInput]);
-      setNewNoteTagInput('');
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAdd();
     }
   };
 
-  const handleRemoveTag = (tag: string) => {
-    setNewNoteTags(newNoteTags.filter(t => t !== tag));
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setNewNote(value);
+    
+    const lastChar = value[value.length - 1];
+    if (lastChar === '#') {
+      setShowTagSuggestion(true);
+    } else if (!value.includes('#') || value.endsWith(' ')) {
+      setShowTagSuggestion(false);
+    }
   };
 
-  // Filtered Data
-  const filteredNotes = useMemo(() => {
-    return notes.filter(note => {
-      const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           note.content.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesTag = !filterTag || note.tags.includes(filterTag);
-      return matchesSearch && matchesTag;
-    });
-  }, [notes, searchTerm, filterTag]);
+  const applyTagSuggestion = () => {
+    const projectTag = (data?.shortName || data?.title || 'Project').replace(/[^\w\s]/g, '').replace(/\s+/g, '_');
+    const lastHashIndex = newNote.lastIndexOf('#');
+    if (lastHashIndex !== -1) {
+      const updatedNote = newNote.substring(0, lastHashIndex + 1) + projectTag + ' ';
+      setNewNote(updatedNote);
+      setShowTagSuggestion(false);
+      // Focus back to textarea
+      setTimeout(() => textareaRef.current?.focus(), 10);
+    }
+  };
 
-  const allTags = useMemo(() => {
+  const handleSemanticSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSemanticResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      // Simple text search fallback (no AI semantic search)
+      const results = (data?.notes || []).filter(note => 
+        note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+      setSemanticResults(results.map(n => n.id));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const allNotes = React.useMemo(() => {
+    const combined = [...(data?.notes || [])];
+    if (data?.ideas) {
+      data?.ideas.forEach(idea => {
+        if (!combined.some(n => n.id === idea.id)) combined.push(idea);
+      });
+    }
+    return combined
+      .filter(n => !n.tags.includes('admin_note'))
+      .sort((a, b) => b.timestamp - a.timestamp);
+  }, [data?.notes, data?.ideas]);
+
+  const projectTags = React.useMemo(() => {
     const tags = new Set<string>();
-    notes.forEach(note => note.tags.forEach(tag => tags.add(tag)));
+    allNotes.forEach(note => {
+      note.tags.forEach(tag => tags.add(tag));
+    });
     return Array.from(tags).sort();
-  }, [notes]);
+  }, [allNotes]);
 
-  const renderSourcesTab = () => (
-    <div className="space-y-6">
-      {/* Upload Section */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800">
-        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6">
-          Upload Source
-        </h3>
-        
-        <label className="flex items-center justify-center w-full px-8 py-12 border-2 border-dashed border-indigo-300 dark:border-indigo-700 rounded-2xl cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-colors">
-          <div className="flex flex-col items-center gap-3">
-            <Upload size={32} className="text-indigo-600" />
-            <div className="text-center">
-              <p className="text-sm font-black text-indigo-600 uppercase tracking-wide">Click to upload source</p>
-              <p className="text-xs text-slate-500 mt-1">PDF, images, or documents</p>
-            </div>
-          </div>
-          <input 
-            type="file" 
-            className="hidden" 
-            onChange={handleAddSource}
-            disabled={sourceUploadLoading}
-            accept=".pdf,.png,.jpg,.jpeg,.gif,.tif,.tiff,.webp,.txt,.doc,.docx"
-          />
-        </label>
-      </div>
-
-      {/* Sources List */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800">
-        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6">
-          Your Sources ({sources.length})
-        </h3>
-
-        {sources.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">
-            <FileText size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="font-serif italic">No sources uploaded yet. Start by uploading a research document.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {sources.map(source => (
-              <div key={source.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText size={18} className="text-indigo-600 flex-shrink-0" />
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">{source.name}</h4>
-                      <span className="px-2 py-1 bg-slate-200 dark:bg-slate-700 text-[10px] font-black text-slate-700 dark:text-slate-300 rounded uppercase tracking-wider flex-shrink-0">
-                        {source.type}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                      <div className="flex items-center gap-1">
-                        <Clock size={14} />
-                        {new Date(source.uploadDate).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span>{(source.size / 1024).toFixed(1)} KB</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <AlertCircle size={14} className={source.extractionStatus === 'completed' ? 'text-green-500' : source.extractionStatus === 'failed' ? 'text-red-500' : 'text-yellow-500'} />
-                        {source.extractionStatus === 'pending' && 'Pending extraction'}
-                        {source.extractionStatus === 'completed' && 'Extraction complete'}
-                        {source.extractionStatus === 'failed' && 'Extraction failed'}
-                      </div>
-                    </div>
-                    {source.notes && (
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 italic">{source.notes}</p>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => {/* View original */}}
-                      className="p-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-lg transition-colors text-indigo-600"
-                      title="View original file"
-                    >
-                      <Eye size={16} />
-                    </button>
-                    <button
-                      onClick={() => {/* View extracted */}}
-                      className="p-2 hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-lg transition-colors text-amber-600"
-                      title="View extracted text"
-                    >
-                      <FileText size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteSource(source.id)}
-                      className="p-2 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors text-red-600"
-                      title="Delete source"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderNotesTab = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Create Note */}
-      <div className="lg:col-span-1">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 sticky top-6">
-          <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-4">
-            New Note
-          </h3>
-
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="Note title..."
-              value={newNoteTitle}
-              onChange={e => setNewNoteTitle(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-
-            <textarea
-              placeholder="Write your research note..."
-              value={newNoteContent}
-              onChange={e => setNewNoteContent(e.target.value)}
-              rows={6}
-              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-            />
-
-            {/* Tags */}
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Tags</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  placeholder="Add tag..."
-                  value={newNoteTagInput}
-                  onChange={e => setNewNoteTagInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                  className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-                <button
-                  onClick={handleAddTag}
-                  className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black hover:bg-indigo-700 transition-colors"
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-              {newNoteTags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {newNoteTags.map(tag => (
-                    <span key={tag} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg text-[10px] font-bold flex items-center gap-1">
-                      {tag}
-                      <button onClick={() => handleRemoveTag(tag)} className="hover:opacity-70">
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={handleAddNote}
-              disabled={!newNoteTitle.trim() || !newNoteContent.trim()}
-              className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              <Plus size={18} /> Create Note
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Notes List */}
-      <div className="lg:col-span-2 space-y-4">
-        {/* Search & Filter */}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Search notes..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
-          {allTags.length > 0 && (
-            <div className="relative">
-              <select
-                value={filterTag || ''}
-                onChange={e => setFilterTag(e.target.value || null)}
-                className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-              >
-                <option value="">All tags</option>
-                {allTags.map(tag => (
-                  <option key={tag} value={tag}>{tag}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Notes Display */}
-        {filteredNotes.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">
-            <FileText size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="font-serif italic">No notes yet. Start by creating a research note.</p>
-          </div>
-        ) : (
-          filteredNotes.map(note => (
-            <div key={note.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-              <button
-                onClick={() => setExpandedNoteId(expandedNoteId === note.id ? null : note.id)}
-                className="w-full p-4 flex items-start justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-              >
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-slate-900 dark:text-white mb-1">{note.title}</h4>
-                  <p className="text-xs text-slate-500 mb-2">{new Date(note.createdAt).toLocaleDateString()}</p>
-                  {note.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {note.tags.map(tag => (
-                        <span key={tag} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400 rounded">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <ChevronDown size={18} className={`text-slate-400 transition-transform ${expandedNoteId === note.id ? 'rotate-180' : ''}`} />
-              </button>
-
-              {expandedNoteId === note.id && (
-                <div className="border-t border-slate-200 dark:border-slate-800 p-4 space-y-4">
-                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{note.content}</p>
-                  
-                  <div className="flex gap-2 justify-end">
-                    <button
-                      onClick={() => handleDeleteNote(note.id)}
-                      className="px-4 py-2 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-950/40 transition-colors flex items-center gap-1"
-                    >
-                      <Trash2 size={14} /> Delete
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-
-  const renderScriptureTab = () => (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800">
-      <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6">
-        Scripture Library
-      </h3>
-
-      {scriptureLibrary.length === 0 ? (
-        <div className="text-center py-12 text-slate-500">
-          <BookOpen size={48} className="mx-auto mb-4 opacity-20" />
-          <p className="font-serif italic">No scripture entries yet. Add verses in the Admin panel.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {scriptureLibrary.map(entry => (
-            <div key={entry.id} className="p-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/30">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h4 className="text-sm font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider">{entry.reference}</h4>
-                  <p className="text-xs text-amber-700 dark:text-amber-300 font-bold">{entry.translation}</p>
-                </div>
-                <button
-                  className="p-2 hover:bg-amber-100/50 dark:hover:bg-amber-900/20 rounded-lg transition-colors text-amber-600"
-                  title="Copy verse"
-                >
-                  <Copy size={16} />
-                </button>
-              </div>
-              <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed font-serif italic">"{entry.text}"</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderCitationsTab = () => (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800">
-      <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6">
-        Citations & References
-      </h3>
-      <p className="text-slate-600 dark:text-slate-400 mb-6">Track how you've used sources and scripture in your notes.</p>
-
-      {notes.length === 0 ? (
-        <div className="text-center py-12 text-slate-500">
-          <Link2 size={48} className="mx-auto mb-4 opacity-20" />
-          <p className="font-serif italic">No citations yet. Create a research note that links sources.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {notes.map(note => (
-            <div key={note.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
-              <h4 className="font-bold text-slate-900 dark:text-white mb-2">{note.title}</h4>
-              <div className="space-y-2">
-                {note.sourceIds.length > 0 && (
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase mb-1">Sources cited:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {note.sourceIds.map(srcId => {
-                        const source = sources.find(s => s.id === srcId);
-                        return source ? (
-                          <span key={srcId} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded">
-                            {source.name}
-                          </span>
-                        ) : null;
-                      })}
-                    </div>
-                  </div>
-                )}
-                {note.scriptureCitations.length > 0 && (
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase mb-1">Scripture cited:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {note.scriptureCitations.map((citation, idx) => (
-                        <span key={idx} className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-bold rounded">
-                          {citation}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  const filteredNotes = React.useMemo(() => {
+    let notes = allNotes;
+    
+    if (selectedTag) {
+      notes = notes.filter(n => n.tags.includes(selectedTag));
+    }
+    
+    if (semanticSearchEnabled && searchQuery.trim() && semanticResults.length > 0) {
+      return semanticResults
+        .map(id => notes.find(n => n.id === id))
+        .filter((n): n is Note => !!n);
+    }
+    
+    if (!searchQuery.trim()) return notes;
+    
+    const query = searchQuery.toLowerCase();
+    return notes.filter(n => 
+      n.content.toLowerCase().includes(query) || 
+      n.tags.some(t => t.toLowerCase().includes(query)) ||
+      n.expandedContent?.toLowerCase().includes(query)
+    );
+  }, [allNotes, searchQuery, semanticSearchEnabled, semanticResults, selectedTag]);
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
-      {/* Header */}
-      <header className="p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <div className="space-y-0">
-              <h1 className="ph-section-title text-3xl flex items-center gap-3">
-                <Search size={28} className="text-indigo-600" /> Research Hub
+      {!isEmbedded && (
+        <header className="hidden lg:block p-8 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-md z-10">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex flex-col gap-3">
+              <h1 className="ph-section-title text-2xl md:text-3xl flex items-center gap-3">
+                <PenTool size={32} className="text-indigo-600" /> Laboratory
               </h1>
+              <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
+                {Object.values(ResearchHubTab).map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setActiveTab(v)}
+                    className={`ph-tab ${viewMode === v && !selectedTag ? 'ph-tab-active' : 'ph-tab-inactive'}`}
+                  >
+                  {v === ResearchHubTab.NOTEBOOK && <Zap size={14} />}
+                  {v === ResearchHubTab.MOODBOARD && <Lightbulb size={14} />}
+                  {v === ResearchHubTab.CORKBOARD && <Layout size={14} />}
+                  {v}
+                  </button>
+                ))}
+
+                {/* Project Collection Tabs */}
+                {viewMode === ResearchHubTab.NOTEBOOK && projectTags.length > 0 && (
+                  <>
+                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-2" />
+                    {projectTags.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => setSelectedTag(tag)}
+                        className={`ph-tab whitespace-nowrap ${selectedTag === tag ? 'ph-tab-active border-indigo-500 text-indigo-600' : 'ph-tab-inactive'}`}
+                      >
+                        <span className="text-indigo-400 mr-1 opacity-50">#</span>
+                        {tag}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
             </div>
-            <div className="relative ml-auto">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="ph-input pl-12 w-64"
-              />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 mr-2 border-r border-slate-200 dark:border-slate-800 pr-4">
+                <button
+                  onClick={handleExportNotes}
+                  className="ph-button-ghost p-2 text-slate-400 hover:text-indigo-600"
+                  title="Export Notes"
+                >
+                  <Download size={18} />
+                </button>
+                <label className="ph-button-ghost p-2 text-slate-400 hover:text-indigo-600 cursor-pointer" title="Import Notes">
+                  <Upload size={18} />
+                  <input type="file" className="hidden" accept=".json" onChange={handleImportNotes} />
+                </label>
+              </div>
+              {onDeleteAllNotes && (
+                <button
+                  onClick={() => setNoteToDelete('ALL')}
+                  className="ph-button-ghost p-2 text-slate-400 hover:text-red-500"
+                  title="Delete All Notes"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && semanticSearchEnabled) {
+                      handleSemanticSearch();
+                    }
+                  }}
+                  placeholder={semanticSearchEnabled ? "Search meaning..." : "Search research..."}
+                  className="ph-input pl-12 w-64"
+                />
+                {isSearching && (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <Loader2 size={14} className="animate-spin text-indigo-500" />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            {Object.values(ResearchHubTab).map(tab => (
+        </header>
+      )}
+
+      {/* Mobile/Small Screen Navigation (Visible when main header is hidden) */}
+      <div className="lg:hidden flex flex-col gap-2 p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-20 shadow-sm">
+        <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
+          {Object.values(ResearchHubTab).map(v => (
+            <button
+              key={v}
+              onClick={() => setActiveTab(v)}
+              className={`ph-tab whitespace-nowrap ${viewMode === v && !selectedTag ? 'ph-tab-active' : 'ph-tab-inactive'}`}
+            >
+              <div className="flex items-center gap-1">
+                {v === ResearchHubTab.NOTEBOOK && <Zap size={12} />}
+                {v === ResearchHubTab.MOODBOARD && <Lightbulb size={12} />}
+
+                {v}
+              </div>
+            </button>
+          ))}
+          
+          {/* Project Collection Tabs on Mobile */}
+          {viewMode === ResearchHubTab.NOTEBOOK && projectTags.length > 0 && (
+            <>
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-2" />
+              {projectTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(tag)}
+                  className={`ph-tab whitespace-nowrap ${selectedTag === tag ? 'ph-tab-active border-indigo-500 text-indigo-600' : 'ph-tab-inactive'}`}
+                >
+                  <span className="text-indigo-400 mr-0.5 opacity-50">#</span>
+                  {tag}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
+      {isEmbedded && (
+        <div className="hidden lg:flex flex-col gap-2 p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
+            {Object.values(ResearchHubTab).map(v => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg text-sm font-black uppercase tracking-wider transition-all ${
-                  activeTab === tab
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
+                key={v}
+                onClick={() => setActiveTab(v)}
+                className={`ph-tab whitespace-nowrap ${viewMode === v && !selectedTag ? 'ph-tab-active' : 'ph-tab-inactive'}`}
               >
-                {tab}
+                <div className="flex items-center gap-1">
+                  {v === ResearchHubTab.NOTEBOOK && <Zap size={12} />}
+                  {v === ResearchHubTab.MOODBOARD && <Lightbulb size={12} />}
+                  {v === ResearchHubTab.CORKBOARD && <Layout size={12} />}
+  
+                  {v}
+                </div>
               </button>
             ))}
+            {viewMode === ResearchHubTab.NOTEBOOK && projectTags.length > 0 && (
+              <>
+                <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-2" />
+                {projectTags.map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => setSelectedTag(tag)}
+                    className={`ph-tab whitespace-nowrap ${selectedTag === tag ? 'ph-tab-active border-indigo-500 text-indigo-600' : 'ph-tab-inactive'}`}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
-      </header>
+      )}
 
-      {/* Content */}
-      <main className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="max-w-7xl mx-auto p-8">
-          {activeTab === ResearchHubTab.SOURCES && renderSourcesTab()}
-          {activeTab === ResearchHubTab.NOTES && renderNotesTab()}
-          {activeTab === ResearchHubTab.SCRIPTURE && renderScriptureTab()}
-          {activeTab === ResearchHubTab.CITATIONS && renderCitationsTab()}
+      <div className="flex-1 overflow-y-auto relative p-0 md:p-8">
+        <div className={`max-w-4xl mx-auto min-h-full relative shadow-2xl rounded-none md:rounded-3xl overflow-hidden flex flex-col ${viewMode === ResearchHubTab.NOTEBOOK ? 'paper-texture' : ''}`}>
+          {viewMode === ResearchHubTab.NOTEBOOK ? (
+            <>
+              {/* Spacer to push content below fixed leather header */}
+              <div className="h-12 shrink-0 lg:hidden" />
+
+              {/* Transition Zone - paper texture continues underneath */}
+              <div className="relative h-14 z-20 pointer-events-none overflow-hidden shrink-0">
+                {/* Layer 3 (Back) */}
+                <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-4">
+                  <div className="h-8 paper-fringe-dark path-torn-2" />
+                </div>
+                {/* Layer 2 */}
+                <div className="absolute top-0 left-0 right-0 torn-layer-shadow translate-y-2">
+                  <div className="h-8 paper-fringe-mid path-torn-3" />
+                </div>
+                {/* Layer 1 (Front) */}
+                <div className="absolute top-0 left-0 right-0 torn-layer-shadow">
+                  <div className="h-8 paper-fringe-light path-torn-1" />
+                </div>
+              </div>
+
+              <div className="flex-1 relative pt-0 pb-40 lg:pb-8 px-4 md:px-8 lg:px-16">
+                <div className="space-y-0 relative z-10">
+                  <StackedPaper className="space-y-4" transparent>
+                    <div className="p-4 md:p-6 relative z-20 bg-white/40 dark:bg-white/5 rounded-2xl backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 mb-4 shadow-sm">
+                      <div className="relative">
+                        <textarea
+                          ref={textareaRef}
+                          value={newNote}
+                          onChange={handleTextChange}
+                          onKeyDown={handleKeyDown}
+                          placeholder="Jot down a thought... (Enter to Save)"
+                          className="w-full h-32 bg-transparent border-none focus:ring-0 text-base md:text-lg resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400/50"
+                        />
+                        {showTagSuggestion && (
+                          <button
+                            onClick={applyTagSuggestion}
+                            className="absolute bottom-2 left-0 bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2"
+                          >
+                            #{(data?.shortName || data?.title || 'Project').replace(/[^\w\s]/g, '').replace(/\s+/g, '_')}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30 pb-4">
+                        <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # to tag.</span>
+                        <button 
+                          onClick={handleAdd}
+                          className="lg:hidden px-4 py-1.5 bg-indigo-600 text-white rounded-lg font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  </StackedPaper>
+
+                  <div className="grid grid-cols-1">
+                    {filteredNotes.length === 0 && searchQuery.trim() && (
+                      <div className="p-12 text-center text-slate-400 italic">
+                        No notes found matching your search.
+                      </div>
+                    )}
+                    {filteredNotes.map((note, index) => (
+                      <React.Fragment key={note.id}>
+                        {index > 0 && <div className="perforation-line my-2" />}
+                        <StackedPaper className="group" transparent>
+                          <div className={`p-0 md:p-6 relative z-20 ${note.isCanon ? 'border-l-4 border-amber-500/50' : ''}`}>
+                            <div className="flex items-start justify-between mb-4 p-4 md:p-0">
+                              <div className="flex flex-wrap gap-2">
+                                {note.tags.map(tag => {
+                                  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                  const tagSimple = normalize(tag);
+                                  const bookSimple = normalize(data?.shortName || data?.title || '');
+                                  
+                                  const isBook = tagSimple === bookSimple;
+                                  const isCharacter = data?.characters?.some(c => normalize(c.name) === tagSimple);
+                                  const isLocation = data?.locations?.some(l => normalize(l.name) === tagSimple);
+                                  
+                                  return (
+                                    <button 
+                                      key={tag} 
+                                      onClick={() => {
+                                        if (isBook) onChangeView(ViewType.DASHBOARD);
+                                        else if (isCharacter) onChangeView(ViewType.CHARACTERS);
+                                        else if (isLocation) {
+                                          const loc = data?.locations?.find(l => normalize(l.name) === tagSimple);
+                                          if (loc) onLinkClick('location', loc.id);
+                                        }
+                                      }}
+                                      className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest transition-colors max-w-[150px] truncate inline-block align-bottom ${
+                                        isBook || isCharacter || isLocation
+                                          ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200' 
+                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                                      }`}
+                                    >
+                                      #{tag}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => onLinkClick('admin', note.id)}
+                                  className="p-1 text-slate-300 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100"
+                                  title="Edit Note"
+                                >
+                                  <Edit2 size={18} />
+                                </button>
+                                {onToggleCanon && (
+                                  <button 
+                                    onClick={() => onToggleCanon(note.id, !note.isCanon)}
+                                    className={`p-1 rounded-lg transition-all ${note.isCanon ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-300 hover:text-amber-500'}`}
+                                    title={note.isCanon ? "Canonized" : "Mark as Canon"}
+                                  >
+                                    <Zap size={18} fill={note.isCanon ? "currentColor" : "none"} />
+                                  </button>
+                                )}
+                                <button onClick={() => setNoteToDelete(note.id)} className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="text-slate-800 dark:text-slate-200 mb-4 font-serif text-lg leading-relaxed">
+                              <WikiText text={note.content} projectData={data as any} projectsMetadata={projectsMetadata} onLinkClick={onLinkClick} />
+                            </div>
+                            <div className="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest flex justify-between items-center">
+                              <span>{new Date(note.timestamp).toLocaleString()}</span>
+                              {currentUser?.role === 'admin' && (
+                                <span className="font-mono text-[9px] opacity-50 select-all">ID: {note.id}</span>
+                              )}
+                            </div>
+                          </div>
+                        </StackedPaper>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : viewMode === ResearchHubTab.MOODBOARD ? (
+            <div className="flex-1 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-900 dark:to-slate-800 overflow-y-auto p-8 lg:p-12">
+              <div className="max-w-6xl mx-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Inspiration Board</h2>
+                  <button 
+                    onClick={() => setShowInspirationForm(!showInspirationForm)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
+                  >
+                    {showInspirationForm ? <X size={16} /> : <Plus size={16} />} {showInspirationForm ? 'Cancel' : 'Add Inspiration'}
+                  </button>
+                </div>
+                
+                {showInspirationForm && (
+                  <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl mb-8 border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Title</label>
+                        <input type="text" value={newInspirationTitle} onChange={e => setNewInspirationTitle(e.target.value)} className="ph-input w-full" placeholder="E.g., Gothic Castle Reference" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Image</label>
+                        <ImageUploadInput
+                          onImageUrl={handleInspirationImageUrl}
+                          onError={handleInspirationImageError}
+                          filename="inspiration"
+                          showPreview={true}
+                        />
+                        {newInspirationImage && (
+                          <div className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                            <CheckCircle size={14} /> Image ready
+                          </div>
+                        )}
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Description & Tags (use #)</label>
+                        <textarea value={newInspirationDesc} onChange={e => setNewInspirationDesc(e.target.value)} className="ph-input w-full h-24 resize-none" placeholder="Notes about this inspiration... #Oakhaven" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">External Link (Optional)</label>
+                        <input type="text" value={newInspirationUrl} onChange={e => setNewInspirationUrl(e.target.value)} className="ph-input w-full" placeholder="https://en.wikipedia.org/wiki/..." />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-3">
+                      <button 
+                        onClick={() => {
+                          setNewInspirationTitle('');
+                          setNewInspirationDesc('');
+                          setNewInspirationUrl('');
+                          setNewInspirationImage('');
+                          setInspirationImageError('');
+                          setShowInspirationForm(false);
+                        }}
+                        className="px-6 py-2 bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-400 dark:hover:bg-slate-500 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={handleAddInspiration}
+                        disabled={!newInspirationTitle.trim() || !newInspirationImage.trim()}
+                        className={`px-6 py-2 rounded-xl font-bold transition-colors ${
+                          newInspirationTitle.trim() && newInspirationImage.trim()
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        Save Inspiration
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {editingInspirationId && (
+                  (() => {
+                    const inspo = data?.inspirations?.find(i => i.id === editingInspirationId);
+                    if (!inspo) return null;
+                    return (
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl mb-8 border-2 border-indigo-500 dark:border-indigo-400 animate-in fade-in slide-in-from-top-4">
+                        <div className="flex items-center justify-between gap-2 mb-4">
+                          <h3 className="font-bold text-slate-900 dark:text-white text-lg">Edit Inspiration</h3>
+                          <button 
+                            onClick={() => setEditingInspirationId(null)}
+                            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                          >
+                            <X size={20} />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Title</label>
+                            <input 
+                              type="text" 
+                              value={inspo.title}
+                              onChange={(e) => handleUpdateInspiration(inspo.id, { title: e.target.value })}
+                              className="ph-input w-full"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Description & Tags (use #)</label>
+                            <textarea 
+                              value={inspo.description || ''}
+                              onChange={(e) => handleUpdateInspiration(inspo.id, { description: e.target.value })}
+                              className="ph-input w-full h-24 resize-none"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">External Link (Optional)</label>
+                            <input 
+                              type="text" 
+                              value={inspo.url || ''}
+                              onChange={(e) => handleUpdateInspiration(inspo.id, { url: e.target.value })}
+                              className="ph-input w-full"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-3">
+                          <button 
+                            onClick={() => handleDeleteInspiration(inspo.id)}
+                            className="px-6 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl font-bold hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                          >
+                            Delete
+                          </button>
+                          <button 
+                            onClick={() => setEditingInspirationId(null)}
+                            className="px-6 py-2 bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-400 dark:hover:bg-slate-500 transition-colors"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
+
+                <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
+                  {!(data?.inspirations?.length) && !showInspirationForm && (
+                    <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4">
+                      <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
+                        <ImageIcon size={32} className="text-slate-300" />
+                      </div>
+                      <p className="text-slate-400 font-serif italic">Your mood board is empty. Add some inspirations to build your world's aesthetic.</p>
+                    </div>
+                  )}
+                  
+                  {data?.inspirations?.map((inspo) => (
+                    <div key={inspo.id} className="break-inside-avoid bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-slate-200 dark:border-slate-700 group">
+                      {inspo.imageUrl && (
+                        <div className="relative">
+                          <img src={inspo.imageUrl} alt={inspo.title} className="w-full h-auto object-cover" loading="lazy" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <div className="flex items-start justify-between mb-2 gap-2">
+                          <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-tighter text-sm">{inspo.title}</h3>
+<div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                               <button 
+                                 onClick={() => setEditingInspirationId(inspo.id)}
+                                 className="text-slate-300 hover:text-indigo-500 transition-colors"
+                                 title="Edit"
+                               >
+                                 <Edit2 size={16} />
+                               </button>
+                               <button 
+                                 onClick={() => handleDeleteInspiration(inspo.id)}
+                                 className="text-slate-300 hover:text-red-500 transition-colors"
+                               >
+                                 <Trash size={16} />
+                               </button>
+                             </div>
+                        </div>
+                        {inspo.description && (
+                          <p className="text-xs text-slate-600 dark:text-slate-400 font-serif mb-4 whitespace-pre-wrap">{inspo.description}</p>
+                        )}
+                        {inspo.url && (
+                          <a href={inspo.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-500 hover:text-indigo-600 flex items-center gap-1 mb-4 truncate bg-indigo-50 dark:bg-indigo-900/20 py-1 px-2 rounded">
+                            <Globe size={10} /> {inspo.url.replace(/^https?:\/\//, '')}
+                          </a>
+                        )}
+                        <div className="flex flex-wrap gap-1 mt-auto">
+                          {inspo.tags?.map(tag => {
+                            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const tagSimple = normalize(tag);
+                            const colors: { [key: string]: string } = {
+                              world: 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200',
+                              character: 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-200',
+                              plot: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200',
+                              setting: 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200',
+                              magic: 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200',
+                            };
+                            return (
+                              <span key={tag} className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${colors[tagSimple] || 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}>
+                                #{tag}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : viewMode === ResearchHubTab.CORKBOARD ? (
+            <div className="flex-1 bg-slate-100 dark:bg-slate-900 overflow-hidden flex flex-col relative">
+              {activeProse ? (
+                <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 animate-in fade-in zoom-in-95 duration-300">
+                  <header className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => setSelectedProseId(null)}
+                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                        title="Back to Corkboard"
+                      >
+                        <ChevronRight size={20} className="rotate-180" />
+                      </button>
+                      <input 
+                        type="text" 
+                        value={activeProse.title}
+                        onChange={(e) => handleUpdateProse(activeProse.id, { title: e.target.value })}
+                        className="bg-transparent border-none focus:ring-0 text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight"
+                        placeholder="Snippet Title"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleDeleteProse(activeProse.id)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={18} /></button>
+                    </div>
+                  </header>
+                  <div className="flex-1 overflow-hidden">
+                    <RichEditor 
+                      content={activeProse.content} 
+                      onChange={(html) => handleUpdateProse(activeProse.id, { content: html })}
+                      placeholder="Jot down your thoughts or miscellaneous lines here... This is independent of your manuscript."
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto p-8 lg:p-12 relative">
+                  {/* Corkboard Texture/Design */}
+                  <div className="absolute inset-0 bg-[#d2b48c]/20 dark:bg-slate-900 opacity-50 pointer-events-none" />
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cork-board.png')] opacity-10 pointer-events-none" />
+                  
+                  <div className="max-w-5xl mx-auto relative z-10">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                      <div>
+                        <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Snippet Corkboard</h2>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">A place for miscellaneous lines and thoughts.</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="relative group">
+                          <input 
+                            type="text" 
+                            placeholder="Quick add line..." 
+                            className="ph-input pr-10 w-64 text-xs"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                                const val = e.currentTarget.value.trim();
+                                const newDoc = {
+                                  id: generateId(),
+                                  title: val.slice(0, 20) + (val.length > 20 ? '...' : ''),
+                                  content: val,
+                                  lastModified: Date.now()
+                                };
+                                onUpdateProject?.({ corkboardNotes: [newDoc, ...corkboardNotes] });
+                                e.currentTarget.value = '';
+                              }
+                            }}
+                          />
+                          <Plus size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                        </div>
+                        <button 
+                          onClick={handleCreateProse}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
+                        >
+                          <Plus size={16} /> New Snippet
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {corkboardNotes.length === 0 ? (
+                        <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4">
+                          <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
+                            <FileText size={32} className="text-slate-300" />
+                          </div>
+                          <p className="text-slate-400 font-serif italic">Your corkboard is empty. Create a new snippet to begin.</p>
+                        </div>
+                      ) : (
+                        corkboardNotes.map(doc => (
+                          <button
+                            key={doc.id}
+                            onClick={() => setSelectedProseId(doc.id)}
+                            className="group relative bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl border-t-8 border-t-amber-200 dark:border-t-amber-900/50 hover:scale-105 hover:shadow-2xl transition-all text-left flex flex-col h-48 overflow-hidden"
+                          >
+                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-slate-300/50" /> {/* Pin head */}
+                            <h3 className="font-bold text-slate-900 dark:text-white mb-2 line-clamp-1 uppercase text-xs tracking-widest">{doc.title}</h3>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 font-serif line-clamp-5 overflow-hidden" dangerouslySetInnerHTML={{ __html: sanitizeHtml(doc.content || 'Empty snippet...') }} />
+                            <div className="mt-auto pt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(doc.lastModified).toLocaleDateString()}</span>
+                              <div className="flex items-center gap-2">
+                                <Edit2 size={12} className="text-indigo-500" />
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
+              <BookshelfView
+                projects={projectsMetadata || []}
+                activeProjectId={data?.id || ''}
+                currentUser={currentUser!}
+                onRefreshMetadata={async () => {}} // Placeholder for now, or we can pass it down if needed
+                onSelectProject={onSelectProject || (async () => {})}                onCreateProject={onCreateProject || (async () => {})} 
+                onUploadProject={onUploadProject || (async () => {})} 
+                onDeleteProject={onDeleteProject || (async () => {})}
+                onOpenDashboard={onOpenDashboard || (() => {})}
+                isAnalyzing={isAnalyzingProp || false}
+                fetchWithAuth={fetchWithAuth}
+                />
+
+            </div>
+          )}
         </div>
-      </main>
+      </div>
+
+      {noteToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
+              {noteToDelete === 'ALL' ? 'Delete All Notes?' : 'Delete Note?'}
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-8">
+              {noteToDelete === 'ALL' 
+                ? 'Are you sure you want to delete ALL notes in the Notebook? This action cannot be undone.' 
+                : 'Are you sure you want to delete this note? This action cannot be undone.'}
+            </p>
+            <div className="flex justify-end gap-4">
+              <button 
+                onClick={() => setNoteToDelete(null)}
+                className="px-6 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  if (noteToDelete === 'ALL' && onDeleteAllNotes) {
+                    onDeleteAllNotes();
+                  } else if (noteToDelete !== 'ALL') {
+                    onDeleteNote(noteToDelete);
+                  }
+                  setNoteToDelete(null);
+                }}
+                className="px-6 py-3 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 transition-colors"
+              >
+                {noteToDelete === 'ALL' ? 'Delete All' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
-// Add missing import
-import { Link2 } from 'lucide-react';

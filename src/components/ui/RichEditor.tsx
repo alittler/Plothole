@@ -13,6 +13,7 @@ export const RichEditor: React.FC<RichEditorProps> = ({ content, onChange, place
     extensions: [
       StarterKit,
     ],
+    immediatelyRender: false,
     content: content,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());

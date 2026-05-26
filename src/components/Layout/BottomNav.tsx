@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType } from '../../types';
-import { Book, Search, Zap, LayoutGrid, Menu, FileText, Users, Map, Clock, X, HelpCircle, Settings, Shield, Wrench, Wand2 } from 'lucide-react';
+import { Book, Search, Zap, LayoutGrid, Menu, FileText, Users, Map, Clock, X, HelpCircle, Settings, Shield, Wrench, Wand2, BookOpen } from 'lucide-react';
 
 interface BottomNavProps {
   currentView: ViewType;
@@ -42,7 +42,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     };
   }, []);
 
-  const defaultOrder = [ViewType.BOOKSHELF, ViewType.DASHBOARD, ViewType.NOTEPAD, ViewType.RESEARCH];
+  const defaultOrder = [ViewType.BOOKSHELF, ViewType.DASHBOARD, ViewType.RESEARCH, ViewType.CODEX_HUB, ViewType.PLOT_HUB];
   const order = bottomNavOrder || defaultOrder;
 
   const getViewLabel = (view: ViewType) => {
@@ -50,10 +50,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       case ViewType.BOOKSHELF: return 'Library';
       case ViewType.DASHBOARD: return 'Dashboard';
       case ViewType.NOTEPAD: return 'Notepad';
-      case ViewType.RESEARCH: return 'Research';
+      case ViewType.RESEARCH: return 'Laboratory';
       case ViewType.CHARACTERS: return 'Characters';
       case ViewType.MAP: return 'Atlas';
       case ViewType.TIMELINE: return 'History';
+      case ViewType.PLOT_HUB: return 'Plot Hub';
+      case ViewType.WORLD_HUB: return 'World Hub';
+      case ViewType.NARRATIVE_ARCHITECT: return 'Architect';
+      case ViewType.CODEX_HUB: return 'Codex';
       case ViewType.TOOLBOX: return 'Toolbox';
       case ViewType.SETTINGS: return 'Settings';
       case ViewType.ADMIN: return 'Admin';
@@ -71,6 +75,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       case ViewType.CHARACTERS: return <Users size={size} />;
       case ViewType.MAP: return <Map size={size} />;
       case ViewType.TIMELINE: return <Clock size={size} />;
+      case ViewType.PLOT_HUB: return <Clock size={size} />;
+      case ViewType.WORLD_HUB: return <Map size={size} />;
+      case ViewType.NARRATIVE_ARCHITECT: return <LayoutGrid size={size} />;
+      case ViewType.CODEX_HUB: return <BookOpen size={size} />;
       case ViewType.TOOLBOX: return <Wrench size={size} />;
       case ViewType.SETTINGS: return <Settings size={size} />;
       case ViewType.ADMIN: return <Shield size={size} />;
@@ -91,11 +99,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
         {order.map((view, index) => {
           const isActive = currentView === view;
-          const isProjectOnly = [ViewType.DASHBOARD, ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(view);
+          const isProjectOnly = [ViewType.DASHBOARD, ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX_HUB, ViewType.PLOT_HUB, ViewType.WORLD_HUB, ViewType.NARRATIVE_ARCHITECT].includes(view);
           const isDisabled = isProjectOnly && !hasActiveProject;
           const isNotepad = view === ViewType.NOTEPAD;
           const visibleItems = order.filter(v => {
-            const isProjOnly = [ViewType.DASHBOARD, ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX].includes(v);
+            const isProjOnly = [ViewType.DASHBOARD, ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX_HUB, ViewType.PLOT_HUB, ViewType.WORLD_HUB, ViewType.NARRATIVE_ARCHITECT].includes(v);
             return !(isProjOnly && !hasActiveProject);
           });
           const isMiddle = visibleItems.length > 0 && visibleItems[Math.floor(visibleItems.length / 2)] === view;

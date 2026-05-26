@@ -39,9 +39,7 @@ interface WorldSystemViewProps {
 
 enum WorldTab {
   MAP = 'Interactive Map',
-  LOCATIONS = 'Locations & Paths',
-  INVENTORY = 'Inventory',
-  RECIPE_BOOK = 'Recipe Book'
+  LOCATIONS = 'Locations & Paths'
 }
 
 // Parse directional coordinates like "51.5280° N, 123.1207° W" to +/- format
@@ -82,6 +80,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
   onAddLore,
   onDeleteLore,
   onUpdateRootMap,
+  onUpdateRootMapData,
+  onUpdateMapOrder,
   projectsMetadata,
   currentUser
 }) => {
@@ -278,8 +278,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
   const filteredCharacters = data.characters.filter((c) => c.x !== undefined && c.y !== undefined && (c.parentId === (currentMapParentId || 'root')));
 
-
-
   const isCurrentMapRealWorld = (() => {
     if (currentMapParentId) {
       const parent = data.locations.find(l => l.id === currentMapParentId);
@@ -321,8 +319,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 >
                   {tab === WorldTab.MAP && <MapIcon size={14} />}
                   {tab === WorldTab.LOCATIONS && <MapPin size={14} />}
-                  {tab === WorldTab.INVENTORY && <Box size={14} />}
-                  {tab === WorldTab.RECIPE_BOOK && <Book size={14} />}
                   <span className="hidden sm:inline">{tab}</span>
                 </button>
               ))}
@@ -346,10 +342,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         onClick={() => onUpdateProject({ isRealWorldMap: true })}
                         className="flex-1 flex flex-col items-center justify-center relative overflow-hidden group bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 hover:from-blue-500 hover:via-blue-600 hover:to-blue-700 transition-all cursor-pointer border-r border-white/20"
                       >
-                        {/* Globe icon as background */}
                         <Globe size={200} className="absolute opacity-10 group-hover:opacity-20 transition-opacity" />
-                        
-                        {/* Content container */}
                         <div className="relative z-10 flex flex-col items-center gap-4 text-white">
                           <div className="text-6xl">🌍</div>
                           <div className="space-y-2">
@@ -364,10 +357,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
                       {/* Fantasy Map Option */}
                       <label className="flex-1 flex flex-col items-center justify-center relative overflow-hidden group bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:via-emerald-600 hover:to-emerald-700 transition-all cursor-pointer">
-                        {/* MapIcon as background */}
                         <MapIcon size={200} className="absolute opacity-10 group-hover:opacity-20 transition-opacity" />
-                        
-                        {/* Content container */}
                         <div className="relative z-10 flex flex-col items-center gap-4 text-white">
                           <div className="text-6xl">🗺️</div>
                           <div className="space-y-2">
@@ -378,7 +368,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                             </p>
                           </div>
                         </div>
-                        
                         <input type="file" className="hidden" accept="image/*" onChange={handleMapUpload} />
                       </label>
                     </div>
@@ -524,14 +513,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                                 <label className="p-1.5 md:p-2 text-slate-500 hover:text-indigo-600 cursor-pointer rounded-lg md:rounded-xl transition-colors" title="Change Map" onClick={(e) => e.stopPropagation()}><Upload size={16} className="md:w-5 md:h-5" /><input type="file" className="hidden" accept="image/*" onChange={handleMapUpload} /></label>
                               </>
                             )}
-                            <div className="w-px h-4 md:h-6 bg-slate-200 dark:bg-slate-800 self-center" />
-                            <button 
-                              onClick={() => {}}
-                              className="p-1.5 md:p-2 rounded-lg md:rounded-xl transition-all text-slate-500 hover:text-rose-600 hidden"
-                              title="Seed Test Monsters"
-                            >
-                              <Sparkles size={16} className="md:w-5 md:h-5" />
-                            </button>
                           </div>
                           <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsMapMenuOpen(!isMapMenuOpen); }} className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-lg md:rounded-xl transition-all ${isMapMenuOpen ? 'bg-emerald-600 text-white rotate-180 shadow-lg' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><MapIcon size={20} className="md:w-6 md:h-6 shrink-0" /></button>
                         </div>
@@ -746,105 +727,58 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
 
             {activeTab === WorldTab.LOCATIONS && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                {/* Column 1: Locations */}
                 <section className="space-y-8">
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl"><MapIcon size={24} /></div>
                       <div><h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Geographic Roster</h2><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Points of Interest</p></div>
                     </div>
-                    <button onClick={() => onAddLocation({ id: generateId(), name: 'New Location', description: '', type: 'City', source: 'manual' })} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"><Plus size={14} /> New Location</button>
+                    <button onClick={() => setShowAddLocationDialog(true)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"><Plus size={14} /> New Location</button>
                   </div>
                   <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                    {/* Manuscript Locations Group */}
-                    {data.locations.filter(l => l.source === 'ai').length > 0 && (
-                      <div>
-                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 pl-1">📚 From Manuscript</h4>
-                        <div className="space-y-3">
-                          {data.locations.filter(l => l.source === 'ai').map(loc => (
-                            <div key={loc.id} className="bg-blue-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-blue-200 dark:border-slate-700 shadow-sm group relative hover:shadow-md transition-all">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">{loc.type}</span>
-                                <div className="flex items-center gap-2">
-                                  {!loc.mapImage && <button onClick={() => onUpdateLocation({ ...loc, mapImage: DEFAULT_MAP, type: 'Region' })} className="text-slate-400 hover:text-blue-500 transition-colors" title="Turn into Map Link"><MapIcon size={14} /></button>}
-                                  <button onClick={() => handleOpenLocationEdit(loc)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
-                                </div>
-                              </div>
-                              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{loc.name}</h3>
-                              <p className="text-xs text-slate-500 line-clamp-2 mt-2 font-serif italic">{loc.description || 'No description yet.'}</p>
-                            </div>
-                          ))}
+                    {data.locations.map(loc => (
+                      <div key={loc.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative hover:shadow-md transition-all">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handleOpenLocationEdit(loc)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
+                            <button onClick={() => onUpdateProject({ locations: data.locations.filter(l => l.id !== loc.id) })} className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                          </div>
                         </div>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-sm">{loc.name}</h3>
+                        <p className="text-xs text-slate-500 line-clamp-2 mt-2 font-serif italic">{loc.description || 'No description yet.'}</p>
                       </div>
-                    )}
-                    
-                    {/* Manual Locations Group */}
-                    {data.locations.filter(l => l.source !== 'ai').length > 0 && (
-                      <div>
-                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 pl-1">✋ Custom Locations</h4>
-                        <div className="space-y-3">
-                          {data.locations.filter(l => l.source !== 'ai').map(loc => (
-                            <div key={loc.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative hover:shadow-md transition-all">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{loc.type}</span>
-                                <div className="flex items-center gap-2">
-                                  {!loc.mapImage && <button onClick={() => onUpdateLocation({ ...loc, mapImage: DEFAULT_MAP, type: 'Region' })} className="text-slate-400 hover:text-emerald-500 transition-colors" title="Turn into Map Link"><MapIcon size={14} /></button>}
-                                  <button onClick={() => handleOpenLocationEdit(loc)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
-                                  <button 
-                                    onClick={(e) => {
-                                      try {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        onUpdateProject({ locations: data.locations.filter(l => l.id !== loc.id) });
-                                      } catch (err) {
-                                        console.error('Error deleting location:', err);
-                                      }
-                                    }} 
-                                    className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                              <h3 className="font-bold text-slate-900 dark:text-white text-sm">{loc.name}</h3>
-                              <p className="text-xs text-slate-500 line-clamp-2 mt-2 font-serif italic">{loc.description || 'No description yet.'}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
+                    ))}
                     {data.locations.length === 0 && (
                       <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
                         <MapIcon size={32} className="text-slate-300" />
-                        <p className="text-slate-400 font-serif italic text-sm">No locations yet. Add one from your manuscript or create a custom location.</p>
+                        <p className="text-slate-400 font-serif italic text-sm">No locations yet.</p>
                       </div>
                     )}
                   </div>
                 </section>
 
-                {/* Column 2: Paths */}
                 <section className="space-y-8">
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl"><Activity size={24} /></div>
-                      <div><h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Distance Logs</h2><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Recorded Pathmeasurements</p></div>
+                      <div><h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Distance Logs</h2><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Recorded Pathways</p></div>
                     </div>
                   </div>
                   <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                     {(data.paths || []).length === 0 ? (
                       <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
                         <Ruler size={32} className="text-slate-300" />
-                        <p className="text-slate-400 font-serif italic text-sm px-6">No paths recorded yet. Use the Ruler tool on the map to save pathmeasurements.</p>
+                        <p className="text-slate-400 font-serif italic text-sm px-6">No paths recorded yet.</p>
                       </div>
                     ) : (
-                      data.paths?.map(path => (
+                      (data.paths || []).map(path => (
                         <div key={path.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative hover:shadow-md transition-all">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{path.isRealWorld ? 'Real World' : 'Local Map'}</span>
                             <div className="flex items-center gap-2">
                               <button onClick={() => handleOpenPathEdit(path)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
-                              <button onClick={() => onUpdateProject({ paths: data.paths?.filter(p => p.id !== path.id) })} className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                              <button onClick={() => onUpdateProject({ paths: (data.paths || []).filter(p => p.id !== path.id) })} className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
                             </div>
                           </div>
                           <h3 className="font-bold text-slate-900 dark:text-white text-sm">{path.name}</h3>
@@ -852,7 +786,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                             <span className="text-xl font-black text-indigo-600">{path.distance}</span>
                             <span className="text-[10px] font-bold text-slate-400 uppercase">{path.unit}</span>
                           </div>
-                          <p className="text-[10px] text-slate-500 mt-2 italic">Points: {path.points.length} • Anchors: {path.points.filter(p => p.locationId).length}</p>
                         </div>
                       ))
                     )}
@@ -860,208 +793,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                 </section>
               </div>
             )}
-
-            {activeTab === WorldTab.INVENTORY && (
-              <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl"><Box size={24} /></div>
-                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Inventory</h2><p className="text-sm text-slate-500 uppercase font-bold tracking-widest">Artifacts and Objects</p></div>
-                  </div>
-                  <button onClick={() => onAddArtifact({ id: generateId(), name: 'New Artifact', type: 'Relic', description: '', source: 'manual' })} className="px-4 py-2 bg-amber-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"><Plus size={18} /> New Artifact</button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {data.artifacts?.map(art => (
-                    <div key={art.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group relative hover:shadow-md transition-all">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{art.type}</span>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleOpenArtifactEdit(art)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Edit2 size={14} /></button>
-                          <button onClick={() => onDeleteArtifact(art.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
-                        </div>
-                      </div>
-                      <h3 className="font-bold text-slate-900 dark:text-white">{art.name}</h3>
-                      <p className="text-sm text-slate-500 line-clamp-2 mt-2 font-serif italic">{art.description || 'No description.'}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {activeTab === WorldTab.RECIPE_BOOK && (
-              <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl"><Book size={24} /></div>
-                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Recipe Book</h2><p className="text-sm text-slate-500 uppercase font-bold tracking-widest">Meals, Drinks & Culinary Creations</p></div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Herb Roasted Chicken */}
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🍗</span>
-                        <h3 className="font-bold text-slate-900 dark:text-white">Herb Roasted Chicken</h3>
-                      </div>
-                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded">Main</span>
-                    </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">A classic savory dish with rosemary, thyme, and garlic.</p>
-                    <div className="space-y-2 mb-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
-                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                        <li>• 1 whole chicken</li>
-                        <li>• Fresh rosemary & thyme</li>
-                        <li>• 4 cloves garlic</li>
-                        <li>• Butter, salt & pepper</li>
-                      </ul>
-                    </div>
-                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
-                      <a href="https://www.simplyrecipes.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">simplyrecipes.com</a>
-                    </div>
-                  </div>
-
-                  {/* Wild Berry Tart */}
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🫐</span>
-                        <h3 className="font-bold text-slate-900 dark:text-white">Wild Berry Tart</h3>
-                      </div>
-                      <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 dark:bg-rose-900/30 px-2 py-1 rounded">Dessert</span>
-                    </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">Elegant pastry filled with fresh berries and cream.</p>
-                    <div className="space-y-2 mb-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
-                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                        <li>• Puff pastry sheet</li>
-                        <li>• Mixed fresh berries</li>
-                        <li>• Heavy cream</li>
-                        <li>• Honey & vanilla</li>
-                      </ul>
-                    </div>
-                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
-                      <a href="https://www.foodnetwork.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">foodnetwork.com</a>
-                    </div>
-                  </div>
-
-                  {/* Spiced Apple Mead */}
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🍷</span>
-                        <h3 className="font-bold text-slate-900 dark:text-white">Spiced Apple Mead</h3>
-                      </div>
-                      <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded">Drink</span>
-                    </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">Honey wine infused with cinnamon, cloves, and apple.</p>
-                    <div className="space-y-2 mb-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
-                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                        <li>• Honey & water</li>
-                        <li>• Apple juice</li>
-                        <li>• Cinnamon stick</li>
-                        <li>• Whole cloves</li>
-                      </ul>
-                    </div>
-                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
-                      <a href="https://www.homebrewing.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">homebrewing.com</a>
-                    </div>
-                  </div>
-
-                  {/* Mushroom Soup */}
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🍲</span>
-                        <h3 className="font-bold text-slate-900 dark:text-white">Mushroom Soup</h3>
-                      </div>
-                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded">Starter</span>
-                    </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">Creamy woodland mushroom soup with fresh herbs.</p>
-                    <div className="space-y-2 mb-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
-                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                        <li>• Mixed mushrooms</li>
-                        <li>• Heavy cream</li>
-                        <li>• Vegetable stock</li>
-                        <li>• Onions & garlic</li>
-                      </ul>
-                    </div>
-                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
-                      <a href="https://www.bonappetit.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">bonappetit.com</a>
-                    </div>
-                  </div>
-
-                  {/* Honey Bread */}
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🍞</span>
-                        <h3 className="font-bold text-slate-900 dark:text-white">Honey Bread</h3>
-                      </div>
-                      <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded">Bread</span>
-                    </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">Sweet, golden loaf sweetened with wildflower honey.</p>
-                    <div className="space-y-2 mb-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
-                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                        <li>• All-purpose flour</li>
-                        <li>• Honey & butter</li>
-                        <li>• Eggs & milk</li>
-                        <li>• Yeast & salt</li>
-                      </ul>
-                    </div>
-                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
-                      <a href="https://www.kingarthurbaking.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">kingarthurbaking.com</a>
-                    </div>
-                  </div>
-
-                  {/* Mint Tea */}
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm group hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🍵</span>
-                        <h3 className="font-bold text-slate-900 dark:text-white">Mint Tea</h3>
-                      </div>
-                      <span className="text-[10px] font-black text-cyan-500 uppercase tracking-widest bg-cyan-50 dark:bg-cyan-900/30 px-2 py-1 rounded">Drink</span>
-                    </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 font-serif italic">Refreshing herbal infusion of fresh mint and honey.</p>
-                    <div className="space-y-2 mb-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Ingredients:</p>
-                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                        <li>• Fresh mint leaves</li>
-                        <li>• Hot water</li>
-                        <li>• Honey</li>
-                        <li>• Lemon (optional)</li>
-                      </ul>
-                    </div>
-                    <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
-                      <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1">Source:</p>
-                      <a href="https://www.thespruceeats.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-indigo-500 hover:text-indigo-600 break-all">thespruceeats.com</a>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-3">
-                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">📖 About Your Recipe Book</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Keep track of recipes found throughout your story world. Each recipe includes basic ingredients and a source URL for reference. Perfect for worldbuilding - what do people in your world eat and drink?
-                  </p>
-                </div>
-              </section>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Unified Universal Edit Modal */}
       <Modal 
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)}
@@ -1141,19 +876,11 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                   <input type="color" value={editingPath.color || '#6366f1'} onChange={(e) => setEditingPath({ ...editingPath, color: e.target.value })} className="ph-input w-full h-10 p-1" />
                 </div>
               </div>
-              <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Technical Info</p>
-                <div className="text-[9px] text-slate-500 space-y-1 font-mono">
-                  <p>Points: {editingPath.points.length}</p>
-                  <p>System: {editingPath.isRealWorld ? 'Real-World Geodesic' : 'Euclidean Plane'}</p>
-                </div>
-              </div>
             </>
           )}
         </div>
       </Modal>
 
-      {/* Add Location Dialog */}
       {showAddLocationDialog && (
         <div className="fixed inset-0 flex items-center justify-center z-[200] bg-black/30 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-white/20 p-8 w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-300">
@@ -1230,13 +957,11 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                           value={locationLat}
                           onChange={(e) => {
                             const input = e.target.value.trim();
-                            // Try parsing as directional coordinates first
                             const directionalResult = parseDirectionalCoordinates(input);
                             if (directionalResult) {
                               setLocationLat(directionalResult.lat.toString());
                               setLocationLng(directionalResult.lng.toString());
                             } else if (input.includes(',')) {
-                              // Parse comma-separated coordinates: "lat, lng" or just "lat"
                               const parts = input.split(',').map(s => s.trim());
                               const lat = parseFloat(parts[0]);
                               const lng = parseFloat(parts[1]);
@@ -1246,7 +971,7 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                               setLocationLat(input);
                             }
                           }}
-                          placeholder="e.g., 48.8566 or 51.5280° N, 123.1207° W"
+                          placeholder="e.g., 48.8566"
                           className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -1255,15 +980,11 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         <input
                           type="text"
                           value={locationLng}
-                          onChange={(e) => {
-                            const input = e.target.value.trim();
-                            setLocationLng(input);
-                          }}
+                          onChange={(e) => setLocationLng(e.target.value.trim())}
                           placeholder="e.g., 2.3522"
                           className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-                       <p className="text-[10px] text-slate-500 mt-2">Latitude uses N (North) / S (South), Longitude uses E (East) / W (West). Supports "lat, lng" or directional format like "51.5280° N, 123.1207° W".</p>
                     </div>
                   )}
 
@@ -1291,7 +1012,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                           className="w-full px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-2">For fictional maps using Euclidean plane coordinates</p>
                     </div>
                   )}
                 </div>
@@ -1310,31 +1030,6 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         return;
                       }
                       
-                      // Validate based on method
-                      if (addLocationMethod === 'coords') {
-                        const lat = parseFloat(locationLat);
-                        const lng = parseFloat(locationLng);
-                        if (isNaN(lat) || isNaN(lng)) {
-                          alert('Please enter valid latitude and longitude values');
-                          return;
-                        }
-                        if (lat < -90 || lat > 90) {
-                          alert('Latitude must be between -90 and 90');
-                          return;
-                        }
-                        if (lng < -180 || lng > 180) {
-                          alert('Longitude must be between -180 and 180');
-                          return;
-                        }
-                      } else if (addLocationMethod === 'xy') {
-                        const x = parseFloat(locationX);
-                        const y = parseFloat(locationY);
-                        if (isNaN(x) || isNaN(y)) {
-                          alert('Please enter valid X and Y positions');
-                          return;
-                        }
-                      }
-                      
                       const newLocation: Location = {
                         id: generateId(),
                         name: locationName.trim(),
@@ -1343,26 +1038,18 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         source: 'manual'
                       };
 
-                      // Add coordinates based on method
                       if (addLocationMethod === 'coords' && locationLat && locationLng) {
-                        // Limit to 15 decimal places
-                        const lat = parseFloat(locationLat);
-                        const lng = parseFloat(locationLng);
-                        newLocation.x = parseFloat(lng.toFixed(15));
-                        newLocation.y = parseFloat(lat.toFixed(15));
+                        newLocation.x = parseFloat(locationLng);
+                        newLocation.y = parseFloat(locationLat);
                       } else if (addLocationMethod === 'xy' && locationX && locationY) {
                         newLocation.x = parseFloat(locationX);
                         newLocation.y = parseFloat(locationY);
                       }
-                      // Search method: location will be added with just name (user needs to place on map)
 
                       onAddLocation(newLocation);
-                      
-                      // Reset and close
                       setShowAddLocationDialog(false);
                       setAddLocationMethod(null);
                       setLocationName('');
-                      setLocationSearchQuery('');
                       setLocationLat('');
                       setLocationLng('');
                       setLocationX('');

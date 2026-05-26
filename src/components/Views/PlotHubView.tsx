@@ -9,7 +9,7 @@ import { CalendarTab } from './CalendarTab';
 import { AnchorSyncModal } from './AnchorSyncModal';
 import { TimelineEventEditModal } from './TimelineEventEditModal';
 
-interface PlotSystemViewProps {
+interface PlotHubViewProps {
   currentView: ViewType;
   onChangeView: (view: ViewType) => void;
   data: ProjectData;
@@ -26,11 +26,10 @@ interface PlotSystemViewProps {
 enum PlotTab {
   TIMELINE = 'Timeline',
   CALENDAR = 'Calendar',
-  REVISIONS = 'Revisions',
   AUDIT = 'Audit'
 }
 
-export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
+export const PlotHubView: React.FC<PlotHubViewProps> = ({
   data, onAddTimelineEvent, onUpdateProject, onExtractSoftAnchors, onScanContinuity, isAnalyzing, onLinkClick
 }) => {
   const router = useRouter();
@@ -185,7 +184,6 @@ export const PlotSystemView: React.FC<PlotSystemViewProps> = ({
               >
                 {tab === PlotTab.TIMELINE && <List size={14} />}
                 {tab === PlotTab.CALENDAR && <CalendarIcon size={14} />}
-                {tab === PlotTab.REVISIONS && <FileText size={14} />}
                 {tab === PlotTab.AUDIT && <Sparkles size={14} />}
                 <span className="hidden sm:inline">{tab}</span>
               </button>

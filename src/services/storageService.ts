@@ -444,6 +444,7 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
       id: data.id,
       title: data.title,
       author: data.author || '',
+      shortName: data.shortName,
       summary: data.summary,
       lastModified: Date.now(),
       characterCount: data.entities?.filter(e => e.type === 'Character').length || data.characters?.length || 0,
@@ -462,15 +463,16 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
 export const loadProjectById = async (id: string): Promise<ProjectData | null> => {
   if (useCloudStorage && authFetch) {
     try {
-      const res = await authFetch('/api/projects');
+      console.log(`[Storage] Loading single project from cloud: ${id}`);
+      const res = await authFetch(`/api/projects/${id}`);
       if (res.ok) {
         try {
-          const projects: ProjectData[] = await res.json();
-          const cloudProj = projects.find(p => p.id === id);
-          if (cloudProj) return cloudProj;
+          return await res.json();
         } catch (parseErr) {
           console.error("Cloud load parse failed:", parseErr);
         }
+      } else {
+        console.warn(`[Storage] Cloud project load failed with status: ${res.status}`);
       }
     } catch (e) {
       console.error("Cloud load failed:", e);
@@ -502,6 +504,7 @@ export const getAllProjectsMetadata = async (): Promise<ProjectMetadata[]> => {
             id: data.id,
             title: data.title,
             author: data.author || '',
+            shortName: data.shortName,
             summary: data.summary,
             lastModified: data.lastModified || Date.now(),
             characterCount: data.entities?.filter(e => e.type === 'Character').length || data.characters?.length || 0,
