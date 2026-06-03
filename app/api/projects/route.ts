@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, list } from '@vercel/blob';
+import { put, list, del } from '@vercel/blob';
 import { getAuthPayload } from '@/app/api/auth';
 
 export async function GET(request: NextRequest) {
@@ -188,3 +188,39 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const authPayload = await getAuthPayload(request);
+    
+    if (!authPayload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = authPayload.userId;
+    const prefix = `projects/${userId}/`;
+
+    console.log(`[API/projects] Wiping all data for user: ${userId}`);
+
+    // List all blobs for this user
+    const { blobs } = await list({ prefix: prefix });
+    
+    if (blobs.length > 0) {
+      // Delete all found blobs
+      const urls = blobs.map(b => b.url);
+      await del(urls);
+      console.log(`[API/projects] Successfully deleted ${blobs.length} blobs for user ${userId}`);
+    } else {
+      console.log(`[API/projects] No data found for user ${userId} to delete`);
+    }
+
+    return NextResponse.json({ success: true, count: blobs.length });
+  } catch (error) {
+    console.error('[API/projects] FATAL ERROR in DELETE:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+

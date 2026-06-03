@@ -1,4 +1,4 @@
-import { Character, Location, PlotPoint } from "../types";
+import { Character, Location, PlotPoint } from "../../types/weaver.types";
 
 export const CharacterCard = ({ character }: { character: Character }) => (
   <div id={`char-${character.id}`} className="p-5 border border-slate-200 rounded-xl shadow-sm bg-white hover:shadow-md transition">

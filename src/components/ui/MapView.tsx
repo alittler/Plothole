@@ -6,7 +6,6 @@ import 'leaflet.markercluster';
 import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity, Footprints as PawPrint } from 'lucide-react';
 import { Location, TimelineEvent, Character, MapPath, ProjectData, HierarchicalEntity } from '../../types';
 import { generateId } from '../../services/storageService';
-import { createGridLayer } from '../../utils/gridLayer';
 import creaturesData from '@alittler/creatures';
 import { findBestiaryEntryForCreature } from '../../utils/creatureUtils';
 import '@flaticon/flaticon-uicons/css/solid/all.css';
@@ -441,8 +440,8 @@ export const MapView: React.FC<MapViewProps> = ({
       const categoryClusterGroups: { [key: string]: any } = {};
       
       // Initialize cluster group for each category
-      const categories = new Set(creaturesData.map(c => c.category));
-      categories.forEach(category => {
+      const categories = new Set(creaturesData.map(c => (c as any).category as string));
+      categories.forEach((category: string) => {
         const mcg = L.markerClusterGroup({
           maxClusterRadius: 50,
           iconCreateFunction: (cluster) => {

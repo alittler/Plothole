@@ -223,7 +223,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   const getViewLabel = (view: ViewType): string => {
     const labels: Partial<Record<ViewType, string>> = {
-      [ViewType.DASHBOARD]: 'Dashboard',
       [ViewType.NOTEPAD]: 'Notepad',
       [ViewType.BOOKSHELF]: 'Library',
       [ViewType.CHARACTERS]: 'Characters',
@@ -241,7 +240,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   const getViewIcon = (view: ViewType) => {
     const iconMap: Partial<Record<ViewType, any>> = {
-      [ViewType.DASHBOARD]: Grid3x3,
       [ViewType.NOTEPAD]: FileText,
       [ViewType.BOOKSHELF]: Book,
       [ViewType.CHARACTERS]: Users,

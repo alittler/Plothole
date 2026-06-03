@@ -40,7 +40,7 @@ interface ResearchViewProps {
 
   // Shared State
   const ideas = projectData.ideas || [];
-  const setIdeas = async (newIdeas: Note[] | ((prev: Note[]) => Note[])) => {
+  const setIdeas = async (newIdeas: any[] | ((prev: any[]) => any[])) => {
     const updated = typeof newIdeas === 'function' ? newIdeas(ideas) : newIdeas;
     await onUpdateProject({ ideas: updated });
   };

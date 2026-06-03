@@ -61,7 +61,7 @@ export const ResearchHubView: React.FC<ResearchHubViewProps> = ({ projectData, o
   };
 
   // State Management
-  const [sources, setSources] = useState<ResearchSource[]>(projectData.researchSources || []);
+  const [sources, setSources] = useState<ResearchSource[]>((projectData.researchSources || []) as any as ResearchSource[]);
   const [notes, setNotes] = useState<ResearchNote[]>(projectData.researchNotes || []);
   const [scriptureLibrary, setScriptureLibrary] = useState<ScriptureReference[]>(() => {
     const stored = localStorage.getItem('scripture_entries');

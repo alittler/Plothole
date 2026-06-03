@@ -8,7 +8,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
     "@alittler/creatures": "github:alittler/euro-bestiary",
@@ -64,6 +65,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@next/bundle-analyzer": "^16.2.6",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^22.14.0",
     "@types/pg": "^8.20.0",

@@ -4,9 +4,8 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
 import { MapPin, ChevronRight, Edit2, Trash2, Lock, Unlock, X as CloseIcon, Maximize2, Ruler, Globe, Activity, Footprints as PawPrint, AlertCircle, RotateCcw } from 'lucide-react';
-import { Location, TimelineEvent, Character, MapPath, ProjectData, HierarchicalEntity } from '../../types';
+import { Location, TimelineEvent, Character, MapPath, ProjectData, HierarchicalEntity, User } from '../../types';
 import { generateId } from '../../services/storageService';
-import { createGridLayer } from '../../utils/gridLayer';
 import creaturesData from '@alittler/creatures';
 import { findBestiaryEntryForCreature } from '../../utils/creatureUtils';
 import '@flaticon/flaticon-uicons/css/solid/all.css';
@@ -47,7 +46,7 @@ interface MapViewProps {
   fitAllLocationsRef?: React.MutableRefObject<(() => void) | null>;
   getViewStateRef?: React.MutableRefObject<(() => { x: number, y: number, zoom: number } | null) | null>;
   onViewChange?: (view: { x: number, y: number, zoom: number }) => void;
-  onScaleCalibrated?: (newScale: number) => void;
+  onScaleCalibrated?: (newScale: number, unit?: string) => void;
   isRealWorld?: boolean;
   currentUser?: User;
 }
@@ -69,6 +68,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const [shortcuts, setShortcuts] = useState<{ name: string, bounds: L.LatLngBounds, count: number, type: string }[]>([]);
   const [showGrid, setShowGrid] = useState(true);
   const [selectedCreature, setSelectedCreature] = useState<any | null>(null);
+  const rotation = 0; // Default rotation
 
   // Handle Esc key to close creature detail card
   useEffect(() => {
@@ -495,8 +495,8 @@ export const MapView: React.FC<MapViewProps> = ({
       const categoryClusterGroups: { [key: string]: any } = {};
       
       // Initialize cluster group for each category
-      const categories = new Set(creaturesData.map(c => c.category));
-      categories.forEach(category => {
+      const categories = new Set(creaturesData.map(c => (c as any).category as string));
+      categories.forEach((category: string) => {
         const mcg = L.markerClusterGroup({
           maxClusterRadius: 50,
           iconCreateFunction: (cluster) => {

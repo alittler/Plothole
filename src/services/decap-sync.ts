@@ -41,11 +41,11 @@ export async function readDecapEntities(): Promise<HierarchicalEntity[]> {
           id: data.id,
           name: data.name,
           type: getEntityType(collection, data),
-          tier: (parseInt(data.tier || '2') as EntityTier),
           species: data.species,
           
           // Copy all fields
           ...data,
+          tier: (parseInt(data.tier || '2') as any as EntityTier),
         };
         
         entities.push(entity);

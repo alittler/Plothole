@@ -17,7 +17,7 @@ async function listModels() {
     console.log("Available models and their supported methods:");
     for await (const model of modelsResult) {
       console.log(`- Name: ${model.name}`);
-      console.log(`  Methods: ${model.supportedMethods.join(", ")}`);
+      console.log(`  Methods: ${(model.supportedActions || []).join(", ")}`);
     }
   } catch (error) {
     console.error("Listing models failed:", JSON.stringify(error, null, 2));

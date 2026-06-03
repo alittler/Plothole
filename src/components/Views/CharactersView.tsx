@@ -52,8 +52,8 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
       const updatedCharacter: Character = {
         ...editingCharacter,
         ...updatedEntity,
-        field_notes: updatedEntity.fieldNotes || editingCharacter.field_notes || '',
-      } as Character;
+        field_notes: updatedEntity.fieldNotes || editingCharacter.field_notes || [],
+      } as any as Character;
       
       onUpdateCharacter(updatedCharacter);
     }
@@ -80,10 +80,10 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
                   description: '',
                   motivation: '',
                   traits: [],
-                  field_notes: '',
+                  field_notes: [],
                   physical_description: '',
                   aliases: []
-                } as Character)}
+                } as any as Character)}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs uppercase tracking-widest transition shadow-lg shadow-indigo-600/20 flex items-center gap-2"
               >
                 <Plus size={16} /> Add Character

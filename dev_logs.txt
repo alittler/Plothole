@@ -1,0 +1,19 @@
+
+> plothole@2.0.0 dev
+> next dev
+
+⚠ Port 3000 is in use by an unknown process, using available port 3002 instead.
+▲ Next.js 16.2.3 (Turbopack)
+- Local:         http://localhost:3002
+- Network:       http://192.168.0.239:3002
+- Environments: .env.local, .env
+✓ Ready in 2.2s
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3001
+- PID:          294183
+- Dir:          /home/alittler/Dropbox/Documents/GitHub/Plothole
+- Log:          .next/dev/logs/next-development.log
+
+Run kill 294183 to stop it.
+[?25h

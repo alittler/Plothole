@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, ChevronRight, Folder, RotateCw, LayoutGrid, Trees } from 'lucide-react';
-import { safeResponseJson } from '@/utils/jsonUtils';
+import { safeResponseJson } from '../utils/jsonUtils';
 import { DataEditor } from './DataEditor';
 import { FileExplorer } from './FileExplorer';
 

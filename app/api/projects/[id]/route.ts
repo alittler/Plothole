@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { del, list } from '@vercel/blob';
+import { del, list, put } from '@vercel/blob';
 import { getAuthPayload } from '@/app/api/auth';
 
 export async function GET(
@@ -63,6 +63,38 @@ export async function DELETE(
     // Vercel Blob del() works by URL or pathname
     // We attempt to delete the project file
     await del(pathname);
+
+    // Update metadata.json cache
+    try {
+      const metadataPath = `projects/${userId}/metadata.json`;
+      const { blobs } = await list({ prefix: metadataPath });
+      const metaBlob = blobs.find(b => b.pathname === metadataPath);
+      
+      if (metaBlob) {
+        const response = await fetch(metaBlob.url, { cache: 'no-store' });
+        if (response.ok) {
+          const text = await response.text();
+          if (text && text.trim()) {
+            let metadata = JSON.parse(text);
+            const filteredMetadata = metadata.filter((m: any) => m.id !== id);
+            
+            if (filteredMetadata.length !== metadata.length) {
+              await put(metadataPath, JSON.stringify(filteredMetadata), {
+                access: 'public',
+                contentType: 'application/json',
+                addRandomSuffix: false,
+                allowOverwrite: true,
+              });
+              console.log(`[API/projects/[id]] Metadata cache updated for user ${userId} after deleting ${id}`);
+            }
+          }
+        }
+      }
+    } catch (metaErr) {
+      console.warn(`[API/projects/[id]] Failed to update metadata cache:`, metaErr);
+      // We don't fail the whole request if metadata update fails, 
+      // as the primary resource is already deleted.
+    }
 
     console.log(`[API/projects/[id]] Project ${id} deleted from Vercel Blob successfully`);
     return NextResponse.json({ success: true });

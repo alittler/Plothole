@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, X, Loader2, AlertCircle, Plus, Trash2 } from 'lucide-react';
-import { safeResponseJson } from '@/utils/jsonUtils';
+import { safeResponseJson } from '../utils/jsonUtils';
 
 interface EditingData {
   [key: string]: any;

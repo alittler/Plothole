@@ -493,12 +493,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
               <div className="p-8 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/30">
                 <h3 className="font-black text-red-600 dark:text-red-400 mb-2 uppercase text-xs tracking-[0.2em]">Factory Reset</h3>
-                <p className="text-sm text-red-700 dark:text-red-300/70 mb-6 font-medium">This will permanently delete all projects, characters, manuscripts, and notes. This action cannot be undone.</p>
+                <p className="text-sm text-red-700 dark:text-red-300/70 mb-6 font-medium">This will permanently delete all projects, characters, manuscripts, and notes from BOTH your local device and your cloud account. This action cannot be undone.</p>
                 <button
                   onClick={onFactoryReset}
                   className="px-8 py-3 bg-red-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
                 >
-                  Wipe All Data
+                  Wipe All Data From Account
                 </button>
               </div>
             </section>
@@ -573,7 +573,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Default Landing Page</label>
                   <select 
-                    value={currentUser.preferences?.landingPage || ViewType.DASHBOARD}
+                    value={currentUser.preferences?.landingPage || ViewType.NOTEPAD}
                     onChange={(e) => onUpdateUser({ preferences: { ...currentUser.preferences, landingPage: e.target.value as any } })}
                     className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
                   >
@@ -1022,7 +1022,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         ) : null;
 
       case SettingsTab.RAW:
-        return projectData ? (
+        return (
           <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8 animate-in fade-in duration-500">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-8">
               <div className="flex items-center gap-4">
@@ -1031,7 +1031,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
                 <div>
                   <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Raw Text Feed</h2>
-                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">A continuous Markdown export of all project notes.</p>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">A continuous Markdown export of all project and global notes.</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -1060,11 +1060,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 readOnly
                 value={rawMarkdownDump}
                 className="w-full h-[600px] bg-transparent border-none focus:ring-0 resize-none font-mono text-sm leading-relaxed text-slate-600 dark:text-slate-300 break-words [overflow-wrap:anywhere] custom-scrollbar"
-                placeholder="No text entries found in this project."
+                placeholder="No text entries found."
               />
             </div>
           </section>
-        ) : null;
+        );
 
       case SettingsTab.CARD_EXAMPLES:
         return (

@@ -114,7 +114,7 @@ export const UppyUploader: React.FC<UppyUploaderProps> = ({
         <Dashboard
           uppy={uppyRef.current}
           proudlyDisplayPoweredByUppy={false}
-          locale={locale}
+          locale={locale as any}
           note="Images, PDFs, and documents up to 50MB"
           theme="dark"
         />

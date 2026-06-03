@@ -43,14 +43,13 @@ interface ResearchHubViewProps {
   onUploadProject?: (file: File) => Promise<void>;
   onDeleteProject?: (id: string) => Promise<void>;
   onSelectProject?: (id: string) => Promise<any>;
-  onOpenDashboard?: () => void;
   isAnalyzing?: boolean;
   fetchWithAuth?: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 export const ResearchHubView: React.FC<ResearchHubViewProps> = ({
   currentView, onChangeView, data, projectsMetadata, currentUser, onAddNote, onImportNotes, onAddIdeaToProject, onToggleCanon, onDeleteNote, onDeleteAllNotes, onLinkClick, onAddDoubleProcessedNote, activeTasks, onUpdateProject, semanticSearchEnabled, isEmbedded,
-  onCreateProject, onUploadProject, onDeleteProject, onSelectProject, onOpenDashboard, isAnalyzing: isAnalyzingProp, fetchWithAuth
+  onCreateProject, onUploadProject, onDeleteProject, onSelectProject, isAnalyzing: isAnalyzingProp, fetchWithAuth
 }) => {
   const [optimisticNotes, addOptimisticNote] = (React as any).useOptimistic(
     data.notes,
@@ -774,7 +773,7 @@ Please provide a helpful, creative, and insightful response based on their notes
                                         const proj = projectsMetadata?.find(p => normalizeTagName(p.shortName || p.title) === normalizedName);
                                         if (proj) {
                                           if (onSelectProject) onSelectProject(proj.id);
-                                          onChangeView(ViewType.DASHBOARD);
+                                          onChangeView(ViewType.NOTEPAD);
                                         }
                                       }
                                     }
@@ -1153,11 +1152,12 @@ Please provide a helpful, creative, and insightful response based on their notes
                 activeProjectId={data?.id || ''}
                 currentUser={currentUser!}
                 onRefreshMetadata={async () => {}} // Placeholder for now, or we can pass it down if needed
-                onSelectProject={onSelectProject || (async () => {})}                onCreateProject={onCreateProject || (async () => {})} 
+                onSelectProject={onSelectProject || (async () => {})}
+                onCreateProject={onCreateProject || (async () => {})} 
                 onUploadProject={onUploadProject || (async () => {})} 
                 onDeleteProject={onDeleteProject || (async () => {})}
-                onOpenDashboard={onOpenDashboard || (() => {})}
                 isAnalyzing={isAnalyzingProp || false}
+
                 fetchWithAuth={fetchWithAuth}
                 />
 

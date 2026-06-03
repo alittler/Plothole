@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ProjectData, Location } from '../../types';
-import { Map, Search, Plus, MapPin, Globe, Compass, Home, Building2, Mountain, Waves, ChevronRight } from 'lucide-react';
+import { Map, Search, Plus, MapPin, Globe, Compass, Home, Building2, Mountain, Waves, ChevronRight, Shield } from 'lucide-react';
 import { WikiText } from '../ui/WikiText';
 import { ViewHeader } from '../Layout/ViewHeader';
 

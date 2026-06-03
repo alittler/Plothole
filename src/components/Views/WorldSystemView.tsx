@@ -1,5 +1,6 @@
 // SEED MONSTERS UPDATE
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ViewType, ProjectData, Location, Artifact, LoreEntry, Note, ProseDocument, User, ProjectMetadata, MapPath, Character } from '../../types';
 import { Plus, Minus, Map as MapIcon, Box, Book, Search, Edit2, Trash2, Maximize2, FileText, Clock, Upload, Layout, Sparkles, ChevronRight, CheckCircle, X, Save, Target, Globe, Loader2, MapPin, Activity, RotateCcw, Ruler, Layers, Footprints as PawPrint, Lock, Unlock, Sun, Star } from 'lucide-react';
@@ -548,10 +549,10 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                         className={`group relative w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shadow-2xl ${isLayersOpen ? 'border-emerald-500 ring-4 ring-emerald-500/20' : 'border-white dark:border-slate-800 hover:border-emerald-400'}`}
                         title="Atlas Layers"
                       >
-                        <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                        <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center relative">
                           {(() => {
                             const currentImg = currentMapParentId ? data.locations.find(l => l.id === currentMapParentId)?.mapImage : data.rootMapImage;
-                            return (currentImg && !isCurrentMapRealWorld) ? <img src={currentImg} className="w-full h-full object-cover" alt="" /> : <Globe className="w-6 h-6 text-emerald-500" />;
+                            return (currentImg && !isCurrentMapRealWorld) ? <Image src={currentImg} fill className="object-cover" alt="" /> : <Globe className="w-6 h-6 text-emerald-500" />;
                           })()}
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-sm py-0.5 text-[9px] font-black text-white uppercase tracking-tighter text-center">Layers</div>
@@ -600,8 +601,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                               className="group relative w-12 h-12 rounded-xl overflow-hidden border border-white/20 shadow-xl transition-all hover:scale-105"
                               title="Switch to Root Map"
                             >
-                              <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
-                                {data.rootMapImage ? <img src={data.rootMapImage} className="w-full h-full object-cover opacity-60 group-hover:opacity-100" alt="" /> : <Globe className="w-5 h-5 text-slate-400" />}
+                              <div className="w-full h-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center relative">
+                                {data.rootMapImage ? <Image src={data.rootMapImage} fill className="object-cover opacity-60 group-hover:opacity-100" alt="" /> : <Globe className="w-5 h-5 text-slate-400" />}
                               </div>
                               <div className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-[9px] font-black text-white uppercase text-center">Root</div>
                             </button>
@@ -614,8 +615,8 @@ export const WorldSystemView: React.FC<WorldSystemViewProps> = ({
                               className="group relative w-12 h-12 rounded-xl overflow-hidden border border-white/20 shadow-xl transition-all hover:scale-105"
                               title={`Switch to ${mapLoc.name}`}
                             >
-                              <div className="w-full h-full bg-slate-200 dark:bg-slate-800">
-                                <img src={mapLoc.mapImage} className="w-full h-full object-cover opacity-60 group-hover:opacity-100" alt="" />
+                              <div className="w-full h-full bg-slate-200 dark:bg-slate-800 relative">
+                                <Image src={mapLoc.mapImage!} fill className="object-cover opacity-60 group-hover:opacity-100" alt="" />
                               </div>
                               <div className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-[9px] font-black text-white uppercase text-center truncate px-1">{mapLoc.name}</div>
                             </button>

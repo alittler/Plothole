@@ -1,4 +1,5 @@
-import { ProjectData, generateId } from '../services/storageService';
+import { ProjectData } from '../types';
+import { generateId } from '../services/storageService';
 import { LoreEntry, Artifact, TimelineEvent } from '../types';
 
 export const getSampleProjectData = (id: string, title: string, author: string, shortName: string): ProjectData => {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Search, Upload, FileText, Trash2, Loader2, Cpu, Clipboard, Sparkles, ExternalLink, Globe, Image as ImageIcon, BookOpen, Edit2, Save, Copy, Check, Link, Quote, Download, Database, Table, Code, Zap, AlertCircle, FileCode, X, Plus } from 'lucide-react';
 import { Source } from '../../../types';
 import * as pdfjsLib from 'pdfjs-dist';
-// import { generateSourceGuide as generateSourceGuideAi, smartExtractSources, performOCR, notebookLMProcess } from '../../../services/geminiService';
+import { generateSourceGuideAi, smartExtractSources, performOCR, notebookLMProcess } from '../../../utils/aiUtils';
 import { generateId } from '../../../services/storageService';
 import { Modal } from '../../ui/Modal';
 import { formatCitation, exportAllCitations, CitationStyle } from '../../../utils/citationUtils';
@@ -419,7 +419,7 @@ export const StenoSourcesPanel: React.FC<StenoSourcesPanelProps> = ({
     <div className={`flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden ${isFullScreen ? 'h-full' : 'h-full'}`}>
       {isFullScreen && (
         <div className="bg-indigo-600 text-white p-2 text-center text-[10px] font-black uppercase tracking-widest z-50">
-          Source Dashboard: 2/3 Web Mirrors • 1/3 Research Library
+          Source Intelligence: 2/3 Web Mirrors • 1/3 Research Library
         </div>
       )}
       

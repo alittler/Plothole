@@ -177,7 +177,7 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
                     className="text-indigo-600 dark:text-indigo-400 font-semibold cursor-pointer hover:underline"
                     onClick={() => {
                       if (proj.id === 'global-notebook') onLinkClick?.('notepad', '');
-                      else onLinkClick?.('dashboard', proj.id);
+                      else onLinkClick?.('notepad', proj.id);
                     }}
                   >
                     {part}
@@ -289,7 +289,7 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
                 key={i}
                 className={`font-semibold cursor-pointer hover:underline ${isBook ? 'text-indigo-600 dark:text-indigo-400' : 'text-pink-600 dark:text-pink-400'}`}
                 onClick={() => {
-                  if (isBook) onLinkClick?.('dashboard', '');
+                  if (isBook) onLinkClick?.('notepad', '');
                   else onTagClick?.(tag);
                 }}
               >

@@ -62,7 +62,6 @@ import { UploadProminentModal } from './components/ui/UploadProminentModal';
 
 // Dynamic View Imports
 const BookshelfView = dynamic(() => import('./components/Views/BookshelfView').then(mod => mod.BookshelfView), { ssr: false });
-const DashboardView = dynamic(() => import('./components/Views/DashboardView').then(mod => mod.DashboardView), { ssr: false });
 const ResearchHubView = dynamic(() => import('./components/Views/ResearchHubView').then(mod => mod.ResearchHubView), { ssr: false });
 const PlotHubView = dynamic(() => import('./components/Views/PlotHubView').then(mod => mod.PlotHubView), { ssr: false });
 const WorldSystemView = dynamic(() => import('./components/Views/WorldSystemView').then(mod => mod.WorldSystemView), { ssr: false });
@@ -87,7 +86,6 @@ const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAdminNoteOpen, setIsAdminNoteOpen] = useState(false);
-  const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
   const [isLicensesOpen, setIsLicensesOpen] = useState(false);
   const [adminNoteDraft, setAdminNoteDraft] = useState('');
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
@@ -201,7 +199,7 @@ const App: React.FC = () => {
     } else if (type === 'bestiary') {
       router.push(`/${ViewType.CODEX_HUB}?tab=Bestiary`);
     } else if (type === 'dashboard') {
-      setCurrentView(ViewType.DASHBOARD);
+      setCurrentView(ViewType.NOTEPAD);
     }
   }, [router]);
 
@@ -211,11 +209,7 @@ const App: React.FC = () => {
       const firstId = sortedMeta[0].id;
       loadProject(firstId).then(project => {
         if (project && (!pathname || pathname === '/')) {
-          if (firstId === 'global-notebook') {
-            setCurrentView(ViewType.NOTEPAD);
-          } else {
-            setCurrentView(ViewType.DASHBOARD);
-          }
+          setCurrentView(ViewType.NOTEPAD);
         }
       });
       hasAutoLoaded.current = true;
@@ -235,24 +229,19 @@ const App: React.FC = () => {
           fetchWithAuth={fetchWithAuth}
           onSelectProject={async (id) => {
             await loadProject(id);
-            if (id === 'global-notebook') {
-              setCurrentView(ViewType.NOTEPAD);
-            } else {
-              setCurrentView(ViewType.DASHBOARD);
-            }
+            setCurrentView(ViewType.NOTEPAD);
           }}
           onDeselectProject={() => setProjectData(null)}
           onCreateProject={async (title, author, useSample, shortName) => { 
             const newProj = await handleCreateProject(title, author, useSample, shortName); 
             if (newProj) {
               await loadProject(newProj.id);
-              setCurrentView(ViewType.DASHBOARD);
+              setCurrentView(ViewType.NOTEPAD);
             }
           }}
           onUploadProject={handleUploadProject}
           onDeleteProject={handleDeleteProject}
           onEditProject={handleEditProject}
-          onOpenDashboard={() => setIsDashboardModalOpen(true)}
           isAnalyzing={isAnalyzing}
         />;
 
@@ -318,36 +307,10 @@ const App: React.FC = () => {
             onCreateProject={async (title, author, useSample, shortName) => { await handleCreateProject(title, author, useSample, shortName); }}
             onUploadProject={handleUploadProject}
             onDeleteProject={handleDeleteProject}
-            onSelectProject={async (id) => { await loadProject(id); }}
-            onOpenDashboard={() => setIsDashboardModalOpen(true)}
+            onSelectProject={async (id) => { await loadProject(id); setCurrentView(ViewType.NOTEPAD); }}
             isAnalyzing={isAnalyzing}
           />;
         }
-
-      case ViewType.DASHBOARD:
-        return projectData ? <DashboardView 
-          projectData={projectData} 
-          globalNotes={globalNotes} 
-          onFileUpload={() => {}} 
-          onLoadSample={() => handleCreateProject(projectData.title, projectData.author, true)}
-          isAnalyzing={isAnalyzing} 
-          error={null} 
-          onExport={() => exportFullArchive(globalNotes)} 
-          onRestoreHistory={() => {}} 
-          onRestoreCommit={handleRestoreCommit} 
-          onGenerateCover={() => {}} 
-          onExportVault={handleExportVault} 
-          onAuditThreads={handleAuditThreads} 
-          onExportProject={exportProjectPlothole} 
-          isGeneratingCover={false} 
-          onUpdateProcessedFiles={async () => {}} 
-          isUpdatingProcessed={false} 
-          onLinkClick={handleLinkClick}
-          onUpdateProject={updateProjectData}
-          onSave={handleManualSave}
-          currentUser={currentUser}
-          onAnalyzeText={() => {}}
-        /> : null;
 
       case ViewType.PLOT_HUB:
       case ViewType.TIMELINE:
@@ -590,34 +553,6 @@ const App: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {projectData && (
-          <Modal isOpen={isDashboardModalOpen} onClose={() => setIsDashboardModalOpen(false)} title="Dashboard" maxWidth="max-w-4xl">
-            <DashboardView 
-              projectData={projectData} 
-              globalNotes={globalNotes} 
-              onUpdateProject={updateProjectData}
-              onLinkClick={(t, id) => { setIsDashboardModalOpen(false); handleLinkClick(t, id); }}
-              onExportProject={exportProjectPlothole}
-              onGenerateCover={() => {}}
-              isGeneratingCover={false}
-              onAuditThreads={handleAuditThreads}
-              isAnalyzing={isAnalyzing}
-              onRestoreCommit={handleRestoreCommit}
-              currentUser={currentUser}
-              onFileUpload={() => {}}
-              onLoadSample={() => {}}
-              onExport={() => {}}
-              onExportVault={handleExportVault}
-              onRestoreHistory={() => {}}
-              onAnalyzeText={() => {}}
-              onUpdateProcessedFiles={async () => {}}
-              isUpdatingProcessed={false}
-              error={null}
-              onSave={handleManualSave}
-            />
-          </Modal>
-        )}
 
         <LicenseModal isOpen={isLicensesOpen} onClose={() => setIsLicensesOpen(false)} />
       </div>

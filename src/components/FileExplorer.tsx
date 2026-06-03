@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Folder, File, Loader2 } from 'lucide-react';
-import { safeResponseJson } from '@/utils/jsonUtils';
+import { safeResponseJson } from '../utils/jsonUtils';
 
 interface FileNode {
   name: string;
@@ -54,7 +54,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSelectFile }) => {
     setExpandedPaths(newExpanded);
   }
 
-  function renderNode(node: FileNode, depth: number = 0): JSX.Element {
+  function renderNode(node: FileNode, depth: number = 0): React.ReactNode {
     const isExpanded = expandedPaths.has(node.path);
     const isFile = !node.isDir;
     

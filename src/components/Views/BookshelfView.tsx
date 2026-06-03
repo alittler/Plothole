@@ -15,13 +15,12 @@ interface BookshelfViewProps {
   onEditProject?: (id: string, title: string, author: string, shortName: string) => Promise<void>;
   onDeselectProject?: () => void;
   onRefreshMetadata?: () => Promise<void>;
-  onOpenDashboard: () => void;
   isAnalyzing: boolean;
   fetchWithAuth?: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 export const BookshelfView: React.FC<BookshelfViewProps> = ({
-  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onEditProject, onDeselectProject, onRefreshMetadata, onOpenDashboard, isAnalyzing, currentUser, fetchWithAuth
+  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onEditProject, onDeselectProject, onRefreshMetadata, isAnalyzing, currentUser, fetchWithAuth
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -138,18 +137,6 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                       {isActive ? 'Active World' : 'Open World'}
                     </div>
                     <div className="flex items-center gap-2">
-                      {isActive && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenDashboard();
-                          }}
-                          className="p-2 text-indigo-500 hover:text-indigo-600 transition-colors"
-                          title="Open Dashboard"
-                        >
-                          <Layout size={18} />
-                        </button>
-                      )}
                       {project.id !== 'global-notebook' && (
                         <>
                           <button

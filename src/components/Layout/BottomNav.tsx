@@ -42,15 +42,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     };
   }, []);
 
-  const defaultOrder = [ViewType.BOOKSHELF, ViewType.DASHBOARD, ViewType.RESEARCH, ViewType.CODEX_HUB, ViewType.PLOT_HUB];
+  const defaultOrder = [ViewType.RESEARCH, ViewType.BOOKSHELF, ViewType.CODEX_HUB, ViewType.PLOT_HUB];
   const order = bottomNavOrder || defaultOrder;
 
   const getViewLabel = (view: ViewType) => {
     switch (view) {
       case ViewType.BOOKSHELF: return 'Library';
-      case ViewType.DASHBOARD: return 'Dashboard';
-      case ViewType.NOTEPAD: return 'Notepad';
-      case ViewType.RESEARCH: return 'Laboratory';
+      case ViewType.NOTEPAD: return 'Notebook';
+      case ViewType.RESEARCH: return 'Notebook';
       case ViewType.CHARACTERS: return 'Characters';
       case ViewType.MAP: return 'Atlas';
       case ViewType.TIMELINE: return 'History';
@@ -69,7 +68,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     const size = iconSize;
     switch (view) {
       case ViewType.BOOKSHELF: return <Book size={size} />;
-      case ViewType.DASHBOARD: return <LayoutGrid size={size} />;
       case ViewType.NOTEPAD: return <FileText size={size} />;
       case ViewType.RESEARCH: return <Zap size={size} />;
       case ViewType.CHARACTERS: return <Users size={size} />;
@@ -99,18 +97,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
         {order.map((view, index) => {
           const isActive = currentView === view;
-          const isProjectOnly = [ViewType.DASHBOARD, ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX_HUB, ViewType.PLOT_HUB, ViewType.WORLD_HUB, ViewType.NARRATIVE_ARCHITECT].includes(view);
+          const isProjectOnly = [ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX_HUB, ViewType.PLOT_HUB, ViewType.WORLD_HUB, ViewType.NARRATIVE_ARCHITECT].includes(view);
           const isDisabled = isProjectOnly && !hasActiveProject;
-          const isNotepad = view === ViewType.NOTEPAD;
+          const isNotebookView = view === ViewType.NOTEPAD || view === ViewType.RESEARCH;
           const visibleItems = order.filter(v => {
-            const isProjOnly = [ViewType.DASHBOARD, ViewType.RESEARCH, ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX_HUB, ViewType.PLOT_HUB, ViewType.WORLD_HUB, ViewType.NARRATIVE_ARCHITECT].includes(v);
+            const isProjOnly = [ViewType.CHARACTERS, ViewType.MAP, ViewType.TIMELINE, ViewType.CODEX_HUB, ViewType.PLOT_HUB, ViewType.WORLD_HUB, ViewType.NARRATIVE_ARCHITECT].includes(v);
             return !(isProjOnly && !hasActiveProject);
           });
           const isMiddle = visibleItems.length > 0 && visibleItems[Math.floor(visibleItems.length / 2)] === view;
 
           if (isDisabled) return null;
 
-          if (isNotepad) {
+          if (isNotebookView) {
             return (
               <button
                 key={`nav-${view}`}

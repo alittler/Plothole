@@ -1,6 +1,5 @@
 export enum ViewType {
   BOOKSHELF = 'Bookshelf',
-  DASHBOARD = 'Dashboard',
   NOTEPAD = 'Notepad',
   CHARACTERS = 'Characters',
   MAP = 'Map',
@@ -10,9 +9,30 @@ export enum ViewType {
   PLOT_HUB = 'PlotHub',
   WORLD_HUB = 'WorldHub',
   RESEARCH = 'Research',
+  OUTLINE = 'Outline',
   TOOLBOX = 'Toolbox',
   SETTINGS = 'Settings',
-  ADMIN = 'Admin'
+  ADMIN = 'Admin',
+  // Legacy/Migration views from app/types.ts
+  BOARD = 'Board',
+  TABLE = 'Table',
+  LOCATIONS = 'Locations',
+  INVENTORY = 'Inventory',
+  ENCYCLOPEDIA = 'Encyclopedia',
+  PLOT_ANALYSIS = 'PlotAnalysis',
+  PROCESSOR = 'Processor',
+  SOURCE_READER = 'SourceReader',
+  MATRIX = 'Matrix',
+  DICTIONARY = 'Dictionary',
+  SEMANTIC_EDITOR = 'SemanticEditor',
+  STORY_ARCHITECT = 'StoryArchitect',
+  CODEX = 'Codex',
+  CARD_CATALOGUE = 'CardCatalogue',
+  WORKSPACE_HUB = 'WorkspaceHub',
+  SYSTEM_HUB = 'SystemHub',
+  BESTIARY = 'Bestiary',
+  CELESTIAL = 'Celestial',
+  CALENDAR2 = 'Calendar2'
 }
 
 export const APP_DATA_VERSION = 12;
@@ -194,6 +214,7 @@ export interface ProjectData {
   summary: string;
   lastModified: number;
   coverImage?: string;
+  origin?: 'cloud' | 'local';
   characters: Character[];
   locations: Location[];
   artifacts?: Artifact[];
@@ -329,23 +350,10 @@ export interface Character {
   isLocked?: boolean;
 }
 
-export interface CharacterRelationship {
-  id: string;
-  character_a_id: string;
-  character_b_id: string;
-  relationship_type?: string;
-  direction?: 'mutual' | 'a_to_b' | 'b_to_a';
-  trust_level?: number;
-  status?: string;
-  description?: string;
-  source?: 'manual' | 'ai' | 'ai_generated';
-  first_mention_offset?: number;
-  field_notes?: FieldNote[];
-}
-
 export interface Location {
   id: string;
   name: string;
+  description?: string;
   type?: string;
   scale?: string;
   parent_location_id?: string;
@@ -354,7 +362,6 @@ export interface Location {
   x?: number;
   y?: number;
   is_locked?: boolean;
-  description?: string;
   source?: 'manual' | 'ai' | 'ai_generated';
   first_mention_offset?: number;
   field_notes?: FieldNote[];
@@ -375,13 +382,13 @@ export interface Location {
 export interface TimelineEvent {
   id: string;
   title: string;
+  description?: string;
   event_type?: string;
   significance?: string;
   real_world_sort_key?: number;
   is_flashback?: boolean;
   location_id?: string;
   participants?: string[];
-  description?: string;
   source?: 'manual' | 'ai' | 'ai_generated';
   first_mention_offset?: number;
   field_notes?: FieldNote[];
@@ -403,11 +410,11 @@ export interface TimelineEvent {
 export interface Artifact {
   id: string;
   name: string;
+  description?: string;
   type?: string;
   significance?: string;
   current_owner_id?: string;
   location_id?: string;
-  description?: string;
   source?: 'manual' | 'ai' | 'ai_generated';
   first_mention_offset?: number;
   field_notes?: FieldNote[];
@@ -417,11 +424,11 @@ export interface Artifact {
 export interface LoreEntry {
   id: string;
   term: string;
+  description?: string;
   type?: string;
   tier?: string;
   associated_factions?: string[];
   related_terms?: string[];
-  description?: string;
   source?: 'manual' | 'ai' | 'ai_generated';
   first_mention_offset?: number;
   field_notes?: FieldNote[];

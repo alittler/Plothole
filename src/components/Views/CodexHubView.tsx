@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ProjectData } from '../../types';
 import { 
@@ -15,13 +16,12 @@ import {
 } from 'lucide-react';
 import { ViewHeader } from '../Layout/ViewHeader';
 
-// We will keep these for now as sub-views because they have specialized UI logic
-import { BestiaryView } from './BestiaryView';
-import { DictionaryView } from './DictionaryView';
-import { InventoryView } from './InventoryView';
-import { LocationsListView } from './LocationsListView';
-import { EncyclopediaView } from './EncyclopediaView';
-import { CharactersView } from './CharactersView';
+const BestiaryView = dynamic(() => import('./BestiaryView').then(mod => mod.BestiaryView), { ssr: false });
+const DictionaryView = dynamic(() => import('./DictionaryView').then(mod => mod.DictionaryView), { ssr: false });
+const InventoryView = dynamic(() => import('./InventoryView').then(mod => mod.InventoryView), { ssr: false });
+const LocationsListView = dynamic(() => import('./LocationsListView').then(mod => mod.LocationsListView), { ssr: false });
+const EncyclopediaView = dynamic(() => import('./EncyclopediaView').then(mod => mod.EncyclopediaView), { ssr: false });
+const CharactersView = dynamic(() => import('./CharactersView').then(mod => mod.CharactersView), { ssr: false });
 
 interface CodexHubViewProps {
   projectData: ProjectData;

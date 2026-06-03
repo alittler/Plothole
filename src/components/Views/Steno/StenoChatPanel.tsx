@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { MessageSquare, Sparkles, User as UserIcon, Pin, ArrowRight, Loader2, Send, BookOpen, Trash2 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { Note, Source } from '../../../types';
-// import { chatWithAssistant } from '../../../services/geminiService';
+import { chatWithAssistant } from '../../../utils/aiUtils';
 
 interface StenoChatPanelProps {
   chatMessages: { role: 'user' | 'model', text: string }[];
