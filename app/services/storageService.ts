@@ -8,17 +8,17 @@ const STORE_GLOBALS = 'globals';
 let dbInstance: IDBDatabase | null = null;
 
 const getDB = (): Promise<IDBDatabase> => {
+  if (typeof window === 'undefined') return Promise.reject(new Error("IndexedDB not available in SSR"));
   if (dbInstance) return Promise.resolve(dbInstance);
 
   return new Promise((resolve, reject) => {
-    // Increment version to 4 to ensure clean state and avoid blocked connections from version 3
+    // Version 4 upgrade to ensure clean state
     const request = indexedDB.open(DB_NAME, 4);
     
     request.onupgradeneeded = (event: any) => {
       const db = request.result;
       console.log(`[Storage] Upgrading database to version ${event.newVersion}`);
       
-      // Clear existing if needed or just create new
       if (db.objectStoreNames.contains(STORE_PROJECTS)) db.deleteObjectStore(STORE_PROJECTS);
       if (db.objectStoreNames.contains(STORE_METADATA)) db.deleteObjectStore(STORE_METADATA);
       if (db.objectStoreNames.contains(STORE_GLOBALS)) db.deleteObjectStore(STORE_GLOBALS);
@@ -31,11 +31,10 @@ const getDB = (): Promise<IDBDatabase> => {
     request.onsuccess = () => {
       dbInstance = request.result;
       
-      // Handle connection closing (e.g., on page reload or other tabs)
       dbInstance.onversionchange = () => {
         dbInstance?.close();
         dbInstance = null;
-        window.location.reload();
+        console.warn("[Storage] Database version change detected, connection closed.");
       };
       
       resolve(dbInstance);
