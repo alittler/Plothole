@@ -14,7 +14,21 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
 
   if (!text) return null;
 
-  const regex = /(@\w+|\[\[.*?\]\]|#\w+|!\w+|%\w+|\?\w+)/g;
+  const normalizeTagName = (name: string): string => {
+    const ARTICLES = ['the', 'a', 'an', 'der', 'die', 'das', 'ein', 'eine', 'le', 'la', 'les', 'el', 'los', 'las'];
+    let normalized = name.toLowerCase().trim();
+    
+    for (const article of ARTICLES) {
+      const prefix = article + ' ';
+      if (normalized.startsWith(prefix)) {
+        normalized = normalized.substring(prefix.length);
+        break;
+      }
+    }
+    return normalized.trim();
+  };
+
+  const regex = /(@\w+|\[\[.*?\]\]|#\w+|\+\w+|!\w+|%\w+|\?\w+)/g;
   const parts = text.split(regex);
 
   const handleMouseEnter = (e: React.MouseEvent, type: string, item: any, projectName?: string) => {
@@ -74,10 +88,11 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
       <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {parts.map((part, i) => {
           if (part.startsWith('@')) {
-            const name = part.slice(1).toLowerCase();
+            const name = part.slice(1);
+            const normalizedName = normalizeTagName(name);
             
             // Search in current project first
-            let char: any = projectData?.characters?.find(c => c.name.toLowerCase().includes(name));
+            let char: any = projectData?.characters?.find(c => normalizeTagName(c.name).includes(normalizedName));
             let foundProjectName = projectData?.title;
             let isExternal = false;
 
@@ -85,7 +100,7 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
             if (!char && projectsMetadata) {
               for (const proj of projectsMetadata) {
                 if (proj.id === projectData?.id) continue;
-                const found = (proj as any).characters?.find((c: any) => c.name.toLowerCase().includes(name));
+                const found = (proj as any).characters?.find((c: any) => normalizeTagName(c.name).includes(normalizedName));
                 if (found) {
                   char = found;
                   // Add missing properties for display if needed
@@ -103,7 +118,7 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
               return (
                 <span
                   key={i}
-                  className="text-indigo-600 dark:text-indigo-400 font-semibold cursor-pointer hover:underline"
+                  className="text-amber-600 dark:text-amber-400 font-semibold cursor-pointer hover:underline"
                   onClick={() => onLinkClick?.('character', char!.id)}
                   onMouseEnter={(e) => handleMouseEnter(e, 'character', char, isExternal ? initials : undefined)}
                   onMouseLeave={handleMouseLeave}
@@ -112,6 +127,63 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
                   {isExternal && <span className="text-[10px] opacity-50 ml-0.5">[{initials}]</span>}
                 </span>
               );
+            }
+          } else if (part.startsWith('+')) {
+            const name = part.slice(1);
+            const normalizedName = normalizeTagName(name);
+            
+            // Search for Location first
+            let loc: any = projectData?.locations?.find(l => normalizeTagName(l.name).includes(normalizedName));
+            let foundProjectName = projectData?.title;
+            let isExternal = false;
+
+            if (!loc && projectsMetadata) {
+              for (const proj of projectsMetadata) {
+                if (proj.id === projectData?.id) continue;
+                const found = (proj as any).locations?.find((l: any) => normalizeTagName(l.name).includes(normalizedName));
+                if (found) {
+                  loc = found;
+                  if (!loc.type) loc.type = 'Location';
+                  foundProjectName = proj.title;
+                  isExternal = true;
+                  break;
+                }
+              }
+            }
+
+            if (loc) {
+               const initials = foundProjectName ? foundProjectName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '';
+               return (
+                <span
+                  key={i}
+                  className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline"
+                  onClick={() => onLinkClick?.('location', loc!.id)}
+                  onMouseEnter={(e) => handleMouseEnter(e, 'location', loc, isExternal ? initials : undefined)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  {part}
+                  {isExternal && <span className="text-[10px] opacity-50 ml-0.5">[{initials}]</span>}
+                </span>
+              );
+            }
+
+            // Fallback to Search by Book/Project
+            if (projectsMetadata) {
+              const proj = projectsMetadata.find(p => normalizeTagName(p.shortName || p.title).includes(normalizedName));
+              if (proj) {
+                return (
+                  <span
+                    key={i}
+                    className="text-indigo-600 dark:text-indigo-400 font-semibold cursor-pointer hover:underline"
+                    onClick={() => {
+                      if (proj.id === 'global-notebook') onLinkClick?.('notepad', '');
+                      else onLinkClick?.('dashboard', proj.id);
+                    }}
+                  >
+                    {part}
+                  </span>
+                );
+              }
             }
           } else if (part.startsWith('[[') && part.endsWith(']]')) {
             const raw = part.slice(2, -2);
@@ -190,43 +262,24 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
             return <span key={i} className="text-red-400 border-b border-dotted border-red-400/50" title="Broken Link">{part}</span>;
           } else if (part.startsWith('#')) {
             const tag = part.slice(1);
-            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-            const tagSimple = normalize(tag);
-            
-            const bookSimple = normalize(projectData?.shortName || projectData?.title || '');
-            const isBook = tagSimple === bookSimple;
-            
-            // Check if tag matches a location name
-            let loc: any = projectData?.locations?.find(l => normalize(l.name) === tagSimple);
-            let foundProjectName = projectData?.title;
-            let isExternal = false;
+            const normalizedTag = normalizeTagName(tag);
 
-             if (!loc && projectsMetadata) {
-              for (const proj of projectsMetadata) {
-                if (proj.id === projectData?.id) continue;
-                const foundLoc = (proj as any).locations?.find((l: any) => normalize(l.name) === tagSimple);
-                if (foundLoc) {
-                  loc = foundLoc;
-                  if (!loc.type) loc.type = 'Location';
-                  foundProjectName = proj.title;
-                  isExternal = true;
-                  break;
-                }
-              }
-            }
+            const bookSimple = normalizeTagName(projectData?.shortName || projectData?.title || '');
+            const isBook = normalizedTag === bookSimple;
+
+            // Legacy/Fallback check for location if not using + (optional, but keeping for better UX)
+            let loc: any = projectData?.locations?.find(l => normalizeTagName(l.name) === normalizedTag);
 
             if (loc) {
-               const initials = foundProjectName ? foundProjectName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '';
                return (
                 <span
                   key={i}
                   className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline"
                   onClick={() => onLinkClick?.('location', loc!.id)}
-                  onMouseEnter={(e) => handleMouseEnter(e, 'location', loc, isExternal ? initials : undefined)}
+                  onMouseEnter={(e) => handleMouseEnter(e, 'location', loc)}
                   onMouseLeave={handleMouseLeave}
                 >
                   {part}
-                  {isExternal && <span className="text-[10px] opacity-50 ml-0.5">[{initials}]</span>}
                 </span>
               );
             }
@@ -243,7 +296,8 @@ export const WikiText: React.FC<WikiTextProps> = ({ text, projectData, projectsM
                 {part}
               </span>
             );
-          } else if (part.startsWith('!')) {
+          }
+ else if (part.startsWith('!')) {
             return (
               <span
                 key={i}

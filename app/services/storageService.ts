@@ -1,19 +1,22 @@
 import { ProjectData, ProjectMetadata, Note, APP_DATA_VERSION, HierarchicalEntity, EntityTier, ProjectManifest, AssetMetadata, AppSettings, AppPrompts, ToolboxLink } from '../types';
-import JSZip from 'jszip';
-import yaml from 'js-yaml';
-import * as Diff from 'diff';
 
 const DB_NAME = 'PlotholeHierarchicalDB';
 const STORE_PROJECTS = 'projects';
 const STORE_METADATA = 'metadata';
 const STORE_GLOBALS = 'globals';
 
+let dbInstance: IDBDatabase | null = null;
+
 const getDB = (): Promise<IDBDatabase> => {
+  if (dbInstance) return Promise.resolve(dbInstance);
+
   return new Promise((resolve, reject) => {
-    // Increment version to 3 to force update
-    const request = indexedDB.open(DB_NAME, 3);
+    // Increment version to 4 to ensure clean state and avoid blocked connections from version 3
+    const request = indexedDB.open(DB_NAME, 4);
+    
     request.onupgradeneeded = (event: any) => {
       const db = request.result;
+      console.log(`[Storage] Upgrading database to version ${event.newVersion}`);
       
       // Clear existing if needed or just create new
       if (db.objectStoreNames.contains(STORE_PROJECTS)) db.deleteObjectStore(STORE_PROJECTS);
@@ -24,8 +27,28 @@ const getDB = (): Promise<IDBDatabase> => {
       db.createObjectStore(STORE_METADATA, { keyPath: 'id' });
       db.createObjectStore(STORE_GLOBALS, { keyPath: 'id' });
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+
+    request.onsuccess = () => {
+      dbInstance = request.result;
+      
+      // Handle connection closing (e.g., on page reload or other tabs)
+      dbInstance.onversionchange = () => {
+        dbInstance?.close();
+        dbInstance = null;
+        window.location.reload();
+      };
+      
+      resolve(dbInstance);
+    };
+
+    request.onerror = () => {
+      console.error("[Storage] IndexedDB open error:", request.error);
+      reject(request.error);
+    };
+
+    request.onblocked = () => {
+      console.warn("[Storage] IndexedDB open blocked. Please close other tabs.");
+    };
   });
 };
 
@@ -143,6 +166,11 @@ export const convertToTieredEntity = (raw: any, type: string, allLocations: any[
 // ==========================================
 
 export const exportProjectPlothole = async (project: ProjectData) => {
+  const [JSZip, yaml] = await Promise.all([
+    import('jszip').then(m => m.default),
+    import('js-yaml').then(m => m.default)
+  ]);
+  
   const zip = new JSZip();
   const timestamp = new Date().toISOString();
 
@@ -241,6 +269,11 @@ export const exportVaultAsZip = async (
   author: string = 'Unknown Author',
   projectsMetadata: ProjectMetadata[] = []
 ) => {
+  const [JSZip, yaml] = await Promise.all([
+    import('jszip').then(m => m.default),
+    import('js-yaml').then(m => m.default)
+  ]);
+  
   const zip = new JSZip();
   const timestamp = new Date().toISOString();
 
@@ -337,6 +370,11 @@ interface VaultData {
 }
 
 export const importVaultFromZip = async (blob: Blob): Promise<VaultData> => {
+  const [JSZip, yaml] = await Promise.all([
+    import('jszip').then(m => m.default),
+    import('js-yaml').then(m => m.default)
+  ]);
+  
   const zip = await JSZip.loadAsync(blob);
 
   // Load manifest
@@ -368,7 +406,8 @@ export const importVaultFromZip = async (blob: Blob): Promise<VaultData> => {
 // DIFFERENTIAL SYNC LOGIC
 // ==========================================
 
-export const generateManuscriptDiff = (oldText: string, newText: string): string => {
+export const generateManuscriptDiff = async (oldText: string, newText: string): Promise<string> => {
+  const Diff = await import('diff');
   const timestamp = new Date().toISOString();
   const patch = Diff.createPatch('manuscript.md', oldText, newText);
   return `\n--- UPDATED: ${timestamp} ---\n${patch}\n`;
@@ -395,25 +434,9 @@ export const isCloudStorageActive = () => useCloudStorage && serverHealthy;
 
 // Existing persistence methods (wrapped for Cloud support)
 export const saveProjectData = async (data: ProjectData): Promise<void> => {
-  if (useCloudStorage && authFetch) {
-    try {
-      const res = await authFetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) throw new Error('Failed to save to cloud');
-      // Wait a tiny bit for the DB transaction to fully commit before resolving
-      await new Promise(resolve => setTimeout(resolve, 100));
-      return;
-    } catch (e) {
-      console.error("Cloud save failed, falling back to local:", e);
-      setServerHealth(false);
-    }
-  }
-
+  // 1. ALWAYS update local storage first for snappy UI and robust backup
   const db = await getDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction([STORE_PROJECTS, STORE_METADATA], 'readwrite');
     tx.objectStore(STORE_PROJECTS).put({ ...data, lastModified: Date.now() });
     
@@ -422,6 +445,7 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
       id: data.id,
       title: data.title,
       author: data.author || '',
+      shortName: data.shortName,
       summary: data.summary,
       lastModified: Date.now(),
       characterCount: data.entities?.filter(e => e.type === 'Character').length || data.characters?.length || 0,
@@ -435,6 +459,23 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+
+  // 2. Then try to sync to cloud if active (Background sync)
+  if (useCloudStorage && authFetch) {
+    // We don't await this to keep UI snappy
+    authFetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(res => {
+      if (!res.ok) {
+        console.warn("[Storage] Cloud sync failed, will retry on next save");
+        if (res.status === 401 || res.status === 403) setServerHealth(false);
+      }
+    }).catch(e => {
+      console.warn("[Storage] Background cloud sync error:", e);
+    });
+  }
 };
 
 export const loadProjectById = async (id: string): Promise<ProjectData | null> => {
@@ -475,6 +516,7 @@ export const getAllProjectsMetadata = async (): Promise<ProjectMetadata[]> => {
           id: data.id,
           title: data.title,
           author: data.author || '',
+          shortName: data.shortName,
           summary: data.summary,
           lastModified: data.lastModified || Date.now(),
           characterCount: data.entities?.filter(e => e.type === 'Character').length || data.characters?.length || 0,
@@ -562,26 +604,21 @@ export const getAppSettings = async (): Promise<AppSettings | null> => {
 };
 
 export const saveAppSettings = async (settings: AppSettings): Promise<void> => {
-  if (useCloudStorage && authFetch) {
-    try {
-      const res = await authFetch('/api/globals/app_settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
-      });
-      if (!res.ok) setServerHealth(false);
-    } catch (e) { 
-      setServerHealth(false);
-    }
-  }
-
   const db = await getDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_GLOBALS, 'readwrite');
     tx.objectStore(STORE_GLOBALS).put({ id: 'app_settings', data: settings });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+
+  if (useCloudStorage && authFetch) {
+    authFetch('/api/globals/app_settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    }).catch(() => setServerHealth(false));
+  }
 };
 
 export const getAppPrompts = async (): Promise<AppPrompts | null> => {
@@ -602,26 +639,21 @@ export const getAppPrompts = async (): Promise<AppPrompts | null> => {
 };
 
 export const saveAppPrompts = async (prompts: AppPrompts): Promise<void> => {
-  if (useCloudStorage && authFetch) {
-    try {
-      const res = await authFetch('/api/globals/app_prompts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prompts)
-      });
-      if (!res.ok) setServerHealth(false);
-    } catch (e) { 
-      setServerHealth(false);
-    }
-  }
-
   const db = await getDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_GLOBALS, 'readwrite');
     tx.objectStore(STORE_GLOBALS).put({ id: 'app_prompts', data: prompts });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+
+  if (useCloudStorage && authFetch) {
+    authFetch('/api/globals/app_prompts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prompts)
+    }).catch(() => setServerHealth(false));
+  }
 };
 
 export const getAllGlobalNotes = async (): Promise<Note[]> => {
@@ -641,48 +673,47 @@ export const getAllGlobalNotes = async (): Promise<Note[]> => {
   });
 };
 
-export const saveGlobalNote = async (note: Note): Promise<void> => {
-  if (useCloudStorage && authFetch) {
-    try {
-      const res = await authFetch('/api/notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(note)
-      });
-      if (res.ok) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } else {
-        setServerHealth(false);
-      }
-      return;
-    } catch (e) { 
-      setServerHealth(false);
-    }
-  }
-
-  const notes = await getAllGlobalNotes();
+export const saveAllGlobalNotes = async (notes: Note[]): Promise<void> => {
   const db = await getDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_GLOBALS, 'readwrite');
-    tx.objectStore(STORE_GLOBALS).put({ id: 'global_notes', data: [...notes, note] });
+    tx.objectStore(STORE_GLOBALS).put({ id: 'global_notes', data: notes });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 };
 
-export const deleteGlobalNote = async (id: string): Promise<void> => {
-  // Cloud deletion for single notes not yet implemented in API explicitly, 
-  // but saveGlobalNote handles individual updates. 
-  // For now we rely on the client-side array management + saveGlobalNote.
-  
+export const saveGlobalNote = async (note: Note): Promise<void> => {
   const notes = await getAllGlobalNotes();
   const db = await getDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_GLOBALS, 'readwrite');
+    tx.objectStore(STORE_GLOBALS).put({ id: 'global_notes', data: [note, ...notes.filter(n => n.id !== note.id)] });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+
+  if (useCloudStorage && authFetch) {
+    authFetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(note)
+    }).catch(() => setServerHealth(false));
+  }
+};
+
+export const deleteGlobalNote = async (id: string): Promise<void> => {
+  const notes = await getAllGlobalNotes();
+  const db = await getDB();
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_GLOBALS, 'readwrite');
     tx.objectStore(STORE_GLOBALS).put({ id: 'global_notes', data: notes.filter(n => n.id !== id) });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+
+  // Cloud deletion would ideally be a DELETE request, but the current API 
+  // seems to handle it via array state in some routes.
 };
 
 
@@ -717,26 +748,21 @@ export const getApiKey = async (name: string): Promise<string | null> => {
 };
 
 export const saveApiKey = async (name: string, key: string): Promise<void> => {
-  if (useCloudStorage && authFetch) {
-    try {
-      const res = await authFetch(`/api/globals/api_key_${name}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key })
-      });
-      if (!res.ok) setServerHealth(false);
-    } catch (e) { 
-      setServerHealth(false);
-    }
-  }
-
   const db = await getDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_GLOBALS, 'readwrite');
     tx.objectStore(STORE_GLOBALS).put({ id: `api_key_${name}`, data: key });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+
+  if (useCloudStorage && authFetch) {
+    authFetch(`/api/globals/api_key_${name}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    }).catch(() => setServerHealth(false));
+  }
 };
 
 export const getAllGlobalResources = async (): Promise<ToolboxLink[]> => {
@@ -784,6 +810,9 @@ export const clearDatabase = async (): Promise<void> => {
 };
 
 export const exportFullArchive = async (globalNotes: Note[]) => {
+  const [JSZip] = await Promise.all([
+    import('jszip').then(m => m.default)
+  ]);
   const zip = new JSZip();
   const projects = await getAllProjectsMetadata();
   zip.file('full_archive.json', JSON.stringify({ projects, globalNotes }, null, 2));
@@ -799,6 +828,11 @@ export const exportFullArchive = async (globalNotes: Note[]) => {
  * Unpacks a .plothole ZIP blob into ProjectData
  */
 export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
+  const [JSZip, yaml] = await Promise.all([
+    import('jszip').then(m => m.default),
+    import('js-yaml').then(m => m.default)
+  ]);
+  
   const zip = await JSZip.loadAsync(blob);
   
   const manifestRaw = await zip.file('manifest.yaml')?.async('text');
@@ -845,3 +879,4 @@ export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
     themes: []
   };
 };
+

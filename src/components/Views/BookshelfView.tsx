@@ -44,9 +44,9 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
     }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newTitle.trim()) return;
-    onCreateProject(newTitle, newAuthor || currentUser.name, false, newShortName);
+    await onCreateProject(newTitle, newAuthor || currentUser.name, false, newShortName);
     setIsCreating(false);
     setNewTitle('');
     setNewShortName('');
@@ -150,35 +150,39 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                           <Layout size={18} />
                         </button>
                       )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const proj = projects.find(p => p.id === project.id);
-                          if (proj) {
-                            setProjectToEdit(project.id);
-                            setEditTitle(proj.title);
-                            setEditAuthor(proj.author);
-                            setEditShortName(proj.shortName || '');
-                          }
-                        }}
-                        className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
-                        title="Edit Project"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <CardActions
-                        itemName={project.title}
-                        onEdit={() => {
-                          const proj = projects.find(p => p.id === project.id);
-                          if (proj) {
-                            setProjectToEdit(project.id);
-                            setEditTitle(proj.title);
-                            setEditAuthor(proj.author);
-                            setEditShortName(proj.shortName || '');
-                          }
-                        }}
-                        onDelete={() => setProjectToDelete(project.id)}
-                      />
+                      {project.id !== 'global-notebook' && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const proj = projects.find(p => p.id === project.id);
+                              if (proj) {
+                                setProjectToEdit(project.id);
+                                setEditTitle(proj.title);
+                                setEditAuthor(proj.author);
+                                setEditShortName(proj.shortName || '');
+                              }
+                            }}
+                            className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
+                            title="Edit Project"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <CardActions
+                            itemName={project.title}
+                            onEdit={() => {
+                              const proj = projects.find(p => p.id === project.id);
+                              if (proj) {
+                                setProjectToEdit(project.id);
+                                setEditTitle(proj.title);
+                                setEditAuthor(proj.author);
+                                setEditShortName(proj.shortName || '');
+                              }
+                            }}
+                            onDelete={() => setProjectToDelete(project.id)}
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

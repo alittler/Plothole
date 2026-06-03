@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ViewType, Note, ProjectData, ProjectMetadata, User, APP_DATA_VERSION } from '../../types';
-import { Plus, Search, Trash2, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe, PenTool, Lightbulb, Image as ImageIcon, Trash, Download, Upload, Copy, BookOpen } from 'lucide-react';
+import { ViewType, Note, ProjectData, ProjectMetadata, User, APP_DATA_VERSION, Idea } from '../../types';
+import { Plus, Search, Trash2, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe, PenTool, Lightbulb, Image as ImageIcon, Trash, Download, Upload, Copy, BookOpen, Layout } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { StackedPaper } from '../ui/StackedPaper';
@@ -14,7 +14,7 @@ import { sanitizeHtml } from '../../utils/htmlSanitizer';
 
 enum ResearchHubTab {
   NOTEBOOK = 'Notebook',
-  CORKBOARD = 'Corkboard',
+  CORKBOARD = 'Extracted Dossier Index',
   MOODBOARD = 'Moodboard'
 }
 
@@ -28,7 +28,7 @@ interface ResearchHubViewProps {
   currentUser?: User;
   onAddNote: (note: Note) => void;
   onImportNotes?: (notes: Note[]) => Promise<void>;
-  onAddIdeaToProject?: (projectId: string, content: string, tags: string[]) => void;
+  onAddIdeaToProject?: (idea: Idea) => void;
   onToggleCanon?: (noteId: string, isCanon: boolean) => void;
   onDeleteNote: (id: string) => void;
   onDeleteAllNotes?: () => void;
@@ -39,10 +39,10 @@ interface ResearchHubViewProps {
   semanticSearchEnabled?: boolean;
   isEmbedded?: boolean;
   // Bookshelf Props
-  onCreateProject?: (title: string, author: string, useSample: boolean, shortName?: string) => Promise<void>;
+  onCreateProject?: (title: string, author: string, useSample: boolean, shortName?: string) => Promise<any>;
   onUploadProject?: (file: File) => Promise<void>;
   onDeleteProject?: (id: string) => Promise<void>;
-  onSelectProject?: (id: string) => Promise<void>;
+  onSelectProject?: (id: string) => Promise<any>;
   onOpenDashboard?: () => void;
   isAnalyzing?: boolean;
   fetchWithAuth?: (url: string, options?: RequestInit) => Promise<Response>;
@@ -52,6 +52,10 @@ export const ResearchHubView: React.FC<ResearchHubViewProps> = ({
   currentView, onChangeView, data, projectsMetadata, currentUser, onAddNote, onImportNotes, onAddIdeaToProject, onToggleCanon, onDeleteNote, onDeleteAllNotes, onLinkClick, onAddDoubleProcessedNote, activeTasks, onUpdateProject, semanticSearchEnabled, isEmbedded,
   onCreateProject, onUploadProject, onDeleteProject, onSelectProject, onOpenDashboard, isAnalyzing: isAnalyzingProp, fetchWithAuth
 }) => {
+  const [optimisticNotes, addOptimisticNote] = (React as any).useOptimistic(
+    data.notes,
+    (state: Note[], newNote: Note) => [newNote, ...state]
+  );
   const router = useRouter();
   const searchParams = useSearchParams();
   const [viewMode, setNotepadView] = React.useState<ResearchHubTab>(() => {
@@ -74,6 +78,11 @@ export const ResearchHubView: React.FC<ResearchHubViewProps> = ({
   const [showTagSuggestion, setShowTagSuggestion] = React.useState(false);
   const [noteToDelete, setNoteToDelete] = React.useState<string | null>(null);
   const [selectedProseId, setSelectedProseId] = React.useState<string | null>(null);
+  
+  // Chat state
+  const [chatInput, setChatInput] = React.useState('');
+  const [chatMessages, setChatMessages] = React.useState<any[]>([]);
+  const [isChatLoading, setIsChatLoading] = React.useState(false);
 
   const generateSynthesis = () => {};
 
@@ -301,12 +310,59 @@ Please provide a helpful, creative, and insightful response based on their notes
     console.log('Inspirations in data:', data?.inspirations);
   }, [data?.inspirations]);
 
+  const normalizeTagName = (name: string): string => {
+    const ARTICLES = ['the', 'a', 'an', 'der', 'die', 'das', 'ein', 'eine', 'le', 'la', 'les', 'el', 'los', 'las'];
+    let normalized = name.toLowerCase().trim();
+    
+    for (const article of ARTICLES) {
+      const prefix = article + ' ';
+      if (normalized.startsWith(prefix)) {
+        normalized = normalized.substring(prefix.length);
+        break;
+      }
+    }
+    return normalized.trim();
+  };
+
+  const parseTags = (content: string): string[] => {
+    const tags: string[] = [];
+    
+    // Match @Entity, +Location, #Tag, +Book
+    // Regex explanation:
+    // (@|\+|#) - starts with @, + or #
+    // ([^@+#\s]+) - one or more characters that are not @, +, # or whitespace
+    // (?:\s+from\s+(\+[^@+#\s]+))? - optional " from +Book" pattern
+    const tagRegex = /(@|\+|#)([^@+#\s][^@+#]*?)(?=\s|$|\.|,|!|\?)/g;
+    let match;
+    
+    while ((match = tagRegex.exec(content)) !== null) {
+      const prefix = match[1];
+      const name = match[2].trim();
+      
+      // Handle stacking: "@Character from +Book"
+      // Check if the next word is "from" and followed by a +Book tag
+      const remaining = content.substring(tagRegex.lastIndex);
+      const fromMatch = remaining.match(/^\s+from\s+(\+[^@+#\s][^@+#]*?)(?=\s|$|\.|,|!|\?)/);
+      
+      if (fromMatch) {
+        const bookName = fromMatch[1].substring(1).trim(); // Remove the +
+        tags.push(`${prefix}${name} from +${bookName}`);
+        // Skip the "from +Book" part in the main regex
+        tagRegex.lastIndex += fromMatch[0].length;
+      } else {
+        tags.push(`${prefix}${name}`);
+      }
+    }
+    
+    return tags;
+  };
+
   const handleAdd = async () => {
     if (!newNote.trim()) return;
     
-    // Split by --- delimiter if present
-    const segments = newNote.includes('---') 
-      ? newNote.split('---').map(s => s.trim()).filter(Boolean)
+    // Split by delimiters if present
+    const segments = (newNote.includes('---') || newNote.includes('***'))
+      ? newNote.split(/---|\*\*\*/).map(s => s.trim()).filter(Boolean)
       : [newNote.trim()];
 
     const currentProjectTag = (data?.shortName || data?.title || '').replace(/[^\w\s]/g, '').replace(/\s+/g, '_').toLowerCase();
@@ -315,11 +371,16 @@ Please provide a helpful, creative, and insightful response based on their notes
     const notesToBatch = [];
     
     for (const content of segments) {
-      const tags = content.match(/#\w+/g)?.map(t => t.slice(1)) || [];
+      const tags = parseTags(content);
       
       if (onAddIdeaToProject && data?.id) {
-        if (tags.some(t => t.toLowerCase() === currentProjectTag)) {
-          onAddIdeaToProject(data?.id || '', content, tags);
+        if (tags.some(t => t.toLowerCase() === '#' + currentProjectTag || t.toLowerCase() === '+' + currentProjectTag)) {
+          onAddIdeaToProject({
+            id: generateId(),
+            content,
+            tags,
+            timestamp: Date.now()
+          });
         }
       }
 
@@ -330,6 +391,9 @@ Please provide a helpful, creative, and insightful response based on their notes
         timestamp: Date.now()
       };
       
+      React.startTransition(() => {
+        addOptimisticNote(note);
+      });
       notesToBatch.push(note);
       onAddNote(note);
     }
@@ -397,16 +461,25 @@ Please provide a helpful, creative, and insightful response based on their notes
   };
 
   const allNotes = React.useMemo(() => {
-    const combined = [...(data?.notes || [])];
+    const combined = [...(optimisticNotes || [])];
     if (data?.ideas) {
       data?.ideas.forEach(idea => {
         if (!combined.some(n => n.id === idea.id)) combined.push(idea);
       });
     }
-    return combined
-      .filter(n => !n.tags.includes('admin_note'))
-      .sort((a, b) => b.timestamp - a.timestamp);
-  }, [data?.notes, data?.ideas]);
+    
+    // Deduplicate by ID to prevent React key errors
+    const uniqueMap = new Map();
+    combined.forEach(n => {
+      if (n && n.id && !uniqueMap.has(n.id)) {
+        uniqueMap.set(n.id, n);
+      }
+    });
+    
+    return Array.from(uniqueMap.values())
+      .filter(n => n && n.tags && !n.tags.includes('admin_note'))
+      .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  }, [optimisticNotes, data?.ideas]);
 
   const projectTags = React.useMemo(() => {
     const tags = new Set<string>();
@@ -446,7 +519,7 @@ Please provide a helpful, creative, and insightful response based on their notes
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex flex-col gap-3">
               <h1 className="ph-section-title text-2xl md:text-3xl flex items-center gap-3">
-                <PenTool size={32} className="text-indigo-600" /> Laboratory
+                <PenTool size={32} className="text-indigo-600" /> Notebook
               </h1>
               <div className="ph-tab-container overflow-x-auto no-scrollbar flex items-center gap-2">
                 {Object.values(ResearchHubTab).map(v => (
@@ -647,7 +720,7 @@ Please provide a helpful, creative, and insightful response based on their notes
                         )}
                       </div>
                       <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30 pb-4">
-                        <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # to tag.</span>
+                        <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # to tag. Split multiple with ***</span>
                         <button 
                           onClick={handleAdd}
                           className="lg:hidden px-4 py-1.5 bg-indigo-600 text-white rounded-lg font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
@@ -672,33 +745,54 @@ Please provide a helpful, creative, and insightful response based on their notes
                             <div className="flex items-start justify-between mb-4 p-4 md:p-0">
                               <div className="flex flex-wrap gap-2">
                                 {note.tags.map(tag => {
-                                  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-                                  const tagSimple = normalize(tag);
-                                  const bookSimple = normalize(data?.shortName || data?.title || '');
+                                  // Handle stacked tags: "@Character from +Book"
+                                  const parts = tag.split(' from ');
+                                  const mainTag = parts[0];
+                                  const fromTag = parts[1]; // e.g. "+Book"
                                   
-                                  const isBook = tagSimple === bookSimple;
-                                  const isCharacter = data?.characters?.some(c => normalize(c.name) === tagSimple);
-                                  const isLocation = data?.locations?.some(l => normalize(l.name) === tagSimple);
+                                  const prefix = mainTag[0];
+                                  const name = mainTag.substring(1);
+                                  const normalizedName = normalizeTagName(name);
                                   
-                                  return (
-                                    <button 
-                                      key={tag} 
-                                      onClick={() => {
-                                        if (isBook) onChangeView(ViewType.DASHBOARD);
-                                        else if (isCharacter) onChangeView(ViewType.CHARACTERS);
-                                        else if (isLocation) {
-                                          const loc = data?.locations?.find(l => normalize(l.name) === tagSimple);
-                                          if (loc) onLinkClick('location', loc.id);
+                                  const isCharacter = prefix === '@' || data?.characters?.some(c => normalizeTagName(c.name) === normalizedName);
+                                  const isLocation = prefix === '+' || data?.locations?.some(l => normalizeTagName(l.name) === normalizedName);
+                                  const isBook = prefix === '+' && !isLocation; // If it's + and not a known location, treat as Book? 
+                                  // Actually let's use the prefix strictly if provided, else fallback to search.
+                                  
+                                  const handleTagClick = () => {
+                                    if (prefix === '@') {
+                                      // Find character and navigate
+                                      const char = data?.characters?.find(c => normalizeTagName(c.name) === normalizedName);
+                                      if (char) onLinkClick('character', char.id);
+                                      else onChangeView(ViewType.CHARACTERS);
+                                    } else if (prefix === '+') {
+                                      // Find location and navigate
+                                      const loc = data?.locations?.find(l => normalizeTagName(l.name) === normalizedName);
+                                      if (loc) onLinkClick('location', loc.id);
+                                      else {
+                                        // Check if it's a book/project
+                                        const proj = projectsMetadata?.find(p => normalizeTagName(p.shortName || p.title) === normalizedName);
+                                        if (proj) {
+                                          if (onSelectProject) onSelectProject(proj.id);
+                                          onChangeView(ViewType.DASHBOARD);
                                         }
-                                      }}
-                                      className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest transition-colors max-w-[150px] truncate inline-block align-bottom ${
-                                        isBook || isCharacter || isLocation
-                                          ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200' 
-                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                                      }`}
-                                    >
-                                      #{tag}
-                                    </button>
+                                      }
+                                    }
+                                  };
+
+                                  return (
+                                    <div key={tag} className="flex items-center">
+                                      <button 
+                                        onClick={handleTagClick}
+                                        className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest transition-colors max-w-[150px] truncate inline-block align-bottom ${
+                                          prefix === '@' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-200' :
+                                          prefix === '+' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200' :
+                                          'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200'
+                                        }`}
+                                      >
+                                        {tag}
+                                      </button>
+                                    </div>
                                   );
                                 })}
                               </div>
@@ -953,7 +1047,7 @@ Please provide a helpful, creative, and insightful response based on their notes
                       <button 
                         onClick={() => setSelectedProseId(null)}
                         className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
-                        title="Back to Corkboard"
+                        title="Back to Index"
                       >
                         <ChevronRight size={20} className="rotate-180" />
                       </button>
@@ -986,7 +1080,7 @@ Please provide a helpful, creative, and insightful response based on their notes
                   <div className="max-w-5xl mx-auto relative z-10">
                     <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                       <div>
-                        <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Snippet Corkboard</h2>
+                        <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Extracted Dossier Index</h2>
                         <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">A place for miscellaneous lines and thoughts.</p>
                       </div>
                       <div className="flex items-center gap-3">
@@ -1026,7 +1120,7 @@ Please provide a helpful, creative, and insightful response based on their notes
                           <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-3xl flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
                             <FileText size={32} className="text-slate-300" />
                           </div>
-                          <p className="text-slate-400 font-serif italic">Your corkboard is empty. Create a new snippet to begin.</p>
+                          <p className="text-slate-400 font-serif italic">Your index is empty. Create a new snippet to begin.</p>
                         </div>
                       ) : (
                         corkboardNotes.map(doc => (
