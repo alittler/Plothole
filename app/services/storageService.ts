@@ -459,21 +459,32 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
     tx.onerror = () => reject(tx.error);
   });
 
-  // 2. Then try to sync to cloud if active (Background sync)
+  // 2. Then try to sync to cloud if active
   if (useCloudStorage && authFetch) {
-    // We don't await this to keep UI snappy
-    authFetch('/api/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }).then(res => {
-      if (!res.ok) {
-        console.warn("[Storage] Cloud sync failed, will retry on next save");
-        if (res.status === 401 || res.status === 403) setServerHealth(false);
+    // Wait for cloud sync with a timeout to keep UI responsive
+    try {
+      const syncPromise = authFetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      // Give cloud sync 3 seconds to complete
+      const timeoutPromise = new Promise((resolve) => 
+        setTimeout(() => resolve(null), 3000)
+      );
+      
+      const result = await Promise.race([syncPromise, timeoutPromise]);
+      
+      if (result instanceof Response && !result.ok) {
+        console.warn("[Storage] Cloud sync failed with status:", result.status);
+        if (result.status === 401 || result.status === 403) setServerHealth(false);
+      } else if (result === null) {
+        console.log("[Storage] Cloud sync timeout, will continue in background");
       }
-    }).catch(e => {
-      console.warn("[Storage] Background cloud sync error:", e);
-    });
+    } catch (e) {
+      console.warn("[Storage] Cloud sync error:", e);
+    }
   }
 };
 

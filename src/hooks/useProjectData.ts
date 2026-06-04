@@ -451,6 +451,9 @@ export function useProjectData(
 
     setProjectData(newProject);
     await saveProjectData(newProject);
+    // Wait a bit for cloud sync to complete, then refresh metadata
+    // This ensures the UI shows the correct 'cloud' origin for newly created projects
+    await new Promise(resolve => setTimeout(resolve, 500));
     await refreshMetadata();
     return newProject;
   }, [refreshMetadata]);
@@ -461,6 +464,9 @@ export function useProjectData(
       const project = await unpackProject(file);
       setProjectData(project);
       await saveProjectData(project);
+      // Wait a bit for cloud sync to complete, then refresh metadata
+      // This ensures the UI shows the correct 'cloud' origin for newly uploaded projects
+      await new Promise(resolve => setTimeout(resolve, 500));
       await refreshMetadata();
     } catch (err: any) {
       console.error("Upload failed", err);

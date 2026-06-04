@@ -42,7 +42,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     };
   }, []);
 
-  const defaultOrder = [ViewType.RESEARCH, ViewType.BOOKSHELF, ViewType.CODEX_HUB, ViewType.PLOT_HUB];
+  const defaultOrder = [ViewType.RESEARCH, ViewType.CODEX_HUB, ViewType.WORLD_HUB];
   const order = bottomNavOrder || defaultOrder;
 
   const getViewLabel = (view: ViewType) => {
@@ -51,12 +51,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       case ViewType.NOTEPAD: return 'Notebook';
       case ViewType.RESEARCH: return 'Notebook';
       case ViewType.CHARACTERS: return 'Characters';
-      case ViewType.MAP: return 'Atlas';
-      case ViewType.TIMELINE: return 'History';
-      case ViewType.PLOT_HUB: return 'Plot Hub';
-      case ViewType.WORLD_HUB: return 'World Hub';
+      case ViewType.MAP: return 'Map';
+      case ViewType.TIMELINE: return 'Timeline';
+      case ViewType.PLOT_HUB: return 'Plot';
+      case ViewType.WORLD_HUB: return 'Map';
       case ViewType.NARRATIVE_ARCHITECT: return 'Architect';
-      case ViewType.CODEX_HUB: return 'Codex';
+      case ViewType.CODEX_HUB: return 'Characters';
       case ViewType.TOOLBOX: return 'Toolbox';
       case ViewType.SETTINGS: return 'Settings';
       case ViewType.ADMIN: return 'Admin';
