@@ -34,8 +34,11 @@ export function BrowserRouterWrapper({ children }: { children: ReactNode }) {
       cacheLocation="localstorage"
       useRefreshTokens={true}
       onRedirectCallback={(appState) => {
-        // Don't redirect here - let React Router handle navigation
-        // The app will naturally re-render when auth state updates
+        // Clean up the URL after Auth0 redirects back with code and state params
+        if (typeof window !== 'undefined') {
+          const cleanPath = appState?.returnTo || '/';
+          window.history.replaceState({}, document.title, cleanPath);
+        }
       }}
     >
       <BrowserRouter>

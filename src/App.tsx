@@ -92,6 +92,15 @@ const App: React.FC = () => {
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const [uploadingFileName, setUploadingFileName] = useState<string | undefined>(undefined);
 
+  // Clean up Auth0 callback parameters from URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.has('code') && searchParams.has('state')) {
+      // Auth0 has returned with authorization code, clean it up
+      window.history.replaceState({}, document.title, '/');
+    }
+  }, []);
+
   const addTask = useCallback((id: string) => setActiveTasks(prev => [...prev, id]), []);
   const removeTask = useCallback((id: string) => setActiveTasks(prev => prev.filter(t => t !== id)), []);
 
