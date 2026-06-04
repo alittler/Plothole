@@ -110,6 +110,7 @@ export const ResearchHubView: React.FC<ResearchHubViewProps> = ({
   const [showInspirationForm, setShowInspirationForm] = React.useState(false);
   const [inspirationImageError, setInspirationImageError] = React.useState('');
   const [editingInspirationId, setEditingInspirationId] = React.useState<string | null>(null);
+  const [showMyLibrary, setShowMyLibrary] = React.useState(false);
 
   const handleSendMessage = async () => {
     if (!chatInput.trim() || isChatLoading) return;
@@ -412,23 +413,63 @@ Please provide a helpful, creative, and insightful response based on their notes
     setNewNote(value);
     
     const lastChar = value[value.length - 1];
-    if (lastChar === '#') {
+    if (lastChar === '#' || lastChar === '@' || lastChar === '+') {
       setShowTagSuggestion(true);
-    } else if (!value.includes('#') || value.endsWith(' ')) {
+    } else if (!(value.includes('#') || value.includes('@') || value.includes('+')) || value.endsWith(' ')) {
       setShowTagSuggestion(false);
     }
   };
 
   const applyTagSuggestion = () => {
-    const projectTag = (data?.shortName || data?.title || 'Project').replace(/[^\w\s]/g, '').replace(/\s+/g, '_');
     const lastHashIndex = newNote.lastIndexOf('#');
-    if (lastHashIndex !== -1) {
-      const updatedNote = newNote.substring(0, lastHashIndex + 1) + projectTag + ' ';
+    const lastAtIndex = newNote.lastIndexOf('@');
+    const lastPlusIndex = newNote.lastIndexOf('+');
+    
+    const lastIndex = Math.max(lastHashIndex, lastAtIndex, lastPlusIndex);
+    if (lastIndex === -1) return;
+    
+    const prefix = newNote[lastIndex];
+    let suggestion = '';
+    
+    if (prefix === '#') {
+      suggestion = (data?.shortName || data?.title || 'Project').replace(/[^\w\s]/g, '').replace(/\s+/g, '_');
+    } else if (prefix === '@') {
+      // Get first character
+      suggestion = data?.characters?.[0]?.name?.replace(/\s+/g, '_') || 'Character';
+    } else if (prefix === '+') {
+      // Get first location
+      suggestion = data?.locations?.[0]?.name?.replace(/\s+/g, '_') || 'Location';
+    }
+    
+    if (suggestion) {
+      const updatedNote = newNote.substring(0, lastIndex + 1) + suggestion + ' ';
       setNewNote(updatedNote);
       setShowTagSuggestion(false);
       // Focus back to textarea
       setTimeout(() => textareaRef.current?.focus(), 10);
     }
+  };
+
+  const getCurrentTagSuggestion = () => {
+    const lastHashIndex = newNote.lastIndexOf('#');
+    const lastAtIndex = newNote.lastIndexOf('@');
+    const lastPlusIndex = newNote.lastIndexOf('+');
+    
+    const lastIndex = Math.max(lastHashIndex, lastAtIndex, lastPlusIndex);
+    if (lastIndex === -1) return '';
+    
+    const prefix = newNote[lastIndex];
+    let suggestion = '';
+    
+    if (prefix === '#') {
+      suggestion = (data?.shortName || data?.title || 'Project').replace(/[^\w\s]/g, '').replace(/\s+/g, '_');
+    } else if (prefix === '@') {
+      suggestion = data?.characters?.[0]?.name?.replace(/\s+/g, '_') || 'Character';
+    } else if (prefix === '+') {
+      suggestion = data?.locations?.[0]?.name?.replace(/\s+/g, '_') || 'Location';
+    }
+    
+    return `${prefix}${suggestion}`;
   };
 
   const handleSemanticSearch = async () => {
@@ -690,6 +731,33 @@ Please provide a helpful, creative, and insightful response based on their notes
 
               <div className="flex-1 relative pt-0 pb-40 lg:pb-8 px-4 md:px-8 lg:px-16">
                 <div className="space-y-0 relative z-10">
+                  {/* My Library Section at Top */}
+                  <div className="mb-6 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <button
+                      onClick={() => setShowMyLibrary(!showMyLibrary)}
+                      className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <h3 className="font-bold text-slate-900 dark:text-white text-lg">My Library</h3>
+                      <ChevronRight size={20} className={`text-slate-400 transition-transform ${showMyLibrary ? 'rotate-90' : ''}`} />
+                    </button>
+                    {showMyLibrary && (
+                      <div className="border-t border-slate-200 dark:border-slate-700 max-h-96 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
+                        <BookshelfView
+                          projects={projectsMetadata || []}
+                          activeProjectId={data?.id || ''}
+                          currentUser={currentUser!}
+                          onRefreshMetadata={async () => {}}
+                          onSelectProject={onSelectProject || (async () => {})}
+                          onCreateProject={onCreateProject || (async () => {})} 
+                          onUploadProject={onUploadProject || (async () => {})} 
+                          onDeleteProject={onDeleteProject || (async () => {})}
+                          isAnalyzing={isAnalyzingProp || false}
+                          fetchWithAuth={fetchWithAuth}
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   <StackedPaper className="space-y-4" transparent>
                     <div className="p-4 md:p-6 relative z-20 bg-white/40 dark:bg-white/5 rounded-2xl backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 mb-4 shadow-sm">
                       <div className="relative">
@@ -706,12 +774,12 @@ Please provide a helpful, creative, and insightful response based on their notes
                             onClick={applyTagSuggestion}
                             className="absolute bottom-2 left-0 bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2"
                           >
-                            #{(data?.shortName || data?.title || 'Project').replace(/[^\w\s]/g, '').replace(/\s+/g, '_')}
+                            {getCurrentTagSuggestion()}
                           </button>
                         )}
                       </div>
                       <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/30 pb-4">
-                        <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # to tag. Split multiple with ***</span>
+                        <span className="text-xs text-slate-400 font-medium italic">Press Enter to save. Use # for tags, @ for characters, + for locations. Split multiple with ***</span>
                         <button 
                           onClick={handleAdd}
                           className="lg:hidden px-4 py-1.5 bg-indigo-600 text-white rounded-lg font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
@@ -1137,24 +1205,7 @@ Please provide a helpful, creative, and insightful response based on their notes
                 </div>
               )}
             </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
-              <BookshelfView
-                projects={projectsMetadata || []}
-                activeProjectId={data?.id || ''}
-                currentUser={currentUser!}
-                onRefreshMetadata={async () => {}} // Placeholder for now, or we can pass it down if needed
-                onSelectProject={onSelectProject || (async () => {})}
-                onCreateProject={onCreateProject || (async () => {})} 
-                onUploadProject={onUploadProject || (async () => {})} 
-                onDeleteProject={onDeleteProject || (async () => {})}
-                isAnalyzing={isAnalyzingProp || false}
-
-                fetchWithAuth={fetchWithAuth}
-                />
-
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
 
