@@ -110,7 +110,6 @@ export const ResearchHubView: React.FC<ResearchHubViewProps> = ({
   const [showInspirationForm, setShowInspirationForm] = React.useState(false);
   const [inspirationImageError, setInspirationImageError] = React.useState('');
   const [editingInspirationId, setEditingInspirationId] = React.useState<string | null>(null);
-  const [showMyLibrary, setShowMyLibrary] = React.useState(false);
 
   const handleSendMessage = async () => {
     if (!chatInput.trim() || isChatLoading) return;
@@ -731,33 +730,6 @@ Please provide a helpful, creative, and insightful response based on their notes
 
               <div className="flex-1 relative pt-0 pb-40 lg:pb-8 px-4 md:px-8 lg:px-16">
                 <div className="space-y-0 relative z-10">
-                  {/* My Library Section at Top */}
-                  <div className="mb-6 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <button
-                      onClick={() => setShowMyLibrary(!showMyLibrary)}
-                      className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                    >
-                      <h3 className="font-bold text-slate-900 dark:text-white text-lg">My Library</h3>
-                      <ChevronRight size={20} className={`text-slate-400 transition-transform ${showMyLibrary ? 'rotate-90' : ''}`} />
-                    </button>
-                    {showMyLibrary && (
-                      <div className="border-t border-slate-200 dark:border-slate-700 max-h-96 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
-                        <BookshelfView
-                          projects={projectsMetadata || []}
-                          activeProjectId={data?.id || ''}
-                          currentUser={currentUser!}
-                          onRefreshMetadata={async () => {}}
-                          onSelectProject={onSelectProject || (async () => {})}
-                          onCreateProject={onCreateProject || (async () => {})} 
-                          onUploadProject={onUploadProject || (async () => {})} 
-                          onDeleteProject={onDeleteProject || (async () => {})}
-                          isAnalyzing={isAnalyzingProp || false}
-                          fetchWithAuth={fetchWithAuth}
-                        />
-                      </div>
-                    )}
-                  </div>
-
                   <StackedPaper className="space-y-4" transparent>
                     <div className="p-4 md:p-6 relative z-20 bg-white/40 dark:bg-white/5 rounded-2xl backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/30 mb-4 shadow-sm">
                       <div className="relative">

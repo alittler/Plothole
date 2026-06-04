@@ -138,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const baseSections: SidebarSection[] = [
       {
         title: 'Notebook & Story',
-        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.OUTLINE, ViewType.NARRATIVE_ARCHITECT].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.BOOKSHELF, ViewType.OUTLINE, ViewType.NARRATIVE_ARCHITECT].includes(i.id))
       },
       {
         title: 'Codex & Lore',
@@ -150,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
       {
         title: 'System',
-        items: allNavItems.filter(i => [ViewType.BOOKSHELF, ViewType.TOOLBOX, ViewType.SETTINGS, ViewType.ADMIN].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.TOOLBOX, ViewType.SETTINGS, ViewType.ADMIN].includes(i.id))
       }
     ];
 
