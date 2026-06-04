@@ -1,5 +1,4 @@
 import React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { ViewType, Note, ProjectData, ProjectMetadata, User, APP_DATA_VERSION, Idea } from '../../types';
 import { Plus, Search, Trash2, Zap, Loader2, X, CheckCircle, Clock, ChevronRight, Edit2, FileText, Globe, PenTool, Lightbulb, Image as ImageIcon, Trash, Download, Upload, Copy, BookOpen, Layout } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -55,19 +54,12 @@ export const ResearchHubView: React.FC<ResearchHubViewProps> = ({
     data.notes,
     (state: Note[], newNote: Note) => [newNote, ...state]
   );
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [viewMode, setNotepadView] = React.useState<ResearchHubTab>(() => {
-    return (searchParams.get('tab') as ResearchHubTab) || ResearchHubTab.NOTEBOOK;
-  });
+  const [viewMode, setNotepadView] = React.useState<ResearchHubTab>(ResearchHubTab.NOTEBOOK);
   const [selectedTag, setSelectedTag] = React.useState<string | null>(null);
 
   const setActiveTab = (v: ResearchHubTab) => {
     setNotepadView(v);
     setSelectedTag(null);
-    const params = new URLSearchParams(searchParams);
-    params.set('tab', v);
-    router.push(`?${params.toString()}`);
   };
   const [searchQuery, setSearchQuery] = React.useState('');
   const [newNote, setNewNote] = React.useState('');

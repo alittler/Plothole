@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { useSearchParams, useRouter } from 'next/navigation';
 import { ProjectData } from '../../types';
 import { 
   Book, 
@@ -40,15 +39,8 @@ export enum CodexTab {
 }
 
 export const CodexHubView: React.FC<CodexHubViewProps> = ({ projectData, onLinkClick, onUpdateProject }) => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const activeTab = (searchParams.get('tab') as CodexTab) || CodexTab.CHARACTERS;
-  
-  const setActiveTab = (tab: CodexTab) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', tab);
-    router.push(`?${params.toString()}`);
-  };
+  const [activeTab, setActiveTab] = React.useState<CodexTab>(CodexTab.CHARACTERS);
+
 
   const renderTabContent = () => {
     switch (activeTab) {
