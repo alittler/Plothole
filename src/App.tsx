@@ -225,6 +225,21 @@ const App: React.FC = () => {
     }
   }, [isLoaded, projectsMetadata, projectData, loadProject, pathname, router]);
 
+  // Sync URL with currentView when pathname changes
+  useEffect(() => {
+    if (!isLoaded || pathname === '/' || pathname === '') return;
+    
+    // Extract view from pathname (e.g., /NOTEPAD from /NOTEPAD or /NOTEPAD/project-123)
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length > 0) {
+      const potentialView = segments[0].toUpperCase();
+      // Check if it's a valid ViewType
+      if (Object.values(ViewType).includes(potentialView as ViewType)) {
+        setCurrentView(potentialView as ViewType);
+      }
+    }
+  }, [pathname, isLoaded]);
+
   const viewContent = React.useMemo(() => {
     if (!isLoaded) return null;
 
@@ -439,7 +454,9 @@ const App: React.FC = () => {
   const handleViewChange = useCallback((v: ViewType) => {
     setCurrentView(v);
     setIsMobileSidebarOpen(false);
-  }, []);
+    // Update URL to reflect current view - use replace to avoid history navigation
+    router.replace(`/${v}`);
+  }, [router]);
 
   const renderAppContent = () => {
     if (!isLoaded) {
