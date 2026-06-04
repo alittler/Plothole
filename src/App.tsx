@@ -197,11 +197,11 @@ const App: React.FC = () => {
       setCurrentMapParentId(id);
       setCurrentView(ViewType.MAP);
     } else if (type === 'bestiary') {
-      router.push(`/${ViewType.CODEX_HUB}?tab=Bestiary`);
+      setCurrentView(ViewType.CODEX_HUB);
     } else if (type === 'dashboard') {
       setCurrentView(ViewType.NOTEPAD);
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (isLoaded && projectsMetadata.length > 0 && !projectData && !hasAutoLoaded.current) {
@@ -430,18 +430,7 @@ const App: React.FC = () => {
   const handleViewChange = useCallback((v: ViewType) => {
     setCurrentView(v);
     setIsMobileSidebarOpen(false);
-    
-    // Update URL to include the view name for bookmarking and browser history
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('tab')) {
-      params.delete('tab');
-    }
-    
-    // Convert view name to URL-friendly path
-    const viewPath = v.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
-    const newUrl = params.toString() ? `/${viewPath}?${params.toString()}` : `/${viewPath}`;
-    router.push(newUrl);
-  }, [router]);
+  }, []);
 
   const renderAppContent = () => {
     if (!isLoaded) {
