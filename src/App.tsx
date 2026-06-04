@@ -140,6 +140,7 @@ const App: React.FC = () => {
     projectData,
     setProjectData,
     refreshMetadata,
+    refreshGlobalNotes,
     updateProjectData,
     loadProject,
     handleManualSave,
@@ -215,6 +216,18 @@ const App: React.FC = () => {
       hasAutoLoaded.current = true;
     }
   }, [isLoaded, projectsMetadata, projectData, loadProject, pathname, router]);
+
+  // Periodically refresh global notes from cloud when cloud storage is active
+  useEffect(() => {
+    if (!isCloudStorageActive() || !refreshGlobalNotes) return;
+
+    // Refresh notes every 10 seconds if cloud storage is active
+    const interval = setInterval(() => {
+      refreshGlobalNotes().catch(err => console.warn('Failed to refresh global notes:', err));
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [refreshGlobalNotes]);
 
   const viewContent = React.useMemo(() => {
     if (!isLoaded) return null;

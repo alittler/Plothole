@@ -691,6 +691,30 @@ export const saveAllGlobalNotes = async (notes: Note[]): Promise<void> => {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+
+  // Sync to cloud with a timeout
+  if (useCloudStorage && authFetch) {
+    try {
+      const syncPromise = authFetch('/api/notes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(notes)
+      });
+      
+      // Wait up to 2 seconds for cloud sync
+      const timeoutPromise = new Promise((resolve) => 
+        setTimeout(() => resolve(null), 2000)
+      );
+      
+      const result = await Promise.race([syncPromise, timeoutPromise]);
+      if (result instanceof Response && !result.ok) {
+        console.warn("[Storage] Cloud notes sync failed:", result.status);
+        if (result.status === 401 || result.status === 403) setServerHealth(false);
+      }
+    } catch (e) {
+      console.warn("[Storage] Cloud notes sync error:", e);
+    }
+  }
 };
 
 export const saveGlobalNote = async (note: Note): Promise<void> => {
@@ -703,12 +727,28 @@ export const saveGlobalNote = async (note: Note): Promise<void> => {
     tx.onerror = () => reject(tx.error);
   });
 
+  // Sync to cloud with a timeout
   if (useCloudStorage && authFetch) {
-    authFetch('/api/notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(note)
-    }).catch(() => setServerHealth(false));
+    try {
+      const syncPromise = authFetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(note)
+      });
+      
+      // Wait up to 2 seconds for cloud sync
+      const timeoutPromise = new Promise((resolve) => 
+        setTimeout(() => resolve(null), 2000)
+      );
+      
+      const result = await Promise.race([syncPromise, timeoutPromise]);
+      if (result instanceof Response && !result.ok) {
+        console.warn("[Storage] Cloud note sync failed:", result.status);
+        if (result.status === 401 || result.status === 403) setServerHealth(false);
+      }
+    } catch (e) {
+      console.warn("[Storage] Cloud note sync error:", e);
+    }
   }
 };
 

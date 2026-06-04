@@ -24,6 +24,7 @@ import {
   saveGlobalNote,
   deleteGlobalNote,
   saveAllGlobalNotes,
+  getAllGlobalNotes,
   unpackProject,
   isCloudStorageActive
 } from '../services/storageService';
@@ -673,12 +674,23 @@ export function useProjectData(
     }
   };
 
+  const refreshGlobalNotes = useCallback(async () => {
+    try {
+      const notes = await getAllGlobalNotes();
+      setGlobalNotes(notes);
+      console.log('[useProjectData] Refreshed global notes, count:', notes.length);
+    } catch (err) {
+      console.error('[useProjectData] Failed to refresh global notes:', err);
+    }
+  }, [setGlobalNotes]);
+
   return {
     projectsMetadata,
     projectData,
     setProjectData,
     isRefreshingMetadata,
     refreshMetadata,
+    refreshGlobalNotes,
     updateProjectData,
     loadProject,
     handleManualSave,
