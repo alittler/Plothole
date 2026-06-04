@@ -216,35 +216,6 @@ const App: React.FC = () => {
     }
   }, [isLoaded, projectsMetadata, projectData, loadProject, pathname, router]);
 
-  // Sync URL path to currentView
-  useEffect(() => {
-    // Convert ViewType to URL-friendly path
-    const viewPath = currentView.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
-    const expectedPath = `/${viewPath}`;
-    
-    // Only update if pathname has changed and is different from expected
-    if (pathname !== expectedPath && pathname !== '/') {
-      // Check if the pathname represents a different view
-      const pathSegments = pathname.split('/').filter(Boolean);
-      const pathView = pathSegments[0];
-      if (pathView && pathView !== viewPath) {
-        // Convert URL path back to ViewType
-        const urlViewPath = pathView.split('-').map((segment, i) => 
-          i === 0 ? segment : segment.charAt(0).toUpperCase() + segment.slice(1)
-        ).join('');
-        
-        // Find matching ViewType (case-insensitive)
-        const matchingView = Object.values(ViewType).find(
-          v => v.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '') === pathView
-        );
-        
-        if (matchingView && matchingView !== currentView) {
-          setCurrentView(matchingView);
-        }
-      }
-    }
-  }, [pathname, currentView]);
-
   const viewContent = React.useMemo(() => {
     if (!isLoaded) return null;
 
