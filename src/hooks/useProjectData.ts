@@ -690,7 +690,6 @@ export function useProjectData(
     setProjectData,
     isRefreshingMetadata,
     refreshMetadata,
-    refreshGlobalNotes,
     updateProjectData,
     loadProject,
     handleManualSave,
