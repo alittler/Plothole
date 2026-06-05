@@ -278,60 +278,47 @@ Guidelines:
   }
 
   async brainstorm(prompt: string, context: string): Promise<string> {
-    try {
-      console.log('[NarrativeEngine] Starting brainstorm...');
-      console.log('[NarrativeEngine] API Base URL:', this.baseUrl);
-      console.log('[NarrativeEngine] Using model: google/gemini-2.0-flash-001');
-      
-      const response = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'HTTP-Referer': 'https://plothole.click',
-          'X-Title': 'Plothole Brainstorm',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.0-flash-001',
-          messages: [
-            {
-              role: 'system',
-              content: prompt
-            },
-            {
-              role: 'user',
-              content: context
-            }
-          ]
-        })
-      });
+    console.log('[NarrativeEngine] Starting brainstorm...');
+    console.log('[NarrativeEngine] API Base URL:', this.baseUrl);
+    console.log('[NarrativeEngine] Using model: google/gemini-2.0-flash-001');
+    
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'HTTP-Referer': 'https://plothole.click',
+        'X-Title': 'Plothole Brainstorm',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-001',
+        messages: [
+          {
+            role: 'system',
+            content: prompt
+          },
+          {
+            role: 'user',
+            content: context
+          }
+        ]
+      })
+    });
 
-      console.log('[NarrativeEngine] Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[NarrativeEngine] API Error Response:', errorText);
-        throw new Error(`Brainstorm API Error (${response.status}): ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log('[NarrativeEngine] Response received:', { 
-        choices: data.choices?.length,
-        hasContent: !!data.choices?.[0]?.message?.content 
-      });
-      
-      return data.choices?.[0]?.message?.content || "I couldn't generate any connections at this time.";
-    } catch (error: any) {
-      console.error('[NarrativeEngine] Brainstorm failed:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      // Return error message with more detail in development
-      const errorDetail = process.env.NODE_ENV === 'development' 
-        ? ` (${error.message})`
-        : '';
-      return `I'm sorry, my creative centers are offline. Please try again later.${errorDetail}`;
+    console.log('[NarrativeEngine] Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[NarrativeEngine] API Error Response:', errorText);
+      throw new Error(`Brainstorm API Error (${response.status}): ${errorText}`);
     }
+
+    const data = await response.json();
+    console.log('[NarrativeEngine] Response received:', { 
+      choices: data.choices?.length,
+      hasContent: !!data.choices?.[0]?.message?.content 
+    });
+    
+    return data.choices?.[0]?.message?.content || "I couldn't generate any connections at this time.";
   }
 }

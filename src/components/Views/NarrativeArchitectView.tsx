@@ -130,6 +130,10 @@ Return ONLY the JSON. Do not include prose, markdown formatting, or explanations
       
       const data = await response.json();
       
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
       let narrativeIndex: NarrativeIndex;
       if (typeof data.result === 'string') {
         // Clean markdown if AI included it
@@ -142,9 +146,9 @@ Return ONLY the JSON. Do not include prose, markdown formatting, or explanations
       }
 
       setResults(narrativeIndex);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to architect narrative index. Ensure your notes have clear content.');
+    } catch (err: any) {
+      console.error('Architect error:', err.message || err);
+      setError(err.message || 'Failed to architect narrative index. Ensure your notes have clear content.');
     } finally {
       setIsProcessing(false);
     }
