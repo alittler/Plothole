@@ -120,7 +120,16 @@ export const OutlineView: React.FC<OutlineViewProps> = ({
         })
       });
 
-      if (!response.ok) throw new Error('Failed to generate outline');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[OutlineView] API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`API Error (${response.status}): ${errorText}`);
+      }
+      
       const data = await response.json();
       
       if (data.error) {
@@ -155,7 +164,16 @@ export const OutlineView: React.FC<OutlineViewProps> = ({
         })
       });
 
-      if (!response.ok) throw new Error('Failed to generate connections');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[OutlineView] API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`API Error (${response.status}): ${errorText}`);
+      }
+      
       const data = await response.json();
       
       if (data.error) {
