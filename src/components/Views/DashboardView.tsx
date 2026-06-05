@@ -11,7 +11,11 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({ projectData, globalNotes, onBack }) => {
   const [exportFormat, setExportFormat] = useState<'json' | 'md' | 'txt'>('json');
 
-  const projectNotes = globalNotes;
+  // Only include notes that are tagged with the project ID or a matching tag
+  const projectNotes = globalNotes.filter(note => 
+    note.tags?.includes(projectData.id) || 
+    note.tags?.includes(projectData.title)
+  );
 
   const handleExport = () => {
     let content = '';

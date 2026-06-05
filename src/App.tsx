@@ -270,6 +270,9 @@ const App: React.FC = () => {
         return projectData ? <ManuscriptAnalyzerView 
           projectData={projectData}
           onBack={() => setCurrentView(ViewType.BOOKSHELF)}
+          onSaveCharacters={async (characters) => {
+            await updateProjectData({ characters });
+          }}
         /> : null;
 
       case ViewType.NOTEPAD:

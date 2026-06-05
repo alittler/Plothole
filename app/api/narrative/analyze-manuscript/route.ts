@@ -122,10 +122,39 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+    const analysisContent = data.choices[0].message.content;
     console.log('[ManuscriptAnalyzer] Analysis complete');
 
+    // Parse character data from markdown (extract ### Character Name entries)
+    const characters: any[] = [];
+    const characterRegex = /^### (.+?)$/gm;
+    let match;
+    
+    while ((match = characterRegex.exec(analysisContent)) !== null) {
+      const characterName = match[1].trim();
+      if (characterName) {
+        characters.push({
+          id: `char-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          name: characterName,
+          tier: 1, // Default tier, could be extracted from markdown too
+          species: 'Human',
+          ageCategory: 'Adult',
+          status: '',
+          goals: '',
+          relationships: [],
+          locations: [],
+          firstAppearance: '',
+          lastAppearance: '',
+          notes: [],
+          created: new Date().toISOString(),
+          modified: new Date().toISOString()
+        });
+      }
+    }
+
     return NextResponse.json({
-      analysis: data.choices[0].message.content,
+      analysis: analysisContent,
+      characters: characters,
       success: true,
     });
   } catch (error) {

@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { ProjectData } from '../../types';
-import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { ProjectData, Character } from '../../types';
+import { ArrowLeft, Loader2, AlertCircle, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface ManuscriptAnalyzerViewProps {
   projectData: ProjectData;
   onBack?: () => void;
+  onSaveCharacters?: (characters: Character[]) => Promise<void>;
 }
 
 export const ManuscriptAnalyzerView: React.FC<ManuscriptAnalyzerViewProps> = ({ 
   projectData, 
-  onBack 
+  onBack,
+  onSaveCharacters
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [extractedCharacters, setExtractedCharacters] = useState<Character[]>([]);
 
   useEffect(() => {
     analyzeManuscript();
@@ -49,6 +52,11 @@ export const ManuscriptAnalyzerView: React.FC<ManuscriptAnalyzerViewProps> = ({
 
       const data = await response.json();
       setAnalysis(data.analysis);
+      
+      // Parse and extract characters from the analysis markdown
+      if (data.characters && Array.isArray(data.characters)) {
+        setExtractedCharacters(data.characters);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
       console.error('Manuscript analysis error:', err);
@@ -134,13 +142,29 @@ export const ManuscriptAnalyzerView: React.FC<ManuscriptAnalyzerViewProps> = ({
                 {analysis}
               </ReactMarkdown>
               
-              <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+              <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 flex gap-4">
                 <button
                   onClick={analyzeManuscript}
                   className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20"
                 >
                   Re-analyze
                 </button>
+                {extractedCharacters.length > 0 && onSaveCharacters && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await onSaveCharacters(extractedCharacters);
+                        alert(`Saved ${extractedCharacters.length} characters to project!`);
+                      } catch (err) {
+                        alert(`Failed to save characters: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                      }
+                    }}
+                    className="px-6 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+                  >
+                    <Download size={16} />
+                    Save {extractedCharacters.length} Characters
+                  </button>
+                )}
               </div>
             </div>
           ) : (
