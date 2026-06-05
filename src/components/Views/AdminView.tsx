@@ -83,6 +83,10 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [scriptureSearchLoading, setScriptureSearchLoading] = useState(false);
   const [scriptureSearchError, setScriptureSearchError] = useState('');
 
+  // API Key Testing
+  const [apiTestResults, setApiTestResults] = useState<{ [key: string]: { status: string; message: string; timestamp: number } }>({});
+  const [apiTestLoading, setApiTestLoading] = useState<{ [key: string]: boolean }>({});
+
   React.useEffect(() => {
     fetch('/api/network-info')
       .then(res => safeResponseJson(res))
@@ -296,6 +300,53 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const allViews = Object.values(ViewType);
   const hiddenBottomNavItems = allViews.filter(v => !bottomNavOrder.includes(v) && v !== ViewType.RESEARCH);
 
+  // API Key Testing Functions
+  const testOpenRouterAPI = async () => {
+    setApiTestLoading({ ...apiTestLoading, openrouter: true });
+    try {
+      const response = await fetch('/api/narrative/brainstorm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: 'Say "API is working!"',
+          context: 'Test message'
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setApiTestResults({
+          ...apiTestResults,
+          openrouter: { 
+            status: 'success', 
+            message: 'OpenRouter API is working! Model: google/gemini-2.5-flash',
+            timestamp: Date.now()
+          }
+        });
+      } else {
+        const errorText = await response.text();
+        setApiTestResults({
+          ...apiTestResults,
+          openrouter: { 
+            status: 'error', 
+            message: `API Error (${response.status}): ${errorText.substring(0, 200)}`,
+            timestamp: Date.now()
+          }
+        });
+      }
+    } catch (err: any) {
+      setApiTestResults({
+        ...apiTestResults,
+        openrouter: { 
+          status: 'error', 
+          message: `Request failed: ${err.message}`,
+          timestamp: Date.now()
+        }
+      });
+    }
+    setApiTestLoading({ ...apiTestLoading, openrouter: false });
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case AdminTab.SYSTEM:
@@ -326,6 +377,62 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </div>
 
               <button onClick={() => onSaveSettings(settings)} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3"><Save size={20} /> Update Configuration</button>
+            </section>
+
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+              <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+                <div className="p-4 bg-rose-500 text-white rounded-2xl shadow-lg shadow-rose-500/20"><Wrench size={28} /></div>
+                <div><h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">API Key Testing</h2><p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Verify external service connections.</p></div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex-1">
+                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">OpenRouter API (Gemini Brainstorm)</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Tests google/gemini-2.5-flash model availability</p>
+                  </div>
+                  <button 
+                    onClick={testOpenRouterAPI}
+                    disabled={apiTestLoading.openrouter}
+                    className="ml-4 px-6 py-2 bg-rose-600 text-white rounded-xl font-bold uppercase text-xs hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                  >
+                    {apiTestLoading.openrouter ? <Loader2 size={16} className="animate-spin" /> : <Wrench size={16} />}
+                    {apiTestLoading.openrouter ? 'Testing...' : 'Test'}
+                  </button>
+                </div>
+                
+                {apiTestResults.openrouter && (
+                  <div className={`p-4 rounded-2xl border ${
+                    apiTestResults.openrouter.status === 'success' 
+                      ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' 
+                      : 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800'
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      {apiTestResults.openrouter.status === 'success' ? (
+                        <Check className="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-1" size={20} />
+                      ) : (
+                        <AlertCircle className="text-rose-600 dark:text-rose-400 flex-shrink-0 mt-1" size={20} />
+                      )}
+                      <div className="flex-1">
+                        <p className={`font-black uppercase text-sm ${
+                          apiTestResults.openrouter.status === 'success' 
+                            ? 'text-emerald-900 dark:text-emerald-100' 
+                            : 'text-rose-900 dark:text-rose-100'
+                        }`}>
+                          {apiTestResults.openrouter.status === 'success' ? 'Success' : 'Failed'}
+                        </p>
+                        <p className={`text-sm mt-1 font-mono ${
+                          apiTestResults.openrouter.status === 'success' 
+                            ? 'text-emerald-800 dark:text-emerald-200' 
+                            : 'text-rose-800 dark:text-rose-200'
+                        }`}>
+                          {apiTestResults.openrouter.message}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </section>
 
             <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
