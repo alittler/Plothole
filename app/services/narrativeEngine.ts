@@ -221,7 +221,7 @@ export class NarrativeEngine {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.0-flash-001',
+          model: 'google/gemini-2.5-flash',
           messages: [
             {
               role: 'system',
@@ -280,7 +280,7 @@ Guidelines:
   async brainstorm(prompt: string, context: string): Promise<string> {
     console.log('[NarrativeEngine] Starting brainstorm...');
     console.log('[NarrativeEngine] API Base URL:', this.baseUrl);
-    console.log('[NarrativeEngine] Using model: google/gemini-2.0-flash-001');
+    console.log('[NarrativeEngine] Using model: google/gemini-2.5-flash');
     
     const response = await fetch(this.baseUrl, {
       method: 'POST',

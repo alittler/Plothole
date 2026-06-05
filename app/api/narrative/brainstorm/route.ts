@@ -9,15 +9,22 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
+      console.error('[Brainstorm API] OPENROUTER_API_KEY not configured');
       return NextResponse.json({ error: 'OPENROUTER_API_KEY not configured' }, { status: 500 });
     }
 
+    console.log('[Brainstorm API] API Key configured, calling engine...');
     const engine = new NarrativeEngine(apiKey);
     const result = await engine.brainstorm(prompt, context);
 
+    console.log('[Brainstorm API] Got result, returning...');
     return NextResponse.json({ result });
   } catch (error: any) {
-    console.error('[Brainstorm API] Error:', error);
+    console.error('[Brainstorm API] Caught error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return NextResponse.json({ error: error.message || 'Brainstorm failed' }, { status: 500 });
   }
 }
