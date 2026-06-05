@@ -126,6 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     // { id: ViewType.OUTLINE, label: 'Outline', icon: Layout, projectOnly: true },
     // { id: ViewType.NARRATIVE_ARCHITECT, label: 'Architect', icon: GitMerge, projectOnly: true },
     { id: ViewType.WORLD_HUB, label: 'Atlas & Map', icon: Map, projectOnly: true },
+    { id: ViewType.CHARACTERS, label: 'Characters', icon: Users, projectOnly: true },
     { id: ViewType.BOOKSHELF, label: 'Library', icon: Book, always: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
@@ -140,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
        {
          title: 'World',
-         items: allNavItems.filter(i => [ViewType.WORLD_HUB].includes(i.id))
+         items: allNavItems.filter(i => [ViewType.WORLD_HUB, ViewType.CHARACTERS].includes(i.id))
        },
        {
          title: 'System',
