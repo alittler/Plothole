@@ -97,7 +97,11 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
               return (
                 <div
                   key={project.id}
-                  className={`h-64 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border overflow-hidden flex flex-col group hover:shadow-md transition-all ${isActive ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-500/50'}`}
+                  className={`h-64 rounded-2xl shadow-sm border overflow-hidden flex flex-col group hover:shadow-md transition-all ${
+                    project.id === 'global-notebook'
+                      ? 'paper-texture border-amber-300/30 dark:border-amber-900/30'
+                      : `bg-white dark:bg-slate-900 ${isActive ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-500/50'}`
+                  }`}
                 >
                   <div 
                     onClick={() => onSelectProject(project.id)}
