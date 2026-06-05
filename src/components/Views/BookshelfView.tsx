@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ProjectMetadata, User } from '../../types';
+import { ProjectMetadata, User, Note } from '../../types';
 import { Plus, Trash2, BookOpen, Zap, Sparkles, Cloud, CloudOff, Database, Edit2, X, Layout } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { CardActions } from '../ui/CardActions';
@@ -8,6 +8,7 @@ interface BookshelfViewProps {
   projects: ProjectMetadata[];
   activeProjectId: string;
   currentUser: User;
+  globalNotes?: Note[];
   onSelectProject: (id: string) => void;
   onCreateProject: (title: string, author: string, useSample: boolean, shortName?: string) => void;
   onUploadProject: (file: File) => void;
@@ -20,7 +21,7 @@ interface BookshelfViewProps {
 }
 
 export const BookshelfView: React.FC<BookshelfViewProps> = ({
-  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onEditProject, onDeselectProject, onRefreshMetadata, isAnalyzing, currentUser, fetchWithAuth
+  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onEditProject, onDeselectProject, onRefreshMetadata, isAnalyzing, currentUser, fetchWithAuth, globalNotes = []
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -125,14 +126,29 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                       <p className="text-sm text-slate-500 dark:text-slate-400 italic">by {project.author}</p>
                     </div>
                     <div className="space-y-2">
-                      <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400">
-                        <span>{project.characterCount} Characters</span>
-                        <span>{(project.wordCount || 0).toLocaleString()} Words</span>
-                      </div>
-                      <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-indigo-500/60">
-                        <span>{project.commitCount} Commits</span>
-                        <span>{project.locationCount} Locations</span>
-                      </div>
+                      {project.id === 'global-notebook' ? (
+                        <>
+                          <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400">
+                            <span>{globalNotes.length} Notes</span>
+                          </div>
+                          {globalNotes.length > 0 && (
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 italic">
+                              Last: {new Date(Math.max(...globalNotes.map(n => new Date(n.timestamp || 0).getTime()))).toLocaleDateString()}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-slate-400">
+                            <span>{project.characterCount} Characters</span>
+                            <span>{(project.wordCount || 0).toLocaleString()} Words</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-indigo-500/60">
+                            <span>{project.commitCount} Commits</span>
+                            <span>{project.locationCount} Locations</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className={`p-4 border-t flex items-center justify-between gap-2 ${isActive ? 'bg-indigo-50/50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800'}`}>

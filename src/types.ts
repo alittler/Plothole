@@ -1,5 +1,6 @@
 export enum ViewType {
   BOOKSHELF = 'Bookshelf',
+  DASHBOARD = 'Dashboard',
   NOTEPAD = 'Notepad',
   CHARACTERS = 'Characters',
   MAP = 'Map',

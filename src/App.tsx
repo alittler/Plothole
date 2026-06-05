@@ -62,6 +62,7 @@ import { UploadProminentModal } from './components/ui/UploadProminentModal';
 
 // Dynamic View Imports
 const BookshelfView = dynamic(() => import('./components/Views/BookshelfView').then(mod => mod.BookshelfView), { ssr: false });
+const DashboardView = dynamic(() => import('./components/Views/DashboardView').then(mod => mod.DashboardView), { ssr: false });
 const ResearchHubView = dynamic(() => import('./components/Views/ResearchHubView').then(mod => mod.ResearchHubView), { ssr: false });
 const PlotHubView = dynamic(() => import('./components/Views/PlotHubView').then(mod => mod.PlotHubView), { ssr: false });
 const WorldSystemView = dynamic(() => import('./components/Views/WorldSystemView').then(mod => mod.WorldSystemView), { ssr: false });
@@ -234,11 +235,12 @@ const App: React.FC = () => {
           projects={projectsMetadata}
           activeProjectId={projectData?.id || ''}
           currentUser={currentUser}
+          globalNotes={globalNotes}
           onRefreshMetadata={refreshMetadata}
           fetchWithAuth={fetchWithAuth}
           onSelectProject={async (id) => {
             await loadProject(id);
-            setCurrentView(ViewType.NOTEPAD);
+            setCurrentView(ViewType.DASHBOARD);
           }}
           onDeselectProject={() => setProjectData(null)}
           onCreateProject={async (title, author, useSample, shortName) => { 
@@ -253,6 +255,13 @@ const App: React.FC = () => {
           onEditProject={handleEditProject}
           isAnalyzing={isAnalyzing}
         />;
+
+      case ViewType.DASHBOARD:
+        return projectData ? <DashboardView 
+          projectData={projectData} 
+          globalNotes={globalNotes}
+          onBack={() => setCurrentView(ViewType.BOOKSHELF)}
+        /> : null;
 
       case ViewType.NOTEPAD:
       case ViewType.RESEARCH:
