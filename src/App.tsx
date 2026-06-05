@@ -64,9 +64,7 @@ import { UploadProminentModal } from './components/ui/UploadProminentModal';
 const BookshelfView = dynamic(() => import('./components/Views/BookshelfView').then(mod => mod.BookshelfView), { ssr: false });
 const DashboardView = dynamic(() => import('./components/Views/DashboardView').then(mod => mod.DashboardView), { ssr: false });
 const ResearchHubView = dynamic(() => import('./components/Views/ResearchHubView').then(mod => mod.ResearchHubView), { ssr: false });
-const PlotHubView = dynamic(() => import('./components/Views/PlotHubView').then(mod => mod.PlotHubView), { ssr: false });
 const WorldSystemView = dynamic(() => import('./components/Views/WorldSystemView').then(mod => mod.WorldSystemView), { ssr: false });
-const CodexHubView = dynamic(() => import('./components/Views/CodexHubView').then(mod => mod.CodexHubView), { ssr: false });
 const NarrativeArchitectView = dynamic(() => import('./components/Views/NarrativeArchitectView').then(mod => mod.NarrativeArchitectView), { ssr: false });
 const OutlineView = dynamic(() => import('./components/Views/OutlineView').then(mod => mod.OutlineView), { ssr: false });
 const ToolboxView = dynamic(() => import('./components/Views/ToolboxView').then(mod => mod.ToolboxView), { ssr: false });
@@ -330,21 +328,6 @@ const App: React.FC = () => {
           />;
         }
 
-      case ViewType.PLOT_HUB:
-      case ViewType.TIMELINE:
-        return projectData ? <PlotHubView 
-          currentView={currentView} 
-          onChangeView={setCurrentView} 
-          data={projectData} 
-          onLinkClick={handleLinkClick} 
-          onAddTimelineEvent={(e) => updateProjectData({ timeline: [...projectData.timeline, e] })} 
-          onUpdateTimelineEvent={(e) => updateProjectData({ timeline: projectData.timeline.map(ev => ev.id === e.id ? e : ev) })} 
-          onAnalyzePlot={() => {}} 
-          onExtractSoftAnchors={handleExtractSoftAnchors} 
-          onScanContinuity={handleScanContinuity} 
-          onUpdateProject={updateProjectData} 
-          isAnalyzing={isAnalyzing} 
-        /> : null;
 
       case ViewType.WORLD_HUB:
       case ViewType.MAP:
@@ -382,9 +365,6 @@ const App: React.FC = () => {
           projectsMetadata={projectsMetadata}
         />;
 
-      case ViewType.CHARACTERS:
-      case ViewType.CODEX_HUB:
-        return projectData ? <CodexHubView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : null;
 
       // case ViewType.NARRATIVE_ARCHITECT:
       //   return projectData ? <NarrativeArchitectView projectData={projectData} globalNotes={globalNotes} onUpdateProject={updateProjectData} /> : null;

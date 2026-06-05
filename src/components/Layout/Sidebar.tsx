@@ -125,9 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewType.RESEARCH, label: 'Notebook', icon: Zap, always: true },
     // { id: ViewType.OUTLINE, label: 'Outline', icon: Layout, projectOnly: true },
     // { id: ViewType.NARRATIVE_ARCHITECT, label: 'Architect', icon: GitMerge, projectOnly: true },
-    { id: ViewType.CODEX_HUB, label: 'Characters & Lore', icon: Users, projectOnly: true },
     { id: ViewType.WORLD_HUB, label: 'Atlas & Map', icon: Map, projectOnly: true },
-    { id: ViewType.PLOT_HUB, label: 'Timeline & Plot', icon: Clock, projectOnly: true },
     { id: ViewType.BOOKSHELF, label: 'Library', icon: Book, always: true },
     { id: ViewType.TOOLBOX, label: 'Toolbox', icon: Wrench, always: true },
     { id: ViewType.SETTINGS, label: 'Settings', icon: Settings, always: true },
@@ -140,18 +138,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         title: 'Notebook & Story',
         items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.BOOKSHELF].includes(i.id))
       },
-      {
-        title: 'Codex & Lore',
-        items: allNavItems.filter(i => [ViewType.CODEX_HUB].includes(i.id))
-      },
-      {
-        title: 'Atlas & Timeline',
-        items: allNavItems.filter(i => [ViewType.WORLD_HUB, ViewType.PLOT_HUB].includes(i.id))
-      },
-      {
-        title: 'System',
-        items: allNavItems.filter(i => [ViewType.TOOLBOX, ViewType.SETTINGS, ViewType.ADMIN].includes(i.id))
-      }
+       {
+         title: 'World',
+         items: allNavItems.filter(i => [ViewType.WORLD_HUB].includes(i.id))
+       },
+       {
+         title: 'System',
+         items: allNavItems.filter(i => [ViewType.TOOLBOX, ViewType.SETTINGS, ViewType.ADMIN].includes(i.id))
+       }
     ];
 
     if (!sidebarOrder) return baseSections;
