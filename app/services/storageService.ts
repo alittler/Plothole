@@ -875,7 +875,7 @@ export const exportFullArchive = async (globalNotes: Note[]) => {
 };
 
 /**
- * Unpacks a .plothole ZIP blob into ProjectData
+ * Unpacks a .plothole ZIP blob into ProjectData, or creates ProjectData from txt/md files
  */
 export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
   const [JSZip, yaml] = await Promise.all([
@@ -883,7 +883,65 @@ export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
     import('js-yaml').then(m => m.default)
   ]);
   
-  const zip = await JSZip.loadAsync(blob);
+  // Determine file type by looking at name or trying to parse as zip
+  const fileName = (blob as any).name || '';
+  const isTxtFile = fileName.endsWith('.txt');
+  const isMdFile = fileName.endsWith('.md');
+  
+  // If it's a text or markdown file, create a new project from its content
+  if (isTxtFile || isMdFile) {
+    const content = await blob.text();
+    const projectTitle = fileName.replace(/\.(txt|md)$/i, '');
+    const now = new Date().toISOString();
+    const projectId = `proj-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    
+    const manifest: ProjectManifest = {
+      id: projectId,
+      title: projectTitle,
+      author: 'Imported',
+      version: '1.0',
+      created_at: now,
+      last_modified: now,
+      summary: `Imported from ${fileName}`,
+      counts: {
+        entities: 0,
+        tier1: 0,
+        tier2: 0,
+        tier3: 0,
+        assets: 0,
+        word_count: content.split(/\s+/).length
+      },
+      referenced_notes: []
+    };
+    
+    return {
+      id: projectId,
+      title: projectTitle,
+      author: 'Imported',
+      summary: `Imported from ${fileName}`,
+      manuscript: content,
+      lastModified: Date.now(),
+      characters: [],
+      locations: [],
+      timeline: [],
+      relationships: [],
+      notes: [],
+      themes: [],
+      chapters: [],
+      manifest,
+      entities: [],
+      history_diff: '',
+      assets: []
+    };
+  }
+  
+  // Otherwise try to unpack as zip
+  let zip;
+  try {
+    zip = await JSZip.loadAsync(blob);
+  } catch (err) {
+    throw new Error(`Failed to read file. Expected .zip, .txt, or .md file. Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+  }
   
   const manifestRaw = await zip.file('manifest.yaml')?.async('text');
   const manifest = yaml.load(manifestRaw || '') as ProjectManifest;
