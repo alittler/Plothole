@@ -123,8 +123,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const allNavItems: NavItem[] = [
     { id: ViewType.RESEARCH, label: 'Notebook', icon: Zap, always: true },
-    { id: ViewType.OUTLINE, label: 'Outline', icon: Layout, projectOnly: true },
-    { id: ViewType.NARRATIVE_ARCHITECT, label: 'Architect', icon: GitMerge, projectOnly: true },
+    // { id: ViewType.OUTLINE, label: 'Outline', icon: Layout, projectOnly: true },
+    // { id: ViewType.NARRATIVE_ARCHITECT, label: 'Architect', icon: GitMerge, projectOnly: true },
     { id: ViewType.CODEX_HUB, label: 'Characters & Lore', icon: Users, projectOnly: true },
     { id: ViewType.WORLD_HUB, label: 'Atlas & Map', icon: Map, projectOnly: true },
     { id: ViewType.PLOT_HUB, label: 'Timeline & Plot', icon: Clock, projectOnly: true },
@@ -138,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const baseSections: SidebarSection[] = [
       {
         title: 'Notebook & Story',
-        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.BOOKSHELF, ViewType.OUTLINE, ViewType.NARRATIVE_ARCHITECT].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.RESEARCH, ViewType.BOOKSHELF].includes(i.id))
       },
       {
         title: 'Codex & Lore',

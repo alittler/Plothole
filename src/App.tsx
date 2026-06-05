@@ -377,11 +377,11 @@ const App: React.FC = () => {
       case ViewType.CODEX_HUB:
         return projectData ? <CodexHubView projectData={projectData} onLinkClick={handleLinkClick} onUpdateProject={updateProjectData} /> : null;
 
-      case ViewType.NARRATIVE_ARCHITECT:
-        return projectData ? <NarrativeArchitectView projectData={projectData} globalNotes={globalNotes} onUpdateProject={updateProjectData} /> : null;
+      // case ViewType.NARRATIVE_ARCHITECT:
+      //   return projectData ? <NarrativeArchitectView projectData={projectData} globalNotes={globalNotes} onUpdateProject={updateProjectData} /> : null;
 
-      case ViewType.OUTLINE:
-        return projectData ? <OutlineView projectData={projectData} globalNotes={globalNotes} onUpdateProject={updateProjectData} /> : null;
+      // case ViewType.OUTLINE:
+      //   return projectData ? <OutlineView projectData={projectData} globalNotes={globalNotes} onUpdateProject={updateProjectData} /> : null;
 
       case ViewType.TOOLBOX:
         return projectData ? <ToolboxView data={projectData} defaultResources={appSettings.defaultToolboxLinks || []} onUpdateProject={updateProjectData} /> : null;
