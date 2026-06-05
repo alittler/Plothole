@@ -10,6 +10,7 @@ interface BookshelfViewProps {
   currentUser: User;
   globalNotes?: Note[];
   onSelectProject: (id: string) => void;
+  onAnalyzeManuscript?: (id: string) => void;
   onCreateProject: (title: string, author: string, useSample: boolean, shortName?: string) => void;
   onUploadProject: (file: File) => void;
   onDeleteProject: (id: string) => void;
@@ -21,7 +22,7 @@ interface BookshelfViewProps {
 }
 
 export const BookshelfView: React.FC<BookshelfViewProps> = ({
-  projects, activeProjectId, onSelectProject, onCreateProject, onUploadProject, onDeleteProject, onEditProject, onDeselectProject, onRefreshMetadata, isAnalyzing, currentUser, fetchWithAuth, globalNotes = []
+  projects, activeProjectId, onSelectProject, onAnalyzeManuscript, onCreateProject, onUploadProject, onDeleteProject, onEditProject, onDeselectProject, onRefreshMetadata, isAnalyzing, currentUser, fetchWithAuth, globalNotes = []
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -159,6 +160,16 @@ export const BookshelfView: React.FC<BookshelfViewProps> = ({
                     <div className="flex items-center gap-2">
                       {project.id !== 'global-notebook' && (
                         <>
+                           <button
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               onAnalyzeManuscript?.(project.id);
+                             }}
+                             className="p-2 text-slate-400 hover:text-amber-500 transition-colors"
+                             title="Analyze Manuscript"
+                           >
+                             <Zap size={18} />
+                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
