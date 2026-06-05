@@ -122,11 +122,8 @@ export const OutlineView: React.FC<OutlineViewProps> = ({
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[OutlineView] API Error Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText
-        });
+        console.error('[OutlineView] Outline API Error Status:', response.status);
+        console.error('[OutlineView] Outline API Error Body:', errorText);
         throw new Error(`API Error (${response.status}): ${errorText}`);
       }
       
@@ -166,11 +163,8 @@ export const OutlineView: React.FC<OutlineViewProps> = ({
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[OutlineView] API Error Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText
-        });
+        console.error('[OutlineView] Connections API Error Status:', response.status);
+        console.error('[OutlineView] Connections API Error Body:', errorText);
         throw new Error(`API Error (${response.status}): ${errorText}`);
       }
       
