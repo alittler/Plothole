@@ -122,9 +122,14 @@ export const OutlineView: React.FC<OutlineViewProps> = ({
 
       if (!response.ok) throw new Error('Failed to generate outline');
       const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
       setOutline(data.result);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Outline generation error:', err.message || err);
     } finally {
       setIsProcessing(false);
     }
@@ -153,6 +158,10 @@ export const OutlineView: React.FC<OutlineViewProps> = ({
       if (!response.ok) throw new Error('Failed to generate connections');
       const data = await response.json();
       
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
       let parsed;
       if (typeof data.result === 'string') {
         const jsonStr = data.result.replace(/```json\n?|\n?```/g, '').trim();
@@ -161,8 +170,8 @@ export const OutlineView: React.FC<OutlineViewProps> = ({
         parsed = data.result;
       }
       setConnections(parsed);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Connections generation error:', err.message || err);
     } finally {
       setIsPlanning(false);
     }
