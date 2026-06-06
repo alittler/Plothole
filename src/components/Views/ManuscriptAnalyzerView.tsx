@@ -20,10 +20,12 @@ export const ManuscriptAnalyzerView: React.FC<ManuscriptAnalyzerViewProps> = ({
   const [extractedCharacters, setExtractedCharacters] = useState<Character[]>([]);
 
   useEffect(() => {
+    console.log('[ManuscriptAnalyzerView] Component mounted, projectData.id:', projectData.id);
     analyzeManuscript();
   }, [projectData.id]);
 
   const analyzeManuscript = async () => {
+    console.log('[ManuscriptAnalyzerView] analyzeManuscript called');
     setIsAnalyzing(true);
     setError('');
     setAnalysis('');
@@ -39,6 +41,7 @@ export const ManuscriptAnalyzerView: React.FC<ManuscriptAnalyzerViewProps> = ({
         return;
       }
 
+      console.log('[ManuscriptAnalyzerView] Calling API with manuscript text length:', manuscriptText.length);
       const response = await fetch('/api/narrative/analyze-manuscript', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
