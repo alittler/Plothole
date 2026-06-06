@@ -463,9 +463,11 @@ export function useProjectData(
       setProjectData(project);
       await saveProjectData(project);
       await refreshMetadata();
+      return project;
     } catch (err: any) {
       console.error("Upload failed", err);
       alert(`Failed to upload project: ${err.message}`);
+      return null;
     } finally {
       removeTask('uploading-project');
     }

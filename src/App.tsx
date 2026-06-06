@@ -254,7 +254,13 @@ const App: React.FC = () => {
               setCurrentView(ViewType.NOTEPAD);
             }
           }}
-          onUploadProject={handleUploadProject}
+          onUploadProject={async (file) => {
+            const project = await handleUploadProject(file);
+            if (project) {
+              await loadProject(project.id);
+              setCurrentView(ViewType.MANUSCRIPT_ANALYZER);
+            }
+          }}
           onDeleteProject={handleDeleteProject}
           onEditProject={handleEditProject}
           isAnalyzing={isAnalyzing}

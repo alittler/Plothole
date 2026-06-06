@@ -39,7 +39,7 @@ interface ResearchHubViewProps {
   isEmbedded?: boolean;
   // Bookshelf Props
   onCreateProject?: (title: string, author: string, useSample: boolean, shortName?: string) => Promise<any>;
-  onUploadProject?: (file: File) => Promise<void>;
+  onUploadProject?: (file: File) => Promise<ProjectData | null>;
   onDeleteProject?: (id: string) => Promise<void>;
   onSelectProject?: (id: string) => Promise<any>;
   isAnalyzing?: boolean;
