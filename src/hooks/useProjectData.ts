@@ -208,7 +208,7 @@ export function useProjectData(
       // Add a timeout to getAllProjectsMetadata to prevent hanging
       const metadataPromise = getAllProjectsMetadata();
       const timeoutPromise = new Promise<ProjectMetadata[]>((_, reject) => 
-        setTimeout(() => reject(new Error('Database timeout')), 5000)
+        setTimeout(() => reject(new Error('Database timeout')), 15000)
       );
       
       meta = await Promise.race([metadataPromise, timeoutPromise]);
