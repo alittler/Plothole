@@ -124,6 +124,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     const analysisContent = data.choices[0].message.content;
     console.log('[ManuscriptAnalyzer] Analysis complete');
+    console.log('[ManuscriptAnalyzer] First 500 chars of analysis:', analysisContent.substring(0, 500));
 
     // Parse character data from markdown (extract ### Character Name entries)
     const characters: any[] = [];
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest) {
     while ((match = characterRegex.exec(analysisContent)) !== null) {
       const characterName = match[1].trim();
       if (characterName) {
+        console.log('[ManuscriptAnalyzer] Extracted character:', characterName);
         characters.push({
           id: `char-${Date.now()}-${Math.random().toString(36).substring(7)}`,
           name: characterName,
@@ -148,6 +150,8 @@ export async function POST(request: NextRequest) {
         } as any);
       }
     }
+    
+    console.log('[ManuscriptAnalyzer] Total characters extracted:', characters.length);
 
     return NextResponse.json({
       analysis: analysisContent,
