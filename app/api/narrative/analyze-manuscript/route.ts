@@ -136,19 +136,16 @@ export async function POST(request: NextRequest) {
         characters.push({
           id: `char-${Date.now()}-${Math.random().toString(36).substring(7)}`,
           name: characterName,
-          tier: 1, // Default tier, could be extracted from markdown too
-          species: 'Human',
-          ageCategory: 'Adult',
-          status: '',
-          goals: '',
-          relationships: [],
-          locations: [],
-          firstAppearance: '',
-          lastAppearance: '',
-          notes: [],
-          created: new Date().toISOString(),
-          modified: new Date().toISOString()
-        });
+          role: 'Character',
+          tier: 1,
+          aliases: [],
+          traits: [],
+          motivation: '',
+          description: '',
+          physical_description: '',
+          source: 'ai_generated',
+          field_notes: []
+        } as any);
       }
     }
 

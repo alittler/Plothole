@@ -20,7 +20,6 @@ const DictionaryView = dynamic(() => import('./DictionaryView').then(mod => mod.
 const InventoryView = dynamic(() => import('./InventoryView').then(mod => mod.InventoryView), { ssr: false });
 const LocationsListView = dynamic(() => import('./LocationsListView').then(mod => mod.LocationsListView), { ssr: false });
 const EncyclopediaView = dynamic(() => import('./EncyclopediaView').then(mod => mod.EncyclopediaView), { ssr: false });
-const CharactersView = dynamic(() => import('./CharactersView').then(mod => mod.CharactersView), { ssr: false });
 
 interface CodexHubViewProps {
   projectData: ProjectData;
@@ -29,7 +28,6 @@ interface CodexHubViewProps {
 }
 
 export enum CodexTab {
-  CHARACTERS = 'Characters',
   ENCYCLOPEDIA = 'Encyclopedia',
   BESTIARY = 'Bestiary',
   LEXICON = 'Lexicon',
@@ -39,19 +37,11 @@ export enum CodexTab {
 }
 
 export const CodexHubView: React.FC<CodexHubViewProps> = ({ projectData, onLinkClick, onUpdateProject }) => {
-  const [activeTab, setActiveTab] = React.useState<CodexTab>(CodexTab.CHARACTERS);
+  const [activeTab, setActiveTab] = React.useState<CodexTab>(CodexTab.ENCYCLOPEDIA);
 
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case CodexTab.CHARACTERS:
-        return <CharactersView 
-          data={projectData} 
-          onUpdateCharacter={(c) => onUpdateProject({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
-          onAddCharacter={(c) => onUpdateProject({ characters: [...projectData.characters, c] })}
-          onDeleteCharacter={(id) => onUpdateProject({ characters: projectData.characters.filter(char => char.id !== id) })}
-          onLinkClick={onLinkClick}
-        />;
       case CodexTab.BESTIARY:
         return <BestiaryView projectData={projectData} onLinkClick={onLinkClick} onUpdateProject={onUpdateProject} />;
       case CodexTab.LEXICON:
@@ -68,7 +58,6 @@ export const CodexHubView: React.FC<CodexHubViewProps> = ({ projectData, onLinkC
 
   const getTabIcon = (tab: CodexTab) => {
     switch (tab) {
-      case CodexTab.CHARACTERS: return Users;
       case CodexTab.ENCYCLOPEDIA: return Book;
       case CodexTab.BESTIARY: return Wand2;
       case CodexTab.LEXICON: return BookMarked;

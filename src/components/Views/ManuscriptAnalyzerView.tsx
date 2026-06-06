@@ -55,7 +55,10 @@ export const ManuscriptAnalyzerView: React.FC<ManuscriptAnalyzerViewProps> = ({
       
       // Parse and extract characters from the analysis markdown
       if (data.characters && Array.isArray(data.characters)) {
+        console.log('[ManuscriptAnalyzer] Extracted characters:', data.characters);
         setExtractedCharacters(data.characters);
+      } else {
+        console.log('[ManuscriptAnalyzer] No characters in response:', data);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
@@ -153,9 +156,12 @@ export const ManuscriptAnalyzerView: React.FC<ManuscriptAnalyzerViewProps> = ({
                   <button
                     onClick={async () => {
                       try {
+                        console.log('[ManuscriptAnalyzer] Saving characters:', extractedCharacters);
                         await onSaveCharacters(extractedCharacters);
+                        console.log('[ManuscriptAnalyzer] Characters saved successfully');
                         alert(`Saved ${extractedCharacters.length} characters to project!`);
                       } catch (err) {
+                        console.error('[ManuscriptAnalyzer] Failed to save characters:', err);
                         alert(`Failed to save characters: ${err instanceof Error ? err.message : 'Unknown error'}`);
                       }
                     }}

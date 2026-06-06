@@ -69,7 +69,6 @@ const WorldSystemView = dynamic(() => import('./components/Views/WorldSystemView
 const NarrativeArchitectView = dynamic(() => import('./components/Views/NarrativeArchitectView').then(mod => mod.NarrativeArchitectView), { ssr: false });
 const OutlineView = dynamic(() => import('./components/Views/OutlineView').then(mod => mod.OutlineView), { ssr: false });
 const ToolboxView = dynamic(() => import('./components/Views/ToolboxView').then(mod => mod.ToolboxView), { ssr: false });
-const CharactersView = dynamic(() => import('./components/Views/CharactersView').then(mod => mod.CharactersView), { ssr: false });
 const AdminView = dynamic(() => import('./components/Views/AdminView').then(mod => mod.AdminView), { ssr: false });
 const SettingsView = dynamic(() => import('./components/Views/SettingsView').then(mod => mod.SettingsView), { ssr: false });
 
@@ -272,7 +271,9 @@ const App: React.FC = () => {
           projectData={projectData}
           onBack={() => setCurrentView(ViewType.BOOKSHELF)}
           onSaveCharacters={async (characters) => {
+            console.log('[App] onSaveCharacters called with:', characters);
             await updateProjectData({ characters });
+            console.log('[App] updateProjectData completed, projectData now has:', projectData.characters?.length);
           }}
         /> : null;
 
@@ -389,16 +390,6 @@ const App: React.FC = () => {
 
       case ViewType.TOOLBOX:
         return projectData ? <ToolboxView data={projectData} defaultResources={appSettings.defaultToolboxLinks || []} onUpdateProject={updateProjectData} /> : null;
-
-      case ViewType.CHARACTERS:
-        if (!projectData) return null;
-        return <CharactersView
-          data={projectData}
-          onAddCharacter={(c) => updateProjectData({ characters: [...(projectData.characters || []), c] })}
-          onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
-          onDeleteCharacter={(id) => updateProjectData({ characters: projectData.characters.filter(c => c.id !== id) })}
-          onLinkClick={handleLinkClick}
-        />;
 
       case ViewType.ADMIN:
         return <AdminView
