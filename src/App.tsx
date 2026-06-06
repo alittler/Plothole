@@ -69,6 +69,7 @@ const WorldSystemView = dynamic(() => import('./components/Views/WorldSystemView
 const NarrativeArchitectView = dynamic(() => import('./components/Views/NarrativeArchitectView').then(mod => mod.NarrativeArchitectView), { ssr: false });
 const OutlineView = dynamic(() => import('./components/Views/OutlineView').then(mod => mod.OutlineView), { ssr: false });
 const ToolboxView = dynamic(() => import('./components/Views/ToolboxView').then(mod => mod.ToolboxView), { ssr: false });
+const CharactersView = dynamic(() => import('./components/Views/CharactersView').then(mod => mod.CharactersView), { ssr: false });
 const AdminView = dynamic(() => import('./components/Views/AdminView').then(mod => mod.AdminView), { ssr: false });
 const SettingsView = dynamic(() => import('./components/Views/SettingsView').then(mod => mod.SettingsView), { ssr: false });
 
@@ -387,6 +388,16 @@ const App: React.FC = () => {
 
       // case ViewType.OUTLINE:
       //   return projectData ? <OutlineView projectData={projectData} globalNotes={globalNotes} onUpdateProject={updateProjectData} /> : null;
+
+      case ViewType.CHARACTERS:
+        if (!projectData) return null;
+        return <CharactersView
+          data={projectData}
+          onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
+          onAddCharacter={(c) => updateProjectData({ characters: [...(projectData.characters || []), c] })}
+          onDeleteCharacter={(id) => updateProjectData({ characters: (projectData.characters || []).filter(c => c.id !== id) })}
+          onLinkClick={handleLinkClick}
+        />;
 
       case ViewType.TOOLBOX:
         return projectData ? <ToolboxView data={projectData} defaultResources={appSettings.defaultToolboxLinks || []} onUpdateProject={updateProjectData} /> : null;

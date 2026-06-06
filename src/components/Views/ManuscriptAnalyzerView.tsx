@@ -57,6 +57,15 @@ export const ManuscriptAnalyzerView: React.FC<ManuscriptAnalyzerViewProps> = ({
       if (data.characters && Array.isArray(data.characters)) {
         console.log('[ManuscriptAnalyzer] Extracted characters:', data.characters);
         setExtractedCharacters(data.characters);
+        // Auto-save characters immediately
+        if (onSaveCharacters) {
+          try {
+            await onSaveCharacters(data.characters);
+            console.log('[ManuscriptAnalyzer] Characters auto-saved');
+          } catch (err) {
+            console.error('[ManuscriptAnalyzer] Failed to auto-save characters:', err);
+          }
+        }
       } else {
         console.log('[ManuscriptAnalyzer] No characters in response:', data);
       }
