@@ -268,20 +268,36 @@ const App: React.FC = () => {
         />;
 
       case ViewType.DASHBOARD:
-        return projectData ? <DashboardView 
-          projectData={projectData} 
+        return projectData ? <DashboardView
+          projectData={projectData}
           globalNotes={globalNotes}
           onBack={() => setCurrentView(ViewType.BOOKSHELF)}
+          onNavigate={setCurrentView}
         /> : null;
-
       case ViewType.MANUSCRIPT_ANALYZER:
         return projectData ? <ManuscriptAnalyzerView 
           projectData={projectData}
           onBack={() => setCurrentView(ViewType.BOOKSHELF)}
-          onSaveCharacters={async (characters) => {
-            console.log('[App] onSaveCharacters called with:', characters);
-            await updateProjectData({ characters });
-            console.log('[App] updateProjectData completed, projectData now has:', projectData.characters?.length);
+          onSaveCharacters={async (newCharacters) => {
+            if (!projectData) return;
+            console.log('[App] onSaveCharacters called with:', newCharacters.length, 'characters');
+            
+            // Combine with existing characters, avoiding duplicates by ID
+            const existingChars = projectData.characters || [];
+            const existingIds = new Set(existingChars.map(c => c.id));
+            
+            const uniqueNewChars = newCharacters.filter(nc => !existingIds.has(nc.id));
+            const updatedCharacters = [...existingChars, ...uniqueNewChars];
+            
+            console.log(`[App] Merging characters: ${existingChars.length} existing + ${uniqueNewChars.length} new = ${updatedCharacters.length} total`);
+            
+            await updateProjectData({ 
+              characters: updatedCharacters
+            });
+            
+            // Explicitly call handleManualSave to ensure it's persisted immediately
+            await handleManualSave();
+            console.log('[App] updateProjectData and save completed');
           }}
         /> : null;
 
@@ -360,9 +376,9 @@ const App: React.FC = () => {
           currentView={currentView}
           onChangeView={setCurrentView}
           data={projectData} 
-          onUpdateLocation={(l) => updateProjectData({ locations: projectData.locations.map(loc => loc.id === l.id ? l : loc) })}
-          onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
-          onAddLocation={(l) => updateProjectData({ locations: [...projectData.locations, l] })}
+          onUpdateLocation={(l) => updateProjectData({ locations: (projectData.locations || []).map(loc => loc.id === l.id ? l : loc) })}
+          onUpdateCharacter={(c) => updateProjectData({ characters: (projectData.characters || []).map(char => char.id === c.id ? c : char) })}
+          onAddLocation={(l) => updateProjectData({ locations: [...(projectData.locations || []), l] })}
           onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })}
           onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })}
           onLinkClick={handleLinkClick}
@@ -378,12 +394,12 @@ const App: React.FC = () => {
           isFullscreen={isMapFullscreen}
           onToggleFullscreen={() => setIsMapFullscreen(!isMapFullscreen)}
           onLocationUndo={(id) => {
-            const loc = projectData.locations.find(l => l.id === id);
-            if (loc && loc.prevX !== undefined) updateProjectData({ locations: projectData.locations.map(l => l.id === id ? { ...l, x: loc.prevX, y: loc.prevY, prevX: undefined, prevY: undefined } : l) });
+            const loc = (projectData.locations || []).find(l => l.id === id);
+            if (loc && loc.prevX !== undefined) updateProjectData({ locations: (projectData.locations || []).map(l => l.id === id ? { ...l, x: loc.prevX, y: loc.prevY, prevX: undefined, prevY: undefined } : l) });
           }}
           onLocationReset={(id) => {
-            const loc = projectData.locations.find(l => l.id === id);
-            if (loc && loc.matchedX !== undefined) updateProjectData({ locations: projectData.locations.map(l => l.id === id ? { ...l, x: loc.matchedX, y: loc.matchedY } : l) });
+            const loc = (projectData.locations || []).find(l => l.id === id);
+            if (loc && loc.matchedX !== undefined) updateProjectData({ locations: (projectData.locations || []).map(l => l.id === id ? { ...l, x: loc.matchedX, y: loc.matchedY } : l) });
           }}
           currentUser={currentUser}
           projectsMetadata={projectsMetadata}
@@ -400,10 +416,11 @@ const App: React.FC = () => {
         if (!projectData) return null;
         return <CharactersView
           data={projectData}
-          onUpdateCharacter={(c) => updateProjectData({ characters: projectData.characters.map(char => char.id === c.id ? c : char) })}
+          onUpdateCharacter={(c) => updateProjectData({ characters: (projectData.characters || []).map(char => char.id === c.id ? c : char) })}
           onAddCharacter={(c) => updateProjectData({ characters: [...(projectData.characters || []), c] })}
           onDeleteCharacter={(id) => updateProjectData({ characters: (projectData.characters || []).filter(c => c.id !== id) })}
           onLinkClick={handleLinkClick}
+          fetchWithAuth={fetchWithAuth}
         />;
 
       case ViewType.TOOLBOX:
