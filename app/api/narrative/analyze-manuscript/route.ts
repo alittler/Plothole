@@ -20,12 +20,13 @@ For every character identified, you must strictly extract and format the followi
 4. **Species**: [Dropdown Enum] Must be exactly one of the following: \`Human\`, \`Animal Companion\`, or \`Mythological / Spiritual Entity\`.
 5. **Age Category**: [Dropdown Enum] Assign based on their life stage in the text: \`Child / Youth\`, \`Youth / Oblate\`, \`Adult\`, \`Elder\`, or \`Deceased / Historical\`.
 6. **Status / Role**: [Comma-Separated Tags] Their structural function or social occupation (e.g., \`Academic\`, \`Monastic Staff\`, \`Royalty\`, \`Familiar\`).
-7. **Goals**: [Long String / Bullet Points] Clear, concise breakdown of their narrative motivations, desires, or primary purpose in the text.
-8. **Relationships**: [Key-Value Pairs] Formatted as \`Relationship Title: CHARACTER_NAME\`.
-9. **Locations**: [Sequenced Array] Traced chronological order of physical spaces they occupy in the text, formatted as \`[Location A, Location B, Location C]\`.
-10. **First Appearance**: [Structural Anchor] Formatted exactly as \`# Era/Year # -> Section Title -> Subsection Title\`.
-11. **Last Appearance**: [Structural Anchor] Formatted exactly as \`# Era/Year # -> Section Title -> Subsection Title\`.
-12. **Notes List**: [Adjustable Object Array] Leave exactly two blank, pre-formatted bullet points for user editing, like this:
+7. **Physical Description**: [Long String] Describe their appearance in the text - hair, eyes, build, distinguishing marks, clothing, mannerisms. (Put "Not described" if no physical description found).
+8. **Goals**: [Long String / Bullet Points] Clear, concise breakdown of their narrative motivations, desires, or primary purpose in the text.
+9. **Relationships**: [Key-Value Pairs] Formatted as \`Relationship Title: CHARACTER_NAME\`.
+10. **Locations**: [Sequenced Array] Traced chronological order of physical spaces they occupy in the text, formatted as \`[Location A, Location B, Location C]\`.
+11. **First Appearance**: [Structural Anchor] Formatted exactly as \`# Era/Year # -> Section Title -> Subsection Title\`.
+12. **Last Appearance**: [Structural Anchor] Formatted exactly as \`# Era/Year # -> Section Title -> Subsection Title\`.
+13. **Notes List**: [Adjustable Object Array] Leave exactly two blank, pre-formatted bullet points for user editing, like this:
     - *Note 1:* [ Leave brainstorming, continuity details, or draft ideas here ]
     - *Note 2:* [ Leave brainstorming, continuity details, or draft ideas here ]
 
@@ -44,6 +45,7 @@ For **Tier 1 and Tier 2** characters, output them using this exact Markdown layo
 *   **Species:** 
 *   **Age Category:** 
 *   **Status / Role:** 
+*   **Physical Description:** 
 *   **Goals:** 
 *   **Relationships:** 
 *   **Locations:** 
@@ -58,6 +60,7 @@ For **Tier 3** characters, condense them into a clean, space-saving inline list 
 ### [Character Name]
 *   **Tier:** 3 | **Species:** | **Age Category:** 
 *   **Status / Role:** 
+*   **Physical Description:** 
 *   **Goals:** 
 *   **Relationships:** 
 *   **First Appearance:** 

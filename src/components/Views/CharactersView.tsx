@@ -33,12 +33,17 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
 
   const handleSave = () => {
     if (editingId && editValues) {
-      onUpdateCharacter({
-        ...editValues,
-        id: editingId
-      } as Character);
-      setEditingId(null);
-      setEditValues({});
+      const char = characters.find(c => c.id === editingId);
+      if (char) {
+        // Merge edited values with original character to preserve all fields
+        onUpdateCharacter({
+          ...char,
+          ...editValues,
+          id: editingId
+        } as Character);
+        setEditingId(null);
+        setEditValues({});
+      }
     }
   };
 
@@ -49,8 +54,10 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
 
   const handleExpandedSave = () => {
     const char = characters.find(c => c.id === expandedId);
-    if (char && expandedEditValues) {
+    if (char) {
+      // Merge edited values with original character to preserve all fields
       onUpdateCharacter({
+        ...char,
         ...expandedEditValues,
         id: expandedId
       } as Character);
