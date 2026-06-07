@@ -126,29 +126,60 @@ export async function POST(request: NextRequest) {
     console.log('[ManuscriptAnalyzer] Analysis complete');
     console.log('[ManuscriptAnalyzer] First 500 chars of analysis:', analysisContent.substring(0, 500));
 
-    // Parse character data from markdown (extract ### Character Name entries)
+    // Parse character data from markdown
     const characters: any[] = [];
-    const characterRegex = /^### (.+?)$/gm;
-    let match;
     
-    while ((match = characterRegex.exec(analysisContent)) !== null) {
-      const characterName = match[1].trim();
-      if (characterName) {
-        console.log('[ManuscriptAnalyzer] Extracted character:', characterName);
-        characters.push({
-          id: `char-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-          name: characterName,
-          role: 'Character',
-          tier: 1,
-          aliases: [],
-          traits: [],
-          motivation: '',
-          description: '',
-          physical_description: '',
-          source: 'ai_generated',
-          field_notes: []
-        } as any);
-      }
+    // Split by character headers (### Character Name)
+    const characterRegex = /^### (.+?)$/gm;
+    const contentParts = analysisContent.split(characterRegex);
+    
+    // contentParts alternates: [prefix, name1, content1, name2, content2, ...]
+    for (let i = 1; i < contentParts.length; i += 2) {
+      const characterName = contentParts[i]?.trim();
+      const characterContent = contentParts[i + 1] || '';
+      
+      if (!characterName) continue;
+
+      // Extract each field from the character's markdown content
+      const extractField = (label: string): string => {
+        const regex = new RegExp(`^\\*\\s+\\*\\*${label}:\\*\\*\\s*(.+?)$`, 'im');
+        const match = characterContent.match(regex);
+        return match ? match[1].trim() : '';
+      };
+
+      const tier = parseInt(extractField('Tier')) || 1;
+      const species = extractField('Species') || 'Human';
+      const ageCategory = extractField('Age Category') || 'Adult';
+      const roleRaw = extractField('Status / Role') || 'Character';
+      const goals = extractField('Goals') || '';
+      const relationships = extractField('Relationships') || '';
+      const locations = extractField('Locations') || '';
+      const firstAppearance = extractField('First Appearance') || '';
+      const lastAppearance = extractField('Last Appearance') || '';
+      const nicknames = extractField('Nicknames') || '';
+      const physicalDesc = extractField('Physical Description') || '';
+
+      console.log('[ManuscriptAnalyzer] Extracted character:', characterName, '- Tier:', tier);
+      
+      characters.push({
+        id: `char-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        name: characterName,
+        role: roleRaw || 'Character',
+        tier: tier,
+        aliases: nicknames ? nicknames.split(',').map(s => s.trim()).filter(s => s && s !== 'None') : [],
+        traits: [],
+        motivation: goals,
+        description: goals || '',
+        physical_description: physicalDesc,
+        source: 'ai_generated',
+        field_notes: [
+          { label: 'Species & Age', value: `${species} - ${ageCategory}` },
+          { label: 'Relationships', value: relationships || 'N/A' },
+          { label: 'Locations', value: locations || 'N/A' },
+          { label: 'First Appearance', value: firstAppearance || 'N/A' },
+          { label: 'Last Appearance', value: lastAppearance || 'N/A' }
+        ]
+      } as any);
     }
     
     console.log('[ManuscriptAnalyzer] Total characters extracted:', characters.length);

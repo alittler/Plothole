@@ -467,6 +467,10 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
+      }).catch(err => {
+        // Handle network errors gracefully
+        console.warn("[Storage] Cloud sync fetch error:", err);
+        return null;
       });
       
       // Give cloud sync 3 seconds to complete
@@ -480,7 +484,7 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
         console.warn("[Storage] Cloud sync failed with status:", result.status);
         if (result.status === 401 || result.status === 403) setServerHealth(false);
       } else if (result === null) {
-        console.log("[Storage] Cloud sync timeout, will continue in background");
+        console.log("[Storage] Cloud sync timeout or error, continuing with local save");
       }
     } catch (e) {
       console.warn("[Storage] Cloud sync error:", e);
