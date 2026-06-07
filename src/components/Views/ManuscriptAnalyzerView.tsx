@@ -26,6 +26,8 @@ export const ManuscriptAnalyzerView: React.FC<ManuscriptAnalyzerViewProps> = ({
 
   const analyzeManuscript = async () => {
     console.log('[ManuscriptAnalyzerView] analyzeManuscript called');
+    console.log('[ManuscriptAnalyzerView] projectData.manuscript length:', projectData.manuscript?.length || 0);
+    console.log('[ManuscriptAnalyzerView] projectData.notes length:', projectData.notes?.length || 0);
     setIsAnalyzing(true);
     setError('');
     setAnalysis('');
@@ -35,6 +37,7 @@ export const ManuscriptAnalyzerView: React.FC<ManuscriptAnalyzerViewProps> = ({
       const manuscriptText = projectData.manuscript || 
         projectData.notes.map(n => n.content).join('\n\n');
 
+      console.log('[ManuscriptAnalyzerView] manuscriptText length:', manuscriptText?.length || 0);
       if (!manuscriptText || manuscriptText.trim().length === 0) {
         setError('No manuscript text found. Please add notes or manuscript content to analyze.');
         setIsAnalyzing(false);

@@ -257,7 +257,8 @@ const App: React.FC = () => {
           onUploadProject={async (file) => {
             const project = await handleUploadProject(file);
             if (project) {
-              await loadProject(project.id);
+              // Don't reload from storage - we already have the project with manuscript
+              // loadProject would reload and potentially lose the manuscript field
               setCurrentView(ViewType.MANUSCRIPT_ANALYZER);
             }
           }}
