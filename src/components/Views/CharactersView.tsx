@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ProjectData, Character } from '../../types';
-import { Users, Plus, Edit2, Trash2 } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
 
 interface CharactersViewProps {
   data: ProjectData;
@@ -8,6 +8,7 @@ interface CharactersViewProps {
   onAddCharacter?: (c: Character) => void;
   onDeleteCharacter?: (id: string) => void;
   onLinkClick?: (type: string, id: string) => void;
+  fetchWithAuth?: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 export const CharactersView: React.FC<CharactersViewProps> = ({
@@ -15,7 +16,8 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
   onUpdateCharacter,
   onAddCharacter,
   onDeleteCharacter,
-  onLinkClick
+  onLinkClick,
+  fetchWithAuth
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<Character>>({});
@@ -23,8 +25,46 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
   const [expandedEditMode, setExpandedEditMode] = useState(false);
   const [expandedEditValues, setExpandedEditValues] = useState<Partial<Character>>({});
   const [notesTab, setNotesTab] = useState(false);
+  const [generatingImageId, setGeneratingImageId] = useState<string | null>(null);
 
   const characters = data.characters || [];
+
+  const handleGenerateImage = async (char: Character) => {
+    if (!fetchWithAuth || !char.physical_description) return;
+    
+    setGeneratingImageId(char.id);
+    try {
+      const prompt = `A cinematic, detailed portrait of a character from a story. Physical description: ${char.physical_description}. Artistic style: High-quality illustration, fantasy/literary atmosphere.`;
+      
+      const response = await fetchWithAuth('/api/narrative/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          characterId: char.id,
+          characterName: char.name
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server responded with ${response.status}`);
+      }
+      
+      const result = await response.json();
+      if (result.url) {
+        onUpdateCharacter({
+          ...char,
+          images: [{ url: result.url }]
+        });
+      }
+    } catch (err) {
+      console.error('Image generation error:', err);
+      alert('Failed to generate character image. Check your API configuration.');
+    } finally {
+      setGeneratingImageId(null);
+    }
+  };
 
   const handleEdit = (char: Character) => {
     setEditingId(char.id);
@@ -158,69 +198,132 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
                     </div>
                   </div>
                 ) : (
-                  <>
-                    {/* Card Header */}
-                    <div className="mb-6">
-                      <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1">{char.name}</h3>
-                      {char.role && (
-                        <p className="text-sm text-slate-600 dark:text-slate-300">
-                          {char.role}
-                        </p>
+                  <div className="flex gap-6 h-full">
+                    {/* Left: Content */}
+                    <div className="flex-1 flex flex-col min-w-0">
+                      {/* Card Header */}
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-xl font-black text-slate-900 dark:text-white truncate" title={char.name}>{char.name}</h3>
+                          {char.tier === 1 && (
+                            <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[8px] font-black uppercase tracking-widest rounded">Tier 1</span>
+                          )}
+                        </div>
+                        {char.role && (
+                          <p className="text-sm text-slate-600 dark:text-slate-300 truncate">
+                            {char.role}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Description Section */}
+                      {char.description && (
+                        <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                            Description
+                          </p>
+                          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-3">
+                            {char.description}
+                          </p>
+                        </div>
                       )}
-                    </div>
 
-                    {/* Description Section */}
-                    {char.description && (
-                      <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
-                          Description
-                        </p>
-                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">
-                          {char.description}
-                        </p>
-                      </div>
-                    )}
+                      {/* Goals Section */}
+                      {char.motivation && (
+                        <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-800 flex-grow min-h-0">
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                            Goals
+                          </p>
+                          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-3">
+                            {char.motivation}
+                          </p>
+                        </div>
+                      )}
 
-                    {/* Goals Section */}
-                    {char.motivation && (
-                      <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex-grow">
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
-                          Goals
-                        </p>
-                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">
-                          {char.motivation}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Show More Details Button */}
-                    <div className="flex gap-2 mb-4 mt-auto">
-                      <button
-                        onClick={() => setExpandedId(char.id)}
-                        className="flex-1 px-3 py-2 bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-sm font-semibold rounded-lg transition"
-                      >
-                        Show More Details
-                      </button>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
-                      <button
-                        onClick={() => handleEdit(char)}
-                        className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-1"
-                      >
-                        <Edit2 size={14} /> Edit
-                      </button>
-                      {onDeleteCharacter && (
+                      {/* Show More Details Button */}
+                      <div className="flex gap-2 mb-4 mt-auto">
                         <button
-                          onClick={() => onDeleteCharacter(char.id)}
-                          className="px-3 py-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 text-sm font-semibold rounded-lg transition"
+                          onClick={() => setExpandedId(char.id)}
+                          className="flex-1 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/10 hover:bg-indigo-100 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-black uppercase tracking-widest rounded-xl transition-all"
                         >
-                          <Trash2 size={14} />
+                          Details
                         </button>
-                      )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <button
+                          onClick={() => handleEdit(char)}
+                          className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-1"
+                        >
+                          <Edit2 size={12} /> Edit
+                        </button>
+                        {onDeleteCharacter && (
+                          <button
+                            onClick={() => onDeleteCharacter(char.id)}
+                            className="px-3 py-2 bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl transition-all"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </>
+
+                    {/* Right: Image (for Tier 1) */}
+                    {char.tier === 1 && (
+                      <div className="w-32 shrink-0 flex flex-col gap-3">
+                        <div className="aspect-[3/4] rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 overflow-hidden relative group">
+                          {char.images && char.images[0]?.url ? (
+                            <>
+                              <img 
+                                src={char.images[0].url} 
+                                alt={char.name} 
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                onClick={() => handleGenerateImage(char)}
+                                disabled={generatingImageId === char.id}
+                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              >
+                                {generatingImageId === char.id ? (
+                                  <Loader2 size={24} className="text-white animate-spin" />
+                                ) : (
+                                  <Sparkles size={24} className="text-white" />
+                                )}
+                              </button>
+                            </>
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
+                              {generatingImageId === char.id ? (
+                                <Loader2 size={24} className="text-indigo-600 animate-spin mb-2" />
+                              ) : (
+                                <ImageIcon size={24} className="text-slate-300 dark:text-slate-700 mb-2" />
+                              )}
+                              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight">
+                                {generatingImageId === char.id ? 'Generating...' : 'No Image'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {!char.images?.[0]?.url && (
+                          <button
+                            onClick={() => handleGenerateImage(char)}
+                            disabled={generatingImageId === char.id || !char.physical_description}
+                            className="w-full py-2 bg-indigo-600 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                            title={!char.physical_description ? 'Missing physical description' : ''}
+                          >
+                            {generatingImageId === char.id ? (
+                              <Loader2 size={10} className="animate-spin" />
+                            ) : (
+                              <Sparkles size={10} />
+                            )}
+                            Visualize
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ))}

@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { ProjectData, Note } from '../../types';
-import { Download, FileJson, Share2, Save, Calendar, Users, MapPin, BookOpen, ArrowLeft } from 'lucide-react';
+import { ViewType, ProjectData, Note } from '../../types';
+import { Download, FileJson, Share2, Save, Calendar, Users, MapPin, BookOpen, ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface DashboardViewProps {
   projectData: ProjectData;
   globalNotes: Note[];
   onBack?: () => void;
+  onNavigate?: (view: ViewType) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ projectData, globalNotes, onBack }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ projectData, globalNotes, onBack, onNavigate }) => {
   const [exportFormat, setExportFormat] = useState<'json' | 'md' | 'txt'>('json');
 
   // Only include notes that are tagged with the project ID or a matching tag
@@ -80,37 +81,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projectData, globa
             <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6">Project Details</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                  <Users size={24} className="text-indigo-600 dark:text-indigo-400" />
+              <button 
+                onClick={() => onNavigate?.(ViewType.CHARACTERS)}
+                className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 transition-all text-left group"
+              >
+                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                  <Users size={24} className="text-indigo-600 dark:text-indigo-400 group-hover:text-white" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Characters</p>
                   <p className="text-2xl font-black text-slate-900 dark:text-white">{projectData.characters?.length || 0}</p>
                 </div>
-              </div>
+                <ArrowRight size={16} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-all" />
+              </button>
 
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                  <MapPin size={24} className="text-emerald-600 dark:text-emerald-400" />
+              <button 
+                onClick={() => onNavigate?.(ViewType.WORLD_HUB)}
+                className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-all text-left group"
+              >
+                <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                  <MapPin size={24} className="text-emerald-600 dark:text-emerald-400 group-hover:text-white" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Locations</p>
                   <p className="text-2xl font-black text-slate-900 dark:text-white">{projectData.locations?.length || 0}</p>
                 </div>
-              </div>
+                <ArrowRight size={16} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-all" />
+              </button>
 
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                  <Calendar size={24} className="text-amber-600 dark:text-amber-400" />
+              <button 
+                onClick={() => onNavigate?.(ViewType.TIMELINE)}
+                className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-amber-500/50 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-all text-left group"
+              >
+                <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-lg group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                  <Calendar size={24} className="text-amber-600 dark:text-amber-400 group-hover:text-white" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Timeline Events</p>
                   <p className="text-2xl font-black text-slate-900 dark:text-white">{projectData.timeline?.length || 0}</p>
                 </div>
-              </div>
+                <ArrowRight size={16} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-all" />
+              </button>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 p-4 rounded-xl border border-transparent">
                 <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                   <BookOpen size={24} className="text-blue-600 dark:text-blue-400" />
                 </div>

@@ -495,10 +495,9 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
 export const loadProjectById = async (id: string): Promise<ProjectData | null> => {
   if (useCloudStorage && authFetch) {
     try {
-      const res = await authFetch('/api/projects');
+      const res = await authFetch(`/api/projects/${id}`);
       if (res.ok) {
-        const projects: ProjectData[] = await res.json();
-        const cloudProj = projects.find(p => p.id === id);
+        const cloudProj: ProjectData = await res.json();
         if (cloudProj) return cloudProj;
       }
     } catch (e) {

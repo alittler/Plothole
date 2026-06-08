@@ -286,17 +286,25 @@ export function useProjectData(
 
       setProjectData(baseUpdated);
       
-      // Don't try to save 'global-notebook' as a standard project file
-      if (projectData.id !== 'global-notebook') {
-        await saveProjectData(baseUpdated);
-        await refreshMetadata();
-      }
+      // Always save project data unless it's null (already checked)
+      // Standard projects go to project store, global-notebook will be handled by saveProjectData
+      await saveProjectData(baseUpdated);
+      await refreshMetadata();
     } catch (err) {
       console.error("[useProjectData] FAILED to update project data:", err);
     }
   }, [projectData, refreshMetadata]);
 
   const loadProject = useCallback(async (id: string) => {
+    // 1. Try to load from storage first (including global-notebook)
+    const storedData = await loadProjectById(id);
+    if (storedData) {
+      const withCatalog = populateDataCatalog(storedData);
+      setProjectData(withCatalog);
+      return withCatalog;
+    }
+
+    // 2. Fallback to templates if not found in storage
     if (id === 'global-notebook') {
       const notebookData: ProjectData = {
         id: 'global-notebook',
@@ -316,20 +324,15 @@ export function useProjectData(
         assets: []
       };
       setProjectData(notebookData);
+      // Save it immediately so it exists for future loads
+      await saveProjectData(notebookData);
       return notebookData;
-    }
-
-    const data = await loadProjectById(id);
-    if (data) {
-      const withCatalog = populateDataCatalog(data);
-      setProjectData(withCatalog);
-      return withCatalog;
     }
     return null;
   }, [globalNotes]);
 
   const handleManualSave = useCallback(async () => {
-    if (!projectData || projectData.id === 'global-notebook') return;
+    if (!projectData) return;
     await saveProjectData(projectData);
     await refreshMetadata();
   }, [projectData, refreshMetadata]);

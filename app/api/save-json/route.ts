@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import YAML from 'js-yaml';
+import { put } from '@vercel/blob';
+import { getAuthPayload } from '@/app/api/auth';
 
 export const runtime = 'nodejs';
 
 /**
  * POST /api/save-json
- * Universal endpoint for saving any JSON data back to the filesystem
+ * Universal endpoint for saving any JSON data back to the filesystem or cloud
  * 
  * Request body:
  * {
@@ -37,41 +39,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Construct file path within .keystatic collection
-    const collectionPath = path.join(process.cwd(), '.keystatic', entityType);
+    const authPayload = await getAuthPayload(request);
+    const userId = authPayload?.userId;
+
+    const extension = format === 'json' ? 'json' : 'yaml';
+    const filename = `${entityId}.${extension}`;
     
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(collectionPath)) {
-      fs.mkdirSync(collectionPath, { recursive: true });
+    // Construct cloud path
+    let blobPath = `entities/${entityType}/${filename}`;
+    if (userId) {
+      blobPath = `users/${userId}/${blobPath}`;
     }
 
-    const filename = `${entityId}.${format === 'json' ? 'json' : 'yaml'}`;
-    const filePath = path.join(collectionPath, filename);
-
-    // Security: Ensure the resolved path is within the collection directory
-    const resolvedPath = path.resolve(filePath);
-    const resolvedCollectionPath = path.resolve(collectionPath);
-    if (!resolvedPath.startsWith(resolvedCollectionPath)) {
-      return NextResponse.json(
-        { error: 'Invalid file path: outside collection directory' },
-        { status: 400 }
-      );
-    }
-
-    // Write to filesystem
+    // Prepare content
+    let content: string;
     if (format === 'json') {
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+      content = JSON.stringify(data, null, 2);
     } else {
-      const yaml = YAML.dump(data, { indent: 2 });
-      fs.writeFileSync(filePath, yaml, 'utf-8');
+      content = YAML.dump(data, { indent: 2 });
     }
 
-    console.log(`[API/save-json] Saved ${entityType}/${entityId} to ${filePath}`);
+    // 1. Try Vercel Blob first for cloud persistence
+    let blobUrl = null;
+    try {
+      const blob = await put(blobPath, content, {
+        access: 'public',
+        contentType: format === 'json' ? 'application/json' : 'text/yaml',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+      });
+      blobUrl = blob.url;
+      console.log(`[API/save-json] Saved to Vercel Blob: ${blobPath} -> ${blobUrl}`);
+    } catch (blobError) {
+      console.warn('[API/save-json] Vercel Blob write failed (might be local dev):', blobError);
+    }
+
+    // 2. Also write to local filesystem (might be read-only on Vercel)
+    const collectionPath = path.join(process.cwd(), '.keystatic', entityType);
+    let filePath = '';
+    try {
+      if (!fs.existsSync(collectionPath)) {
+        fs.mkdirSync(collectionPath, { recursive: true });
+      }
+      filePath = path.join(collectionPath, filename);
+      fs.writeFileSync(filePath, content, 'utf-8');
+      console.log(`[API/save-json] Saved to local filesystem: ${filePath}`);
+    } catch (fsError) {
+      console.warn('[API/save-json] Local filesystem write failed (expected on Vercel):', fsError);
+    }
 
     return NextResponse.json({
       success: true,
       message: `${entityType}/${entityId} saved successfully`,
       path: filePath,
+      blobUrl,
+      cloudSynced: !!blobUrl,
       data,
     });
   } catch (error) {
