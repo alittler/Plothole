@@ -17,15 +17,23 @@ const getDB = (): Promise<IDBDatabase> => {
     
     request.onupgradeneeded = (event: any) => {
       const db = request.result;
-      console.log(`[Storage] Upgrading database to version ${event.newVersion}`);
+      const oldVersion = event.oldVersion;
+      console.log(`[Storage] Database upgrade: ${oldVersion} -> ${event.newVersion}`);
       
-      if (db.objectStoreNames.contains(STORE_PROJECTS)) db.deleteObjectStore(STORE_PROJECTS);
-      if (db.objectStoreNames.contains(STORE_METADATA)) db.deleteObjectStore(STORE_METADATA);
-      if (db.objectStoreNames.contains(STORE_GLOBALS)) db.deleteObjectStore(STORE_GLOBALS);
-
-      db.createObjectStore(STORE_PROJECTS, { keyPath: 'id' });
-      db.createObjectStore(STORE_METADATA, { keyPath: 'id' });
-      db.createObjectStore(STORE_GLOBALS, { keyPath: 'id' });
+      // Only delete and recreate stores if they don't exist or we need a clean migration
+      // For backward compatibility, preserve data when possible
+      if (!db.objectStoreNames.contains(STORE_PROJECTS)) {
+        console.log(`[Storage] Creating object store: ${STORE_PROJECTS}`);
+        db.createObjectStore(STORE_PROJECTS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_METADATA)) {
+        console.log(`[Storage] Creating object store: ${STORE_METADATA}`);
+        db.createObjectStore(STORE_METADATA, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_GLOBALS)) {
+        console.log(`[Storage] Creating object store: ${STORE_GLOBALS}`);
+        db.createObjectStore(STORE_GLOBALS, { keyPath: 'id' });
+      }
     };
 
     request.onsuccess = () => {
