@@ -433,11 +433,19 @@ export const isCloudStorageActive = () => useCloudStorage && serverHealthy;
 
 // Existing persistence methods (wrapped for Cloud support)
 export const saveProjectData = async (data: ProjectData): Promise<void> => {
+  if (!data || !data.id) {
+    console.error("[Storage] Cannot save project data - missing data or id");
+    return;
+  }
+
+  console.log(`[Storage] Saving project ${data.id} with ${data.characters?.length || 0} characters`);
+
   // 1. ALWAYS update local storage first for snappy UI and robust backup
   const db = await getDB();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction([STORE_PROJECTS, STORE_METADATA], 'readwrite');
-    tx.objectStore(STORE_PROJECTS).put({ ...data, lastModified: Date.now() });
+    const projectToSave = { ...data, lastModified: Date.now() };
+    tx.objectStore(STORE_PROJECTS).put(projectToSave);
     
     // Also update metadata for quick access
     const meta: ProjectMetadata = {
@@ -455,8 +463,14 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
     };
     tx.objectStore(STORE_METADATA).put(meta);
 
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.oncomplete = () => {
+      console.log(`[Storage] Successfully saved project ${data.id} to local IndexedDB`);
+      resolve();
+    };
+    tx.onerror = () => {
+      console.error(`[Storage] Local save failed for project ${data.id}:`, tx.error);
+      reject(tx.error);
+    };
   });
 
   // 2. Then try to sync to cloud if active
@@ -483,8 +497,10 @@ export const saveProjectData = async (data: ProjectData): Promise<void> => {
       if (result instanceof Response && !result.ok) {
         console.warn("[Storage] Cloud sync failed with status:", result.status);
         if (result.status === 401 || result.status === 403) setServerHealth(false);
+      } else if (result instanceof Response && result.ok) {
+        console.log(`[Storage] Successfully synced project ${data.id} to cloud`);
       } else if (result === null) {
-        console.log("[Storage] Cloud sync timeout or error, continuing with local save");
+        console.log("[Storage] Cloud sync timeout or error, but local save succeeded");
       }
     } catch (e) {
       console.warn("[Storage] Cloud sync error:", e);
@@ -498,10 +514,15 @@ export const loadProjectById = async (id: string): Promise<ProjectData | null> =
       const res = await authFetch(`/api/projects/${id}`);
       if (res.ok) {
         const cloudProj: ProjectData = await res.json();
-        if (cloudProj) return cloudProj;
+        if (cloudProj) {
+          console.log(`[Storage] Successfully loaded project ${id} from cloud`);
+          return cloudProj;
+        }
+      } else {
+        console.warn(`[Storage] Cloud load returned status ${res.status} for project ${id}, falling back to local`);
       }
     } catch (e) {
-      console.error("Cloud load failed:", e);
+      console.warn(`[Storage] Cloud load failed for project ${id}, falling back to local:`, e);
     }
   }
 
@@ -510,8 +531,19 @@ export const loadProjectById = async (id: string): Promise<ProjectData | null> =
   return new Promise((resolve) => {
     const tx = db.transaction(STORE_PROJECTS, 'readonly');
     const req = tx.objectStore(STORE_PROJECTS).get(id);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => resolve(null);
+    req.onsuccess = () => {
+      const result = req.result || null;
+      if (result) {
+        console.log(`[Storage] Successfully loaded project ${id} from local storage`);
+      } else {
+        console.warn(`[Storage] Project ${id} not found in local storage either`);
+      }
+      resolve(result);
+    };
+    req.onerror = () => {
+      console.error(`[Storage] Local storage read error for project ${id}:`, req.error);
+      resolve(null);
+    };
   });
 };
 
