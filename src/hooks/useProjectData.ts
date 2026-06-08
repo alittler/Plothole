@@ -299,7 +299,17 @@ export function useProjectData(
     // 1. Try to load from storage first (including global-notebook)
     const storedData = await loadProjectById(id);
     if (storedData) {
-      const withCatalog = populateDataCatalog(storedData);
+      // Ensure characters array is always preserved
+      const safeData = {
+        ...storedData,
+        characters: Array.isArray(storedData.characters) ? storedData.characters : [],
+        locations: Array.isArray(storedData.locations) ? storedData.locations : [],
+        timeline: Array.isArray(storedData.timeline) ? storedData.timeline : [],
+        notes: Array.isArray(storedData.notes) ? storedData.notes : [],
+        artifacts: Array.isArray(storedData.artifacts) ? storedData.artifacts : []
+      };
+      console.log(`[useProjectData] Loaded project ${id} with ${safeData.characters.length} characters`);
+      const withCatalog = populateDataCatalog(safeData);
       setProjectData(withCatalog);
       return withCatalog;
     }
