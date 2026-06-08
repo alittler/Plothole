@@ -17,85 +17,74 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing prompt' }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured (OPENROUTER_API_KEY or GEMINI_API_KEY)' }, { status: 500 });
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    const stabilityKey = process.env.STABILITY_API_KEY;
+
+    if (!openrouterKey && !stabilityKey) {
+      return NextResponse.json({ 
+        error: 'Image generation not configured. Set OPENROUTER_API_KEY or STABILITY_API_KEY.' 
+      }, { status: 500 });
     }
 
     console.log(`[ImageGen] Generating image for character: ${characterName} (${characterId})`);
     
-    // Attempt image generation via OpenRouter
-    // We try a few models that are known for image generation
-    const modelsToTry = ['openai/dall-e-3', 'black-forest-labs/flux-1.1-pro', 'stabilityai/stable-diffusion-xl'];
     let lastError = null;
 
-    for (const model of modelsToTry) {
+    // Try Stability AI first (if key is available)
+    if (stabilityKey) {
       try {
-        console.log(`[ImageGen] Trying model: ${model}`);
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        console.log(`[ImageGen] Trying Stability AI (SDXL)`);
+        const response = await fetch('https://api.stability.ai/v1/text-to-image', {
           method: 'POST',
           headers: {
+            'Authorization': `Bearer ${stabilityKey}`,
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-            'HTTP-Referer': 'https://plothole.click',
-            'X-Title': 'Plothole - Character Image Generation',
           },
           body: JSON.stringify({
-            model: model,
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: prompt }
-                ]
-              },
-            ],
+            prompt: prompt,
+            steps: 20,
+            width: 512,
+            height: 512,
+            samples: 1,
+            cfg_scale: 7.0,
+            sampler: 'k_euler',
           }),
         });
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.warn(`[ImageGen] Model ${model} failed:`, errorText);
+          console.warn(`[ImageGen] Stability AI failed:`, errorText);
           lastError = errorText;
-          continue;
-        }
+        } else {
+          const data = await response.json();
+          if (data.artifacts && data.artifacts[0]?.base64) {
+            const imageBuffer = Buffer.from(data.artifacts[0].base64, 'base64');
+            const filename = `characters/${userId}/${characterId}-${Date.now()}.png`;
+            
+            const blob = await put(filename, imageBuffer, {
+              access: 'public',
+              contentType: 'image/png',
+            });
 
-        const data = await response.json();
-        console.log(`[ImageGen] API Response for ${model}:`, JSON.stringify(data).substring(0, 200));
-
-        // OpenRouter image models might return the URL in different places
-        // 1. In the message content (as a URL)
-        // 2. In a 'url' field at the top level
-        // 3. In a 'data' array (OpenAI style)
-        const imageUrl = 
-          (data.choices?.[0]?.message?.content?.match(/https?:\/\/\S+\.(?:png|jpg|jpeg|webp)\S*/i)?.[0]) ||
-          data.choices?.[0]?.message?.content || 
-          data.url || 
-          (data.data && data.data[0]?.url);
-
-        if (imageUrl && imageUrl.startsWith('http')) {
-          // Download the image and re-upload to Vercel Blob for persistence
-          const imageRes = await fetch(imageUrl);
-          if (!imageRes.ok) throw new Error(`Failed to download image from ${imageUrl}`);
-          
-          const imageBlob = await imageRes.blob();
-          const filename = `characters/${userId}/${characterId}-${Date.now()}.webp`;
-          
-          const blob = await put(filename, imageBlob, {
-            access: 'public',
-            contentType: 'image/webp',
-          });
-
-          return NextResponse.json({ 
-            success: true, 
-            url: blob.url,
-            model: model
-          });
+            return NextResponse.json({ 
+              success: true, 
+              url: blob.url,
+              model: 'stability/sdxl'
+            });
+          }
         }
       } catch (err) {
-        console.error(`[ImageGen] Error with model ${model}:`, err);
+        console.error(`[ImageGen] Error with Stability AI:`, err);
         lastError = err instanceof Error ? err.message : String(err);
       }
+    }
+
+    // Fallback: Try OpenRouter with proper image models
+    if (openrouterKey) {
+      // Note: OpenRouter chat completion endpoint doesn't support image generation directly
+      // For now, we'll return an error with guidance
+      console.log(`[ImageGen] OpenRouter key available but chat-completions doesn't support image generation`);
+      lastError = 'OpenRouter chat-completions does not support image generation. Please configure STABILITY_API_KEY for image generation.';
     }
 
     return NextResponse.json({ 
