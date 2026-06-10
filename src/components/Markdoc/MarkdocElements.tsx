@@ -425,7 +425,7 @@ export const Tab: React.FC<
 export const Heading: React.FC<
   NarrativeElementProps & { level: number }
 > = ({ level, children }) => {
-  const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+  const Tag = `h${level}` as any;
   const classes =
     {
       1: 'text-3xl font-black',
