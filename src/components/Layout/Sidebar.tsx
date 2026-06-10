@@ -32,6 +32,7 @@ interface SidebarProps {
   isCloudStorage?: boolean;
   lastModified?: number;
   isGuest?: boolean;
+  activeProjectCoverColor?: string;
 }
 
 interface NavItem {
@@ -50,7 +51,8 @@ interface SidebarSection {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, onSave, appName = 'PLOTHOLE',
-  sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false, isAnalyzing = false, isServerConnected = true, isCloudStorage = false, lastModified, isGuest = false
+  sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false, isAnalyzing = false, isServerConnected = true, isCloudStorage = false, lastModified, isGuest = false,
+  activeProjectCoverColor
 }) => {
   const { logout } = useAuth0();
   const [isSyncing, setIsSyncing] = React.useState(false);
@@ -191,21 +193,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClose();
           }
         }}
+        style={{
+          background: activeProjectCoverColor ? `linear-gradient(to bottom, ${activeProjectCoverColor}66, #020617)` : undefined
+        }}
         className={`
         fixed inset-x-0 top-0 z-[1001] lg:relative lg:inset-y-0 lg:left-0 shrink-0
-        ${isGuest ? 'bg-slate-800 border-slate-700' : 'bg-slate-950 border-slate-800/50'} text-slate-400 flex flex-col transition-all duration-500 ease-in-out border-b lg:border-b-0 lg:border-r
+        ${isGuest ? 'bg-slate-800 border-slate-700' : (!activeProjectCoverColor ? 'bg-slate-950 border-slate-800/50' : 'border-white/10')} text-slate-400 flex flex-col transition-all duration-500 ease-in-out border-b lg:border-b-0 lg:border-r
         rounded-b-3xl lg:rounded-b-none
         ${isOpen ? 'translate-y-0 pointer-events-auto max-h-[calc(100vh-12rem)]' : '-translate-y-full lg:translate-y-0 pointer-events-none lg:pointer-events-auto lg:max-h-none'}
         ${isFullscreen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-none' : isCollapsed ? 'lg:w-20' : 'lg:w-64 md:w-72'}
       `}>
         {/* Mobile Safe Area Forehead */}
-        <div className={`lg:hidden h-[env(safe-area-inset-top)] ${isGuest ? 'bg-slate-800' : 'bg-slate-950'} w-full shrink-0`} />
+        <div className={`lg:hidden h-[env(safe-area-inset-top)] ${isGuest ? 'bg-slate-800' : (!activeProjectCoverColor ? 'bg-slate-950' : '')} w-full shrink-0`} 
+          style={{ backgroundColor: activeProjectCoverColor ? `${activeProjectCoverColor}66` : undefined }}
+        />
 
-        <div className="p-6 border-b border-slate-800/50 flex flex-col gap-0.5">
+        <div className="p-6 border-b border-slate-800/50 flex flex-col gap-0.5 relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {!isCollapsed && <Image src="/logos/plothole_256x256.png" alt="Plothole" width={32} height={32} className="w-8 h-8 rounded-lg" />}
-              {!isCollapsed && <span className="font-black text-2xl tracking-tighter text-white uppercase">{appName.replace(' — Your Story, Decoded', '')}</span>}
+              {!isCollapsed && <Image src="/logos/plothole_256x256.png" alt="Plothole" width={32} height={32} className="w-8 h-8 rounded-lg shadow-lg" />}
+              {!isCollapsed && (
+                <div className="flex flex-col">
+                  <span className="font-black text-2xl tracking-tighter text-white uppercase leading-none">{appName.replace(' — Your Story, Decoded', '')}</span>
+                  {activeProjectTitle && (
+                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mt-1 animate-in fade-in slide-in-from-left-2 duration-500 truncate max-w-[140px]">
+                      {activeProjectTitle}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -255,12 +271,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </div>
           </div>
-          {!isCollapsed && activeProjectTitle && (
-            <div className="flex items-center gap-2 px-1 animate-in fade-in slide-in-from-left-4 duration-500">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate">{activeProjectTitle}</span>
-            </div>
-          )}
           {!isCollapsed && !isCloudStorage && (
             <div className="mt-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-500 shadow-lg shadow-amber-500/5">
               <div className="flex items-center gap-2">

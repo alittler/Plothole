@@ -11,12 +11,13 @@ import {
   BookOpen, RefreshCw
 } from 'lucide-react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 import { 
   ViewType, 
   Note, 
   ProjectData, 
+  Character,
   ProjectMetadata, 
   User, 
   AppPrompts, 
@@ -38,13 +39,14 @@ import {
   isCloudStorageActive, 
   saveAppSettings, 
   saveAppPrompts,
-  saveProjectData,
-  exportVaultAsZip,
   saveGlobalNote,
   saveAllGlobalNotes,
   deleteGlobalNote,
-  generateId
+  exportVaultAsZip,
+  saveProjectData
 } from './services/storageService';
+import { generateId } from './services/storageService';
+import { safeResponseJson } from './utils/jsonUtils';
 
 import { useProjectData, populateDataCatalog } from './hooks/useProjectData';
 import { useAppInitialization } from './hooks/useAppInitialization';
@@ -78,12 +80,25 @@ const DynamicEditModal = dynamic(() => import('./components/ui/DynamicEditModal'
 const App: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user: auth0User, isAuthenticated, isLoading: isAuthLoading, getAccessTokenSilently } = useAuth0();
   const hasAutoLoaded = useRef(false);
 
   const [activeTasks, setActiveTasks] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [currentView, setCurrentView] = useState<ViewType>(ViewType.BOOKSHELF);
+  
+  // Initialize currentView from URL if possible
+  const [currentView, setCurrentView] = useState<ViewType>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const viewParam = params.get('view');
+      if (viewParam && Object.values(ViewType).includes(viewParam as ViewType)) {
+        return viewParam as ViewType;
+      }
+    }
+    return ViewType.BOOKSHELF;
+  });
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAdminNoteOpen, setIsAdminNoteOpen] = useState(false);
@@ -92,6 +107,20 @@ const App: React.FC = () => {
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const [uploadingFileName, setUploadingFileName] = useState<string | undefined>(undefined);
+
+  // Define handleViewChange early so it can be used by other hooks/functions
+  const handleViewChange = useCallback((v: ViewType) => {
+    setCurrentView(v);
+    setIsMobileSidebarOpen(false);
+    
+    // Sync with URL and clear any "tab" parameter that might be stuck from a previous view
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      params.set('view', v);
+      params.delete('tab');
+      router.push(`?${params.toString()}`);
+    }
+  }, [router]);
 
   // Clean up Auth0 callback parameters from URL
   useEffect(() => {
@@ -111,7 +140,7 @@ const App: React.FC = () => {
       try {
         token = await getAccessTokenSilently({
           authorizationParams: {
-            audience: 'https://dev-t0pa1ah6r1n2wc4a.us.auth0.com/api/v2/',
+            audience: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || 'https://dev-t0pa1ah6r1n2wc4a.us.auth0.com/api/v2/',
             scope: 'openid profile email offline_access'
           }
         });
@@ -200,18 +229,18 @@ const App: React.FC = () => {
   const handleLinkClick = useCallback((type: string, id: string) => {
     if (type === 'admin') {
       setAdminTargetId(id);
-      setCurrentView(ViewType.ADMIN);
+      handleViewChange(ViewType.ADMIN);
     } else if (type === 'character') {
-      setCurrentView(ViewType.CHARACTERS);
+      handleViewChange(ViewType.CHARACTERS);
     } else if (type === 'location') {
       setCurrentMapParentId(id);
-      setCurrentView(ViewType.MAP);
+      handleViewChange(ViewType.MAP);
     } else if (type === 'bestiary') {
-      setCurrentView(ViewType.CODEX_HUB);
+      handleViewChange(ViewType.CODEX_HUB);
     } else if (type === 'dashboard') {
-      setCurrentView(ViewType.NOTEPAD);
+      handleViewChange(ViewType.NOTEPAD);
     }
-  }, []);
+  }, [handleViewChange]);
 
   useEffect(() => {
     if (isLoaded && projectsMetadata.length > 0 && !projectData && !hasAutoLoaded.current) {
@@ -219,12 +248,51 @@ const App: React.FC = () => {
       const firstId = sortedMeta[0].id;
       loadProject(firstId).then(project => {
         if (project && (!pathname || pathname === '/')) {
-          setCurrentView(ViewType.NOTEPAD);
+          handleViewChange(ViewType.NOTEPAD);
         }
       });
       hasAutoLoaded.current = true;
     }
-  }, [isLoaded, projectsMetadata, projectData, loadProject, pathname, router]);
+  }, [isLoaded, projectsMetadata, projectData, loadProject, pathname, router, handleViewChange]);
+
+  const handleUpdateCharacter = useCallback(async (updatedChar: Character) => {
+    if (!projectData) return;
+
+    const oldChar = (projectData.characters || []).find(c => c.id === updatedChar.id);
+    if (!oldChar) return;
+
+    // Identify what changed for the log
+    const changes: string[] = [];
+    if (oldChar.name !== updatedChar.name) changes.push(`name to "${updatedChar.name}"`);
+    if (oldChar.role !== updatedChar.role) changes.push(`role to "${updatedChar.role}"`);
+    if (oldChar.description !== updatedChar.description) changes.push('description');
+    if (oldChar.motivation !== updatedChar.motivation) changes.push('goals/motivation');
+    if (oldChar.physical_description !== updatedChar.physical_description) changes.push('physical description');
+    if (oldChar.species !== updatedChar.species) changes.push(`species to "${updatedChar.species}"`);
+    if (oldChar.age !== updatedChar.age) changes.push(`age to "${updatedChar.age}"`);
+
+    // Check field_notes (Analysis Details)
+    const oldNotesStr = JSON.stringify(oldChar.field_notes || []);
+    const newNotesStr = JSON.stringify(updatedChar.field_notes || []);
+    if (oldNotesStr !== newNotesStr) changes.push('analysis details');
+
+    // Only log if there are meaningful changes
+    let newProjectNotes = projectData.projectNotes || [];
+    if (changes.length > 0) {
+      const logEntry = {
+        id: `pnote-${Date.now()}`,
+        content: `Updated character "${updatedChar.name}": Changed ${changes.join(', ')}.`,
+        timestamp: Date.now(),
+        category: 'edit' as const
+      };
+      newProjectNotes = [logEntry, ...newProjectNotes];
+    }
+
+    await updateProjectData({
+      characters: (projectData.characters || []).map(c => c.id === updatedChar.id ? updatedChar : c),
+      projectNotes: newProjectNotes
+    });
+  }, [projectData, updateProjectData]);
 
   const viewContent = React.useMemo(() => {
     if (!isLoaded) return null;
@@ -240,26 +308,24 @@ const App: React.FC = () => {
           fetchWithAuth={fetchWithAuth}
           onSelectProject={async (id) => {
             await loadProject(id);
-            setCurrentView(ViewType.DASHBOARD);
+            handleViewChange(ViewType.DASHBOARD);
           }}
           onAnalyzeManuscript={async (id) => {
             await loadProject(id);
-            setCurrentView(ViewType.MANUSCRIPT_ANALYZER);
+            handleViewChange(ViewType.MANUSCRIPT_ANALYZER);
           }}
           onDeselectProject={() => setProjectData(null)}
           onCreateProject={async (title, author, useSample, shortName) => { 
             const newProj = await handleCreateProject(title, author, useSample, shortName); 
             if (newProj) {
               await loadProject(newProj.id);
-              setCurrentView(ViewType.NOTEPAD);
+              handleViewChange(ViewType.NOTEPAD);
             }
           }}
           onUploadProject={async (file) => {
             const project = await handleUploadProject(file);
             if (project) {
-              // Don't reload from storage - we already have the project with manuscript
-              // loadProject would reload and potentially lose the manuscript field
-              setCurrentView(ViewType.MANUSCRIPT_ANALYZER);
+              handleViewChange(ViewType.MANUSCRIPT_ANALYZER);
             }
           }}
           onDeleteProject={handleDeleteProject}
@@ -271,33 +337,29 @@ const App: React.FC = () => {
         return projectData ? <DashboardView
           projectData={projectData}
           globalNotes={globalNotes}
-          onBack={() => setCurrentView(ViewType.BOOKSHELF)}
-          onNavigate={setCurrentView}
+          onBack={() => handleViewChange(ViewType.BOOKSHELF)}
+          onNavigate={handleViewChange}
+          onUpdateProject={updateProjectData}
         /> : null;
       case ViewType.MANUSCRIPT_ANALYZER:
         return projectData ? <ManuscriptAnalyzerView 
           projectData={projectData}
-          onBack={() => setCurrentView(ViewType.BOOKSHELF)}
+          onBack={() => handleViewChange(ViewType.BOOKSHELF)}
           onSaveCharacters={async (newCharacters) => {
             if (!projectData) return;
-            console.log('[App] onSaveCharacters called with:', newCharacters.length, 'characters');
             
-            // Combine with existing characters, avoiding duplicates by ID
             const existingChars = projectData.characters || [];
             const existingIds = new Set(existingChars.map(c => c.id));
             
             const uniqueNewChars = newCharacters.filter(nc => !existingIds.has(nc.id));
             const updatedCharacters = [...existingChars, ...uniqueNewChars];
             
-            console.log(`[App] Merging characters: ${existingChars.length} existing + ${uniqueNewChars.length} new = ${updatedCharacters.length} total`);
-            
             await updateProjectData({ 
               characters: updatedCharacters
             });
             
-            // Explicitly call handleManualSave to ensure it's persisted immediately
             await handleManualSave();
-            console.log('[App] updateProjectData and save completed');
+            handleViewChange(ViewType.CHARACTERS);
           }}
         /> : null;
 
@@ -307,7 +369,7 @@ const App: React.FC = () => {
           const isNotepadView = currentView === ViewType.NOTEPAD || !projectData;
           return <ResearchHubView
             currentView={currentView}
-            onChangeView={setCurrentView}
+            onChangeView={handleViewChange}
             data={(isNotepadView ? { 
               notes: globalNotes,
               id: '',
@@ -363,7 +425,7 @@ const App: React.FC = () => {
             onCreateProject={async (title, author, useSample, shortName) => { await handleCreateProject(title, author, useSample, shortName); }}
             onUploadProject={handleUploadProject}
             onDeleteProject={handleDeleteProject}
-            onSelectProject={async (id) => { await loadProject(id); setCurrentView(ViewType.NOTEPAD); }}
+            onSelectProject={async (id) => { await loadProject(id); handleViewChange(ViewType.NOTEPAD); }}
             isAnalyzing={isAnalyzing}
           />;
         }
@@ -374,10 +436,10 @@ const App: React.FC = () => {
         if (!projectData) return null;
         return <WorldSystemView
           currentView={currentView}
-          onChangeView={setCurrentView}
+          onChangeView={handleViewChange}
           data={projectData} 
           onUpdateLocation={(l) => updateProjectData({ locations: (projectData.locations || []).map(loc => loc.id === l.id ? l : loc) })}
-          onUpdateCharacter={(c) => updateProjectData({ characters: (projectData.characters || []).map(char => char.id === c.id ? c : char) })}
+          onUpdateCharacter={handleUpdateCharacter}
           onAddLocation={(l) => updateProjectData({ locations: [...(projectData.locations || []), l] })}
           onUpdateRootMap={(u) => updateProjectData({ rootMapImage: u })}
           onUpdateRootMapData={(s, u) => updateProjectData({ mapScale: s, mapUnit: u })}
@@ -405,18 +467,11 @@ const App: React.FC = () => {
           projectsMetadata={projectsMetadata}
         />;
 
-
-      // case ViewType.NARRATIVE_ARCHITECT:
-      //   return projectData ? <NarrativeArchitectView projectData={projectData} globalNotes={globalNotes} onUpdateProject={updateProjectData} /> : null;
-
-      // case ViewType.OUTLINE:
-      //   return projectData ? <OutlineView projectData={projectData} globalNotes={globalNotes} onUpdateProject={updateProjectData} /> : null;
-
       case ViewType.CHARACTERS:
         if (!projectData) return null;
         return <CharactersView
           data={projectData}
-          onUpdateCharacter={(c) => updateProjectData({ characters: (projectData.characters || []).map(char => char.id === c.id ? c : char) })}
+          onUpdateCharacter={handleUpdateCharacter}
           onAddCharacter={(c) => updateProjectData({ characters: [...(projectData.characters || []), c] })}
           onDeleteCharacter={(id) => updateProjectData({ characters: (projectData.characters || []).filter(c => c.id !== id) })}
           onLinkClick={handleLinkClick}
@@ -441,7 +496,7 @@ const App: React.FC = () => {
             await deleteGlobalNote(id);
           }}
           onLinkClick={handleLinkClick}
-          onChangeView={setCurrentView}
+          onChangeView={handleViewChange}
           currentUser={currentUser}
         />;
 
@@ -465,7 +520,7 @@ const App: React.FC = () => {
           currentUser={currentUser}
           onUpdateUser={u => setCurrentUser({ ...currentUser, ...u })}
           onUpdateProject={updateProjectData}
-          onChangeView={setCurrentView}
+          onChangeView={handleViewChange}
           onLinkClick={handleLinkClick}
           fetchWithAuth={fetchWithAuth}
           appSettings={appSettings}
@@ -474,12 +529,7 @@ const App: React.FC = () => {
       default:
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
-  }, [isLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, currentUser, appSettings, appPrompts, activeTasks, currentMapParentId, loadProject, refreshMetadata, updateProjectData, handleCreateProject, handleUploadProject, handleRestoreCommit, handleAuditThreads, handleScanContinuity, handleExtractSoftAnchors, handleDoubleProcessNote, handleDeleteNote, handleAddIdeaToProject, handleToggleCanon, handleQuickUpdate, handleLinkClick, handleManualSave, handleDeleteProject, handleEditProject, fetchWithAuth, router]);
-
-  const handleViewChange = useCallback((v: ViewType) => {
-    setCurrentView(v);
-    setIsMobileSidebarOpen(false);
-  }, []);
+  }, [isLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, currentUser, appSettings, appPrompts, activeTasks, currentMapParentId, loadProject, refreshMetadata, updateProjectData, handleCreateProject, handleUploadProject, handleRestoreCommit, handleAuditThreads, handleScanContinuity, handleExtractSoftAnchors, handleDoubleProcessNote, handleDeleteNote, handleAddIdeaToProject, handleToggleCanon, handleQuickUpdate, handleExtractRelationships, handleViewChange, fetchWithAuth, handleManualSave, handleEditProject, handleDeleteProject, handleLinkClick]);
 
   const renderAppContent = () => {
     if (!isLoaded) {
@@ -495,22 +545,25 @@ const App: React.FC = () => {
             <h2 className="text-xl font-black uppercase tracking-tighter text-slate-800 dark:text-white">{loadingStage}</h2>
             <div className="w-64 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-indigo-500 transition-all duration-300 ease-out" 
+                className="h-full bg-indigo-500 transition-all duration-300" 
                 style={{ width: `${loadingProgress}%` }}
-              ></div>
+              />
             </div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{loadingProgress}% Complete</p>
-            
-            {loadingProgress === 100 && (
-              <button 
-                onClick={() => window.location.reload()}
-                className="mt-4 flex items-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-black uppercase tracking-tighter transition-all"
-              >
-                <RefreshCw size={14} />
-                Reload Application
-              </button>
-            )}
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{loadingProgress}% Complete</p>
           </div>
+        </div>
+      );
+    }
+
+    if (!isAuthenticated) {
+      return <SignInPage />;
+    }
+
+    if (activeTasks.includes('Initializing Project')) {
+      return (
+        <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Opening Dossier...</p>
         </div>
       );
     }
@@ -530,6 +583,8 @@ const App: React.FC = () => {
           isGuest={!isAuthenticated}
           appName={appSettings.appName}
           isFullscreen={isMapFullscreen}
+          activeProjectTitle={projectData?.title}
+          activeProjectCoverColor={projectData?.coverColor}
         />
 
         <main className="flex-1 h-full relative overflow-hidden flex flex-col">
@@ -600,53 +655,25 @@ const App: React.FC = () => {
     );
   };
 
-  const [isGuest, setIsGuest] = useState(false);
-
   return (
     <EditModalProvider>
-      <AppWithEditor
-        isAuthenticated={isAuthenticated}
-        isAuthLoading={isAuthLoading}
-        isGuest={isGuest}
-        setIsGuest={setIsGuest}
-        renderAppContent={renderAppContent}
-      />
+      <AppWithEditor>{renderAppContent()}</AppWithEditor>
     </EditModalProvider>
   );
 };
 
-interface AppWithEditorProps {
-  isAuthenticated: boolean;
-  isAuthLoading: boolean;
-  isGuest: boolean;
-  setIsGuest: (value: boolean) => void;
-  renderAppContent: () => React.ReactNode;
-}
-
-const AppWithEditor: React.FC<AppWithEditorProps> = ({
-  isAuthenticated,
-  isAuthLoading,
-  isGuest,
-  setIsGuest,
-  renderAppContent,
-}) => {
-  const { modalState, closeEditor } = useEditModal();
-
+const AppWithEditor: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isOpen, modalState, closeEditor } = useEditModal();
   return (
     <>
-      {(!isAuthenticated && !isGuest && !isAuthLoading) ? (
-        <SignInPage onGuestAccess={() => setIsGuest(true)} />
-      ) : (
-        renderAppContent()
-      )}
-      
-      <DynamicEditModal
-        isOpen={modalState.isOpen}
-        data={modalState.data}
-        entityType={modalState.entityType}
-        entityId={modalState.entityId}
+      {children}
+      <DynamicEditModal 
+        isOpen={isOpen} 
+        onClose={closeEditor} 
+        data={modalState.data || {}}
+        entityType={modalState.entityType || ''}
+        entityId={modalState.entityId || ''}
         title={modalState.title}
-        onClose={closeEditor}
       />
     </>
   );

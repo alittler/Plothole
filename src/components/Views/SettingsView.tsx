@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { safeResponseJson } from '../../utils/jsonUtils';
+import { BackupControl } from '../BackupControl';
 
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
@@ -618,166 +619,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       case SettingsTab.ARCHIVE:
         return projectData ? (
           <section className="h-full flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-y-auto animate-in fade-in duration-500">
-            {/* Backup Resend Section */}
-            <div className="p-10 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
+            {/* Backup Control Section */}
+            <div className="p-10 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-4 mb-6">
                 <div className="p-4 bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-600/20">
                   <Download size={28} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Backup & Resend</h3>
-                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Resend project backups to cloud storage.</p>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Backup Management</h3>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Send and manage project backups via email.</p>
                 </div>
               </div>
-              
-              {projectData.backups && projectData.backups.length > 0 ? (
-                <div className="space-y-3">
-                  {projectData.backups.map(backup => (
-                    <div key={backup.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className={`w-2 h-2 rounded-full ${backup.status === 'delivered' ? 'bg-emerald-500' : backup.status === 'pending' ? 'bg-amber-500' : 'bg-rose-500'}`} />
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white text-sm">{new Date(backup.timestamp).toLocaleString()}</p>
-                          <p className="text-xs text-slate-500">{backup.wordCount} words • {backup.status}</p>
-                        </div>
-                      </div>
-                      {backup.status !== 'delivered' && (
-                        <button 
-                          onClick={() => {
-                            fetch(`/api/resend-backup/${backup.id}`, { method: 'POST' })
-                              .catch(err => console.error('Resend failed:', err));
-                          }}
-                          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-bold uppercase"
-                        >
-                          Resend
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-400 italic">No backups yet.</p>
-              )}
 
-              {/* Test Backup Button */}
-              <div className="mt-6 flex gap-3">
-                <button
-                  onClick={handleTestBackup}
-                  disabled={isTestBackupLoading}
-                  className="flex-1 px-6 py-3 bg-emerald-600 text-white font-bold uppercase text-sm rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-600/30"
-                >
-                  {isTestBackupLoading ? 'Creating...' : 'Test Backup'}
-                </button>
-              </div>
-
-              {testBackupResult && (
-                <div className={`mt-4 p-4 rounded-lg border ${testBackupResult.success ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800'}`}>
-                  <p className={`text-sm font-bold ${testBackupResult.success ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
-                    {testBackupResult.message}
-                  </p>
-                </div>
-              )}
-
-              {/* Backup Scheduling Settings */}
-              <div className="mt-8 pt-8 border-t border-emerald-200 dark:border-emerald-800/50 space-y-6">
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-3 block">Backup Schedule</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['manual', 'hourly', 'daily', 'weekly', 'monthly'] as BackupFrequency[]).map(freq => (
-                      <button
-                        key={freq}
-                        onClick={() => handleBackupSettingsChange(freq)}
-                        className={`py-3 px-4 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${backupFrequency === freq ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:border-emerald-500'}`}
-                      >
-                        {freq}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-200 dark:border-emerald-800/30 mb-6">
-                  <div className="space-y-1">
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Automatic Backups</span>
-                    <p className="text-[10px] text-slate-600 dark:text-slate-400 font-bold uppercase">Enable scheduled backups.</p>
-                  </div>
-                  <button 
-                    onClick={() => handleBackupEnabledChange(!isBackupEnabled)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isBackupEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isBackupEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-
-                {isBackupEnabled && getNextBackupTime() && (
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-[10px]">
-                    <p className="text-slate-600 dark:text-slate-300 font-bold uppercase tracking-widest mb-1">Next Backup</p>
-                    <p className="text-slate-500 dark:text-slate-400 font-mono text-xs">{formatTime(getNextBackupTime()!)}</p>
-                  </div>
-                )}
-
-                {appSettings.enableBackupPreview && (
-                  <div className="mt-8 pt-8 border-t border-emerald-200 dark:border-emerald-800/50 space-y-4 pb-20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles size={16} className="text-emerald-600" />
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Backup Preview</h4>
-                    </div>
-
-                    {/* Email Preview Card */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-                      <div className="bg-slate-50 dark:bg-slate-900/50 p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="flex gap-1">
-                            <div className="w-2 h-2 rounded-full bg-rose-400" />
-                            <div className="w-2 h-2 rounded-full bg-amber-400" />
-                            <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                          </div>
-                          <span className="text-[9px] font-bold text-slate-400 uppercase ml-2">Backup Notification Preview</span>
-                        </div>
-                        <Mail size={12} className="text-slate-400" />
-                      </div>
-                      <div className="p-4 space-y-3">
-                        <div className="space-y-1">
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">Subject</p>
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-100">[Milestone] Backup: {projectData?.title || 'Project'} [sha-8] ({projectData?.wordCount || 0} words)</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">Body</p>
-                          <div className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-100 dark:border-slate-800/50">
-                            <p>Automated backup for project: <strong>{projectData?.title}</strong></p>
-                            <p className="mt-1 text-slate-400 italic">This backup contains the current .plothole files for all books associated with your account.</p>
-                          </div>
-                        </div>
-
-                        {/* Attachments Preview */}
-                        <div className="pt-2">
-                          <p className="text-[10px] text-slate-400 font-bold uppercase mb-2">Attachments (Estimated)</p>
-                          <div className="grid grid-cols-1 gap-2">
-                            <div className="flex items-center justify-between p-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
-                              <div className="flex items-center gap-2">
-                                <div className="p-1.5 bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-300 rounded">
-                                  <FileText size={12} />
-                                </div>
-                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">{projectData?.title?.replace(/\s+/g, '_')}_current.plothole</span>
-                              </div>
-                              <span className="text-[9px] font-mono text-emerald-600/70">CURRENT</span>
-                            </div>
-
-                            <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-100 dark:border-slate-800/50 opacity-60">
-                              <div className="flex items-center gap-2">
-                                <div className="p-1.5 bg-slate-200 dark:bg-slate-700 text-slate-500 rounded">
-                                  <History size={12} />
-                                </div>
-                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">Historical_Snapshots.zip</span>
-                              </div>
-                              <span className="text-[9px] font-mono text-slate-400">UP TO 5 COPIES (MATCHING SHA)</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <BackupControl
+                projectId={projectData.id}
+                projectTitle={projectData.title || 'Untitled Project'}
+                backupHistory={(projectData.backups || []).slice(-10).reverse()}
+                backupSettings={projectData.backupSettings}
+                fetchWithAuth={fetchWithAuth}
+                onSendBackup={async () => {
+                  // Refresh project data after sending backup
+                  setTimeout(() => window.location.reload(), 1000);
+                }}
+              />
             </div>
 
             {/* Test Email Section */}

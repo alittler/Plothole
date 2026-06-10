@@ -208,6 +208,14 @@ export interface Source {
   isBroken?: boolean;
 }
 
+export interface ManuscriptDraft {
+  id: string;
+  name: string;
+  content: string;
+  timestamp: number;
+  wordCount: number;
+}
+
 export interface ProjectData {
   id: string;
   title: string;
@@ -216,6 +224,7 @@ export interface ProjectData {
   summary: string;
   lastModified: number;
   coverImage?: string;
+  coverColor?: string;
   origin?: 'cloud' | 'local';
   characters: Character[];
   locations: Location[];
@@ -236,8 +245,10 @@ export interface ProjectData {
   userToolboxLinks?: ToolboxLink[];
   researchSources?: { id: string; name: string; type: string; uploadDate: number; size: number; extractionStatus: string; notes?: string }[];
   researchNotes?: { id: string; title: string; content: string; sourceIds: string[]; scriptureCitations: string[]; tags: string[]; createdAt: number; updatedAt: number }[];
+  projectNotes?: { id: string; content: string; timestamp: number; category: 'edit' | 'character' | 'general' }[];
   entities: HierarchicalEntity[];
   manuscript: string;
+  manuscriptDrafts?: ManuscriptDraft[];
   history_diff: string;
   assets: AssetMetadata[];
   manifest?: ProjectManifest;
@@ -250,7 +261,6 @@ export interface ProjectData {
   backupSettings?: BackupSettings;
   integrityHash?: string;
   latestManuscriptText?: string;
-  manuscriptDraft?: string;
   lastProcessedManuscriptSha?: string;
   lastProcessedPromptSha?: string;
   aiContextLimit?: number;

@@ -957,12 +957,21 @@ export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
       referenced_notes: []
     };
     
+    const draft: any = {
+      id: `draft-${Date.now()}`,
+      name: `Initial Upload: ${fileName}`,
+      content: content,
+      timestamp: Date.now(),
+      wordCount: content.split(/\s+/).length
+    };
+    
     return {
       id: projectId,
       title: projectTitle,
       author: 'Imported',
       summary: `Imported from ${fileName}`,
       manuscript: content,
+      manuscriptDrafts: [draft],
       lastModified: Date.now(),
       characters: [],
       locations: [],
@@ -1011,10 +1020,19 @@ export const unpackProject = async (blob: Blob): Promise<ProjectData> => {
     timestamp: Date.now()
   }));
 
+  const draft: any = {
+    id: `draft-${Date.now()}`,
+    name: `Imported Manuscript`,
+    content: raw_data,
+    timestamp: Date.now(),
+    wordCount: raw_data.split(/\s+/).filter((w: string) => w.length > 0).length
+  };
+
   return {
     manifest,
     entities,
     manuscript: raw_data,
+    manuscriptDrafts: raw_data ? [draft] : [],
     history_diff,
     assets,
     id: manifest.id,

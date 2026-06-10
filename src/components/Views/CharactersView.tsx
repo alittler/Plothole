@@ -19,15 +19,58 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
   onLinkClick,
   fetchWithAuth
 }) => {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Partial<Character>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedEditMode, setExpandedEditMode] = useState(false);
   const [expandedEditValues, setExpandedEditValues] = useState<Partial<Character>>({});
   const [notesTab, setNotesTab] = useState(false);
   const [generatingImageId, setGeneratingImageId] = useState<string | null>(null);
+  
+  // New state for filtering and grouping
+  const [viewMode, setViewMode] = useState<'all' | 'species' | 'affiliation' | 'nationality'>('all');
+  const [activeFilter, setActiveFilter] = useState<{ key: string; value: string } | null>(null);
 
   const characters = data.characters || [];
+
+  // Helper to render a clickable variable
+  const ClickableVariable = ({ label, value, filterKey }: { label: string; value: string | undefined; filterKey: string }) => {
+    if (!value) return null;
+    return (
+      <div className="flex flex-col">
+        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveFilter({ key: filterKey, value });
+            setViewMode('all'); // Go back to grid view but with filter
+            setExpandedId(null); // Close modal if open
+            setExpandedEditMode(false);
+          }}
+          className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline text-left truncate"
+        >
+          {value}
+        </button>
+      </div>
+    );
+  };
+
+  const filteredCharacters = characters.filter(char => {
+    if (!activeFilter) return true;
+    const charValue = (char as any)[activeFilter.key];
+    return charValue === activeFilter.value;
+  });
+
+  const getGroupedData = () => {
+    const groups: Record<string, Character[]> = {};
+    const key = viewMode; // species, affiliation, etc.
+    
+    characters.forEach(char => {
+      const val = (char as any)[key] || 'Unknown';
+      if (!groups[val]) groups[val] = [];
+      groups[val].push(char);
+    });
+    
+    return groups;
+  };
 
   const handleGenerateImage = async (char: Character) => {
     if (!fetchWithAuth || !char.physical_description) return;
@@ -67,22 +110,23 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
   };
 
   const handleEdit = (char: Character) => {
-    setEditingId(char.id);
-    setEditValues(char);
+    setExpandedId(char.id);
+    setExpandedEditMode(true);
+    setExpandedEditValues(char);
   };
 
   const handleSave = () => {
-    if (editingId && editValues) {
-      const char = characters.find(c => c.id === editingId);
+    // This function is now superseded by handleExpandedSave but kept for consistency if needed
+    if (expandedId && expandedEditValues) {
+      const char = characters.find(c => c.id === expandedId);
       if (char) {
-        // Merge edited values with original character to preserve all fields
         onUpdateCharacter({
           ...char,
-          ...editValues,
-          id: editingId
+          ...expandedEditValues,
+          id: expandedId
         } as Character);
-        setEditingId(null);
-        setEditValues({});
+        setExpandedEditMode(false);
+        setExpandedEditValues({});
       }
     }
   };
@@ -115,31 +159,76 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
               <Users size={32} className="text-indigo-600" />
               <div>
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white">Characters</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{characters.length} character{characters.length !== 1 ? 's' : ''}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {activeFilter ? `${filteredCharacters.length} filtered` : `${characters.length} total`} character{characters.length !== 1 ? 's' : ''}
+                </p>
               </div>
             </div>
-            {onAddCharacter && (
-              <button
-                onClick={() => {
-                  const newChar: Character = {
-                    id: `char-${Date.now()}`,
-                    name: 'New Character',
-                    role: 'Character',
-                    tier: 1,
-                    aliases: [],
-                    traits: [],
-                    motivation: '',
-                    description: '',
-                    physical_description: '',
-                    source: 'manual',
-                    field_notes: []
-                  };
-                  onAddCharacter(newChar);
-                }}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm flex items-center gap-2 transition"
-              >
-                <Plus size={16} /> Add Character
-              </button>
+            <div className="flex items-center gap-2">
+              {onAddCharacter && (
+                <button
+                  onClick={() => {
+                    const newChar: Character = {
+                      id: `char-${Date.now()}`,
+                      name: 'New Character',
+                      role: 'Character',
+                      tier: 1,
+                      aliases: [],
+                      traits: [],
+                      motivation: '',
+                      description: '',
+                      physical_description: '',
+                      source: 'manual',
+                      field_notes: []
+                    };
+                    onAddCharacter(newChar);
+                  }}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm flex items-center gap-2 transition"
+                >
+                  <Plus size={16} /> Add Character
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* View Tabs */}
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex gap-2">
+              {[
+                { id: 'all', label: 'All Grid' },
+                { id: 'species', label: 'By Species' },
+                { id: 'affiliation', label: 'By Affiliation' },
+                { id: 'nationality', label: 'By Nationality' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setViewMode(tab.id as any);
+                    if (tab.id !== 'all') setActiveFilter(null);
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                    viewMode === tab.id
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {activeFilter && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-lg">
+                <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">
+                  Filtered by {activeFilter.key}: {activeFilter.value}
+                </span>
+                <button
+                  onClick={() => setActiveFilter(null)}
+                  className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-md text-indigo-600 dark:text-indigo-400 transition-colors"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -152,53 +241,14 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
             <p className="text-slate-500 dark:text-slate-400 mb-2">No characters yet</p>
             <p className="text-sm text-slate-400 dark:text-slate-500">Import a manuscript to extract characters</p>
           </div>
-        ) : (
+        ) : viewMode === 'all' ? (
           <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto w-full">
-            {characters.map(char => (
+            {filteredCharacters.map(char => (
               <div
                 key={char.id}
                 className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 hover:shadow-lg transition-shadow flex flex-col"
               >
-                {editingId === char.id ? (
-                  <div className="space-y-4">
-                    <input
-                      type="text"
-                      value={editValues.name || ''}
-                      onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-bold"
-                      placeholder="Character name"
-                    />
-                    <input
-                      type="text"
-                      value={editValues.role || ''}
-                      onChange={(e) => setEditValues({ ...editValues, role: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
-                      placeholder="Role"
-                    />
-                    <textarea
-                      value={editValues.description || ''}
-                      onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
-                      placeholder="Description"
-                      rows={3}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleSave}
-                        className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="flex-1 px-3 py-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600 text-slate-900 dark:text-white text-sm font-bold rounded-lg transition"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex gap-6 h-full">
+                <div className="flex gap-6 h-full">
                     {/* Left: Content */}
                     <div className="flex-1 flex flex-col min-w-0">
                       {/* Card Header */}
@@ -214,6 +264,14 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
                             {char.role}
                           </p>
                         )}
+                      </div>
+
+                      {/* Variables Grid */}
+                      <div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800/50">
+                        <ClickableVariable label="Species" value={char.species} filterKey="species" />
+                        <ClickableVariable label="Affiliation" value={char.affiliation} filterKey="affiliation" />
+                        <ClickableVariable label="Nationality" value={char.nationality} filterKey="nationality" />
+                        <ClickableVariable label="Location" value={char.homeLocation} filterKey="homeLocation" />
                       </div>
 
                       {/* Description Section */}
@@ -324,7 +382,42 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
                       </div>
                     )}
                   </div>
-                )}
+                </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 max-w-7xl mx-auto w-full space-y-12">
+            {Object.entries(getGroupedData()).map(([groupValue, groupChars]) => (
+              <div key={groupValue} className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{groupValue}</h2>
+                  <div className="h-px flex-1 bg-slate-200 dark:border-slate-800" />
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{groupChars.length} characters</span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {groupChars.map(char => (
+                    <div
+                      key={char.id}
+                      className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 hover:shadow-lg transition-shadow flex flex-col cursor-pointer"
+                      onClick={() => setExpandedId(char.id)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden border border-slate-200 dark:border-slate-700">
+                          {char.images && char.images[0]?.url ? (
+                            <img src={char.images[0].url} alt={char.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Users size={20} className="text-slate-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-black text-slate-900 dark:text-white truncate">{char.name}</h3>
+                          <p className="text-xs text-slate-500 truncate">{char.role || 'No Role'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -551,39 +644,234 @@ export const CharactersView: React.FC<CharactersViewProps> = ({
                             ) : null}
 
                             {/* Traits */}
-                            {(displayChar.traits && displayChar.traits.length > 0) && (
+                            {(displayChar.traits && displayChar.traits.length > 0) || expandedEditMode ? (
                               <div className="pb-4 border-b border-slate-200 dark:border-slate-800">
                                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">
                                   Traits
                                 </p>
-                                <div className="flex flex-wrap gap-2">
-                                  {displayChar.traits.map((trait, i) => (
-                                    <span
-                                      key={i}
-                                      className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full font-medium"
-                                    >
-                                      {trait}
-                                    </span>
-                                  ))}
+                                {expandedEditMode ? (
+                                  <textarea
+                                    value={(expandedEditValues.traits || []).join(', ')}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, traits: e.target.value.split(',').map(t => t.trim()).filter(t => t !== '') })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                    placeholder="Separate traits with commas"
+                                  />
+                                ) : (
+                                  <div className="flex flex-wrap gap-2">
+                                    {displayChar.traits?.map((trait, i) => (
+                                      <span
+                                        key={i}
+                                        className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full font-medium"
+                                      >
+                                        {trait}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
+
+                            {/* Additional Info Grid */}
+                            {expandedEditMode ? (
+                              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Species</p>
+                                  <input
+                                    type="text"
+                                    value={expandedEditValues.species || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, species: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Age</p>
+                                  <input
+                                    type="text"
+                                    value={expandedEditValues.age || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, age: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Gender</p>
+                                  <input
+                                    type="text"
+                                    value={expandedEditValues.gender || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, gender: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Nationality</p>
+                                  <input
+                                    type="text"
+                                    value={expandedEditValues.nationality || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, nationality: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Affiliation</p>
+                                  <input
+                                    type="text"
+                                    value={expandedEditValues.affiliation || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, affiliation: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Job Title</p>
+                                  <input
+                                    type="text"
+                                    value={expandedEditValues.jobTitle || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, jobTitle: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Birth Place</p>
+                                  <input
+                                    type="text"
+                                    value={expandedEditValues.birthPlace || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, birthPlace: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Home Location</p>
+                                  <input
+                                    type="text"
+                                    value={expandedEditValues.homeLocation || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, homeLocation: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pb-6 border-b border-slate-100 dark:border-slate-800">
+                                <ClickableVariable label="Species" value={displayChar.species} filterKey="species" />
+                                <ClickableVariable label="Age" value={displayChar.age} filterKey="age" />
+                                <ClickableVariable label="Gender" value={displayChar.gender} filterKey="gender" />
+                                <ClickableVariable label="Nationality" value={displayChar.nationality} filterKey="nationality" />
+                                <ClickableVariable label="Affiliation" value={displayChar.affiliation} filterKey="affiliation" />
+                                <ClickableVariable label="Job Title" value={displayChar.jobTitle} filterKey="jobTitle" />
+                                <ClickableVariable label="Birth Place" value={displayChar.birthPlace} filterKey="birthPlace" />
+                                <ClickableVariable label="Home Location" value={displayChar.homeLocation} filterKey="homeLocation" />
+                              </div>
+                            )}
+
+                            {/* Strengths & Weaknesses */}
+                            {expandedEditMode && (
+                              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Strengths</p>
+                                  <textarea
+                                    value={expandedEditValues.strengths || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, strengths: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                    rows={2}
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Weaknesses</p>
+                                  <textarea
+                                    value={expandedEditValues.weaknesses || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, weaknesses: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                    rows={2}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Narrative Focus */}
+                            {expandedEditMode && (
+                              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Primary Trait</p>
+                                  <input
+                                    type="text"
+                                    value={expandedEditValues.primary_trait || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, primary_trait: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Conflict</p>
+                                  <textarea
+                                    value={expandedEditValues.conflict || ''}
+                                    onChange={(e) => setExpandedEditValues({ ...expandedEditValues, conflict: e.target.value })}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                    rows={2}
+                                  />
                                 </div>
                               </div>
                             )}
 
                             {/* Analysis Details */}
-                            {displayChar.field_notes && displayChar.field_notes.length > 0 && (
+                            {(displayChar.field_notes && displayChar.field_notes.length > 0) || expandedEditMode ? (
                               <div>
                                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">
                                   Analysis Details
                                 </p>
-                                <div className="space-y-2">
-                                  {displayChar.field_notes.map((note, i) => (
-                                    <p key={i} className="text-sm text-slate-600 dark:text-slate-400">
-                                      <span className="font-semibold">{note.label}:</span> {note.value}
-                                    </p>
-                                  ))}
-                                </div>
+                                {expandedEditMode ? (
+                                  <div className="space-y-3">
+                                    {(expandedEditValues.field_notes || []).map((note, index) => (
+                                      <div key={index} className="flex gap-2 items-start">
+                                        <input
+                                          type="text"
+                                          value={note.label}
+                                          onChange={(e) => {
+                                            const newNotes = [...(expandedEditValues.field_notes || [])];
+                                            newNotes[index] = { ...newNotes[index], label: e.target.value };
+                                            setExpandedEditValues({ ...expandedEditValues, field_notes: newNotes });
+                                          }}
+                                          className="w-1/3 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-bold"
+                                          placeholder="Label"
+                                        />
+                                        <textarea
+                                          value={note.value}
+                                          onChange={(e) => {
+                                            const newNotes = [...(expandedEditValues.field_notes || [])];
+                                            newNotes[index] = { ...newNotes[index], value: e.target.value };
+                                            setExpandedEditValues({ ...expandedEditValues, field_notes: newNotes });
+                                          }}
+                                          className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                                          placeholder="Value"
+                                          rows={1}
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            const newNotes = (expandedEditValues.field_notes || []).filter((_, i) => i !== index);
+                                            setExpandedEditValues({ ...expandedEditValues, field_notes: newNotes });
+                                          }}
+                                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                                        >
+                                          <Trash2 size={16} />
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <button
+                                      onClick={() => {
+                                        const newNotes = [...(expandedEditValues.field_notes || []), { label: '', value: '' }];
+                                        setExpandedEditValues({ ...expandedEditValues, field_notes: newNotes });
+                                      }}
+                                      className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-slate-500 hover:border-indigo-500 hover:text-indigo-500 transition-all text-xs font-bold uppercase tracking-widest"
+                                    >
+                                      + Add Analysis Detail
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {displayChar.field_notes?.map((note, i) => (
+                                      <p key={i} className="text-sm text-slate-600 dark:text-slate-400">
+                                        <span className="font-semibold">{note.label}:</span> {note.value}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         )}
                       </div>

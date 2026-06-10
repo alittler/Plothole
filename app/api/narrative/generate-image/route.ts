@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import { getUserId } from '@/app/api/auth';
+import { getImageGenerationConfig } from '@/src/lib/toolsConfig';
 
 export const runtime = 'nodejs';
 
-// Generate a simple SVG placeholder image based on character name
+// Generate a simple SVG placeholder image as fallback
 function generatePlaceholderImage(characterName: string, characterId: string): string {
   const colors = [
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
@@ -21,19 +22,19 @@ function generatePlaceholderImage(characterName: string, characterId: string): s
     .slice(0, 2) || '?';
 
   const svg = `
-    <svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+    <svg width="1024" height="576" viewBox="0 0 1024 576" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style="stop-color:${color};stop-opacity:1" />
           <stop offset="100%" style="stop-color:${color}dd;stop-opacity:1" />
         </linearGradient>
       </defs>
-      <rect width="512" height="512" fill="url(#grad)"/>
-      <circle cx="256" cy="200" r="80" fill="rgba(255,255,255,0.2)"/>
-      <text x="256" y="320" font-size="120" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial">
+      <rect width="1024" height="576" fill="url(#grad)"/>
+      <circle cx="512" cy="240" r="100" fill="rgba(255,255,255,0.2)"/>
+      <text x="512" y="380" font-size="160" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial">
         ${initials}
       </text>
-      <text x="256" y="420" font-size="48" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-family="Arial">
+      <text x="512" y="500" font-size="64" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-family="Arial">
         ${characterName}
       </text>
     </svg>
@@ -55,10 +56,83 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing prompt' }, { status: 400 });
     }
 
-    console.log(`[ImageGen] Generating image for character: ${characterName} (${characterId})`);
+    const apiKey = process.env.OPENROUTER_API_KEY;
     
-    // Generate a placeholder image for now
-    // In production, you can replace this with a real image generation service
+    if (apiKey) {
+      console.log(`[ImageGen] Requesting OpenRouter image for: ${characterName}`);
+      
+      try {
+        const imageConfig = getImageGenerationConfig();
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'HTTP-Referer': 'https://plothole.ai', // Optional
+            'X-Title': 'Plothole' // Optional
+          },
+          body: JSON.stringify({
+            model: imageConfig.model,
+            messages: [
+              {
+                role: "user",
+                content: prompt
+              }
+            ],
+            modalities: ["image"],
+            image_config: {
+              aspect_ratio: imageConfig.aspectRatio
+            }
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const imageObj = data.choices?.[0]?.message?.images?.[0];
+          
+          if (imageObj?.image_url?.url) {
+            const imageUrl = imageObj.image_url.url;
+            const imageConfig = getImageGenerationConfig();
+            console.log(`[ImageGen] OpenRouter returned image URL (starts with: ${imageUrl.substring(0, 30)})`);
+
+            // If it's a data URI, we should save it to Vercel Blob to have a persistent URL
+            if (imageUrl.startsWith('data:')) {
+              const [header, base64Data] = imageUrl.split(',');
+              const contentType = header.split(':')[1].split(';')[0];
+              const extension = contentType.split('/')[1] || 'png';
+              const buffer = Buffer.from(base64Data, 'base64');
+              
+              const filename = `characters/${userId}/${characterId}-${Date.now()}.${extension}`;
+              const blob = await put(filename, buffer, {
+                access: 'public',
+                contentType: contentType,
+              });
+
+              return NextResponse.json({ 
+                success: true, 
+                url: blob.url,
+                model: imageConfig.model
+              });
+            }
+
+            // If it's already a regular URL, just return it
+            return NextResponse.json({ 
+              success: true, 
+              url: imageUrl,
+              model: imageConfig.model
+            });
+          }
+        } else {
+          const errorText = await response.text();
+          console.error(`[ImageGen] OpenRouter error (${response.status}):`, errorText);
+        }
+      } catch (err) {
+        console.error(`[ImageGen] Failed to call OpenRouter:`, err);
+      }
+    }
+
+    // Fallback: Generate a placeholder image
+    console.log(`[ImageGen] Using fallback placeholder for ${characterName}`);
     try {
       const svgImage = generatePlaceholderImage(characterName, characterId);
       const svgBuffer = Buffer.from(svgImage, 'utf-8');
@@ -69,7 +143,6 @@ export async function POST(request: NextRequest) {
         contentType: 'image/svg+xml',
       });
 
-      console.log(`[ImageGen] Successfully generated placeholder image for ${characterName}`);
       return NextResponse.json({ 
         success: true, 
         url: blob.url,
