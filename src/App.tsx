@@ -591,7 +591,7 @@ const App: React.FC = () => {
           <div className="lg:hidden z-[2000] fixed top-0 left-0 right-0 h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4">
             <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 text-slate-600 dark:text-slate-400"><Menu size={20} /></button>
             <span className="font-black text-sm uppercase tracking-tighter dark:text-white">{appSettings.appName}</span>
-            <button onClick={() => handleViewChange(ViewType.ADMIN)} className="p-2 text-slate-600 dark:text-slate-400"><Search size={20} /></button>
+            <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 text-slate-600 dark:text-slate-400"><Search size={20} /></button>
           </div>
 
           <div className="flex-1 overflow-hidden relative lg:pt-0 pt-14">
