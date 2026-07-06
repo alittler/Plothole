@@ -50,6 +50,7 @@ import { safeResponseJson } from './utils/jsonUtils';
 
 import { useProjectData, populateDataCatalog } from './hooks/useProjectData';
 import { useAppInitialization } from './hooks/useAppInitialization';
+import { useAuth0ErrorHandler } from './hooks/useAuth0ErrorHandler';
 import { EditModalProvider, useEditModal } from './contexts/EditModalContext';
 
 // Components
@@ -82,6 +83,7 @@ const App: React.FC = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user: auth0User, isAuthenticated, isLoading: isAuthLoading, getAccessTokenSilently } = useAuth0();
+  useAuth0ErrorHandler();
   const hasAutoLoaded = useRef(false);
 
   const [activeTasks, setActiveTasks] = useState<string[]>([]);
@@ -144,15 +146,23 @@ const App: React.FC = () => {
             scope: 'openid profile email offline_access'
           }
         });
-      } catch (tokenErr) {
-        console.warn(`[Auth] Could not get access token silently`, tokenErr);
+      } catch (tokenErr: any) {
+        if (tokenErr?.error === 'invalid_grant' && tokenErr?.error_description?.includes('refresh token')) {
+          console.warn('[Auth] Refresh token is invalid. Returning 401 response.');
+          // Return a 401 response instead of throwing/redirecting to avoid infinite loops
+          return new Response(JSON.stringify({ error: 'Refresh token invalid' }), { 
+            status: 401,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        console.warn(`[Auth] Could not get access token silently:`, tokenErr?.error, tokenErr?.error_description);
       }
 
       const headers = { ...options.headers } as Record<string, string>;
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       return await fetch(url, { ...options, headers });
-    } catch (err) {
+    } catch (err: any) {
       console.error(`[Auth] Error in fetchWithAuth for ${url}:`, err);
       throw err;
     }
@@ -244,9 +254,16 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (isLoaded && projectsMetadata.length > 0 && !projectData && !hasAutoLoaded.current) {
+      const lastSelectedId = typeof window !== 'undefined' ? localStorage.getItem('lastSelectedProjectId') : null;
       const sortedMeta = [...projectsMetadata].sort((a, b) => b.lastModified - a.lastModified);
-      const firstId = sortedMeta[0].id;
-      loadProject(firstId).then(project => {
+      
+      let targetId = lastSelectedId;
+      // Ensure the last selected project still exists
+      if (!targetId || !projectsMetadata.some(m => m.id === targetId)) {
+        targetId = sortedMeta[0].id;
+      }
+
+      loadProject(targetId).then(project => {
         if (project && (!pathname || pathname === '/')) {
           handleViewChange(ViewType.NOTEPAD);
         }
@@ -474,6 +491,7 @@ const App: React.FC = () => {
           onUpdateCharacter={handleUpdateCharacter}
           onAddCharacter={(c) => updateProjectData({ characters: [...(projectData.characters || []), c] })}
           onDeleteCharacter={(id) => updateProjectData({ characters: (projectData.characters || []).filter(c => c.id !== id) })}
+          onClearCharacters={() => updateProjectData({ characters: [] })}
           onLinkClick={handleLinkClick}
           fetchWithAuth={fetchWithAuth}
         />;
@@ -577,14 +595,14 @@ const App: React.FC = () => {
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           onClose={() => setIsMobileSidebarOpen(false)}
-          hasActiveProject={!!projectData}
+          hasActiveProject={!!projectData && projectData.id !== 'global-notebook'}
           currentUser={currentUser}
           isAnalyzing={isAnalyzing}
           isGuest={!isAuthenticated}
           appName={appSettings.appName}
           isFullscreen={isMapFullscreen}
           activeProjectTitle={projectData?.title}
-          activeProjectCoverColor={projectData?.coverColor}
+          activeProjectCoverColor={projectData?.id !== 'global-notebook' ? projectData?.coverColor : undefined}
         />
 
         <main className="flex-1 h-full relative overflow-hidden flex flex-col">
@@ -603,7 +621,7 @@ const App: React.FC = () => {
           <BottomNav 
             currentView={currentView} 
             onChangeView={handleViewChange} 
-            hasActiveProject={!!projectData} 
+            hasActiveProject={!!projectData && projectData.id !== 'global-notebook'} 
             isSidebarOpen={isMobileSidebarOpen}
             onToggleSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           />
