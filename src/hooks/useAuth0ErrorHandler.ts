@@ -6,8 +6,8 @@ export function useAuth0ErrorHandler() {
 
   useEffect(() => {
     if (auth0Error && !isLoading) {
-      const errorMessage = auth0Error.error || 'Unknown';
-      const errorDescription = auth0Error.error_description || '';
+      const errorMessage = (auth0Error as any)?.error || 'Unknown';
+      const errorDescription = (auth0Error as any)?.error_description || '';
 
       // Handle invalid/expired refresh token
       if (

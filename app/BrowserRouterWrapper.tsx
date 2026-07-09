@@ -42,10 +42,6 @@ export function BrowserRouterWrapper({ children }: { children: ReactNode }) {
     return window.location.origin;
   };
 
-  const handleAuth0Error = (error: any) => {
-    console.error('[Auth0] Auth error:', error);
-  };
-
   return (
     <Auth0Provider
       domain={process.env.NEXT_PUBLIC_AUTH0_DOMAIN || 'dev-t0pa1ah6r1n2wc4a.us.auth0.com'}
@@ -58,7 +54,6 @@ export function BrowserRouterWrapper({ children }: { children: ReactNode }) {
       }}
       cacheLocation="localstorage"
       useRefreshTokens={true}
-      onError={handleAuth0Error}
       onRedirectCallback={(appState) => {
         if (typeof window !== 'undefined') {
           const cleanPath = appState?.returnTo || '/';
