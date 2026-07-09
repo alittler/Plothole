@@ -3,6 +3,7 @@ import { HierarchicalEntity } from '../types';
 import { NarrativeExtractionSchema } from './schemas';
 import { generateId } from './storageService';
 import { safeJsonParse } from '../../src/utils/jsonUtils';
+import { GoogleGenAI } from "@google/genai";
 
 export interface ExtractionSchema {
   characters: any;
@@ -12,10 +13,12 @@ export interface ExtractionSchema {
 
 export class NarrativeEngine {
   private apiKey: string;
+  private geminiKey?: string;
   private baseUrl: string = 'https://openrouter.ai/api/v1/chat/completions';
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, geminiKey?: string) {
     this.apiKey = apiKey;
+    this.geminiKey = geminiKey;
   }
 
   async recursiveExtraction(
@@ -26,7 +29,7 @@ export class NarrativeEngine {
   ) {
     let worldState: HierarchicalEntity[] = [...existingEntities];
 
-    console.log(`[NarrativeEngine] Starting OpenRouter extraction for ${chunks.length} chunks...`);
+    console.log(`[NarrativeEngine] Starting extraction for ${chunks.length} chunks...`);
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
@@ -79,17 +82,32 @@ export class NarrativeEngine {
     return worldState;
   }
 
+  private async callGeminiDirect(systemInstruction: string, userPrompt: string, jsonMode: boolean = false): Promise<string> {
+    if (!this.geminiKey) throw new Error("Gemini fallback key not available");
+    
+    console.log('[NarrativeEngine] Calling Gemini API directly (fallback)...');
+    const ai = new GoogleGenAI({ apiKey: this.geminiKey });
+    
+    const combinedPrompt = `${systemInstruction}\n\nUser Input:\n${userPrompt}`;
+    const result = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: 'user', parts: [{ text: combinedPrompt }] }],
+      config: jsonMode ? { responseMimeType: "application/json" } : undefined
+    });
+    
+    return result.text;
+  }
+
   private async extractFromChunk(chunkText: string, schemaOrPrompt: any) {
     try {
       const isCustomPrompt = typeof schemaOrPrompt === 'string';
-      console.log('[NarrativeEngine] isCustomPrompt:', isCustomPrompt, 'schemaOrPrompt type:', typeof schemaOrPrompt);
-      if (isCustomPrompt) {
-        console.log('[NarrativeEngine] Custom prompt (first 200 chars):', (schemaOrPrompt as string).substring(0, 200));
-      }
       const systemInstruction = isCustomPrompt 
         ? `${schemaOrPrompt}\n\nIMPORTANT: Return ONLY a valid JSON object. Use keys "characters", "locations", and "events" (or "plotPoints") for the extracted data.`
         : `You are an expert narrative architect. Extract characters, locations, and events from the provided text.\nReturn ONLY a valid JSON object matching this schema:\n${JSON.stringify(schemaOrPrompt, null, 2)}`;
+      const userPrompt = `Analyze this story segment: \n\n ${chunkText}`;
 
+      let content = '';
+      
       console.log('[NarrativeEngine] Sending request to OpenRouter...');
       const response = await fetch(this.baseUrl, {
         method: 'POST',
@@ -102,48 +120,34 @@ export class NarrativeEngine {
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash', 
           messages: [
-            {
-              role: 'system',
-              content: systemInstruction
-            },
-            {
-              role: 'user',
-              content: `Analyze this story segment: \n\n ${chunkText}`
-            }
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: userPrompt }
           ],
           response_format: { type: 'json_object' }
         })
       });
 
-      console.log('[NarrativeEngine] Response status:', response.status);
-      if (!response.ok) {
+      if (response.ok) {
+        const data = await response.json();
+        content = data.choices[0].message.content;
+      } else if (response.status === 401 && this.geminiKey) {
+        console.warn('[NarrativeEngine] OpenRouter 401. Using Gemini fallback...');
+        content = await this.callGeminiDirect(systemInstruction, userPrompt, true);
+      } else {
         const errorText = await response.text();
-        console.error('[NarrativeEngine] OpenRouter API Error Response:', errorText);
         throw new Error(`OpenRouter Error (${response.status}): ${errorText}`);
       }
-
-      const data = await response.json();
-      console.log('[NarrativeEngine] Received response from OpenRouter');
-      console.log('[NarrativeEngine] Response structure - choices:', Array.isArray(data?.choices), 'length:', data?.choices?.length);
       
-      if (!data?.choices?.[0]?.message?.content) {
-        console.error('[NarrativeEngine] Invalid response structure:', JSON.stringify(data, null, 2));
-        throw new Error('Invalid response structure from OpenRouter: no content in choices[0].message');
-      }
-
-      let content = data.choices[0].message.content;
-      console.log('[NarrativeEngine] Raw response content:', content.substring(0, 500));
-
       const parsed = safeJsonParse(content);
       if (!parsed) {
         console.error('[NarrativeEngine] Failed to parse content as JSON:', content);
         throw new Error('Failed to parse AI response as JSON.');
       }
-      console.log('[NarrativeEngine] Parsed JSON keys:', Object.keys(parsed).join(', '));      
+      
       // Helper to ensure array
       const ensureArray = (val: any): any[] => Array.isArray(val) ? val : [];
       
-      // Normalize keys for custom prompts (case-insensitive and common aliases)
+      // Normalize keys
       const characterized = ensureArray(parsed.characters || parsed.Characters || parsed.people || parsed.People || parsed.cast);
       const normalized: any = {
         characters: characterized.map((c: any) => ({
@@ -189,29 +193,25 @@ export class NarrativeEngine {
         }))
       };
 
-      console.log('[NarrativeEngine] Successfully parsed chunk. Characters:', normalized.characters?.length, 'Locations:', normalized.locations?.length, 'Events:', normalized.events?.length, 'PlotPoints:', normalized.plotPoints?.length);
       return NarrativeExtractionSchema.parse(normalized);
     } catch (error: any) {
-      console.error('[NarrativeEngine] Extraction failed for chunk.');
-      console.error('[NarrativeEngine] Error type:', error?.constructor?.name);
-      console.error('[NarrativeEngine] Error message:', error?.message);
-      if (error instanceof Error) {
-        console.error('[NarrativeEngine] Error Details:', error.message);
-        console.error('[NarrativeEngine] Stack trace:', error.stack);
-      }
-      if (error.response) {
-        console.error('[NarrativeEngine] Response Status:', error.response.status);
-        console.error('[NarrativeEngine] Response Body:', error.response.body);
-      }
-      console.error('[NarrativeEngine] Full Error Object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      console.error('[NarrativeEngine] Extraction failed for chunk:', error.message);
       return { characters: [], locations: [], events: [], plotPoints: [] };
     }
   }
 
   async detectWorldType(manuscript: string): Promise<'real' | 'fictional' | 'mixed'> {
     try {
-      console.log('[NarrativeEngine] Detecting world type from manuscript...');
-      
+      const systemInstruction = `You are a story analyst. Determine if this story is set in the real world, a fictional world, or a mix of both.
+
+Return ONLY a JSON object with one field:
+{
+  "worldType": "real" | "fictional" | "mixed",
+  "reasoning": "brief explanation"
+}`;
+      const userPrompt = `Analyze this story (first 2000 chars): ${manuscript.substring(0, 2000)}`;
+      let content = '';
+
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
@@ -223,102 +223,64 @@ export class NarrativeEngine {
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [
-            {
-              role: 'system',
-              content: `You are a story analyst. Determine if this story is set in the real world, a fictional world, or a mix of both.
-
-Return ONLY a JSON object with one field:
-{
-  "worldType": "real" | "fictional" | "mixed",
-  "reasoning": "brief explanation"
-}
-
-Guidelines:
-- "real": Story is set in the real world (historical, contemporary, etc.) using actual places and events
-- "fictional": Story is set in an invented/fantasy world with fictional locations
-- "mixed": Story blends real world locations/events with fictional elements or multiple worlds`
-            },
-            {
-              role: 'user',
-              content: `Analyze this story (first 2000 chars): ${manuscript.substring(0, 2000)}`
-            }
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: userPrompt }
           ],
           response_format: { type: 'json_object' }
         })
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[NarrativeEngine] WorldType Detection Error:', errorText);
-        return 'fictional'; // Default to fictional on error
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      
-      if (!content) {
-        console.warn('[NarrativeEngine] No content in worldType response');
+      if (response.ok) {
+        const data = await response.json();
+        content = data.choices?.[0]?.message?.content;
+      } else if (response.status === 401 && this.geminiKey) {
+        console.warn('[NarrativeEngine] OpenRouter 401. Using Gemini fallback for world detection...');
+        content = await this.callGeminiDirect(systemInstruction, userPrompt, true);
+      } else {
         return 'fictional';
       }
 
+      if (!content) return 'fictional';
       const parsed = JSON.parse(content);
       const worldType = parsed.worldType?.toLowerCase() || 'fictional';
-      
-      if (!['real', 'fictional', 'mixed'].includes(worldType)) {
-        console.warn('[NarrativeEngine] Invalid worldType:', worldType);
-        return 'fictional';
-      }
-
-      console.log('[NarrativeEngine] Detected world type:', worldType, 'Reasoning:', parsed.reasoning);
-      return worldType as 'real' | 'fictional' | 'mixed';
+      return ['real', 'fictional', 'mixed'].includes(worldType) ? worldType as any : 'fictional';
     } catch (error: any) {
       console.error('[NarrativeEngine] Error detecting world type:', error.message);
-      return 'fictional'; // Safe default
+      return 'fictional';
     }
   }
 
   async brainstorm(prompt: string, context: string): Promise<string> {
-    console.log('[NarrativeEngine] Starting brainstorm...');
-    console.log('[NarrativeEngine] API Base URL:', this.baseUrl);
-    console.log('[NarrativeEngine] Using model: google/gemini-2.5-flash');
-    
-    const response = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'HTTP-Referer': 'https://plothole.click',
-        'X-Title': 'Plothole Brainstorm',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: prompt
-          },
-          {
-            role: 'user',
-            content: context
-          }
-        ]
-      })
-    });
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'HTTP-Referer': 'https://plothole.click',
+          'X-Title': 'Plothole Brainstorm',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: prompt },
+            { role: 'user', content: context }
+          ]
+        })
+      });
 
-    console.log('[NarrativeEngine] Response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[NarrativeEngine] API Error Response:', errorText);
-      throw new Error(`Brainstorm API Error (${response.status}): ${errorText}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || "I couldn't generate any connections.";
+      } else if (response.status === 401 && this.geminiKey) {
+        console.warn('[NarrativeEngine] OpenRouter 401. Using Gemini fallback for brainstorm...');
+        return await this.callGeminiDirect(prompt, context, false);
+      } else {
+        throw new Error(`Brainstorm API Error (${response.status})`);
+      }
+    } catch (error: any) {
+      console.error('[NarrativeEngine] Brainstorm failed:', error.message);
+      return "I couldn't generate any connections at this time.";
     }
-
-    const data = await response.json();
-    console.log('[NarrativeEngine] Response received:', { 
-      choices: data.choices?.length,
-      hasContent: !!data.choices?.[0]?.message?.content 
-    });
-    
-    return data.choices?.[0]?.message?.content || "I couldn't generate any connections at this time.";
   }
 }

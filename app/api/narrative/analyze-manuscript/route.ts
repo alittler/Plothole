@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenAI } from "@google/genai";
 
 const MANUSCRIPT_ANALYSIS_PROMPT = `# Role & Objective
 You are an expert literary analysis AI and database architect. Your task is to ingest the provided manuscript text and extract all characters into a highly structured, clean dataset using specific data types and schema formatting. 
@@ -73,6 +74,38 @@ For **Tier 3** characters, condense them into a clean, space-saving inline list 
 # Execution Instruction
 Analyze the following manuscript text. Do not summarize the plot; focus purely on scanning, extracting, and rendering the character data according to the structural rules above.`;
 
+async function callOpenRouter(manuscriptText: string, apiKey: string) {
+  return fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://plothole.click',
+      'X-Title': 'Plothole - Manuscript Analysis',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        {
+          role: 'user',
+          content: `${MANUSCRIPT_ANALYSIS_PROMPT}\n\nManuscript Text:\n\n${manuscriptText}`,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 8000,
+    }),
+  });
+}
+
+async function callGeminiDirect(manuscriptText: string, apiKey: string) {
+  const ai = new GoogleGenAI({ apiKey });
+  const result = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: 'user', parts: [{ text: `${MANUSCRIPT_ANALYSIS_PROMPT}\n\nManuscript Text:\n\n${manuscriptText}` }] }]
+  });
+  return result.text;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { manuscriptText } = await request.json();
@@ -84,49 +117,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
+    const openRouterKey = process.env.OPENROUTER_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+
+    let analysisContent = '';
+    let usedFallback = false;
+
+    if (openRouterKey) {
+      console.log('[ManuscriptAnalyzer] Sending analysis request to OpenRouter...');
+      const response = await callOpenRouter(manuscriptText, openRouterKey);
+
+      if (response.ok) {
+        const data = await response.json();
+        analysisContent = data.choices[0].message.content;
+      } else if (response.status === 401 && geminiKey) {
+        console.warn('[ManuscriptAnalyzer] OpenRouter 401. Using Gemini fallback...');
+        analysisContent = await callGeminiDirect(manuscriptText, geminiKey);
+        usedFallback = true;
+      } else {
+        const errorData = await response.json();
+        console.error('[ManuscriptAnalyzer] API Error:', errorData);
+        return NextResponse.json(
+          { error: `Analysis API Error (${response.status}): ${JSON.stringify(errorData)}` },
+          { status: response.status }
+        );
+      }
+    } else if (geminiKey) {
+      console.log('[ManuscriptAnalyzer] No OpenRouter key. Using Gemini directly...');
+      analysisContent = await callGeminiDirect(manuscriptText, geminiKey);
+      usedFallback = true;
+    } else {
       return NextResponse.json(
-        { error: 'API key not configured' },
+        { error: 'No API keys configured (OpenRouter or Gemini)' },
         { status: 500 }
       );
     }
 
-    console.log('[ManuscriptAnalyzer] Sending analysis request to OpenRouter...');
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://plothole.click',
-        'X-Title': 'Plothole - Manuscript Analysis',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'user',
-            content: `${MANUSCRIPT_ANALYSIS_PROMPT}\n\nManuscript Text:\n\n${manuscriptText}`,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 8000,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('[ManuscriptAnalyzer] API Error:', errorData);
-      return NextResponse.json(
-        { error: `Analysis API Error (${response.status}): ${JSON.stringify(errorData)}` },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    const analysisContent = data.choices[0].message.content;
-    console.log('[ManuscriptAnalyzer] Analysis complete');
+    console.log('[ManuscriptAnalyzer] Analysis complete', usedFallback ? '(via Gemini Fallback)' : '');
     console.log('[ManuscriptAnalyzer] First 500 chars of analysis:', analysisContent.substring(0, 500));
 
     // Parse character data from markdown
@@ -191,6 +218,7 @@ export async function POST(request: NextRequest) {
       analysis: analysisContent,
       characters: characters,
       success: true,
+      fallbackUsed: usedFallback
     });
   } catch (error) {
     console.error('[ManuscriptAnalyzer] Error:', error);

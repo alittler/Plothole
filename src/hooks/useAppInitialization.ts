@@ -57,7 +57,22 @@ export function useAppInitialization(auth0User: any, isAuthLoading: boolean, get
 
       const fetchUsername = async () => {
         try {
-          const token = await getAccessTokenSilently();
+          let token: string | undefined;
+          try {
+            token = await getAccessTokenSilently();
+          } catch (tokenErr: any) {
+            if (tokenErr?.error === 'invalid_grant' && tokenErr?.error_description?.includes('refresh token')) {
+              console.error('[Auth] Refresh token invalid during initialization');
+              return;
+            }
+            console.warn('[Auth] Could not get token for username fetch:', tokenErr);
+          }
+
+          if (!token) {
+            console.debug('[Auth] No token available for username fetch');
+            return;
+          }
+
           const resp = await fetch('/api/user/username', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -71,7 +86,7 @@ export function useAppInitialization(auth0User: any, isAuthLoading: boolean, get
             }
           }
         } catch (err) {
-          console.error('Failed to fetch username:', err);
+          console.warn('Failed to fetch username:', err);
         }
       };
       fetchUsername();

@@ -7,14 +7,16 @@ export async function POST(request: NextRequest) {
     const auth = await getAuthPayload(request);
     const { prompt, context } = await request.json();
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      console.error('[Brainstorm API] OPENROUTER_API_KEY not configured');
-      return NextResponse.json({ error: 'OPENROUTER_API_KEY not configured' }, { status: 500 });
+    const openRouterKey = process.env.OPENROUTER_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+
+    if (!openRouterKey && !geminiKey) {
+      console.error('[Brainstorm API] No AI API keys configured');
+      return NextResponse.json({ error: 'AI API keys not configured' }, { status: 500 });
     }
 
-    console.log('[Brainstorm API] API Key configured, calling engine...');
-    const engine = new NarrativeEngine(apiKey);
+    console.log('[Brainstorm API] Calling engine...');
+    const engine = new NarrativeEngine(openRouterKey || '', geminiKey);
     const result = await engine.brainstorm(prompt, context);
 
     console.log('[Brainstorm API] Got result, returning...');

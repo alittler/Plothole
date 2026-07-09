@@ -319,7 +319,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
           ...apiTestResults,
           openrouter: { 
             status: 'success', 
-            message: 'OpenRouter API is working! Model: google/gemini-2.5-flash',
+            message: 'OpenRouter API is working! Model: google/gemini-2.0-flash-001',
             timestamp: Date.now()
           }
         });
@@ -389,7 +389,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                   <div className="flex-1">
                     <p className="text-sm font-black text-slate-900 dark:text-white uppercase">OpenRouter API (Gemini Brainstorm)</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Tests google/gemini-2.5-flash model availability</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Tests google/gemini-2.0-flash-001 model availability</p>
                   </div>
                   <button 
                     onClick={testOpenRouterAPI}

@@ -1,0 +1,17 @@
+# rendering.yaml
+layout:
+  - tab: "Core"
+    fields:
+      - { key: "name", type: "title" }
+      - { key: "role", type: "subtitle" }
+      - { key: "home", type: "text" }
+      - { key: "timeline", type: "text" }
+  - tab: "Abilities"
+    fields:
+      - { key: "magic_type", type: "badge" }
+      - { key: "spells", type: "list" }
+  - tab: "Narrative"
+    fields:
+      - { key: "secrets", type: "bullet_points" }
+      - { key: "goals", type: "bullet_points" }
+      - { key: "notes", type: "rich_text" }

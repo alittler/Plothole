@@ -162,78 +162,80 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projectData, globa
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-6xl mx-auto space-y-8">
           {/* Project Aesthetics */}
-          <section className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
-                <Palette size={24} />
-              </div>
-              <div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Project Aesthetics</h2>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Personalize the sidebar and project cover.</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="space-y-4 flex-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cover Color</p>
-                <div className="flex flex-wrap gap-3">
-                  {[
-                    { label: 'Indigo', value: '#4f46e5' },
-                    { label: 'Rose', value: '#e11d48' },
-                    { label: 'Emerald', value: '#10b981' },
-                    { label: 'Amber', value: '#d97706' },
-                    { label: 'Violet', value: '#7c3aed' },
-                    { label: 'Sky', value: '#0ea5e9' },
-                    { label: 'Slate', value: '#475569' },
-                    { label: 'Crimson', value: '#991b1b' },
-                  ].map(color => (
-                    <button
-                      key={color.value}
-                      onClick={() => onUpdateProject?.({ coverColor: color.value })}
-                      className="w-10 h-10 rounded-full border-2 transition-all hover:scale-110 flex items-center justify-center shadow-lg"
-                      style={{ 
-                        backgroundColor: color.value,
-                        borderColor: projectData.coverColor === color.value ? 'white' : 'transparent',
-                        boxShadow: projectData.coverColor === color.value ? `0 0 15px ${color.value}` : 'none'
-                      }}
-                      title={color.label}
-                    >
-                      {projectData.coverColor === color.value && <Check size={20} className="text-white" />}
-                    </button>
-                  ))}
-                  <div className="relative group">
-                    <input 
-                      type="color" 
-                      value={projectData.coverColor || '#4f46e5'} 
-                      onChange={(e) => onUpdateProject?.({ coverColor: e.target.value })}
-                      className="w-10 h-10 rounded-full bg-transparent cursor-pointer border-none p-0 overflow-hidden"
-                    />
-                    <div className="absolute inset-0 rounded-full pointer-events-none border-2 border-slate-200 dark:border-slate-700 opacity-50" />
-                  </div>
+          {projectData.id !== 'global-notebook' && (
+            <section className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                  <Palette size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Project Aesthetics</h2>
+                  <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Personalize the sidebar and project cover.</p>
                 </div>
               </div>
 
-              <div className="w-full md:w-64 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Preview</p>
-                <div className="w-32 h-44 rounded-lg shadow-2xl relative overflow-hidden transition-all duration-500"
-                  style={{ 
-                    backgroundColor: projectData.coverColor || '#4f46e5',
-                    boxShadow: `0 20px 50px -12px ${projectData.coverColor || '#4f46e5'}44`
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
-                  <div className="absolute left-2 right-2 top-8 text-center">
-                    <p className="text-white font-black text-xs uppercase leading-tight tracking-tighter line-clamp-3">{projectData.title}</p>
-                    <div className="w-8 h-0.5 bg-white/30 mx-auto mt-2 rounded-full" />
-                    <p className="text-white/60 font-bold text-[8px] uppercase tracking-widest mt-2">{projectData.author}</p>
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                <div className="space-y-4 flex-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cover Color</p>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { label: 'Indigo', value: '#4f46e5' },
+                      { label: 'Rose', value: '#e11d48' },
+                      { label: 'Emerald', value: '#10b981' },
+                      { label: 'Amber', value: '#d97706' },
+                      { label: 'Violet', value: '#7c3aed' },
+                      { label: 'Sky', value: '#0ea5e9' },
+                      { label: 'Slate', value: '#475569' },
+                      { label: 'Crimson', value: '#991b1b' },
+                    ].map(color => (
+                      <button
+                        key={color.value}
+                        onClick={() => onUpdateProject?.({ coverColor: color.value })}
+                        className="w-10 h-10 rounded-full border-2 transition-all hover:scale-110 flex items-center justify-center shadow-lg"
+                        style={{ 
+                          backgroundColor: color.value,
+                          borderColor: projectData.coverColor === color.value ? 'white' : 'transparent',
+                          boxShadow: projectData.coverColor === color.value ? `0 0 15px ${color.value}` : 'none'
+                        }}
+                        title={color.label}
+                      >
+                        {projectData.coverColor === color.value && <Check size={20} className="text-white" />}
+                      </button>
+                    ))}
+                    <div className="relative group">
+                      <input 
+                        type="color" 
+                        value={projectData.coverColor || '#4f46e5'} 
+                        onChange={(e) => onUpdateProject?.({ coverColor: e.target.value })}
+                        className="w-10 h-10 rounded-full bg-transparent cursor-pointer border-none p-0 overflow-hidden"
+                      />
+                      <div className="absolute inset-0 rounded-full pointer-events-none border-2 border-slate-200 dark:border-slate-700 opacity-50" />
+                    </div>
                   </div>
-                  <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                     <Image src="/logos/plothole_256x256.png" alt="logo" width={24} height={24} className="opacity-20 grayscale brightness-200" />
+                </div>
+
+                <div className="w-full md:w-64 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Preview</p>
+                  <div className="w-32 h-44 rounded-lg shadow-2xl relative overflow-hidden transition-all duration-500"
+                    style={{ 
+                      backgroundColor: projectData.coverColor || '#4f46e5',
+                      boxShadow: `0 20px 50px -12px ${projectData.coverColor || '#4f46e5'}44`
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
+                    <div className="absolute left-2 right-2 top-8 text-center">
+                      <p className="text-white font-black text-xs uppercase leading-tight tracking-tighter line-clamp-3">{projectData.title}</p>
+                      <div className="w-8 h-0.5 bg-white/30 mx-auto mt-2 rounded-full" />
+                      <p className="text-white/60 font-bold text-[8px] uppercase tracking-widest mt-2">{projectData.author}</p>
+                    </div>
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                       <Image src="/logos/plothole_256x256.png" alt="logo" width={24} height={24} className="opacity-20 grayscale brightness-200" />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* Project Overview */}
           <section className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-200 dark:border-slate-800">

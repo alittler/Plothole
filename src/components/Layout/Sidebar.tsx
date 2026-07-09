@@ -49,6 +49,16 @@ interface SidebarSection {
   items: NavItem[];
 }
 
+const getContrastColor = (hexcolor: string) => {
+  if (!hexcolor) return 'text-slate-400';
+  // If it's a hex, parse it
+  const r = parseInt(hexcolor.slice(1, 3), 16);
+  const g = parseInt(hexcolor.slice(3, 5), 16);
+  const b = parseInt(hexcolor.slice(5, 7), 16);
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  return (yiq >= 128) ? 'black' : 'white';
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView, onChangeView, isOpen, isCollapsed, onToggleCollapse, onClose, hasActiveProject, onToggleAi, isAiOpen, currentUser, isProcessing, processingStatus, activeProjectTitle, onQuickNote, onSave, appName = 'PLOTHOLE',
   sidebarOrder, onOpenLicenses, hideDesktopActions = false, isFullscreen = false, isAnalyzing = false, isServerConnected = true, isCloudStorage = false, lastModified, isGuest = false,
@@ -60,6 +70,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [sourceHash, setSourceHash] = React.useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
+
+  const contrastColor = activeProjectCoverColor ? getContrastColor(activeProjectCoverColor) : 'text-slate-400';
+  const isDarkBackground = contrastColor === 'white';
+  const contrastTextClass = activeProjectCoverColor ? (isDarkBackground ? 'text-white' : 'text-black') : 'text-slate-400';
+  const contrastSecondaryTextClass = activeProjectCoverColor ? (isDarkBackground ? 'text-white/60' : 'text-black/60') : 'text-slate-500';
+  const contrastIconClass = activeProjectCoverColor ? (isDarkBackground ? 'text-white/70' : 'text-black/70') : 'text-slate-500';
 
   const handleSync = async () => {
     if (!onSave || isSyncing) return;
@@ -143,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
        {
          title: 'World',
-         items: allNavItems.filter(i => [ViewType.WORLD_HUB, ViewType.CHARACTERS].includes(i.id))
+        items: allNavItems.filter(i => [ViewType.WORLD_HUB, ViewType.CHARACTERS].includes(i.id))
        },
        {
          title: 'System',
@@ -194,29 +210,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }
         }}
         style={{
-          background: activeProjectCoverColor ? `linear-gradient(to bottom, ${activeProjectCoverColor}66, #020617)` : undefined
+          backgroundColor: activeProjectCoverColor || undefined
         }}
         className={`
         fixed inset-x-0 top-0 z-[1001] lg:relative lg:inset-y-0 lg:left-0 shrink-0
-        ${isGuest ? 'bg-slate-800 border-slate-700' : (!activeProjectCoverColor ? 'bg-slate-950 border-slate-800/50' : 'border-white/10')} text-slate-400 flex flex-col transition-all duration-500 ease-in-out border-b lg:border-b-0 lg:border-r
+        ${isGuest ? 'bg-slate-800 border-slate-700' : (!activeProjectCoverColor ? 'bg-slate-950 border-slate-800/50' : 'border-white/10')} ${contrastTextClass} flex flex-col transition-all duration-500 ease-in-out border-b lg:border-b-0 lg:border-r
         rounded-b-3xl lg:rounded-b-none
         ${isOpen ? 'translate-y-0 pointer-events-auto max-h-[calc(100vh-12rem)]' : '-translate-y-full lg:translate-y-0 pointer-events-none lg:pointer-events-auto lg:max-h-none'}
         ${isFullscreen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-none' : isCollapsed ? 'lg:w-20' : 'lg:w-64 md:w-72'}
       `}>
         {/* Mobile Safe Area Forehead */}
         <div className={`lg:hidden h-[env(safe-area-inset-top)] ${isGuest ? 'bg-slate-800' : (!activeProjectCoverColor ? 'bg-slate-950' : '')} w-full shrink-0`} 
-          style={{ backgroundColor: activeProjectCoverColor ? `${activeProjectCoverColor}66` : undefined }}
+          style={{ backgroundColor: activeProjectCoverColor || undefined }}
         />
 
-        <div className="p-6 border-b border-slate-800/50 flex flex-col gap-0.5 relative">
+        <div className={`p-6 border-b ${activeProjectCoverColor ? (isDarkBackground ? 'border-white/10' : 'border-black/10') : 'border-slate-800/50'} flex flex-col gap-0.5 relative`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {!isCollapsed && <Image src="/logos/plothole_256x256.png" alt="Plothole" width={32} height={32} className="w-8 h-8 rounded-lg shadow-lg" />}
               {!isCollapsed && (
                 <div className="flex flex-col">
-                  <span className="font-black text-2xl tracking-tighter text-white uppercase leading-none">{appName.replace(' — Your Story, Decoded', '')}</span>
+                  <span className={`font-black text-2xl tracking-tighter ${activeProjectCoverColor ? contrastTextClass : 'text-white'} uppercase leading-none`}>{appName.replace(' — Your Story, Decoded', '')}</span>
                   {activeProjectTitle && (
-                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mt-1 animate-in fade-in slide-in-from-left-2 duration-500 truncate max-w-[140px]">
+                    <span className={`text-[10px] font-black ${activeProjectCoverColor ? contrastSecondaryTextClass : 'text-indigo-400'} uppercase tracking-[0.2em] mt-1 animate-in fade-in slide-in-from-left-2 duration-500 truncate max-w-[140px]`}>
                       {activeProjectTitle}
                     </span>
                   )}
@@ -226,7 +242,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={onToggleCollapse}
-                className="hidden lg:block p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white"
+                className={`hidden lg:block p-2 ${activeProjectCoverColor ? (isDarkBackground ? 'hover:bg-white/10' : 'hover:bg-black/10') : 'hover:bg-slate-900'} rounded-xl transition-colors ${contrastIconClass} ${activeProjectCoverColor ? (isDarkBackground ? 'hover:text-white' : 'hover:text-black') : 'hover:text-white'}`}
                 title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
               >
                 {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
@@ -235,7 +251,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="relative hidden lg:block" ref={menuRef}>
                   <button
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    className="p-2 hover:bg-slate-900 rounded-xl transition-colors text-slate-500 hover:text-white"
+                    className={`p-2 ${activeProjectCoverColor ? (isDarkBackground ? 'hover:bg-white/10' : 'hover:bg-black/10') : 'hover:bg-slate-900'} rounded-xl transition-colors ${contrastIconClass} ${activeProjectCoverColor ? (isDarkBackground ? 'hover:text-white' : 'hover:text-black') : 'hover:text-white'}`}
                     title="Show Pages"
                   >
                     <Layout size={20} />
@@ -247,18 +263,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           {section.items.map(item => {
                             const isActive = currentView === item.id;
                             const isDisabled = item.projectOnly && !hasActiveProject;
+                            const isWorld = section.title === 'World' && !hasActiveProject;
                             return (
                               <button
                                 key={item.id}
                                 title={item.label}
                                 onClick={() => handleNavItemClick(item)}
-                                disabled={isDisabled}
+                                disabled={isDisabled || isWorld}
                                 className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all group ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''
-                                  } ${!isActive && !isDisabled ? 'hover:bg-slate-800 hover:text-slate-200' : ''
-                                  } ${isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''
+                                  } ${!isActive && !isDisabled && !isWorld ? 'hover:bg-slate-800 hover:text-slate-200' : ''
+                                  } ${(isDisabled || isWorld) ? 'opacity-40 cursor-not-allowed grayscale' : ''
                                   }`}
                               >
-                                <item.icon size={18} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors shrink-0`} />
+                                <item.icon size={18} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors shrink-0 ${isWorld ? 'group-hover:text-slate-500' : ''}`} />
                                 <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>
                               </button>
                             );
@@ -272,14 +289,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
           {!isCollapsed && !isCloudStorage && (
-            <div className="mt-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-500 shadow-lg shadow-amber-500/5">
+            <div className={`mt-2 px-3 py-2 ${activeProjectCoverColor ? (isDarkBackground ? 'bg-white/10 border-white/20' : 'bg-black/10 border-black/20') : 'bg-amber-500/10 border-amber-500/20'} rounded-xl flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-500 shadow-lg`}>
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full animate-pulse ${!isServerConnected ? 'bg-rose-500' : 'bg-amber-500'}`} />
-                <span className={`text-[10px] font-black uppercase tracking-tight ${!isServerConnected ? 'text-rose-500' : 'text-amber-500'}`}>
+                <div className={`w-2 h-2 rounded-full animate-pulse ${!isServerConnected ? 'bg-rose-500' : (activeProjectCoverColor ? (isDarkBackground ? 'bg-white' : 'bg-black') : 'bg-amber-500')}`} />
+                <span className={`text-[10px] font-black uppercase tracking-tight ${!isServerConnected ? 'text-rose-500' : (activeProjectCoverColor ? contrastTextClass : 'text-amber-500')}`}>
                   {!isServerConnected ? 'Stuck on Localhost' : 'Local Mode'}
                 </span>
               </div>
-              <p className="text-[8px] text-slate-500 font-medium leading-tight">
+              <p className={`text-[8px] ${activeProjectCoverColor ? contrastSecondaryTextClass : 'text-slate-500'} font-medium leading-tight`}>
                 {!isServerConnected
                   ? 'Server unreachable. Data is NOT syncing.'
                   : 'Sign in to enable cloud sync.'}
@@ -291,10 +308,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <nav data-section="sidebar-nav" className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
           {!isCollapsed && isAnalyzing && (
-            <div className="px-3 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-500 shadow-lg shadow-indigo-500/5">
+            <div className={`px-3 py-2 ${activeProjectCoverColor ? (isDarkBackground ? 'bg-white/10 border-white/20' : 'bg-black/10 border-black/20') : 'bg-indigo-500/10 border-indigo-500/20'} rounded-xl flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-500 shadow-lg`}>
               <div className="flex items-center gap-2">
-                <Loader2 className="w-3 h-3 text-indigo-500 animate-spin" />
-                <span className="text-[10px] font-black uppercase tracking-tight text-indigo-500">
+                <Loader2 className={`w-3 h-3 ${activeProjectCoverColor ? contrastTextClass : 'text-indigo-500'} animate-spin`} />
+                <span className={`text-[10px] font-black uppercase tracking-tight ${activeProjectCoverColor ? contrastTextClass : 'text-indigo-500'}`}>
                   AI Analyzing
                 </span>
               </div>
@@ -302,9 +319,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
           {sections.map((section) => (
             <div key={section.title} className="flex flex-col gap-2">
-              {!isCollapsed && <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-3">{section.title}</h3>}
+              {!isCollapsed && <h3 className={`text-[10px] font-black ${activeProjectCoverColor ? contrastSecondaryTextClass : 'text-slate-500'} uppercase tracking-widest px-3`}>{section.title}</h3>}
               {section.items.map(item => {
                 const isDisabled = item.projectOnly && !hasActiveProject;
+                const isWorld = section.title === 'World' && !hasActiveProject;
                 if (item.adminOnly && currentUser.role !== 'admin') return null;
 
                 const isActive = currentView === item.id;
@@ -314,16 +332,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     key={item.id}
                     title={item.label}
                     onClick={() => handleNavItemClick(item)}
-                    disabled={isDisabled}
+                    disabled={isDisabled || isWorld}
                     className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all group 
                       ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : ''}
-                      ${!isActive && !isDisabled ? 'hover:bg-slate-900 hover:text-slate-200' : ''}
-                      ${isDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''}
+                      ${!isActive && !isDisabled && !isWorld ? (activeProjectCoverColor ? (isDarkBackground ? 'hover:bg-white/10 hover:text-white' : 'hover:bg-black/10 hover:text-black') : 'hover:bg-slate-900 hover:text-slate-200') : ''}
+                      ${(isDisabled || isWorld) ? 'opacity-40 cursor-not-allowed grayscale' : ''}
                       ${isCollapsed ? 'justify-center px-0' : ''}
                     `}
                   >
-                    <item.icon size={18} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors shrink-0`} />
-                    {!isCollapsed && <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>}
+                    <item.icon size={18} className={`${isActive ? 'text-white' : (activeProjectCoverColor ? contrastIconClass : 'text-slate-500 group-hover:text-amber-500')} transition-colors shrink-0 ${isWorld ? (activeProjectCoverColor ? '' : 'group-hover:text-slate-500') : (activeProjectCoverColor ? (isDarkBackground ? 'group-hover:text-white' : 'group-hover:text-black') : '')}`} />
+                    {!isCollapsed && <span className={`text-sm font-medium whitespace-nowrap ${isActive ? 'text-white' : (activeProjectCoverColor ? contrastTextClass : '')}`}>{item.label}</span>}
                   </button>
                 );
               }).filter(Boolean)}
@@ -331,38 +349,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ))}
 
           {/* Persistent Footer Items */}
-          <div className="flex flex-col gap-2 pt-4 border-t border-slate-800">
+          <div className={`flex flex-col gap-2 pt-4 border-t ${activeProjectCoverColor ? (isDarkBackground ? 'border-white/10' : 'border-black/10') : 'border-slate-800'}`}>
             <button
               onClick={(e) => { e.stopPropagation(); logout({ logoutParams: { returnTo: window.location.origin } }); }}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl text-slate-500 hover:bg-rose-900/20 hover:text-rose-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl ${activeProjectCoverColor ? contrastIconClass : 'text-slate-500'} hover:bg-rose-900/20 hover:text-rose-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
               title="Sign Out"
             >
-              <LogOut size={18} className="text-slate-500 group-hover:text-rose-400 transition-colors shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium whitespace-nowrap">Sign Out</span>}
+              <LogOut size={18} className={`${activeProjectCoverColor ? contrastIconClass : 'text-slate-500'} group-hover:text-rose-400 transition-colors shrink-0`} />
+              {!isCollapsed && <span className={`text-sm font-medium whitespace-nowrap ${activeProjectCoverColor ? contrastTextClass : ''}`}>Sign Out</span>}
             </button>
 
             <button
               onClick={(e) => { e.stopPropagation(); onOpenLicenses(); }}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:text-slate-400 transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl ${activeProjectCoverColor ? contrastIconClass : 'text-slate-600 hover:text-slate-400'} transition-all group ${isCollapsed ? 'justify-center px-0' : ''}`}
               title="Open Source Licenses"
             >
-              <Shield size={18} className="text-slate-700 group-hover:text-amber-500 transition-colors shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium whitespace-nowrap">Licenses</span>}
+              <Shield size={18} className={`${activeProjectCoverColor ? contrastIconClass : 'text-slate-700'} group-hover:text-amber-500 transition-colors shrink-0`} />
+              {!isCollapsed && <span className={`text-sm font-medium whitespace-nowrap ${activeProjectCoverColor ? contrastTextClass : ''}`}>Licenses</span>}
             </button>
           </div>
         </nav>
 
         <div
           onClick={() => window.innerWidth < 1024 && onClose()}
-          className="p-4 border-t border-slate-800/50"
+          className={`p-4 border-t ${activeProjectCoverColor ? (isDarkBackground ? 'border-white/10' : 'border-black/10') : 'border-slate-800/50'}`}
         >
           <div className={`flex items-center gap-3 px-4 py-2 ${isCollapsed ? 'justify-center px-0' : ''}`}>
             {!isCollapsed && (
               <div
                 className="flex-1 flex flex-col min-w-0"
               >
-                <span className="text-xs font-bold text-white truncate">{currentUser.name}</span>
-                <span className="text-[10px] text-slate-500 truncate uppercase tracking-tighter">{currentUser.role} Account</span>
+                <span className={`text-xs font-bold ${activeProjectCoverColor ? contrastTextClass : 'text-white'} truncate`}>{currentUser.name}</span>
+                <span className={`text-[10px] ${activeProjectCoverColor ? contrastSecondaryTextClass : 'text-slate-500'} truncate uppercase tracking-tighter`}>{currentUser.role} Account</span>
               </div>
             )}
             <div
@@ -377,7 +395,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     window.dispatchEvent(event);
                     if (window.innerWidth < 1024) onClose();
                   }}
-                  className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg hover:bg-amber-200 transition-colors"
+                  className={`p-2 ${activeProjectCoverColor ? (isDarkBackground ? 'bg-white/10 text-white' : 'bg-black/10 text-black') : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'} rounded-lg hover:bg-amber-200 transition-colors`}
                   title="Admin Notes"
                 >
                   <PenTool size={18} />
@@ -389,7 +407,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onToggleAi();
                     if (window.innerWidth < 1024) onClose();
                   }}
-                  className={`lg:hidden p-2 rounded-lg transition-colors ${isAiOpen ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
+                  className={`lg:hidden p-2 rounded-lg transition-colors ${isAiOpen ? (activeProjectCoverColor ? (isDarkBackground ? 'bg-white/10 text-white' : 'bg-black/10 text-black') : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600') : (activeProjectCoverColor ? contrastIconClass : 'text-slate-400 hover:text-indigo-600')}`}
                   title="Summon The Oracle"
                 >
                   <Sparkles size={18} className={isAiOpen ? 'animate-spin' : ''} />
@@ -399,8 +417,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           {commitHash && !isCollapsed && (
             <div className="mt-2 px-4 flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
-              <Hash size={10} className="text-slate-500" />
-              <span className="text-[9px] font-mono text-slate-500 uppercase tracking-tighter">
+              <Hash size={10} className={`${activeProjectCoverColor ? contrastIconClass : 'text-slate-500'}`} />
+              <span className={`text-[9px] font-mono ${activeProjectCoverColor ? contrastSecondaryTextClass : 'text-slate-500'} uppercase tracking-tighter`}>
                 {commitHash.substring(0, 7)}
               </span>
             </div>

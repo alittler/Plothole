@@ -22,7 +22,8 @@ enum SettingsTab {
   MANIFEST = 'Manifest',
   RAW = 'Raw',
   EXPORT = 'Export',
-  CARD_EXAMPLES = 'Card Examples'
+  CARD_EXAMPLES = 'Card Examples',
+  CHARACTER_TEMPLATE = 'Character Template'
 }
 
 interface SettingsViewProps {
@@ -360,6 +361,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       case SettingsTab.RAW: return <Code size={18} />;
       case SettingsTab.EXPORT: return <Download size={18} />;
       case SettingsTab.CARD_EXAMPLES: return <Book size={18} />;
+      case SettingsTab.CHARACTER_TEMPLATE: return <FileCode size={18} />;
     }
   };
 
@@ -1180,6 +1182,89 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </section>
         ) : null;
+
+      case SettingsTab.CHARACTER_TEMPLATE: {
+        const [templateYaml, setTemplateYaml] = React.useState(
+          typeof window !== 'undefined' 
+            ? localStorage.getItem('plothole_character_template') || `version: "1.0.0"\nlayout:\n  - tab: "Core"\n    fields:\n      - { key: "name", type: "title" }`
+            : ''
+        );
+        const [saveStatus, setSaveStatus] = React.useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+        const handleSaveTemplate = () => {
+          try {
+            // Basic YAML validation
+            if (!templateYaml.trim()) {
+              setSaveStatus({ type: 'error', message: 'Template cannot be empty' });
+              return;
+            }
+            localStorage.setItem('plothole_character_template', templateYaml);
+            setSaveStatus({ type: 'success', message: 'Template saved successfully!' });
+            setTimeout(() => setSaveStatus(null), 3000);
+          } catch (err) {
+            setSaveStatus({ type: 'error', message: `Failed to save: ${err instanceof Error ? err.message : 'Unknown error'}` });
+          }
+        };
+
+        const handleResetTemplate = () => {
+          const defaultTemplate = `version: "1.0.0"\nlayout:\n  - tab: "Core"\n    fields:\n      - { key: "name", type: "title" }\n  - tab: "Details"\n    fields:\n      - { key: "description", type: "text" }`;
+          setTemplateYaml(defaultTemplate);
+          localStorage.setItem('plothole_character_template', defaultTemplate);
+          setSaveStatus({ type: 'success', message: 'Template reset to default' });
+          setTimeout(() => setSaveStatus(null), 3000);
+        };
+
+        return (
+          <section className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6 animate-in fade-in duration-500">
+            <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+              <div className="p-4 bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 rounded-2xl">
+                <FileCode size={28} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Character Template</h2>
+                <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Edit the global rendering schema for all characters.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-2">Global rendering.yaml</label>
+                <textarea
+                  value={templateYaml}
+                  onChange={(e) => setTemplateYaml(e.target.value)}
+                  className="w-full h-96 p-4 font-mono text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  placeholder="version: 1.0.0\nlayout:\n  - tab: Core"
+                />
+              </div>
+
+              {saveStatus && (
+                <div className={`p-4 rounded-lg font-semibold text-sm ${
+                  saveStatus.type === 'success'
+                    ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                    : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                }`}>
+                  {saveStatus.message}
+                </div>
+              )}
+
+              <div className="flex gap-4">
+                <button
+                  onClick={handleSaveTemplate}
+                  className="flex-1 px-6 py-3 bg-violet-600 text-white rounded-xl font-bold hover:bg-violet-700 transition-colors uppercase text-[10px] tracking-widest shadow-lg shadow-violet-600/20"
+                >
+                  Save Template
+                </button>
+                <button
+                  onClick={handleResetTemplate}
+                  className="flex-1 px-6 py-3 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors uppercase text-[10px] tracking-widest"
+                >
+                  Reset to Default
+                </button>
+              </div>
+            </div>
+          </section>
+        );
+      }
 
       default: return null;
     }

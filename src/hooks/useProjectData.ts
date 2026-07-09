@@ -311,6 +311,12 @@ export function useProjectData(
       console.log(`[useProjectData] Loaded project ${id} with ${safeData.characters.length} characters`);
       const withCatalog = populateDataCatalog(safeData);
       setProjectData(withCatalog);
+
+      // Save last selected project ID
+      if (typeof window !== 'undefined' && id !== 'global-notebook') {
+        localStorage.setItem('lastSelectedProjectId', id);
+      }
+
       return withCatalog;
     }
 

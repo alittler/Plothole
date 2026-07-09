@@ -18,13 +18,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Manuscript text is required' }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      console.error('[Narrative API] OPENROUTER_API_KEY is missing');
-      return NextResponse.json({ error: 'OPENROUTER_API_KEY not configured on server' }, { status: 500 });
+    const openRouterKey = process.env.OPENROUTER_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+    
+    if (!openRouterKey && !geminiKey) {
+      console.error('[Narrative API] Neither OPENROUTER_API_KEY nor GEMINI_API_KEY are configured');
+      return NextResponse.json({ error: 'AI API keys not configured on server' }, { status: 500 });
     }
 
-    const engine = new NarrativeEngine(apiKey);
+    const engine = new NarrativeEngine(openRouterKey || '', geminiKey);
 
     // Step 1: Pre-Processor 
     const targetChunkSize = chunkSize || 5000;

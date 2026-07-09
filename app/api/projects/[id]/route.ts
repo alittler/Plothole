@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { del, list, put } from '@vercel/blob';
 import { getAuthPayload } from '@/app/api/auth';
+import fs from 'fs/promises';
+import path from 'path';
 
 export async function GET(
   request: NextRequest,
@@ -19,20 +21,34 @@ export async function GET(
 
     console.log(`[API/projects/[id]] Fetching project blob: ${pathname}`);
 
-    const { blobs } = await list({ prefix: pathname });
-    const blob = blobs.find(b => b.pathname === pathname);
+    // Try Vercel Blob first
+    try {
+      const { blobs } = await list({ prefix: pathname });
+      const blob = blobs.find(b => b.pathname === pathname);
 
-    if (!blob) {
+      if (blob) {
+        const response = await fetch(blob.url);
+        if (response.ok) {
+          const projectData = await response.json();
+          return NextResponse.json(projectData);
+        }
+      }
+    } catch (blobError) {
+      console.warn(`[API/projects/[id]] Vercel Blob GET failed, trying local fallback:`, blobError);
+    }
+
+    // Local filesystem fallback
+    const sanitizedUserId = userId.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const localFilePath = path.join(process.cwd(), 'data', 'projects', sanitizedUserId, `${id}.json`);
+    
+    try {
+      const content = await fs.readFile(localFilePath, 'utf-8');
+      const projectData = JSON.parse(content);
+      return NextResponse.json(projectData);
+    } catch (fsError) {
+      console.error(`[API/projects/[id]] Local filesystem GET failed:`, fsError);
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
-
-    const response = await fetch(blob.url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch blob content: ${response.statusText}`);
-    }
-
-    const projectData = await response.json();
-    return NextResponse.json(projectData);
   } catch (error) {
     console.error('[API/projects/[id]] ERROR fetching project:', error);
     return NextResponse.json(
@@ -60,43 +76,83 @@ export async function DELETE(
 
     console.log(`[API/projects/[id]] Deleting project blob: ${pathname}`);
 
-    // Vercel Blob del() works by URL or pathname
-    // We attempt to delete the project file
-    await del(pathname);
+    let deletedFromCloud = false;
 
-    // Update metadata.json cache
+    // Vercel Blob del() works by URL or pathname
+    // We attempt to delete the project file from cloud
     try {
-      const metadataPath = `projects/${userId}/metadata.json`;
-      const { blobs } = await list({ prefix: metadataPath });
-      const metaBlob = blobs.find(b => b.pathname === metadataPath);
-      
-      if (metaBlob) {
-        const response = await fetch(metaBlob.url, { cache: 'no-store' });
-        if (response.ok) {
-          const text = await response.text();
-          if (text && text.trim()) {
-            let metadata = JSON.parse(text);
-            const filteredMetadata = metadata.filter((m: any) => m.id !== id);
-            
-            if (filteredMetadata.length !== metadata.length) {
-              await put(metadataPath, JSON.stringify(filteredMetadata), {
-                access: 'public',
-                contentType: 'application/json',
-                addRandomSuffix: false,
-                allowOverwrite: true,
-              });
-              console.log(`[API/projects/[id]] Metadata cache updated for user ${userId} after deleting ${id}`);
+      await del(pathname);
+      deletedFromCloud = true;
+      console.log(`[API/projects/[id]] Project ${id} deleted from Vercel Blob successfully`);
+    } catch (blobError) {
+      console.warn(`[API/projects/[id]] Vercel Blob delete failed, falling back to local deletion:`, blobError);
+    }
+
+    // Local filesystem deletion fallback
+    const sanitizedUserId = userId.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const localDir = path.join(process.cwd(), 'data', 'projects', sanitizedUserId);
+    const localFilePath = path.join(localDir, `${id}.json`);
+    
+    try {
+      await fs.unlink(localFilePath);
+      console.log(`[API/projects/[id]] Project ${id} deleted from local filesystem`);
+    } catch (fsError: any) {
+      if (fsError.code !== 'ENOENT') {
+        console.error(`[API/projects/[id]] Local filesystem delete error:`, fsError);
+      }
+    }
+
+    // Update Vercel Blob metadata.json cache
+    if (deletedFromCloud) {
+      try {
+        const metadataPath = `projects/${userId}/metadata.json`;
+        const { blobs } = await list({ prefix: metadataPath });
+        const metaBlob = blobs.find(b => b.pathname === metadataPath);
+        
+        if (metaBlob) {
+          const response = await fetch(metaBlob.url, { cache: 'no-store' });
+          if (response.ok) {
+            const text = await response.text();
+            if (text && text.trim()) {
+              let metadata = JSON.parse(text);
+              const filteredMetadata = metadata.filter((m: any) => m.id !== id);
+              
+              if (filteredMetadata.length !== metadata.length) {
+                await put(metadataPath, JSON.stringify(filteredMetadata), {
+                  access: 'public',
+                  contentType: 'application/json',
+                  addRandomSuffix: false,
+                  allowOverwrite: true,
+                });
+                console.log(`[API/projects/[id]] Metadata cache updated for user ${userId} after deleting ${id}`);
+              }
             }
           }
         }
+      } catch (metaErr) {
+        console.warn(`[API/projects/[id]] Failed to update metadata cache:`, metaErr);
       }
-    } catch (metaErr) {
-      console.warn(`[API/projects/[id]] Failed to update metadata cache:`, metaErr);
-      // We don't fail the whole request if metadata update fails, 
-      // as the primary resource is already deleted.
     }
 
-    console.log(`[API/projects/[id]] Project ${id} deleted from Vercel Blob successfully`);
+    // Update local metadata.json cache
+    const localMetadataPath = path.join(localDir, 'metadata.json');
+    try {
+      const text = await fs.readFile(localMetadataPath, 'utf-8');
+      if (text && text.trim()) {
+        let metadata = JSON.parse(text);
+        const filteredMetadata = metadata.filter((m: any) => m.id !== id);
+        
+        if (filteredMetadata.length !== metadata.length) {
+          await fs.writeFile(localMetadataPath, JSON.stringify(filteredMetadata, null, 2), 'utf-8');
+          console.log(`[API/projects/[id]] Local metadata cache updated for user ${userId} after deleting ${id}`);
+        }
+      }
+    } catch (localMetaErr: any) {
+      if (localMetaErr.code !== 'ENOENT') {
+        console.warn(`[API/projects/[id]] Failed to update local metadata cache:`, localMetaErr);
+      }
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[API/projects/[id]] ERROR deleting project:', error);
