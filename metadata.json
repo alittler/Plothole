@@ -1,5 +1,6 @@
 {
-  "name": "Plothole v3",
-  "description": "An AI-powered story analysis tool that reads your manuscript and automatically constructs a living encyclopedia of your narrative universe.",
-  "requestFramePermissions": []
+  "name": "Plothole",
+  "description": "Analyze literary manuscripts of any genre, extract highly structured character profiles and relations, and map them with Plothole AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

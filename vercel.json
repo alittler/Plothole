@@ -1,8 +1,0 @@
-{
-  "framework": "nextjs",
-  "outputDirectory": ".next",
-  "buildCommand": "npm run build",
-  "env": {
-    "SKIP_ENV_VALIDATION": "true"
-  }
-}
