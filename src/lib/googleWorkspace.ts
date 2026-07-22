@@ -1,4 +1,4 @@
-import { CharacterProfile } from '../types';
+import { CharacterProfile, ResearchSource } from '../types';
 
 /**
  * Promise-based loader for the Google API Client and Picker API.
@@ -420,3 +420,202 @@ export const sendGmailBackup = async (
 
   return await response.json();
 };
+
+/**
+ * Creates a beautifully formatted Google Doc from a Research Notebook
+ * using the official Google Docs REST API.
+ */
+export const createGoogleDocFromNotebook = async (
+  accessToken: string,
+  notebookName: string,
+  sources: ResearchSource[]
+): Promise<{ id: string; url: string }> => {
+  if (!accessToken) {
+    throw new Error('Google authorization token is missing. Please authorize or reconnect Google Drive.');
+  }
+
+  // 1. Create a blank document
+  const createRes = await fetch('https://docs.googleapis.com/v1/documents', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title: `Plothole Research Notebook: ${notebookName}`
+    }),
+  });
+
+  if (!createRes.ok) {
+    const errText = await createRes.text();
+    throw new Error(`Failed to create Google Doc: ${createRes.statusText}. Details: ${errText}`);
+  }
+
+  const newDoc = await createRes.json();
+  const documentId = newDoc.documentId;
+
+  // 2. Prepare content buffer and track formatting ranges
+  let docText = "";
+  interface StyleRange {
+    start: number;
+    end: number;
+    type: 'title' | 'subtitle' | 'h1' | 'h2' | 'bold' | 'label' | 'meta';
+  }
+  const styles: StyleRange[] = [];
+
+  const appendText = (text: string, type?: StyleRange['type']) => {
+    const start = docText.length + 1; // Google Docs index starts at 1
+    docText += text;
+    const end = docText.length + 1;
+    if (type) {
+      styles.push({ start, end, type });
+    }
+  };
+
+  // Build the text structure
+  appendText("PLOTHOLE RESEARCH NOTEBOOK REPORT\n", "title");
+  appendText(`Notebook Name: "${notebookName}"\n`, "subtitle");
+  appendText(`Generated on ${new Date().toLocaleDateString()} | Total Sources: ${sources.length}\n`, "meta");
+  appendText("\n" + "=".repeat(60) + "\n\n");
+
+  sources.forEach((source, index) => {
+    appendText(`SOURCE #${index + 1}: ${source.title.toUpperCase()}\n`, "h1");
+    appendText("Type: ", "label");
+    appendText(`${source.type}\n`);
+    if (source.url) {
+      appendText("URL: ", "label");
+      appendText(`${source.url}\n`);
+    }
+    appendText("Added On: ", "label");
+    appendText(`${new Date(source.addedAt).toLocaleString()}\n\n`);
+
+    appendText("SOURCE MATERIAL / NOTES\n", "h2");
+    appendText(`${source.content || "No content or notes provided."}\n\n`);
+    appendText("-".repeat(50) + "\n\n");
+  });
+
+  // Construct batch update requests array
+  const requests: any[] = [
+    {
+      insertText: {
+        text: docText,
+        location: {
+          index: 1
+        }
+      }
+    }
+  ];
+
+  // Hex to RGB color helper
+  const hexToRgb = (hex: string) => {
+    const r = parseInt(hex.substring(1, 3), 16) / 255;
+    const g = parseInt(hex.substring(3, 5), 16) / 255;
+    const b = parseInt(hex.substring(5, 7), 16) / 255;
+    return { red: r, green: g, blue: b };
+  };
+
+  // Convert our ranges to styles requests
+  styles.forEach(({ start, end, type }) => {
+    let textStyle: any = {};
+    let paragraphStyle: any = {};
+
+    switch (type) {
+      case 'title':
+        textStyle = {
+          bold: true,
+          fontSize: { size: 22, unit: 'PT' },
+          foregroundColor: { color: { rgbColor: hexToRgb('#1e3a8a') } } // Deep Blue
+        };
+        paragraphStyle = {
+          spaceAbove: { size: 18, unit: 'PT' },
+          spaceBelow: { size: 12, unit: 'PT' }
+        };
+        break;
+      case 'subtitle':
+        textStyle = {
+          italic: true,
+          fontSize: { size: 11, unit: 'PT' },
+          foregroundColor: { color: { rgbColor: hexToRgb('#475569') } } // Slate-600
+        };
+        paragraphStyle = {
+          spaceBelow: { size: 8, unit: 'PT' }
+        };
+        break;
+      case 'h1':
+        textStyle = {
+          bold: true,
+          fontSize: { size: 14, unit: 'PT' },
+          foregroundColor: { color: { rgbColor: hexToRgb('#0f172a') } } // Slate-900
+        };
+        paragraphStyle = {
+          spaceAbove: { size: 16, unit: 'PT' },
+          spaceBelow: { size: 8, unit: 'PT' }
+        };
+        break;
+      case 'h2':
+        textStyle = {
+          bold: true,
+          fontSize: { size: 11, unit: 'PT' },
+          foregroundColor: { color: { rgbColor: hexToRgb('#2563eb') } } // Royal Blue
+        };
+        paragraphStyle = {
+          spaceAbove: { size: 12, unit: 'PT' },
+          spaceBelow: { size: 4, unit: 'PT' }
+        };
+        break;
+      case 'bold':
+        textStyle = { bold: true };
+        break;
+      case 'label':
+        textStyle = {
+          bold: true,
+          foregroundColor: { color: { rgbColor: hexToRgb('#334155') } } // Slate-700
+        };
+        break;
+      case 'meta':
+        textStyle = {
+          fontSize: { size: 9.5, unit: 'PT' },
+          foregroundColor: { color: { rgbColor: hexToRgb('#64748b') } } // Slate-500
+        };
+        break;
+    }
+
+    requests.push({
+      updateTextStyle: {
+        textStyle,
+        range: { startIndex: start, endIndex: end },
+        fields: 'bold,italic,fontSize,foregroundColor'
+      }
+    });
+
+    if (Object.keys(paragraphStyle).length > 0) {
+      requests.push({
+        updateParagraphStyle: {
+          paragraphStyle,
+          range: { startIndex: start, endIndex: end },
+          fields: 'spaceAbove,spaceBelow'
+        }
+      });
+    }
+  });
+
+  // Apply style update call
+  const styleRes = await fetch(`https://docs.googleapis.com/v1/documents/${documentId}:batchUpdate`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ requests }),
+  });
+
+  if (!styleRes.ok) {
+    console.warn(`Failed to style Google Doc content: ${styleRes.statusText}`);
+  }
+
+  return {
+    id: documentId,
+    url: `https://docs.google.com/document/d/${documentId}/edit`
+  };
+};
+

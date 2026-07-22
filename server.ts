@@ -402,6 +402,463 @@ app.post("/api/generate-portrait", async (req, res) => {
   }
 });
 
+// API Endpoint for extracting text from PDF/Documents using Gemini
+app.post("/api/research/parse-file", async (req, res) => {
+  const { base64Data, fileName, mimeType } = req.body;
+  if (!base64Data || typeof base64Data !== "string") {
+    return res.status(400).json({ success: false, error: "File data (base64) is required." });
+  }
+
+  try {
+    const ai = getGeminiClient();
+    const cleanedBase64 = base64Data.replace(/^data:[^;]+;base64,/, "");
+
+    const response = await withRetry(() => 
+      ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: [
+          {
+            inlineData: {
+              data: cleanedBase64,
+              mimeType: mimeType || "application/pdf"
+            }
+          },
+          {
+            text: `Please parse this document ("${fileName || 'document'}") and extract its entire text content as clean, readable markdown or plain text. 
+Maintain all headings, lists, tables, and important structures. Do not write a summary or comments of your own; output only the extracted content. If the file is scanned, use OCR to accurately extract the text.`
+          }
+        ]
+      })
+    );
+
+    const text = response.text;
+    if (!text) {
+      throw new Error("Failed to extract text content from the document.");
+    }
+
+    return res.json({
+      success: true,
+      text: text
+    });
+
+  } catch (error: any) {
+    console.error("Document Parsing Error:", error);
+    return res.status(500).json({ 
+      success: false, 
+      error: getFriendlyErrorMessage(error, "gemini-3.5-flash") 
+    });
+  }
+});
+
+// API Endpoint for NotebookLM-style research grounding chat
+app.post("/api/research/chat", async (req, res) => {
+  const { sources, message, history } = req.body;
+  if (!message || typeof message !== "string" || message.trim().length === 0) {
+    return res.status(400).json({ success: false, error: "A message is required for chat." });
+  }
+
+  try {
+    const ai = getGeminiClient();
+
+    // Serialize the sources to use as the grounding context
+    let context = "";
+    if (sources && Array.isArray(sources) && sources.length > 0) {
+      context = "Below are the available research sources and materials that you must use to answer questions:\n\n";
+      sources.forEach((source: any, idx: number) => {
+        context += `--- SOURCE #${idx + 1} ---\n`;
+        context += `Title: ${source.title || "Untitled Source"}\n`;
+        context += `Type: ${source.type}\n`;
+        if (source.url) context += `URL: ${source.url}\n`;
+        context += `Content:\n${source.content || "(Empty source)"}\n\n`;
+      });
+      context += "--- END OF SOURCES ---\n\n";
+    } else {
+      context = "No source materials have been uploaded or configured yet. Politely remind the user to add some research sources (text, links, or files) so you can answer based on them.\n\n";
+    }
+
+    const systemInstruction = `You are a professional, specialized AI research partner (similar to NotebookLM) for literary analysis, worldbuilding, and manuscript planning.
+Your primary directive is to answer questions, explain concepts, and draft outlines relying strictly and exclusively on the provided research sources above.
+
+Rules:
+1. Always base your answers on the content from the sources. Do not make up facts.
+2. If the user asks a question that is not covered in the provided sources, answer as best as you can but clearly note what details you are drawing from outside general knowledge vs. what was in their sources.
+3. Be structured, elegant, helpful, and highly insightful.
+4. Keep citations clean, referencing sources by their titles (e.g., "according to the source 'My Character Outline'").`;
+
+    const contents: any[] = [];
+    const fullSystemInstruction = `${systemInstruction}\n\n${context}`;
+
+    if (history && Array.isArray(history)) {
+      history.forEach((turn: any) => {
+        contents.push({
+          role: turn.role === "model" ? "model" : "user",
+          parts: [{ text: turn.text || "" }]
+        });
+      });
+    }
+
+    contents.push({
+      role: "user",
+      parts: [{ text: message }]
+    });
+
+    const response = await withRetry(() => 
+      ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: contents,
+        config: {
+          systemInstruction: fullSystemInstruction,
+          temperature: 0.3,
+        }
+      })
+    );
+
+    const jsonText = response.text;
+    if (!jsonText) {
+      throw new Error("Empty response returned from the research chat engine.");
+    }
+
+    const usage = response.usageMetadata;
+    const tokens = usage ? {
+      promptTokens: usage.promptTokenCount ?? 0,
+      completionTokens: usage.candidatesTokenCount ?? 0,
+      totalTokens: usage.totalTokenCount ?? 0
+    } : undefined;
+
+    return res.json({ 
+      success: true, 
+      text: jsonText,
+      tokens
+    });
+
+  } catch (error: any) {
+    console.error("Research Chat Error:", error);
+    return res.status(500).json({ 
+      success: false, 
+      error: getFriendlyErrorMessage(error, "gemini-3.5-flash") 
+    });
+  }
+});
+
+// API Endpoint for "The Oracle" RAG Engine
+app.post("/api/oracle/query", async (req, res) => {
+  const { 
+    message, 
+    history, 
+    manuscriptText, 
+    manuscriptTitle, 
+    activeChapterFilter, 
+    characters, 
+    notebooks, 
+    atlasState 
+  } = req.body;
+
+  if (!message || typeof message !== "string" || message.trim().length === 0) {
+    return res.status(400).json({ success: false, error: "A prompt or question is required for The Oracle." });
+  }
+
+  try {
+    const ai = getGeminiClient();
+
+    // 1. PROCESS PRIMARY SOURCE: Manuscript Text & Chapter Chunking
+    let manuscriptContext = "";
+    const manuscriptCitations: any[] = [];
+    
+    if (manuscriptText && typeof manuscriptText === "string" && manuscriptText.trim().length > 0) {
+      // Chunk manuscript by Chapter/Scene markers
+      const rawChapters = manuscriptText.split(/(?=(?:Chapter|CHAPTER|Act|ACT|Scene|SCENE|\n#{1,3}\s+))/g);
+      let selectedChapters = rawChapters;
+
+      if (activeChapterFilter && activeChapterFilter !== "ALL") {
+        selectedChapters = rawChapters.filter(ch => ch.toLowerCase().includes(activeChapterFilter.toLowerCase()));
+        if (selectedChapters.length === 0) selectedChapters = rawChapters; // fallback if filter didn't match
+      }
+
+      manuscriptContext += `=== PRIMARY SOURCE (HIGHEST PRIORITY): MANUSCRIPT TEXT ("${manuscriptTitle || 'Active Manuscript'}") ===\n`;
+      selectedChapters.slice(0, 8).forEach((chChunk, idx) => {
+        const firstLine = chChunk.trim().split('\n')[0].slice(0, 60);
+        const chapterTitle = firstLine.length > 5 ? firstLine : `Chapter / Section ${idx + 1}`;
+        manuscriptContext += `\n--- [MANUSCRIPT BLOCK: ${chapterTitle}] ---\n${chChunk.trim().slice(0, 4500)}\n`;
+        
+        manuscriptCitations.push({
+          id: `primary_ch_${idx}`,
+          tier: 'primary_manuscript',
+          title: chapterTitle,
+          sourceTypeLabel: 'Primary Source (Manuscript Text)',
+          snippet: chChunk.trim().slice(0, 180) + '...',
+          chapter: chapterTitle
+        });
+      });
+      manuscriptContext += `\n=== END OF PRIMARY SOURCE ===\n\n`;
+    } else {
+      manuscriptContext += `=== PRIMARY SOURCE: No Manuscript text provided in current context ===\n\n`;
+    }
+
+    // 2. PROCESS SECONDARY SOURCE: Character Cards / Dossiers
+    let characterContext = "";
+    const characterCitations: any[] = [];
+
+    if (characters && Array.isArray(characters) && characters.length > 0) {
+      characterContext += `=== SECONDARY SOURCE (SUPPORTING DETAIL): CHARACTER DOSSIERS ===\n`;
+      characters.forEach((char: any, idx: number) => {
+        const name = char.core?.name || 'Unnamed Character';
+        const role = char.core?.role || 'Unknown Role';
+        const status = char.core?.living_status || 'Unknown Status';
+        const desc = char.content?.description || 'No description';
+        const goals = Array.isArray(char.content?.goals) ? char.content.goals.join('; ') : '';
+        const rels = Array.isArray(char.content?.relationships) 
+          ? char.content.relationships.map((r: any) => `${r.name} (${r.relation})`).join(', ')
+          : '';
+
+        characterContext += `\n- CHARACTER DOSSIER: "${name}"\n`;
+        characterContext += `  Role: ${role} | Status: ${status}\n`;
+        characterContext += `  Goals/Motivations: ${goals || 'N/A'}\n`;
+        characterContext += `  Relationships: ${rels || 'N/A'}\n`;
+        characterContext += `  Description: ${desc}\n`;
+
+        characterCitations.push({
+          id: `secondary_char_${idx}`,
+          tier: 'secondary_dossier',
+          title: `Dossier: ${name}`,
+          sourceTypeLabel: 'Secondary Source (Character Card)',
+          snippet: `Role: ${role}, Status: ${status}. ${desc.slice(0, 120)}...`,
+          characterName: name
+        });
+      });
+      characterContext += `\n=== END OF SECONDARY SOURCE ===\n\n`;
+    } else {
+      characterContext += `=== SECONDARY SOURCE: No Character Cards in current project ===\n\n`;
+    }
+
+    // 3. PROCESS TERTIARY SOURCE: Research Notes & World-Building / Atlas Lore
+    let tertiaryContext = "";
+    const tertiaryCitations: any[] = [];
+
+    if (notebooks && Array.isArray(notebooks) && notebooks.length > 0) {
+      tertiaryContext += `=== TERTIARY SOURCE (CONTEXT & LORE): RESEARCH NOTES & NOTEBOOKS ===\n`;
+      notebooks.forEach((nb: any, nbIdx: number) => {
+        if (nb.sources && Array.isArray(nb.sources)) {
+          nb.sources.slice(0, 5).forEach((src: any, srcIdx: number) => {
+            tertiaryContext += `\n- RESEARCH NOTE: "${src.title || 'Untitled Note'}" (Notebook: ${nb.name})\n`;
+            tertiaryContext += `  Content: ${src.content ? src.content.slice(0, 1500) : 'N/A'}\n`;
+
+            tertiaryCitations.push({
+              id: `tertiary_nb_${nbIdx}_${srcIdx}`,
+              tier: 'tertiary_note',
+              title: src.title || 'Research Note',
+              sourceTypeLabel: 'Tertiary Source (Research Note)',
+              snippet: (src.content || '').slice(0, 140) + '...'
+            });
+          });
+        }
+      });
+      tertiaryContext += `\n=== END OF RESEARCH NOTES ===\n\n`;
+    }
+
+    if (atlasState && atlasState.locations && Array.isArray(atlasState.locations) && atlasState.locations.length > 0) {
+      tertiaryContext += `=== TERTIARY SOURCE (GEOGRAPHY & LORE): FANTASY ATLAS MAP ===\n`;
+      tertiaryContext += `Map Title: "${atlasState.mapTitle || 'World Map'}"\n`;
+      atlasState.locations.forEach((loc: any, locIdx: number) => {
+        tertiaryContext += `- LOCATION: "${loc.name}" (${loc.category || 'Landmark'})\n  Description: ${loc.description}\n`;
+        
+        tertiaryCitations.push({
+          id: `tertiary_atlas_${locIdx}`,
+          tier: 'tertiary_atlas',
+          title: `Atlas Location: ${loc.name}`,
+          sourceTypeLabel: 'Tertiary Source (Fantasy Atlas)',
+          snippet: `[${loc.category}] ${loc.description.slice(0, 120)}...`
+        });
+      });
+      tertiaryContext += `\n=== END OF ATLAS LORE ===\n\n`;
+    }
+
+    // SYSTEM PROMPT ENFORCING STRICT DATA HIERARCHY & CONTRADICTION DETECTION
+    const systemPrompt = `You are "The Oracle", an elite AI literary analyst, continuity editor, and story world consultant.
+Your role is to answer questions about the user's story manuscript, character dossiers, worldbuilding research notes, and atlas maps.
+
+STRICT DATA HIERARCHY RULES:
+1. PRIMARY SOURCE (Highest Authority): The Manuscript Text.
+   - Events, dialogue, character positions, and actions occurring in the Manuscript override all other sources regarding current plot reality.
+2. SECONDARY SOURCE (Supporting Detail): Character Dossiers.
+   - Defines character profiles, stated motivations, traits, and background profiles.
+3. TERTIARY SOURCE (Context & Lore): Research Notes & Fantasy Atlas Map.
+   - Defines magic systems, world rules, historical notes, and geographic locations.
+
+CRITICAL DIRECTIVE - CONTRADICTION DETECTION:
+- Compare facts across sources! If the Manuscript text contradicts details in a Character Card or Research Note (e.g., Manuscript says Character A is dead or in Chapter 3 at Location X, but Character Card says Alive or at Location Y; or Manuscript states motive A while Dossier states motive B):
+  You MUST explicitly flag this discrepancy to the author in your response using a prominent callout block:
+  "⚠️ CONTRADICTION DETECTED: [Describe the exact conflict between Chapter X and Character Card/Lore Note]."
+
+CITATION REQUIREMENTS:
+- You MUST cite source origins inline in your response using exact bracketed labels:
+  - [Based on Chapter X] or [Based on Manuscript: Chapter Name]
+  - [From Character Dossier: Character Name]
+  - [From Research Note: Note Title]
+  - [From Fantasy Atlas: Location Name]
+
+TONE & FORMATTING:
+- Be clear, insightful, professional, and well-structured. Use bold headings, bullet points, and clean typography.`;
+
+    const fullContextPrompt = `${manuscriptContext}\n${characterContext}\n${tertiaryContext}`;
+
+    const contents: any[] = [];
+    if (history && Array.isArray(history)) {
+      history.forEach((turn: any) => {
+        contents.push({
+          role: turn.role === "assistant" || turn.role === "model" ? "model" : "user",
+          parts: [{ text: turn.content || turn.text || "" }]
+        });
+      });
+    }
+
+    contents.push({
+      role: "user",
+      parts: [{ text: `User Question: ${message}` }]
+    });
+
+    const response = await withRetry(() => 
+      ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: contents,
+        config: {
+          systemInstruction: `${systemPrompt}\n\nSTORY DATASETS AVAILABLE:\n${fullContextPrompt}`,
+          temperature: 0.2, // Low temperature for high factual continuity
+        }
+      })
+    );
+
+    const jsonText = response.text;
+    if (!jsonText) {
+      throw new Error("Empty response from The Oracle intelligence engine.");
+    }
+
+    // Extract detected contradictions if any were formatted with the ⚠️ callout
+    const contradictions: string[] = [];
+    const contradictionMatches = jsonText.match(/⚠️\s*CONTRADICTION DETECTED:\s*([^\n\r]+)/gi);
+    if (contradictionMatches) {
+      contradictionMatches.forEach(match => {
+        contradictions.push(match.replace(/⚠️\s*CONTRADICTION DETECTED:\s*/i, '').trim());
+      });
+    }
+
+    const usage = response.usageMetadata;
+    const tokens = usage ? {
+      promptTokens: usage.promptTokenCount ?? 0,
+      completionTokens: usage.candidatesTokenCount ?? 0,
+      totalTokens: usage.totalTokenCount ?? 0
+    } : undefined;
+
+    // Filter relevant citations actually mentioned or used
+    const allCitations = [...manuscriptCitations, ...characterCitations, ...tertiaryCitations];
+
+    return res.json({
+      success: true,
+      text: jsonText,
+      citations: allCitations,
+      contradictions,
+      tokens
+    });
+
+  } catch (error: any) {
+    console.error("The Oracle Engine Error:", error);
+    return res.status(500).json({
+      success: false,
+      error: getFriendlyErrorMessage(error, "gemini-3.6-flash")
+    });
+  }
+});
+
+// API Endpoint for Stenopad Wiki Tag Metadata Extraction
+app.post("/api/extract-wiki-tags", async (req, res) => {
+  const { noteText, existingEntities } = req.body;
+
+  if (!noteText || typeof noteText !== "string") {
+    return res.json({ success: true, tags: [] });
+  }
+
+  const entitiesList = Array.isArray(existingEntities) ? existingEntities : [];
+
+  const prompt = `You are an intelligent metadata extraction engine for a fantasy writing application. Your task is to analyze a user's note text and extract all "Wiki Tags" (words starting with a hash symbol, e.g., #Gandalf, #TheShire).
+
+INPUT DATA:
+1. Note Text: "${noteText.replace(/"/g, '\\"')}"
+2. Existing Entities Database: ${JSON.stringify(entitiesList)}
+   (Format: [{"name": "Gandalf", "type": "Character", "id": 101}, {"name": "TheShire", "type": "Location", "id": 205}])
+
+INSTRUCTIONS:
+1. Identify every instance of a tag in the format #[Word] within the Note Text.
+2. For each tag found:
+   - Normalize the name (remove special characters, keep case as is).
+   - Search the "Existing Entities Database" for a match (case-insensitive).
+   - If a match is found:
+     - Return the tag name, the matched Entity Type (Character/Location/Book), and the Entity ID.
+     - Mark this as a "Linked Tag".
+   - If NO match is found:
+     - Return the tag name and type "Custom".
+     - Mark this as "Unlinked Tag".
+3. Do NOT output the full text of the note. Only output a JSON list of the extracted tags.
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON array. Do not include markdown formatting, explanations, or extra text.
+Example:
+[
+  { "tag": "#Gandalf", "name": "Gandalf", "type": "Character", "entity_id": 101, "status": "linked" },
+  { "tag": "#TheShire", "name": "TheShire", "type": "Location", "entity_id": 205, "status": "linked" },
+  { "tag": "#PlotTwist", "name": "PlotTwist", "type": "Custom", "entity_id": null, "status": "unlinked" }
+]
+
+If no tags are found, return an empty array [].`;
+
+  try {
+    const ai = getGeminiClient();
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.1
+        }
+      })
+    );
+
+    const rawText = response.text || "[]";
+    let extractedTags = [];
+    try {
+      extractedTags = JSON.parse(rawText);
+    } catch (e) {
+      console.warn("Failed to parse JSON from Gemini wiki tag response, falling back to regex parsing", e);
+      // Client-side regex fallback logic handled cleanly
+    }
+
+    return res.json({
+      success: true,
+      tags: extractedTags
+    });
+  } catch (error: any) {
+    console.error("Wiki Tag Extraction Error:", error);
+    // Deterministic Regex Fallback if Gemini endpoint errors
+    const tagMatches = noteText.match(/#[A-Za-z0-9_]+/g) || [];
+    const uniqueTags = Array.from(new Set(tagMatches));
+    const fallbackTags = uniqueTags.map(tagStr => {
+      const cleanName = tagStr.replace('#', '');
+      const match = entitiesList.find((e: any) => e.name && e.name.toLowerCase() === cleanName.toLowerCase());
+      if (match) {
+        return { tag: tagStr, name: cleanName, type: match.type || 'Character', entity_id: match.id || 1, status: 'linked' };
+      }
+      return { tag: tagStr, name: cleanName, type: 'Custom', entity_id: null, status: 'unlinked' };
+    });
+
+    return res.json({
+      success: true,
+      tags: fallbackTags,
+      fallback: true
+    });
+  }
+});
+
+
+
 // Vite Middleware & Static Asset Serving Setup
 async function initializeServer() {
   if (process.env.NODE_ENV !== "production") {

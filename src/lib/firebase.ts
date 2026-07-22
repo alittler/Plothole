@@ -19,7 +19,7 @@ import {
   updateDoc
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { Blueprint, SidecarLog } from '../types';
+import { Blueprint, SidecarLog, ResearchNotebook } from '../types';
 
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
@@ -123,7 +123,7 @@ export const saveDossierToFirestore = async (
     // Create reference under users/{userId}/blueprints/{manuscript_sha}
     const docRef = doc(db, 'users', userId, 'blueprints', blueprint.manuscript_sha);
     
-    const dataToSave = {
+    const dataToSave = JSON.parse(JSON.stringify({
       sha: blueprint.sha,
       first_processed: blueprint.first_processed,
       last_edited: blueprint.last_edited,
@@ -136,7 +136,7 @@ export const saveDossierToFirestore = async (
       term_replacements: blueprint.term_replacements || [],
       sidecar_logs: sidecarLogs,
       saved_at: new Date().toISOString()
-    };
+    }));
 
     await setDoc(docRef, dataToSave, { merge: true });
     console.log(`Successfully saved dossier ${blueprint.manuscript_sha} to Firestore.`);
@@ -171,8 +171,8 @@ export const loadDossiersFromFirestore = async (userId: string): Promise<Bluepri
         manuscript_text: data.manuscript_text,
         blueprint_notes: data.blueprint_notes || '',
         term_replacements: data.term_replacements || [],
-        // We'll also return other fields in custom mapping if required
-      });
+        sidecar_logs: data.sidecar_logs || [],
+      } as any);
     });
     
     return blueprints;
@@ -271,3 +271,69 @@ export const uploadToGoogleDrive = async (
   const result = await response.json();
   return result;
 };
+
+/**
+ * Saves or updates a research notebook in Firestore.
+ */
+export const saveNotebookToFirestore = async (userId: string, notebook: ResearchNotebook): Promise<void> => {
+  if (!userId) throw new Error('User must be logged in to save research notebooks.');
+  try {
+    const docRef = doc(db, 'users', userId, 'notebooks', notebook.id);
+    const cleanNotebook = JSON.parse(JSON.stringify({
+      id: notebook.id,
+      name: notebook.name,
+      sources: notebook.sources || [],
+      createdAt: notebook.createdAt,
+      lastEdited: new Date().toISOString()
+    }));
+    await setDoc(docRef, cleanNotebook);
+    console.log(`Successfully saved research notebook ${notebook.name} (${notebook.id}) to Firestore.`);
+  } catch (error: any) {
+    console.error('Firestore Save Notebook Error:', error);
+    throw new Error(`Failed to save research notebook: ${error.message}`);
+  }
+};
+
+/**
+ * Loads all research notebooks for the logged-in user from Firestore.
+ */
+export const loadNotebooksFromFirestore = async (userId: string): Promise<ResearchNotebook[]> => {
+  if (!userId) throw new Error('User must be logged in to load research notebooks.');
+  try {
+    const colRef = collection(db, 'users', userId, 'notebooks');
+    const q = query(colRef, orderBy('lastEdited', 'desc'));
+    const snapshot = await getDocs(q);
+    
+    const notebooks: ResearchNotebook[] = [];
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      notebooks.push({
+        id: data.id,
+        name: data.name,
+        sources: data.sources || [],
+        createdAt: data.createdAt,
+        lastEdited: data.lastEdited || data.createdAt
+      });
+    });
+    return notebooks;
+  } catch (error: any) {
+    console.error('Firestore Load Notebooks Error:', error);
+    return [];
+  }
+};
+
+/**
+ * Deletes a research notebook from Firestore.
+ */
+export const deleteNotebookFromFirestore = async (userId: string, notebookId: string): Promise<void> => {
+  if (!userId) throw new Error('User must be logged in to delete research notebooks.');
+  try {
+    const docRef = doc(db, 'users', userId, 'notebooks', notebookId);
+    await deleteDoc(docRef);
+    console.log(`Successfully deleted research notebook ${notebookId} from Firestore.`);
+  } catch (error: any) {
+    console.error('Firestore Delete Notebook Error:', error);
+    throw new Error(`Failed to delete research notebook: ${error.message}`);
+  }
+};
+

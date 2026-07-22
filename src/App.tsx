@@ -1,9 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { CharacterProfile, AnalysisResponse, Blueprint, SidecarLog, TermReplacement } from './types';
+import { CharacterProfile, AnalysisResponse, Blueprint, SidecarLog, TermReplacement, ResearchNotebook, ResearchSource, AtlasMapState } from './types';
 import SampleSelector from './components/SampleSelector';
+import TokenUsageWidget from './components/TokenUsageWidget';
 import CharacterList from './components/CharacterList';
 import CharacterDetailView from './components/CharacterDetailView';
 import JsonViewer from './components/JsonViewer';
+import { ResearchLibrary } from './components/ResearchLibrary';
+import { FantasyAtlas } from './components/FantasyAtlas';
+import { OracleChat } from './components/OracleChat';
+import { StenopadNotepad } from './components/StenopadNotepad';
+import { loadAtlasStateFromStorage } from './utils/atlasStorage';
+import { AdminPanel } from './components/AdminPanel';
 import { SAMPLE_MANUSCRIPTS } from './data/samples';
 import JSZip from 'jszip';
 import { 
@@ -30,7 +37,11 @@ import {
   Settings,
   Mail,
   Sliders,
-  Shield
+  Shield,
+  Compass,
+  ShieldAlert,
+  Bot,
+  PenTool
 } from 'lucide-react';
 import { 
   auth, 
@@ -42,13 +53,17 @@ import {
   loadDossiersFromFirestore, 
   deleteDossierFromFirestore, 
   uploadToGoogleDrive,
-  updateDossierMetadataInFirestore
+  updateDossierMetadataInFirestore,
+  saveNotebookToFirestore,
+  loadNotebooksFromFirestore,
+  deleteNotebookFromFirestore
 } from './lib/firebase';
 import {
   loadGooglePickerScript,
   fetchDriveFileContent,
   createGoogleDocFromDossier,
-  sendGmailBackup
+  sendGmailBackup,
+  createGoogleDocFromNotebook
 } from './lib/googleWorkspace';
 
 
@@ -73,10 +88,32 @@ async function calculateSHA256(content: string): Promise<string> {
 
 export default function App() {
   // Navigation & View Mode
-  const [viewMode, setViewMode] = useState<'analyzer' | 'library' | 'settings'>('analyzer');
+  const [viewMode, setViewMode] = useState<'analyzer' | 'library' | 'settings' | 'research' | 'atlas' | 'admin' | 'oracle' | 'stenopad'>('analyzer');
+  const [atlasState, setAtlasState] = useState<AtlasMapState | null>(() => {
+    try {
+      const saved = localStorage.getItem('plothole_fantasy_atlas');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse atlasState from localStorage in App:", e);
+    }
+    return null;
+  });
+
+  // Load rich atlas state asynchronously from IndexedDB on startup
+  useEffect(() => {
+    loadAtlasStateFromStorage().then((idbState) => {
+      if (idbState) {
+        setAtlasState(idbState);
+      }
+    }).catch((err) => {
+      console.error("Failed to load atlas state from IndexedDB in App:", err);
+    });
+  }, []);
 
   // Google Auth & Firestore states
   const [user, setUser] = useState<any | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [tokenUsage, setTokenUsage] = useState({ prompt: 0, completion: 0, total: 0 });
   const [driveToken, setDriveToken] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isSavingToDrive, setIsSavingToDrive] = useState(false);
@@ -87,7 +124,7 @@ export default function App() {
 
   // Gmail backup settings states
   const [backupEmail, setBackupEmail] = useState('');
-  const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(true);
   const [backupFormat, setBackupFormat] = useState<'json' | 'md'>('md');
   const [emailSubjectPrefix, setEmailSubjectPrefix] = useState('[Plothole Backup]');
   const [isSendingBackupEmail, setIsSendingBackupEmail] = useState(false);
@@ -184,11 +221,13 @@ export default function App() {
     }
   };
 
-  // Sync library history when user changes or logged in
+  // Sync library history & restore active dossier when user changes or logged in
   useEffect(() => {
     if (user) {
       loadDossiersFromFirestore(user.uid)
         .then((firestoreBlueprints) => {
+          setUserBlueprints(firestoreBlueprints);
+
           const firestoreHistory = firestoreBlueprints.map((bp) => ({
             sha: bp.manuscript_sha || bp.sha,
             date: bp.first_processed,
@@ -206,12 +245,245 @@ export default function App() {
             });
             return combined.slice(0, 10);
           });
+
+          // Restore active blueprint and manuscript text from user's saved account dossier if available
+          if (firestoreBlueprints.length > 0) {
+            const latest = firestoreBlueprints[0];
+            setBlueprint(latest);
+            if (latest.manuscript_text) setManuscriptText(latest.manuscript_text);
+            if (latest.manuscript_title) setManuscriptTitle(latest.manuscript_title);
+            if (latest.manuscript_author) setManuscriptAuthor(latest.manuscript_author);
+            if (latest.sidecar_logs && latest.sidecar_logs.length > 0) setSidecarLogs(latest.sidecar_logs);
+            if (latest.characters && latest.characters.length > 0) {
+              setCharacters(latest.characters);
+              setSelectedCharacter(latest.characters[0]);
+            }
+            if (latest.blueprint_notes) setBlueprintNotes(latest.blueprint_notes);
+            if (latest.term_replacements) setTermReplacements(latest.term_replacements);
+          }
         })
         .catch((err) => {
           console.error("Failed to load history from Firestore:", err);
         });
+    } else {
+      setUserBlueprints([]);
     }
   }, [user]);
+
+  // Load research notebooks on mount or user shift
+  useEffect(() => {
+    if (user) {
+      loadNotebooksFromFirestore(user.uid)
+        .then((fetchedNotebooks) => {
+          if (fetchedNotebooks && fetchedNotebooks.length > 0) {
+            setNotebooks(fetchedNotebooks);
+            setCurrentNotebookId((prev) => {
+              if (prev && fetchedNotebooks.some(nb => nb.id === prev)) {
+                return prev;
+              }
+              return fetchedNotebooks[0].id;
+            });
+          } else {
+            const defaultNb: ResearchNotebook = {
+              id: 'default-notebook',
+              name: 'My Worldbuilding Notes',
+              sources: [],
+              createdAt: new Date().toISOString(),
+              lastEdited: new Date().toISOString()
+            };
+            setNotebooks([defaultNb]);
+            setCurrentNotebookId('default-notebook');
+            saveNotebookToFirestore(user.uid, defaultNb).catch(console.error);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load notebooks from Firestore:", err);
+        });
+    } else {
+      try {
+        const local = localStorage.getItem('plothole_guest_notebooks');
+        if (local) {
+          const parsed = JSON.parse(local);
+          if (parsed && parsed.length > 0) {
+            setNotebooks(parsed);
+            setCurrentNotebookId((prev) => {
+              if (prev && parsed.some((nb: any) => nb.id === prev)) {
+                return prev;
+              }
+              return parsed[0].id;
+            });
+            return;
+          }
+        }
+        const defaultNb: ResearchNotebook = {
+          id: 'default-notebook',
+          name: 'My Worldbuilding Notes (Guest)',
+          sources: [],
+          createdAt: new Date().toISOString(),
+          lastEdited: new Date().toISOString()
+        };
+        setNotebooks([defaultNb]);
+        setCurrentNotebookId('default-notebook');
+      } catch (e) {
+        console.error("Failed to load guest notebooks:", e);
+      }
+    }
+  }, [user]);
+
+  const handleSendGmailNotebookBackup = async (activeNotebook: ResearchNotebook, silent: boolean = true) => {
+    let currentToken = driveToken;
+    if (!currentToken) {
+      console.log("Silent notebook auto-sync bypassed: Google account not authorized.");
+      return false;
+    }
+
+    const recipient = backupEmail || user?.email;
+    if (!recipient) {
+      console.log("No recipient configured for notebook auto-sync.");
+      return false;
+    }
+
+    try {
+      const subject = `${emailSubjectPrefix} - Research Notebook "${activeNotebook.name}" Auto-Sync`;
+      const sourcesCount = activeNotebook.sources?.length || 0;
+      
+      const bodyHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <div style="text-align: center; border-bottom: 2px solid #8b5cf6; padding-bottom: 15px; margin-bottom: 20px;">
+            <h2 style="color: #6d28d9; margin: 0 0 5px 0;">Plothole Research Notebook Auto-Sync</h2>
+            <p style="color: #64748b; font-size: 13px; margin: 0;">Secured Gmail sync of your Research sources and notes</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <p style="font-size: 15px; color: #334155;">Hello,</p>
+            <p style="font-size: 15px; color: #334155; line-height: 1.6;">Your research notebook has been automatically synchronized. Here is a summary of the active sources in <strong>"${activeNotebook.name}"</strong>:</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px;">
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 0; font-weight: bold; color: #475569; width: 150px;">Notebook:</td>
+                <td style="padding: 8px 0; color: #0f172a;"><strong>"${activeNotebook.name}"</strong></td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 0; font-weight: bold; color: #475569;">Total Sources:</td>
+                <td style="padding: 8px 0; color: #0f172a;">${sourcesCount} sources</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 0; font-weight: bold; color: #475569;">Last Synced:</td>
+                <td style="padding: 8px 0; color: #0f172a;">${new Date().toLocaleString()}</td>
+              </tr>
+            </table>
+
+            <h3 style="color: #334155; font-size: 14px; margin: 20px 0 10px 0;">Sources List:</h3>
+            <ul style="font-size: 13px; color: #475569; padding-left: 20px; line-height: 1.6;">
+              ${(activeNotebook.sources || []).slice(0, 10).map(s => `
+                <li>
+                  <strong>${s.title}</strong> (${s.type})
+                  ${s.url ? `<br/><a href="${s.url}" style="color: #3b82f6; text-decoration: none; font-size: 11px;">${s.url}</a>` : ''}
+                </li>
+              `).join('')}
+              ${sourcesCount > 10 ? `<li>... and ${sourcesCount - 10} more sources</li>` : ''}
+            </ul>
+          </div>
+          
+          <div style="margin-bottom: 20px; background-color: #f5f3ff; border: 1px dashed #c084fc; border-radius: 8px; padding: 15px; font-size: 13px; color: #5b21b6;">
+            <strong>Attachment info:</strong><br/>
+            An off-site backup file <strong>notebook_sync_${activeNotebook.id}.${backupFormat}</strong> is attached. You can import or share this directly.
+          </div>
+          
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 15px; text-align: center; font-size: 11px; color: #94a3b8;">
+            Plothole • Secured via Google Account Authentication and TLS Encryption
+          </div>
+        </div>
+      `;
+
+      let attachmentContent = "";
+      let attachmentMime = "";
+      let attachmentExt = "";
+
+      if (backupFormat === 'json') {
+        attachmentContent = JSON.stringify(activeNotebook, null, 2);
+        attachmentMime = "application/json";
+        attachmentExt = "json";
+      } else {
+        // Markdown format
+        let mdText = `# Plothole Research Notebook: ${activeNotebook.name}\n`;
+        mdText += `Exported on: ${new Date().toLocaleDateString()} | Total Sources: ${sourcesCount}\n\n`;
+        mdText += `========================================================================\n\n`;
+        (activeNotebook.sources || []).forEach((source, index) => {
+          mdText += `## [Source #${index + 1}] ${source.title}\n`;
+          mdText += `- **Type**: ${source.type}\n`;
+          if (source.url) mdText += `- **Link**: ${source.url}\n`;
+          mdText += `- **Added**: ${new Date(source.addedAt).toLocaleString()}\n\n`;
+          mdText += `### Content:\n${source.content}\n\n`;
+          mdText += `------------------------------------------------------------------------\n\n`;
+        });
+        attachmentContent = mdText;
+        attachmentMime = "text/markdown";
+        attachmentExt = "md";
+      }
+
+      const filename = `notebook_${activeNotebook.id}_sync.${attachmentExt}`;
+      
+      await sendGmailBackup(
+        currentToken,
+        recipient,
+        subject,
+        bodyHtml,
+        {
+          filename,
+          content: attachmentContent,
+          mimeType: attachmentMime
+        }
+      );
+      
+      console.log("Successfully auto-synced research notebook via Gmail.");
+      return true;
+    } catch (error) {
+      console.error("Failed to auto-sync research notebook via Gmail:", error);
+      return false;
+    }
+  };
+
+  const handleSaveNotebook = async (updatedNotebooks: ResearchNotebook[]) => {
+    // Check if any notebook was deleted
+    if (user) {
+      const deletedNotebooks = notebooks.filter(oldNb => !updatedNotebooks.some(newNb => newNb.id === oldNb.id));
+      for (const deleted of deletedNotebooks) {
+        try {
+          await deleteNotebookFromFirestore(user.uid, deleted.id);
+        } catch (e) {
+          console.error(`Failed to delete notebook ${deleted.id} from Firestore:`, e);
+        }
+      }
+    }
+
+    setNotebooks(updatedNotebooks);
+    const targetId = currentNotebookId || (updatedNotebooks.length > 0 ? updatedNotebooks[0].id : null);
+    if (!targetId) return;
+    const active = updatedNotebooks.find(n => n.id === targetId);
+    if (!active) return;
+
+    if (user) {
+      try {
+        await saveNotebookToFirestore(user.uid, active);
+        if (autoBackupEnabled) {
+          handleSendGmailNotebookBackup(active, true);
+        }
+      } catch (e) {
+        console.error("Failed to save notebook to Firestore:", e);
+      }
+    } else {
+      try {
+        localStorage.setItem('plothole_guest_notebooks', JSON.stringify(updatedNotebooks));
+      } catch (e) {
+        console.error("Failed to save notebook to localStorage:", e);
+      }
+    }
+
+    if (!user && driveToken && autoBackupEnabled) {
+      handleSendGmailNotebookBackup(active, true);
+    }
+  };
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
@@ -398,9 +670,13 @@ export default function App() {
     }
   };
 
-  const handleSendGmailBackup = async (overrideCharacters?: any[], overrideTitle?: string, overrideAuthor?: string) => {
+  const handleSendGmailBackup = async (overrideCharacters?: any[], overrideTitle?: string, overrideAuthor?: string, silent: boolean = false) => {
     let currentToken = driveToken;
     if (!currentToken) {
+      if (silent) {
+        console.log("Silent auto-backup bypassed: Google account not authorized.");
+        return false;
+      }
       const confirmAuth = window.confirm("Gmail backup requires your Google Account to be authorized. Would you like to authorize and connect now?");
       if (confirmAuth) {
         setIsLoggingIn(true);
@@ -436,13 +712,17 @@ export default function App() {
     const authorRaw = overrideAuthor || blueprint?.manuscript_author || manuscriptAuthor || 'Anonymous';
 
     if (!charList || charList.length === 0) {
-      alert("No character profiles or dossier data available to backup yet. Please run an analysis first!");
+      if (!silent) {
+        alert("No character profiles or dossier data available to backup yet. Please run an analysis first!");
+      }
       return false;
     }
 
     const recipient = backupEmail || user?.email;
     if (!recipient) {
-      alert("Please configure a valid backup email recipient under Settings.");
+      if (!silent) {
+        alert("Please configure a valid backup email recipient under Settings.");
+      }
       return false;
     }
 
@@ -564,7 +844,9 @@ export default function App() {
         type: 'success', 
         message: `Successfully emailed backup to ${recipient}!` 
       });
-      alert(`Backup successfully emailed to ${recipient}!`);
+      if (!silent) {
+        alert(`Backup successfully emailed to ${recipient}!`);
+      }
       return true;
     } catch (err: any) {
       console.error("Gmail Send Error:", err);
@@ -572,7 +854,9 @@ export default function App() {
         type: 'error', 
         message: `Backup email failed: ${err.message}` 
       });
-      alert(`Gmail Backup Failed: ${err.message}`);
+      if (!silent) {
+        alert(`Gmail Backup Failed: ${err.message}`);
+      }
       return false;
     } finally {
       setIsSendingBackupEmail(false);
@@ -938,6 +1222,11 @@ processed_date: ${blueprint?.first_processed || new Date().toISOString()}
     if (user) {
       try {
         await updateDossierMetadataInFirestore(user.uid, sha, title, author, text);
+        if (autoBackupEnabled) {
+          const charList = (blueprint && (blueprint.manuscript_sha === sha || blueprint.sha === sha)) ? characters : null;
+          handleSendGmailBackup(charList || [], title, author, true)
+            .catch((err) => console.error("Auto backup via Gmail on manuscript save failed:", err));
+        }
       } catch (err: any) {
         console.error("Failed to update in Firestore:", err);
       }
@@ -1017,9 +1306,34 @@ processed_date: ${item.date}
   const blueprintFileInputRef = useRef<HTMLInputElement>(null);
 
   // Blueprint, State & Change Logs
+  const [userBlueprints, setUserBlueprints] = useState<Array<Blueprint & { sidecar_logs?: SidecarLog[] }>>([]);
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [sidecarLogs, setSidecarLogs] = useState<SidecarLog[]>([]);
   const [images, setImages] = useState<Record<string, string>>({});
+
+  const handleLoadManuscriptFromLibrary = (item: { sha: string; title: string; author: string; text?: string }) => {
+    const matchingBp = userBlueprints.find(bp => bp.manuscript_sha === item.sha || bp.sha === item.sha);
+    if (matchingBp) {
+      setBlueprint(matchingBp);
+      setManuscriptText(matchingBp.manuscript_text || item.text || '');
+      setManuscriptTitle(matchingBp.manuscript_title || item.title || 'Untitled Manuscript');
+      setManuscriptAuthor(matchingBp.manuscript_author || item.author || 'Anonymous');
+      if (matchingBp.sidecar_logs) setSidecarLogs(matchingBp.sidecar_logs);
+      if (matchingBp.characters && matchingBp.characters.length > 0) {
+        setCharacters(matchingBp.characters);
+        setSelectedCharacter(matchingBp.characters[0]);
+      } else {
+        setCharacters(null);
+        setSelectedCharacter(null);
+      }
+      if (matchingBp.blueprint_notes) setBlueprintNotes(matchingBp.blueprint_notes);
+      if (matchingBp.term_replacements) setTermReplacements(matchingBp.term_replacements);
+    } else {
+      setManuscriptText(item.text || '');
+      setManuscriptTitle(item.title || 'Untitled Manuscript');
+      setManuscriptAuthor(item.author || 'Anonymous');
+    }
+  };
 
   const handleAddImage = (path: string, dataUrl: string) => {
     setImages((prev) => ({ ...prev, [path]: dataUrl }));
@@ -1040,8 +1354,12 @@ processed_date: ${item.date}
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Active viewing tab for results: 'dossier', 'json' or 'history'
-  const [activeTab, setActiveTab] = useState<'dossier' | 'json' | 'history'>('dossier');
+  // Active viewing tab for results: 'dossier', 'json', 'history' or 'research'
+  const [activeTab, setActiveTab] = useState<'dossier' | 'json' | 'history' | 'research'>('dossier');
+
+  // Notebook Research States
+  const [notebooks, setNotebooks] = useState<ResearchNotebook[]>([]);
+  const [currentNotebookId, setCurrentNotebookId] = useState<string | null>(null);
 
   // Multi-step loading messages to reassure and inform the user
   const loadingSteps = [
@@ -1120,6 +1438,14 @@ processed_date: ${item.date}
           return updated.slice(0, 5);
         });
 
+        if (data.tokens) {
+          setTokenUsage(prev => ({
+            prompt: prev.prompt + data.tokens!.promptTokens,
+            completion: prev.completion + data.tokens!.completionTokens,
+            total: prev.total + data.tokens!.totalTokens
+          }));
+        }
+
         const tokenDetails = data.tokens
           ? ` (Tokens: Prompt: ${data.tokens.promptTokens.toLocaleString()}, Completion: ${data.tokens.completionTokens.toLocaleString()}, Total: ${data.tokens.totalTokens.toLocaleString()})`
           : '';
@@ -1137,10 +1463,14 @@ processed_date: ${item.date}
         if (user) {
           saveDossierToFirestore(user.uid, initialBlueprint, [initialLog])
             .catch((err) => console.error("Auto-saving new analysis to Firestore failed:", err));
+          setUserBlueprints((prev) => [
+            { ...initialBlueprint, sidecar_logs: [initialLog] },
+            ...prev.filter((b) => b.manuscript_sha !== initialBlueprint.manuscript_sha && b.sha !== initialBlueprint.sha)
+          ]);
         }
 
         if (autoBackupEnabled) {
-          handleSendGmailBackup(data.characters, manuscriptTitle, manuscriptAuthor)
+          handleSendGmailBackup(data.characters, manuscriptTitle, manuscriptAuthor, true)
             .catch((err) => console.error("Auto backup via Gmail failed:", err));
         }
       } else {
@@ -1274,6 +1604,7 @@ processed_date: ${item.date}
               setSelectedCharacter(uploadedBlueprint.characters[0]);
             }
             
+            let finalLogs = loadedLogs;
             if (loadedLogs.length > 0) {
               setSidecarLogs(loadedLogs);
             } else {
@@ -1284,6 +1615,23 @@ processed_date: ${item.date}
                 details: `Successfully imported .phole package with ${uploadedBlueprint.characters.length} characters and ${Object.keys(loadedImages).length} images.`
               };
               setSidecarLogs([log]);
+              finalLogs = [log];
+            }
+
+            if (!uploadedBlueprint.manuscript_sha) {
+              uploadedBlueprint.manuscript_sha = uploadedBlueprint.sha;
+            }
+
+            if (user) {
+              saveDossierToFirestore(user.uid, uploadedBlueprint, finalLogs)
+                .then(() => {
+                  console.log("Auto-saved imported .phole to Firestore.");
+                  if (autoBackupEnabled) {
+                    handleSendGmailBackup(uploadedBlueprint.characters, uploadedBlueprint.manuscript_title, uploadedBlueprint.manuscript_author, true)
+                      .catch((err) => console.error("Auto backup via Gmail on upload failed:", err));
+                  }
+                })
+                .catch((err) => console.error("Auto-saving imported .phole to Firestore failed:", err));
             }
           }
         } catch (err: any) {
@@ -1354,6 +1702,22 @@ processed_date: ${item.date}
             details: `Uploaded blueprint file containing ${uploadedBlueprint.characters.length} characters. SHA: ${uploadedBlueprint.sha.slice(0, 10)}`
           };
           setSidecarLogs([initialLog]);
+
+          if (!uploadedBlueprint.manuscript_sha) {
+            uploadedBlueprint.manuscript_sha = uploadedBlueprint.sha;
+          }
+
+          if (user) {
+            saveDossierToFirestore(user.uid, uploadedBlueprint, [initialLog])
+              .then(() => {
+                console.log("Auto-saved uploaded JSON blueprint to Firestore.");
+                if (autoBackupEnabled) {
+                  handleSendGmailBackup(uploadedBlueprint.characters, uploadedBlueprint.manuscript_title, uploadedBlueprint.manuscript_author, true)
+                    .catch((err) => console.error("Auto backup via Gmail on upload failed:", err));
+                }
+              })
+              .catch((err) => console.error("Auto-saving uploaded JSON blueprint to Firestore failed:", err));
+          }
         }
       } catch (err: any) {
         alert("Error parsing Blueprint file: " + err.message);
@@ -1769,8 +2133,17 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
     setSidecarLogs((prev) => [newLog, ...prev]);
 
     if (user) {
-      saveDossierToFirestore(user.uid, nextBlueprint, [newLog, ...sidecarLogs])
+      const updatedLogs = [newLog, ...sidecarLogs];
+      saveDossierToFirestore(user.uid, nextBlueprint, updatedLogs)
         .catch((err) => console.error("Auto-saving updated blueprint to Firestore failed:", err));
+      setUserBlueprints((prev) => [
+        { ...nextBlueprint, sidecar_logs: updatedLogs },
+        ...prev.filter((b) => b.manuscript_sha !== nextBlueprint.manuscript_sha && b.sha !== nextBlueprint.sha)
+      ]);
+      if (autoBackupEnabled) {
+        handleSendGmailBackup(updatedCharacters, blueprint?.manuscript_title || manuscriptTitle, blueprint?.manuscript_author || manuscriptAuthor, true)
+          .catch((err) => console.error("Auto backup via Gmail on character update failed:", err));
+      }
     }
   };
 
@@ -1898,7 +2271,7 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
     );
   }
 
-  if (!user) {
+  if (!user && !isGuest) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row" id="auth-login-screen">
         {/* Left Side: Brand Visual Panel */}
@@ -1971,6 +2344,8 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
               <h2 className="text-2xl font-black text-slate-800 tracking-tight">Sign In to Your Workspace</h2>
               <p className="text-slate-500 text-xs mt-1.5 leading-relaxed">
                 Connect your Google account to access your personal manuscript extractor and sync with your Drive storage.
+                <br/>
+                Or, <button onClick={() => setIsGuest(true)} className="underline font-semibold text-blue-600">try out Plothole as a Guest</button> without saving features.
               </p>
             </div>
 
@@ -2034,6 +2409,33 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
               </button>
             </div>
 
+            {/* Changelog Card */}
+            <div className="border-t border-slate-100 pt-6 text-left space-y-3">
+              <h4 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Project Changelog</h4>
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3 max-h-48 overflow-y-auto select-scrollbar text-[11px] text-slate-600">
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-800 flex justify-between">
+                    <span>v1.2.0 - Research & Automatic Gmail Sync</span>
+                    <span className="font-mono text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Latest</span>
+                  </p>
+                  <ul className="list-disc pl-4 space-y-1 text-slate-500">
+                    <li>Added automated real-time background Gmail sync pipeline for Research Notebooks and sources.</li>
+                    <li>Integrated robust duplicate warnings and validation for webpage sources based on URL uniqueness.</li>
+                    <li>Added search and indexing tool within Research Library to filter sources by text and data.</li>
+                    <li>Fixed list and document detail panel source delete triggers in NotebookLM view.</li>
+                  </ul>
+                </div>
+                <hr className="border-slate-200/60" />
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-800">v1.1.0 - Core Intelligence & Cloud Integration</p>
+                  <ul className="list-disc pl-4 space-y-1 text-slate-500">
+                    <li>Integrated Google Workspace suite supporting Drive browser and Docs blueprint exporting.</li>
+                    <li>Bootstrapped durable Firestore database schemas to persist manuscripts, dossiers, and notes.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
             <div className="border-t border-slate-100 pt-6 space-y-3.5 text-left text-[11px] text-slate-500 leading-relaxed font-medium">
               <p>
                 🛡️ <strong>GDPR & Privacy Compliant:</strong> Plothole does not share your uploaded manuscripts or character dossiers with external parties. Drive documents are synced using sandboxed file permissions.
@@ -2050,6 +2452,13 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans" id="app-root-container">
+      {isGuest && (
+        <div className="bg-amber-100 text-amber-900 p-3 text-center text-sm border-b border-amber-200">
+          <strong>Trial Mode:</strong> You are using Plothole without an account. Some saving features (Cloud/Drive/Gmail) are disabled. 
+          <button onClick={() => { setIsGuest(false); googleSignIn(); }} className="underline font-semibold mx-2">Sign in</button>
+        </div>
+      )}
+      <TokenUsageWidget usage={tokenUsage} />
       {/* Top Banner & Header */}
       <header className="border-b border-slate-200 bg-white shadow-sm" id="app-header">
         <div className="max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -2140,6 +2549,51 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
             <Sparkles className="w-4 h-4 text-blue-600" />
             <span>Analyzer Workstation</span>
           </button>
+
+          <button
+            onClick={() => setViewMode('oracle')}
+            className={`flex items-center gap-2 py-4 text-xs font-semibold tracking-wider uppercase border-b-2 focus:outline-none transition-all cursor-pointer relative ${
+              viewMode === 'oracle'
+                ? 'border-indigo-600 text-indigo-700 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+            id="oracle-tab-trigger"
+          >
+            <Bot className="w-4 h-4 text-indigo-600 animate-pulse" />
+            <span>The Oracle (AI Analyst)</span>
+            <span className="ml-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-1.5 py-0.5 rounded text-[9px] font-extrabold font-mono tracking-tight">
+              RAG
+            </span>
+          </button>
+
+          <button
+            onClick={() => setViewMode('stenopad')}
+            className={`flex items-center gap-2 py-4 text-xs font-semibold tracking-wider uppercase border-b-2 focus:outline-none transition-all cursor-pointer relative ${
+              viewMode === 'stenopad'
+                ? 'border-amber-600 text-amber-700 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+            id="stenopad-tab-trigger"
+          >
+            <PenTool className="w-4 h-4 text-amber-600" />
+            <span>Stenopad (#WikiTags)</span>
+            <span className="ml-1 bg-amber-500 text-white px-1.5 py-0.5 rounded text-[9px] font-extrabold font-mono tracking-tight">
+              New
+            </span>
+          </button>
+
+          <button
+            onClick={() => setViewMode('research')}
+            className={`flex items-center gap-2 py-4 text-xs font-semibold tracking-wider uppercase border-b-2 focus:outline-none transition-all cursor-pointer relative ${
+              viewMode === 'research'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+            id="research-tab-trigger"
+          >
+            <Sparkles className="w-4 h-4 text-purple-600 animate-pulse" />
+            <span>Research Library (NotebookLM)</span>
+          </button>
           
           <button
             onClick={() => setViewMode('library')}
@@ -2170,11 +2624,84 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
             <Settings className="w-4 h-4 text-slate-500" />
             <span>Settings & Backups</span>
           </button>
+
+          <button
+            onClick={() => setViewMode('atlas')}
+            className={`flex items-center gap-2 py-4 text-xs font-semibold tracking-wider uppercase border-b-2 focus:outline-none transition-all cursor-pointer relative ${
+              viewMode === 'atlas'
+                ? 'border-amber-600 text-amber-700 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+            id="atlas-tab-trigger"
+          >
+            <Compass className="w-4 h-4 text-amber-600" />
+            <span>Fantasy Atlas</span>
+          </button>
+
+          <button
+            onClick={() => setViewMode('admin')}
+            className={`flex items-center gap-2 py-4 text-xs font-semibold tracking-wider uppercase border-b-2 focus:outline-none transition-all cursor-pointer relative ${
+              viewMode === 'admin'
+                ? 'border-indigo-600 text-indigo-700 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+            id="admin-tab-trigger"
+          >
+            <ShieldAlert className="w-4 h-4 text-indigo-600" />
+            <span>Admin & Backup Codes</span>
+          </button>
         </div>
       </div>
 
       {/* Main Workspace Stage */}
-      <main className="max-w-6xl mx-auto px-4 py-8" id="main-workspace-stage">
+      <main className={viewMode === 'atlas' || viewMode === 'oracle' ? "w-full max-w-[1650px] mx-auto px-2 sm:px-4 py-4" : "max-w-6xl mx-auto px-4 py-8"} id="main-workspace-stage">
+
+        {viewMode === 'oracle' && (
+          <div className="space-y-6 animate-fade-in" id="oracle-view-panel">
+            <OracleChat
+              user={user}
+              manuscriptText={manuscriptText}
+              manuscriptTitle={manuscriptTitle || 'Active Manuscript'}
+              characters={characters}
+              notebooks={notebooks}
+              atlasState={atlasState}
+            />
+          </div>
+        )}
+
+        {viewMode === 'stenopad' && (
+          <div className="space-y-6 animate-fade-in" id="stenopad-view-panel">
+            <StenopadNotepad
+              characters={characters}
+              atlasState={atlasState}
+              manuscriptTitle={manuscriptTitle || 'Active Manuscript'}
+            />
+          </div>
+        )}
+
+        {viewMode === 'atlas' && (
+          <div className="space-y-6 animate-fade-in" id="fantasy-atlas-view-panel">
+            <FantasyAtlas
+              user={user}
+              initialAtlasState={atlasState}
+              onSaveAtlasState={(s) => setAtlasState(s)}
+            />
+          </div>
+        )}
+
+        {viewMode === 'admin' && (
+          <div className="space-y-6 animate-fade-in" id="admin-panel-view-panel">
+            <AdminPanel
+              user={user}
+              userBlueprints={userBlueprints}
+              notebooks={notebooks}
+              atlasState={atlasState}
+              onSendGmailBackup={async () => {
+                await handleSendGmailBackup(undefined, undefined, undefined, false);
+              }}
+            />
+          </div>
+        )}
         
         {viewMode === 'library' && (
           <div className="space-y-6 animate-fade-in" id="library-view-panel">
@@ -2307,11 +2834,9 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
                           {item.text && (
                             <button
                               onClick={() => {
-                                setManuscriptText(item.text || '');
-                                setManuscriptTitle(item.title);
-                                setManuscriptAuthor(item.author);
+                                handleLoadManuscriptFromLibrary(item);
                                 setViewMode('analyzer');
-                                alert(`Manuscript "${item.title}" loaded into the Analyzer workspace! Click "Analyze Story" to profile or edit characters.`);
+                                alert(`Manuscript "${item.title}" loaded into the Analyzer workspace!`);
                               }}
                               className="px-3.5 py-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 border border-emerald-200 hover:border-emerald-300 rounded-lg bg-emerald-50 hover:bg-emerald-100 transition-all cursor-pointer flex items-center gap-1"
                               title="Load manuscript into Analyzer workspace"
@@ -2610,7 +3135,7 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
                     </div>
 
                     <button
-                      onClick={() => handleSendGmailBackup()}
+                      onClick={() => user ? handleSendGmailBackup() : alert("Please sign in to send Gmail backups.")}
                       disabled={isSendingBackupEmail || !characters}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -2657,6 +3182,33 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
 
               </div>
 
+            </div>
+          </div>
+        )}
+
+        {viewMode === 'research' && (
+          <div className="space-y-6 animate-fade-in" id="research-view-panel">
+            <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm space-y-6">
+              <div className="border-b border-slate-100 pb-4">
+                <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-600 animate-pulse" />
+                  <span>Research Library & Grounding (NotebookLM)</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Manage your books, lore elements, transcripts, and timeline events in one workspace. Grounded chat analyzes your uploaded reference materials directly.
+                </p>
+              </div>
+              <ResearchLibrary
+                user={user}
+                driveToken={driveToken}
+                notebooks={notebooks}
+                currentNotebookId={currentNotebookId}
+                onSaveNotebook={handleSaveNotebook}
+                setCurrentNotebookId={setCurrentNotebookId}
+                onLoginRequest={handleLogin}
+                createGoogleDocFromNotebook={createGoogleDocFromNotebook}
+                uploadToGoogleDrive={uploadToGoogleDrive}
+              />
             </div>
           </div>
         )}
@@ -3128,7 +3680,7 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
                   {driveToken ? (
                     <>
                       <button
-                        onClick={() => handleSaveToDrive('json')}
+                        onClick={() => user ? handleSaveToDrive('json') : alert("Please sign in to save files to Google Drive.")}
                         disabled={isSavingToDrive}
                         id="drive-save-json-btn"
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-slate-200 rounded-lg hover:bg-white text-slate-700 bg-slate-100/60 transition-colors cursor-pointer disabled:opacity-50"
@@ -3138,7 +3690,7 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
                       </button>
 
                       <button
-                        onClick={() => handleSaveToDrive('zip')}
+                        onClick={() => user ? handleSaveToDrive('zip') : alert("Please sign in to save files to Google Drive.")}
                         disabled={isSavingToDrive}
                         id="drive-save-zip-btn"
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-emerald-200 rounded-lg hover:bg-emerald-50 text-emerald-700 bg-emerald-50/20 transition-colors cursor-pointer disabled:opacity-50 font-bold"
@@ -3152,7 +3704,7 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
                       </button>
 
                       <button
-                        onClick={() => handleSaveToDrive('md')}
+                        onClick={() => user ? handleSaveToDrive('md') : alert("Please sign in to save files to Google Drive.")}
                         disabled={isSavingToDrive}
                         id="drive-save-md-btn"
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-slate-200 rounded-lg hover:bg-white text-slate-700 bg-slate-100/60 transition-colors cursor-pointer disabled:opacity-50"
@@ -3297,6 +3849,19 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
                   >
                     <BookOpen className="w-4 h-4 text-emerald-600" />
                     <span>Manuscript Library & Registry ({manuscriptsHistory.length})</span>
+                  </button>
+
+                  <button
+                    id="tab-btn-research"
+                    onClick={() => setActiveTab('research')}
+                    className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold transition-all border-b-2 focus:outline-none cursor-pointer ${
+                      activeTab === 'research'
+                        ? 'border-blue-600 text-blue-700 bg-blue-50/10'
+                        : 'border-transparent text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4 text-purple-600 animate-pulse" />
+                    <span>Research Library & Grounding (NotebookLM)</span>
                   </button>
                 </div>
 
@@ -3536,9 +4101,7 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
                                     <button
                                       onClick={() => {
                                         if (window.confirm(`Load manuscript "${item.title}" into the workspace? This will replace your current workspace text.`)) {
-                                          setManuscriptText(item.text || '');
-                                          setManuscriptTitle(item.title);
-                                          setManuscriptAuthor(item.author);
+                                          handleLoadManuscriptFromLibrary(item);
                                           alert(`Manuscript "${item.title}" loaded successfully!`);
                                         }
                                       }}
@@ -3595,6 +4158,18 @@ processed_date: ${blueprint.first_processed || new Date().toISOString()}
                         </div>
                       )}
                     </div>
+                  ) : activeTab === 'research' ? (
+                    <ResearchLibrary
+                      user={user}
+                      driveToken={driveToken}
+                      notebooks={notebooks}
+                      currentNotebookId={currentNotebookId}
+                      onSaveNotebook={handleSaveNotebook}
+                      setCurrentNotebookId={setCurrentNotebookId}
+                      onLoginRequest={handleLogin}
+                      createGoogleDocFromNotebook={createGoogleDocFromNotebook}
+                      uploadToGoogleDrive={uploadToGoogleDrive}
+                    />
                   ) : null}
                 </div>
               </div>
