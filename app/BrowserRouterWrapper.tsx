@@ -2,7 +2,6 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { Auth0Provider } from '@auth0/auth0-react';
 
 export function BrowserRouterWrapper({ children }: { children: ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
@@ -15,35 +14,9 @@ export function BrowserRouterWrapper({ children }: { children: ReactNode }) {
     return null;
   }
 
-  // Get the redirect URI - use the current origin for client-side redirects
-  const getRedirectUri = () => {
-    if (typeof window === 'undefined') return 'http://localhost:3000';
-    return window.location.origin;
-  };
-
   return (
-    <Auth0Provider
-      domain={process.env.NEXT_PUBLIC_AUTH0_DOMAIN || 'dev-t0pa1ah6r1n2wc4a.us.auth0.com'}
-      clientId={process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID || 'Q7IpCDbQGniIiqT7V2qmHXFf2ZBiEvSe'}
-      authorizationParams={{
-        redirect_uri: getRedirectUri(),
-        audience: 'https://dev-t0pa1ah6r1n2wc4a.us.auth0.com/api/v2/',
-        scope: 'openid profile email offline_access',
-        response_mode: 'query',
-      }}
-      cacheLocation="localstorage"
-      useRefreshTokens={true}
-      onRedirectCallback={(appState) => {
-        // Clean up the URL after Auth0 redirects back with code and state params
-        if (typeof window !== 'undefined') {
-          const cleanPath = appState?.returnTo || '/';
-          window.history.replaceState({}, document.title, cleanPath);
-        }
-      }}
-    >
-      <BrowserRouter>
-        {children}
-      </BrowserRouter>
-    </Auth0Provider>
+    <BrowserRouter>
+      {children}
+    </BrowserRouter>
   );
 }
