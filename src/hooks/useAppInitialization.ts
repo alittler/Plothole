@@ -38,10 +38,11 @@ export function useAppInitialization(auth0User: any, isAuthLoading: boolean, get
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStage, setLoadingStage] = useState('Spooling Engines');
+  const initCalled = useRef(false);
 
-  // Sync Auth0 user with app user
+  // Sync Auth0 user with app user (guest mode skips this)
   useEffect(() => {
-    if (!isAuthLoading && auth0User) {
+    if (auth0User && !isAuthLoading) {
       const email = auth0User.email || '';
       const isAdmin = (auth0User['https://plothole.ai/roles']?.includes('admin')) ||
         (appSettings.adminEmails?.includes(email)) ||
@@ -80,7 +81,12 @@ export function useAppInitialization(auth0User: any, isAuthLoading: boolean, get
 
   // Initial Data Fetching
   useEffect(() => {
-    if (isAuthLoading) return;
+    // Skip if still loading auth0 AND auth0User was expected
+    if (auth0User && isAuthLoading) return;
+    
+    // Prevent multiple initializations
+    if (initCalled.current) return;
+    initCalled.current = true;
 
     const init = async () => {
       setIsLoaded(false);
@@ -127,7 +133,7 @@ export function useAppInitialization(auth0User: any, isAuthLoading: boolean, get
       }
     };
     init();
-  }, [isAuthLoading]);
+  }, [auth0User, isAuthLoading]);
 
   // Server Health Heartbeat
   useEffect(() => {
