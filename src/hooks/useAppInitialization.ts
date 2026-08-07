@@ -28,7 +28,7 @@ const DEMO_USER: User = {
   }
 };
 
-export function useAppInitialization(auth0User: any, isAuthLoading: boolean, getAccessTokenSilently: any) {
+export function useAppInitialization() {
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [globalResources, setGlobalResources] = useState<ToolboxLink[]>([]);
   const [appPrompts, setAppPromptsState] = useState<AppPrompts>(DEFAULT_APP_PROMPTS);
@@ -40,50 +40,8 @@ export function useAppInitialization(auth0User: any, isAuthLoading: boolean, get
   const [loadingStage, setLoadingStage] = useState('Spooling Engines');
   const initCalled = useRef(false);
 
-  // Sync Auth0 user with app user (guest mode skips this)
-  useEffect(() => {
-    if (auth0User && !isAuthLoading) {
-      const email = auth0User.email || '';
-      const isAdmin = (auth0User['https://plothole.ai/roles']?.includes('admin')) ||
-        (appSettings.adminEmails?.includes(email)) ||
-        (process.env.NODE_ENV === 'development' && email.endsWith('@plothole.ai'));
-
-      setCurrentUser(prev => ({
-        ...prev,
-        id: auth0User.sub || '',
-        name: auth0User.name || auth0User.nickname || 'Writer',
-        email: email,
-        role: isAdmin ? 'admin' : 'editor',
-      }));
-
-      const fetchUsername = async () => {
-        try {
-          const token = await getAccessTokenSilently();
-          const resp = await fetch('/api/user/username', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (resp.ok) {
-            const data = await resp.json();
-            if (data.username) {
-              setCurrentUser(prev => ({
-                ...prev,
-                username: data.username
-              }));
-            }
-          }
-        } catch (err) {
-          console.error('Failed to fetch username:', err);
-        }
-      };
-      fetchUsername();
-    }
-  }, [isAuthLoading, auth0User, appSettings.adminEmails, getAccessTokenSilently]);
-
   // Initial Data Fetching
   useEffect(() => {
-    // Skip if still loading auth0 AND auth0User was expected
-    if (auth0User && isAuthLoading) return;
-    
     // Prevent multiple initializations
     if (initCalled.current) return;
     initCalled.current = true;
@@ -133,7 +91,7 @@ export function useAppInitialization(auth0User: any, isAuthLoading: boolean, get
       }
     };
     init();
-  }, [auth0User, isAuthLoading]);
+  }, []);
 
   // Server Health Heartbeat
   useEffect(() => {
