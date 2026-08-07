@@ -10,7 +10,6 @@ import {
   Wrench, Settings, LogOut, ChevronRight,
   BookOpen, RefreshCw
 } from 'lucide-react';
-import { useAuth0 } from '@auth0/auth0-react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 import { 
@@ -58,7 +57,6 @@ import { BottomNav } from './components/Layout/BottomNav';
 import { OracleFloatingButton } from './components/ui/OracleFloatingButton';
 import { ActiveArchitect } from './components/ui/ActiveArchitect';
 import { Modal } from './components/ui/Modal';
-import { SignInPage } from './components/Auth/SignInPage';
 import { LicenseModal } from './components/Modals/LicenseModal';
 import { UploadProminentModal } from './components/ui/UploadProminentModal';
 
@@ -81,7 +79,6 @@ const App: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { user: auth0User, isAuthenticated, isLoading: isAuthLoading, getAccessTokenSilently } = useAuth0();
   const hasAutoLoaded = useRef(false);
 
   const [activeTasks, setActiveTasks] = useState<string[]>([]);
@@ -122,41 +119,18 @@ const App: React.FC = () => {
     }
   }, [router]);
 
-  // Clean up Auth0 callback parameters from URL
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.has('code') && searchParams.has('state')) {
-      // Auth0 has returned with authorization code, clean it up
-      window.history.replaceState({}, document.title, '/');
-    }
-  }, []);
-
   const addTask = useCallback((id: string) => setActiveTasks(prev => [...prev, id]), []);
   const removeTask = useCallback((id: string) => setActiveTasks(prev => prev.filter(t => t !== id)), []);
 
   const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
     try {
-      let token: string | undefined;
-      try {
-        token = await getAccessTokenSilently({
-          authorizationParams: {
-            audience: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || 'https://dev-t0pa1ah6r1n2wc4a.us.auth0.com/api/v2/',
-            scope: 'openid profile email offline_access'
-          }
-        });
-      } catch (tokenErr) {
-        console.warn(`[Auth] Could not get access token silently`, tokenErr);
-      }
-
       const headers = { ...options.headers } as Record<string, string>;
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       return await fetch(url, { ...options, headers });
     } catch (err) {
-      console.error(`[Auth] Error in fetchWithAuth for ${url}:`, err);
+      console.error(`Error in fetch for ${url}:`, err);
       throw err;
     }
-  }, [getAccessTokenSilently]);
+  }, []);
 
   const {
     globalNotes,
@@ -172,7 +146,7 @@ const App: React.FC = () => {
     isLoaded,
     loadingProgress,
     loadingStage
-  } = useAppInitialization(auth0User, isAuthLoading, getAccessTokenSilently);
+  } = useAppInitialization();
 
   const {
     projectsMetadata,
@@ -197,7 +171,7 @@ const App: React.FC = () => {
     handleQuickUpdate,
     handleExtractRelationships
   } = useProjectData(
-    isAuthenticated, 
+    true,
     fetchWithAuth, 
     addTask, 
     removeTask, 
@@ -529,7 +503,7 @@ const App: React.FC = () => {
       default:
         return <div className="h-full flex items-center justify-center text-slate-400">View not found.</div>;
     }
-  }, [isLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, currentUser, appSettings, appPrompts, activeTasks, currentMapParentId, loadProject, refreshMetadata, updateProjectData, handleCreateProject, handleUploadProject, handleRestoreCommit, handleAuditThreads, handleScanContinuity, handleExtractSoftAnchors, handleDoubleProcessNote, handleDeleteNote, handleAddIdeaToProject, handleToggleCanon, handleQuickUpdate, handleExtractRelationships, handleViewChange, fetchWithAuth, handleManualSave, handleEditProject, handleDeleteProject, handleLinkClick]);
+  }, [isLoaded, currentView, projectData, projectsMetadata, globalNotes, isAnalyzing, currentUser, appSettings, appPrompts, activeTasks, currentMapParentId, loadProject, refreshMetadata, updateProjectData, handleUpdateCharacter, handleViewChange, handleDeleteProject, handleEditProject, handleCreateProject, handleUploadProject, handleManualSave, handleDeleteNote, handleAddIdeaToProject, handleToggleCanon, handleDoubleProcessNote, handleLinkClick, isMapFullscreen, pathname, setGlobalNotes, setAppSettings, setAppPromptsState, fetchWithAuth]);
 
   const renderAppContent = () => {
     if (!isLoaded) {
@@ -555,10 +529,6 @@ const App: React.FC = () => {
       );
     }
 
-    if (!isAuthenticated) {
-      return <SignInPage />;
-    }
-
     if (activeTasks.includes('Initializing Project')) {
       return (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -580,7 +550,7 @@ const App: React.FC = () => {
           hasActiveProject={!!projectData}
           currentUser={currentUser}
           isAnalyzing={isAnalyzing}
-          isGuest={!isAuthenticated}
+          isGuest={true}
           appName={appSettings.appName}
           isFullscreen={isMapFullscreen}
           activeProjectTitle={projectData?.title}
@@ -622,7 +592,7 @@ const App: React.FC = () => {
 
         <AnimatePresence>
           {isAdminNoteOpen && (
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-y-0 right-0 w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-[1500] flex flex-col">
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-y-0 right-0 w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col z-[2001]">
               <header className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <h2 className="font-black text-sm uppercase tracking-tighter dark:text-white">Admin Notes</h2>
                 <button onClick={() => setIsAdminNoteOpen(false)}><X size={20} /></button>
